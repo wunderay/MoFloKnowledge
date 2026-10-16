@@ -6,7 +6,8 @@ import { Dialog, Notice } from "./ui";
 type Preview = {
   draftGeneration: number;
   payloadPreview: unknown;
-  blockingEntries: unknown[];
+  blockingEntries: { entry_id: string; reason: string }[];
+  approvedCount: number;
 };
 export function PublicationDialog({
   companyId,
@@ -106,7 +107,8 @@ export function PublicationDialog({
               <p className="field__hint">
                 Draft generation {preview.draftGeneration}
               </p>
-              {preview.blockingEntries.length > 0 ? (
+              {preview.blockingEntries.length > 0 ||
+              preview.approvedCount === 0 ? (
                 <Notice error>
                   {preview.blockingEntries.length} entries need review before
                   this version can be saved.
@@ -132,7 +134,11 @@ export function PublicationDialog({
               <div className="actions">
                 <button
                   className="button button--primary"
-                  disabled={busy || preview.blockingEntries.length > 0}
+                  disabled={
+                    busy ||
+                    preview.blockingEntries.length > 0 ||
+                    preview.approvedCount === 0
+                  }
                   onClick={publish}
                 >
                   {busy ? "Saving version…" : "Save this version"}

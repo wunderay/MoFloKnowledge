@@ -39,18 +39,26 @@ export function ProposalReview({
     const job = new URLSearchParams(window.location.search).get("jobId");
     setJobId(job);
     if (!job) return;
-    api<{ proposals: ProposalItem[] | Record<string, ProposalItem> }>(
-      companyPath(companyId, `/scrapes/${job}`),
-    )
-      .then((data) =>
+    api<{
+      proposals: {
+        candidates?: ProposalItem[];
+        decisions?: { proposal_id: string; action: string }[];
+      };
+    }>(companyPath(companyId, `/scrapes/${job}`))
+      .then((data) => {
+        const decided = new Set(
+          (data.proposals.decisions ?? []).map(
+            (decision) => decision.proposal_id,
+          ),
+        );
         setProposals(
-          Array.isArray(data.proposals)
-            ? data.proposals
-            : Object.values(data.proposals ?? {}),
-        ),
-      )
-      .catch((e) => setError(e.message));
-  }, [companyId]);
+          (data.proposals.candidates ?? []).filter(
+            (proposal) => !decided.has(proposal.id),
+          ),
+        );
+      })
+      .catch((error) => setError(error.message));
+  }, [companyId, entries]);
   async function act(proposal: ProposalItem, dismiss = false) {
     setBusy(true);
     setError("");
@@ -158,19 +166,22 @@ export function ProposalReview({
                   <label className="field" key={candidate.id}>
                     <span>
                       <input
-                        type="checkbox"
+                        type="radio"
+                        name={`candidate-${conflict.id}`}
                         disabled={!canEdit || busy}
                         checked={(selected[proposal.id] ?? []).includes(
                           candidate.id,
                         )}
-                        onChange={(e) =>
+                        onChange={() =>
                           setSelected({
                             ...selected,
-                            [proposal.id]: e.target.checked
-                              ? [...(selected[proposal.id] ?? []), candidate.id]
-                              : (selected[proposal.id] ?? []).filter(
-                                  (id) => id !== candidate.id,
-                                ),
+                            [proposal.id]: [
+                              ...(selected[proposal.id] ?? []).filter(
+                                (id) =>
+                                  !conflict.candidates.some((c) => c.id === id),
+                              ),
+                              candidate.id,
+                            ],
                           })
                         }
                       />{" "}

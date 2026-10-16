@@ -68,6 +68,7 @@ export function ScrapeProgress({
         companyPath(companyId, "/scrapes"),
         write("POST", { url, requestId: crypto.randomUUID() }),
       );
+      setJob({ id: result.jobId, status: result.status, progress: {} });
       setJobId(result.jobId);
       const next = new URL(window.location.href);
       next.searchParams.set("jobId", result.jobId);

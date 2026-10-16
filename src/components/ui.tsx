@@ -52,7 +52,9 @@ export function Dialog({
   const dialog = useRef<HTMLElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const target = dialog.current?.querySelector<HTMLElement>("input, button, select, textarea, a[href]");
+    const target = dialog.current?.querySelector<HTMLElement>(
+      "input, button, select, textarea, a[href]",
+    );
     target?.focus();
     return () => previous?.focus();
   }, []);
@@ -72,10 +74,20 @@ export function Dialog({
         onKeyDown={(e) => {
           if (e.key === "Escape") onClose();
           if (e.key === "Tab") {
-            const nodes = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex="0"]') ?? []);
-            const first = nodes[0], last = nodes.at(-1);
-            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
-            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+            const nodes = Array.from(
+              dialog.current?.querySelectorAll<HTMLElement>(
+                'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex="0"]',
+              ) ?? [],
+            );
+            const first = nodes[0],
+              last = nodes.at(-1);
+            if (e.shiftKey && document.activeElement === first) {
+              e.preventDefault();
+              last?.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault();
+              first?.focus();
+            }
           }
         }}
       >

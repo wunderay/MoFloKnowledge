@@ -44,7 +44,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="app-shell__body">
         <header className="app-shell__topbar">
           <span>Company intelligence</span>
-          <span className="app-shell__privacy">◉ Private workspace</span>
+          <div className="actions">
+            <span className="app-shell__privacy">◉ Private workspace</span>
+            <button
+              className="button button--quiet"
+              onClick={async () => {
+                const response = await fetch("/api/auth/sign-out", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: "{}",
+                });
+                if (response.ok) window.location.assign("/sign-in");
+              }}
+            >
+              Sign out
+            </button>
+          </div>
         </header>
         <main id="main-content" className="app-shell__main">
           {children}
