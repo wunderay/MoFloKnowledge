@@ -36,19 +36,40 @@ export function parseRobots(text: string): {
         }
         else if (group) {
             directives = true;
-            if ((key === 'allow' || key === 'disallow') && value)
+            if ((key === 'allow' || key === 'disallow') && value) {
+                if(value.length>2048 || groups.reduce((count,item)=>count+item.rules.length,0)>=1000)throw new Error('Robots rules exceed bounded parser capacity');
                 group.rules.push({ allow: key === 'allow', pattern: value });
+            }
             if (key === 'crawl-delay' && Number.isFinite(Number(value)))
                 group.delayMs = Math.max(500, Number(value) * 1000);
         }
     }
-    const exact = groups.filter(g => g.agents.some(a => a !== '*' && 'mofloknowledgebot'.startsWith(a)));
-    const selected = exact.length ? exact : groups.filter(g => g.agents.includes('*'));
+    const specificity=(agents:string[])=>Math.max(0,...agents.filter(agent=>agent&&agent!=='*'&&'mofloknowledgebot'.startsWith(agent)).map(agent=>agent.length));
+    const maximum=Math.max(0,...groups.map(group=>specificity(group.agents)));
+    const selected=maximum?groups.filter(group=>specificity(group.agents)===maximum):groups.filter(group=>group.agents.includes('*'));
     return { rules: selected.flatMap(g => g.rules), delayMs: Math.max(500, ...selected.map(g => g.delayMs)) };
 }
+// RFC 9309 octet comparison: encode non-ASCII and normalize only unreserved
+// percent encodings. Reserved encoded separators remain distinct from '/'.
+function robotsOctets(value:string):string {
+    return value.replace(/[^\x00-\x7f]/gu,char=>encodeURIComponent(char)).replace(/%([a-f0-9]{2})/gi,(_match,hex:string)=>{const char=String.fromCharCode(parseInt(hex,16));return /[A-Za-z0-9._~-]/.test(char)?char:'%'+hex.toUpperCase();});
+}
+function wildcardPrefix(path:string,pattern:string):boolean {
+    const anchored=pattern.endsWith('$');const parts=(anchored?pattern.slice(0,-1):pattern).split('*');const first=parts[0]!;
+    if(!path.startsWith(first))return false;
+    if(parts.length===1)return !anchored||path===first;
+    let offset=first.length;
+    for(let index=1;index<parts.length;index++){
+        const part=parts[index]!;
+        if(index===parts.length-1&&anchored){const start=path.length-part.length;return start>=offset&&path.endsWith(part);}
+        const found=path.indexOf(part,offset);if(found<0)return false;offset=found+part.length;
+    }
+    return true;
+}
 export function robotsAllows(path: string, rules: Rule[]): boolean {
-    const matches = rules.filter(rule => new RegExp('^' + rule.pattern.replace(/[.+?^{}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\$$/, '$')).test(path));
-    matches.sort((a, b) => b.pattern.replace(/\*/g, '').length - a.pattern.replace(/\*/g, '').length || Number(b.allow) - Number(a.allow));
+    const normalized=robotsOctets(path);
+    const matches=rules.map(rule=>({...rule,pattern:robotsOctets(rule.pattern)})).filter(rule=>wildcardPrefix(normalized,rule.pattern));
+    matches.sort((a, b) => b.pattern.replace(/[\*$]/g, '').length - a.pattern.replace(/[\*$]/g, '').length || Number(b.allow) - Number(a.allow));
     return matches[0]?.allow ?? true;
 }
 export function retryAfterMs(value: string | undefined, now = Date.now()): number {

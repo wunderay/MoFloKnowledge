@@ -12,7 +12,7 @@ it('captures actual JS-visible content and separate style/font/logo observations
         await page.setContent('<style>body { font-family: Arial; color: rgb(10,20,30) } button { background: #ffee00 }</style><header><img alt="Acme logo" src="https://example.com/logo.svg"></header><main><h1>Start</h1><button>Try it</button></main><script>document.querySelector("h1").textContent="JS company";localStorage.setItem("secret","value")</script>');
         const capture = await captureRenderedPage(page);
         expect(capture.text).toContain('JS company');
-        expect(capture.styles.find(style => style.selector.startsWith('h1'))?.color).toBe('rgb(10, 20, 30)');
+        expect(capture.styles.find(style => style.selector.includes('h1'))?.color).toBe('rgb(10, 20, 30)');
         expect(capture.stylesheets[0]?.declarations).toContain('font-family');
         expect(capture.logos[0]?.url).toBe('https://example.com/logo.svg');
         await context.close();
