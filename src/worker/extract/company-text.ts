@@ -164,13 +164,13 @@ export function companyTextCandidates(
     // An explicit description of what the firm is, not a guessed standardized label.
     const industry = /\b(?:we are|is|as)\s+(?:an?\s+)?(?:independent\s+)?([^.!?;]{3,90}?\b(?:firm|agency|consultancy|manufacturer|retailer|studio|practice|service provider))\b/i.exec(text)?.[1];
     if (industry && !/\b(?:you|your|our|other|another)\b/i.test(industry)) {
-      add("/company_foundation/industry", industry, [text], 80 - index);
+      add("/company_foundation/industry", industry, [text], (profile ? 65 : 80) - index);
       add("/company_foundation/company_role", [{ text: industry }], [text], 75);
     }
     // Keep a published service category verbatim, including its exact spelling.
     const category = /\b(?:specializ(?:e|es|ing) in|provid(?:e|es|ing)|offer(?:s|ing)?|reliable)\s+([^.!?;]{3,90}?\b(?:services|solutions|software|products))\b/i.exec(text)?.[1];
     if (category && !/\b(?:you|your|our|other|these|this|the best)\b/i.test(category))
-      add("/company_foundation/industry", category, [text], 70 - index);
+      add("/company_foundation/industry", category, [text], (profile ? 60 : 70) - index);
     const role = /\b(?:professional service|service provider|manufacturer|retailer|wholesaler|distributor|consultancy)\b/i.exec(text)?.[0];
     if (role) add("/company_foundation/company_role", [{ text: role }], [text], 80);
   }
