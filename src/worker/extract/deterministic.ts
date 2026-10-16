@@ -6,7 +6,7 @@ import { visibleCandidates } from "./visible";
 export const SUPPORTED_FIELDS: readonly string[] = [
   "/company_foundation/website", "/company_foundation/overview",
   "/company_foundation/industry", "/company_foundation/business_model",
-  "/company_foundation/year_founded", "/company_foundation/main_address",
+  "/company_foundation/year_founded", "/company_foundation/employee_count", "/company_foundation/main_address",
   "/company_foundation/service_locations", "/company_foundation/alternative_company_names",
   "/positioning/company_pitch", "/market_and_customers/target_buyers",
   "/key_people/@id/name", "/key_people/@id/title", "/key_people/@id/background_or_relevance",
