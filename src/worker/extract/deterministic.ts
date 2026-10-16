@@ -150,6 +150,7 @@ export function deterministicCandidates(
       /^(?:www\.)?(linkedin|facebook|instagram|youtube|twitter|x|tiktok)\.com$/.exec(
         url.hostname,
       )?.[1];
+    if (platform === "linkedin" && !/^\/(?:company|school|showcase)\/[^/]+/i.test(url.pathname)) continue;
     if (platform && url.pathname !== "/") {
       const o = observations.find(
         (o) => o.property === "href" && o.value === link.url,
