@@ -347,3 +347,15 @@ it("accepts joined exact passages and rejects paraphrases and unrelated since-ye
   const unrelated = { ...page, capture: { ...page.capture, segments: [{ id: "career", text: "Since 2010, I have worked for a large firm." }] } };
   expect(() => validateCandidates([{ ...candidate("/company_foundation/year_founded", 2012, "Founded in 2012"), value: 2010, segment_ids: ["career"] }], unrelated, observations, companyId)).toThrow("founding_not_explicit");
 });
+
+it("keeps equally authoritative distinct names as factual conflicts", () => {
+  const values = validateCandidates([
+    candidate("/offerings/@id/name", "Field Kit", "Field Kit.", "https://example.com/kit", { priority: 95 }),
+    candidate("/offerings/@id/name", "Monitoring equipment", "Field Kit.", "https://example.com/kit", { priority: 95 }),
+    candidate("/offerings/@id/url", "https://example.com/kit", "Field Kit.", "https://example.com/kit"),
+  ], page, observations, companyId);
+  const offering = reduceCandidates(values, { companyId, jobId, partial: false }).find((p) => p.kind === "offering")!;
+  expect(offering.content).toMatchObject({ name: null, url: "https://example.com/kit" });
+  expect(offering.conflicts).toHaveLength(1);
+  expect(offering.conflicts[0].candidates.map((c) => c.value).sort()).toEqual(["Field Kit", "Monitoring equipment"]);
+});
