@@ -23,7 +23,7 @@ before(async()=>{
  admin=await connect();await admin.query(await readFile(new URL('./bootstrap.sql',import.meta.url),'utf8'));
  const generated=spawnSync(process.execPath,[fileURLToPath(new URL('../../scripts/generate-sql-contract.mjs',import.meta.url)),'--check',process.env.CONTRACTS_ROOT??'.'],{encoding:'utf8'});assert.equal(generated.status,0,generated.stderr);
  const migration=()=>spawnSync(process.execPath,[fileURLToPath(new URL('../../scripts/migrate.mjs',import.meta.url))],{env:{...process.env,DATABASE_URL:url.href},encoding:'utf8'});
- const initial=migration();assert.equal(initial.status,0,initial.stderr);assert.equal(initial.stdout.match(/Applied /g)?.length,11);
+ const initial=migration();assert.equal(initial.status,0,initial.stderr);assert.equal(initial.stdout.match(/Applied /g)?.length,12);
  const replay=migration();assert.equal(replay.status,0,replay.stderr);assert.equal(replay.stdout,'');
  await admin.query('RESET ROLE');await admin.query('INSERT INTO auth.users(id) VALUES($1),($2),($3)',[owner,viewer,outsider]);
 });
@@ -160,6 +160,8 @@ test('protected manual path, tenant isolation, immutable history, worker fencing
   assert.deepEqual(finalSnapshot.payload,assembleKnowledgeBase({company:{id:c,name:'Imported',website:'https://import.example'},snapshotId:finalSnapshot.id,version:2,savedAt:finalSnapshot.created_at.toISOString(),authorId:owner,entries:current}));
   assert.deepEqual(finalSnapshot.payload.key_people,[]);assert.equal(finalSnapshot.payload.offerings[0].pricing.amount,'29.00');assert.ok(!JSON.stringify(finalSnapshot.payload).includes('Excluded internal person'));assert.ok(!JSON.stringify(finalSnapshot.payload).includes(selfDescription));
   assert.ok(finalSnapshot.payload.provenance.operations.some(op=>op.kind==='conflict_select'));assert.equal(finalSnapshot.payload.provenance.sources.length,2);
+  const switchProvenance=structuredClone(reviewed.provenance);switchProvenance.decisions=[{...switchProvenance.decisions[0],id:randomUUID(),candidate_id:conflict.candidates[0].id,decided_at:new Date().toISOString()}];switchProvenance.claims=switchProvenance.claims.map(claim=>claim.targets.includes('/positioning/company_pitch')?{...claim,id:randomUUID()}:claim);
+  const switched=await call(user,'public.save_entry_revision',[c,b,6,{...reviewed.content,company_pitch:conflict.candidates[0].value},switchProvenance,'unreviewed','Explicitly selected stored source candidate',randomUUID()]);assert.equal(switched.provenance.claims.find(claim=>claim.targets.includes('/positioning/company_pitch')).origin,'source_backed');
   const dismissed=await call(user,'public.dismiss_proposal',[c,next.id,candidate.id,'Already reviewed']);assert.equal(dismissed.proposals.candidates.length,1);assert.equal(dismissed.proposals.decisions.at(-1).action,'dismiss');
 
  });
