@@ -38,6 +38,16 @@ export function captureHtml(
   if (Buffer.byteLength(html) > 2 * 1024 * 1024)
     throw new Error("HTML capture exceeds decoded limit");
   const $ = load(html);
+  const hasExecutableScripts = $("script")
+    .toArray()
+    .some((node) => {
+      const type = ($(node).attr("type") ?? "").trim().toLowerCase();
+      return (
+        type === "" ||
+        type === "module" ||
+        /^(?:application|text)\/(?:java|ecma)script$/.test(type)
+      );
+    });
   const meta = (name: string): string | null => {
     if (rendered?.metadata)
       return (
@@ -100,6 +110,52 @@ export function captureHtml(
     )
       $(node).remove();
   });
+  // Long server-rendered copy does not establish that a required client section is ready.
+  // Inspect only bounded structural placeholders; ordinary scripts alone do not trigger rendering.
+  const clientRoot = $("main").first().length
+    ? $("main").first()
+    : $("article").first().length
+      ? $("article").first()
+      : $("body");
+  const requiresClientSection =
+    !rendered &&
+    hasExecutableScripts &&
+    clientRoot
+      .find(
+        "section,div,article,[aria-busy],[data-client],[data-hydrate],[data-reactroot]",
+      )
+      .slice(0, 300)
+      .toArray()
+      .some((node) => {
+        const element = $(node);
+        const content = normalizeText(element.text());
+        const marker = [
+          element.attr("id") ?? "",
+          element.attr("class") ?? "",
+          element.attr("data-section") ?? "",
+          element.attr("data-component") ?? "",
+        ]
+          .join(" ")
+          .replace(/([a-z])([A-Z])/g, "$1 $2");
+        const requiredRegion =
+          /(?:^|[\s_-])(?:faq|questions?|answers?|team|pricing|products?|services?|contact|locations?|content|app|root)(?:$|[\s_-])/i.test(
+            marker,
+          );
+        const explicitClient =
+          element.attr("aria-busy") === "true" ||
+          element.attr("data-client") !== undefined ||
+          element.attr("data-hydrate") !== undefined ||
+          element.attr("data-reactroot") !== undefined;
+        const loading =
+          /^(?:loading\b[^.!?]{0,100}(?:\.{1,3}|…)?|please wait(?:\.{1,3}|…)?|fetching\b[^.!?]{0,100}(?:\.{1,3}|…)?)$/i.test(
+            content,
+          );
+        return (
+          content.length <= 120 &&
+          (loading ||
+            (content.length === 0 && (requiredRegion || explicitClient)))
+        );
+      });
   const headings =
     rendered?.headings?.map(({ level, text }) => ({ level, text })) ??
     $("h1,h2,h3,h4,h5,h6")
@@ -205,6 +261,7 @@ export function captureHtml(
     limitations.push("Captured text exceeded the source segment limit.");
   const observations: Record<string, unknown> = {
     headings,
+    clientSectionDetected: requiresClientSection,
     jsonLd,
     metaDescription: meta("description") ?? meta("og:description"),
     canonical,
@@ -233,6 +290,7 @@ export function captureHtml(
     observations,
     links,
     requiresRender:
+      requiresClientSection ||
       parsed.text.length < 200 ||
       /enable javascript|javascript is required/i.test(parsed.text),
   };
