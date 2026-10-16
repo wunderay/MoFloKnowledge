@@ -11,6 +11,7 @@ export type Job = {
   company_id: string;
   requested_by: string;
   requested_url: string;
+  started_at?: string | Date | null;
   options: Record<string, number>;
   lease_token: string;
   status: string;

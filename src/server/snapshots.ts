@@ -2,7 +2,8 @@ import "server-only";
 import { KnowledgeBaseExportSchema } from "../contracts";
 import { authorizeCompany } from "./authorize";
 import { checked } from "./read-model";
-import { HttpError } from "./http";
+import { VersionSummarySchema } from "../contracts/api-responses";
+import { HttpError, parseResponse } from "./http";
 import type { verifiedSession } from "../lib/supabase/server";
 export async function readSnapshot(
   client: Awaited<ReturnType<typeof verifiedSession>>["client"],
@@ -44,5 +45,5 @@ export async function readVersionSummaries(
     pages.push(...(page ?? []));
     if ((page ?? []).length < 1000) break;
   }
-  return pages;
+  return parseResponse(VersionSummarySchema.array(), pages);
 }

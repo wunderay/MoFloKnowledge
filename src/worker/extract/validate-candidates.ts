@@ -121,6 +121,8 @@ export function validateCandidates(
           !quotes.includes(String(c.value)))
       )
         throw new Error("gender_not_explicit");
+      if (field.field === "gender")
+        c.note = "Explicit public self-description observed in cited text.";
       if (
         field.field === "year_founded" &&
         !new RegExp(
@@ -243,7 +245,10 @@ export function validateCandidates(
             throw new Error("company_logo_not_observed");
       if (
         c.entity_key &&
-        !page.capture.links.some((link) => link.url === c.entity_key) &&
+        !page.capture.links.some(
+          (link) =>
+            link.url === c.entity_key && link.url !== page.capture.finalUrl,
+        ) &&
         !(
           c.entity_key.startsWith(page.capture.finalUrl + "|") &&
           (() => {

@@ -3,6 +3,11 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { appOrigin } from "../lib/config/server";
 import { verifiedSession } from "../lib/supabase/server";
+import { IdSchema } from "../contracts/api-common";
+import {
+  CompanyRowSchema,
+  RevisionResponseSchema,
+} from "../contracts/api-responses";
 import type { ApiError } from "../contracts/api-common";
 export class HttpError extends Error {
   constructor(
@@ -186,5 +191,31 @@ export async function rpc(
 ) {
   const { data, error } = await client.rpc(name, args);
   if (error) throw mapDatabaseError(error);
+  if (name === "create_company") return parseResponse(IdSchema, data);
+  if (["update_company", "archive_company"].includes(name))
+    return parseResponse(CompanyRowSchema, data);
+  if (
+    [
+      "create_entry",
+      "save_entry_revision",
+      "revert_entry",
+      "apply_proposal",
+    ].includes(name)
+  )
+    return parseResponse(RevisionResponseSchema, data);
   return data;
+}
+
+export function parseResponse<S extends z.ZodTypeAny>(
+  schema: S,
+  value: unknown,
+): z.output<S> {
+  const result = schema.safeParse(value);
+  if (!result.success)
+    throw new HttpError(
+      503,
+      "invalid_response",
+      "The service returned an invalid response. Please retry.",
+    );
+  return result.data;
 }

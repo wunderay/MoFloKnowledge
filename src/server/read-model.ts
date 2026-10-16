@@ -1,6 +1,10 @@
 import "server-only";
 import type { verifiedSession } from "../lib/supabase/server";
-import { HttpError, mapDatabaseError } from "./http";
+import { HttpError, mapDatabaseError, parseResponse } from "./http";
+import {
+  CompanyReadSchema,
+  DraftResponseSchema,
+} from "../contracts/api-responses";
 import { authorizeCompany } from "./authorize";
 import { parseBusinessEntry, EntryProvenanceSchema } from "../contracts";
 type Client = Awaited<ReturnType<typeof verifiedSession>>["client"];
@@ -21,7 +25,7 @@ export async function readCompany(client: Client, id: string, userId: string) {
   );
   if (!company)
     throw new HttpError(404, "unavailable", "Resource unavailable.");
-  return { ...company, role };
+  return parseResponse(CompanyReadSchema, { ...company, role });
 }
 export async function readDraft(client: Client, id: string, userId: string) {
   const company = await readCompany(client, id, userId);
@@ -79,11 +83,11 @@ export async function readDraft(client: Client, id: string, userId: string) {
           .in("id", sourceIds),
       )
     : [];
-  return {
+  return parseResponse(DraftResponseSchema, {
     actorId: userId,
     company,
     draftGeneration: company.draft_generation,
     entries: current,
-    sources,
-  };
+    sources: sources ?? [],
+  });
 }

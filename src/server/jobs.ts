@@ -1,7 +1,8 @@
 import "server-only";
 import { authorizeCompany } from "./authorize";
 import { checked } from "./read-model";
-import { HttpError } from "./http";
+import { JobResponseSchema } from "../contracts/api-responses";
+import { HttpError, parseResponse } from "./http";
 import type { verifiedSession } from "../lib/supabase/server";
 export async function readJob(
   client: Awaited<ReturnType<typeof verifiedSession>>["client"],
@@ -14,12 +15,34 @@ export async function readJob(
     client
       .from("scrape_jobs")
       .select(
-        "id,company_id,status,progress,errors,proposals,cancel_requested_at,created_at,updated_at",
+        "id,company_id,status,progress,errors,proposals,cancel_requested_at,created_at,updated_at,options",
       )
       .eq("company_id", company)
       .eq("id", id)
       .maybeSingle(),
   );
   if (!job) throw new HttpError(404, "unavailable", "Resource unavailable.");
-  return job;
+  const { options, ...safeJob } = job;
+  const proposals = job.proposals ?? {};
+  return parseResponse(JobResponseSchema, {
+    ...safeJob,
+    progress: {
+      discovered: 0,
+      selected: 0,
+      captured: 0,
+      failed: 0,
+      blocked: 0,
+      extracted: 0,
+      document_limit: options?.max_pages ?? 10,
+      limits_reached: [],
+      ...job.progress,
+      stage: job.status,
+    },
+    proposals: {
+      candidates: proposals.candidates ?? [],
+      decisions: proposals.decisions ?? [],
+      coverage: proposals.coverage ?? [],
+      initialized_entry_ids: proposals.initialized_entry_ids ?? [],
+    },
+  });
 }
