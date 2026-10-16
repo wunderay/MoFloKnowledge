@@ -220,7 +220,7 @@ function ProfileSection({ entry, citationContext, actions }: {
         );
       })}
       {gaps.length > 0 && (
-        <details className="company-profile__coverage company-profile__disclosure">
+        <details className="company-profile__disclosure company-profile__disclosure--coverage">
           <summary>Coverage & unknowns · {gaps.length} fields</summary>
           <p>Unknown values are not evidence that a fact is absent.</p>
           <dl>
