@@ -1,4 +1,5 @@
 "use client";
+import { ArrowUpRight } from "./icons";
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, companyPath, write } from "./api-client";
 import { Notice, StatusBadge } from "./ui";
@@ -146,7 +147,7 @@ export function ScrapeProgress({
           disabled={!canEdit || busy || (!!job && active.includes(job.status))}
         >
           {busy ? "Starting…" : job ? "Start fresh scrape" : "Start scrape"}{" "}
-          <span aria-hidden>↗</span>
+          <ArrowUpRight />
         </button>
       </form>
       <details style={{ marginTop: 12 }}>

@@ -186,7 +186,7 @@ export const CATEGORY_SPECS: Record<
   },
   online_presence: {
     label: "Online presence",
-    icon: "↗",
+    icon: "@",
     description:
       "Official company-linked profiles, kept separate from sites we crawl.",
     fields: {

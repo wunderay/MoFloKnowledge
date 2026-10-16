@@ -1,4 +1,5 @@
 "use client";
+import { ArrowUpRight } from "./icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, write } from "./api-client";
@@ -239,7 +240,7 @@ export function CompanyDashboard({
                   className="button button--quiet"
                 >
                   {c.archived_at ? "View history" : "Open workspace"}{" "}
-                  <span aria-hidden>↗</span>
+                  <ArrowUpRight />
                 </Link>
               </div>
             </article>

@@ -1,4 +1,5 @@
 "use client";
+import { ArrowUpRight } from "./icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -26,7 +27,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </nav>
         <div className="app-shell__note">
-          <span className="app-shell__note-icon">↗</span>
+          <span className="app-shell__note-icon">
+            <ArrowUpRight size={22} />
+          </span>
           <strong>Knowledge you can trust</strong>
           <p>
             Every fact has a source.
