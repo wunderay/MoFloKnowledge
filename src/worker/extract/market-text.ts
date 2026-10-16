@@ -151,8 +151,8 @@ export function marketTextCandidates(
       const submitEvidence = (label: string) => observations.filter((item) =>
         item.property === "form-submit-label" && item.value === label &&
         (!form.action || item.asset_url === form.action)).map((item) => item.id);
-      for (const label of form.submitLabels ?? [])
-        conversion(label, form.action ?? null, submitEvidence(label));
+      for (const originalLabel of form.submitLabels ?? [])
+        conversion(originalLabel.split(/\n/)[0].trim(), form.action ?? null, submitEvidence(originalLabel));
     }
   return result;
 }
