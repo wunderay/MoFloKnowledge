@@ -1,6 +1,8 @@
-# Agent model selection
+# Development-agent model selection
 
-Owner direction, 2026-10-16: choose models and reasoning effort for price/performance. Use GPT-6 Luna and GPT-6.1 Sol as the default range. This policy governs future worker dispatches; it does not start implementation or select the web application's runtime extraction model.
+> This document concerns models used by development agents and task dispatch only. It does not describe or authorize AI features in MoFloKnowledge; the product uses no AI.
+
+Owner direction, 2026-10-16: choose models and reasoning effort for price/performance. Use GPT-6 Luna and GPT-6.1 Sol as the default range. This policy governs development-agent dispatches only; it does not start implementation or select product behavior.
 
 Choose the cheapest configuration likely to finish correctly, including expected retries, review, coordination and latency. A small task can still need stronger reasoning when a mistake risks tenant isolation, security or data integrity. Start at the appropriate level for known difficulty; do not spend calls proving that every lower level fails.
 

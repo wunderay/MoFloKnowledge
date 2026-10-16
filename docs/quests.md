@@ -1,4 +1,6 @@
-# MoFloKnowledge implementation Quests
+# Historical MoFloKnowledge implementation Quests
+
+> This catalog records an earlier AI-enabled product plan. Its product requirements for AI extraction, generated content, providers and model qualification are superseded by [the current no-AI product scope](no-ai-redesign.md). Keep the catalog as implementation history; it is not current acceptance criteria where those requirements differ. Model selection for development agents is a separate implementation-process concern.
 
 Canonical source: `docs/quests.json`. Plan base `3a49d44e8b31a907ce9ef7f3f3f09f55f527ab55`; branch `chore/moflo-quest-plan`. All implementation and verification below is **planned, not performed**. Author: GPT-6.1 Sol.
 
