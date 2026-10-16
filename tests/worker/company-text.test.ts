@@ -23,7 +23,33 @@ function extract(body: string, sections: { heading: string; level: number; parag
 }
 
 describe("extractive company and person passages", () => {
-  it("uses a catalog's published introduction and offering range ahead of a generic promise", () => {
+  it("preserves a complete firm overview and qualified service model while enriching its explicitly linked founder", () => {
+    const opening = "Cedar Studio LLC is an engineering consultancy supporting local councils.";
+    const scope = "We specialize in bridge inspections for councils and public agencies.";
+    const mapping = "We also provide mapping services, assisting infrastructure teams.";
+    const restriction = "While weekend services are available, they are primarily offered to existing clients.";
+    const intro = [opening, scope, mapping, restriction].join(" ");
+    const founder = "Choosing us means benefiting from the experience of our founder, Alex Rowan.";
+    const credentials = "Alex is a chartered engineer and a member of the Engineering Institute. This commitment extends beyond our work.";
+    const comparison = "Many companies offer this type of professional service.";
+    const audience = "Our clients typically employ 1 to 10 people.";
+    const { candidates } = extract(metadata({ "@type": "Organization", url: "https://example.com/", name: "Cedar Studio LLC" }) +
+      `<h2>Welcome to Cedar Studio LLC</h2><p>${intro}</p><p>${founder}</p><p>${credentials}</p><p>${comparison}</p><p>${audience}</p>
+      <a href="/team/alex-rowan">About Alex Rowan</a>`, [
+      { heading: "Welcome to Cedar Studio LLC", level: 2, paragraphs: [intro, founder, credentials, comparison, audience] },
+    ], "/firm-background");
+    expect(candidates.find((c) => c.field.endsWith("/overview"))?.value).toBe(intro);
+    expect(candidates.find((c) => c.field.endsWith("/business_model"))?.value).toBe([scope, mapping, restriction].join("\n\n"));
+    expect(candidates.filter((c) => c.field.endsWith("/company_role")).map((c) => c.value))
+      .toContainEqual([{ text: "Service provider" }]);
+    expect(candidates.some((c) => JSON.stringify(c.value).includes("professional service"))).toBe(false);
+    expect(candidates.find((c) => c.note === "Additional explicitly named founder background."))
+      .toMatchObject({ value: "Alex is a chartered engineer and a member of the Engineering Institute.",
+        entity_key: "https://example.com/team/alex-rowan" });
+    expect(candidates.some((c) => c.field.endsWith("/employee_count"))).toBe(false);
+  });
+
+  it("keeps catalog prose readable while leaving navigation names with their offerings", () => {
     const intro = "From bridge surveys to site inspections, Cedar Studio has the expertise to help local councils.";
     const { candidates } = extract(`<h2>What We Offer</h2><p>${intro}</p>
       <a href="/services/surveys">Engineering Services</a><a href="/services/surveys">Bridge Surveys</a>
@@ -32,7 +58,7 @@ describe("extractive company and person passages", () => {
     ], "/services");
     expect(candidates.find((c) => c.field.endsWith("/overview") &&
       (c as typeof c & { priority: number }).priority === 96)?.value)
-      .toBe(intro + "\n\nBridge Surveys\n\nSite Inspections");
+      .toBe(intro);
     const promise = "We're committed to delivering timely and reliable solutions for your needs.";
     const homepage = extract(`<h2>Welcome</h2><p>${promise}</p>`,
       [{ heading: "Welcome", level: 2, paragraphs: [promise] }]);
@@ -51,7 +77,7 @@ describe("extractive company and person passages", () => {
     ]);
     const value = (field: string) => candidates.find((c) => c.field.endsWith("/" + field))?.value;
     expect(value("overview")).toBe(intro);
-    expect(value("business_model")).toBe(intro);
+    expect(value("business_model")).toBe("We design bridges for local authorities.");
     expect(value("industry")).toBe("engineering consultancy");
     expect(value("company_role")).toEqual([{ text: "engineering consultancy" }]);
     expect(value("legal_entity_type")).toBe("LLC");
