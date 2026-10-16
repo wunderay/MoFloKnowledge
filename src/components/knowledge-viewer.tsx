@@ -534,7 +534,7 @@ export function KnowledgeViewer({
             </tbody>
           </table>
         ) : (
-          <div className={mode === "cards" ? "company-dashboard__grid" : ""}>
+          <div className={mode === "cards" ? "version-viewer__grid" : ""}>
             {filtered.map((e) => {
               const root =
                 e.kind === "key_person"
@@ -543,7 +543,7 @@ export function KnowledgeViewer({
                     ? `/offerings/@${(e.content as { id: string }).id}`
                     : `/${e.kind}`;
               return (
-                <article className="knowledge-editor__group" key={e.id}>
+                <article className="version-viewer__entry" key={e.id}>
                   <div className="section-heading">
                     <h3>
                       {"name" in e.content
