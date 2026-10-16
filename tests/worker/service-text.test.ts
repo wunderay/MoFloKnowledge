@@ -23,7 +23,7 @@ describe("authored service content", () => {
       <main><h1>Pump &amp; Valve Repair</h1><p>We repair pumps and valves for local factories.</p>
       <p>Our technicians inspect seals before returning equipment.</p>
       <h2>Included support</h2><p>We provide an inspection report with every repair.</p>
-      <ul><li>Seal replacement</li><li>Pressure testing</li></ul></main>`;
+      <ul><li>We provide:</li><li>Seal replacement</li><li>Pressure testing</li></ul></main>`;
     const { candidates } = extract(body, "/services/pump-valve-repair");
     expect(new Set(candidates.map((candidate) => candidate.entity_key))).toEqual(new Set(["https://example.com/services/pump-valve-repair"]));
     const names = values(candidates, "name");
@@ -35,12 +35,14 @@ describe("authored service content", () => {
       [{ text: "Seal replacement" }], [{ text: "Pressure testing" }], [{ text: "We provide an inspection report with every repair." }],
     ]));
     expect(values(candidates, "pricing")).toEqual([]);
+    expect(values(candidates, "features").some((candidate) => JSON.stringify(candidate.value).includes("We provide:"))).toBe(false);
   });
 
   it("copies catalog categories from their actual sections and gives unlinked cards stable names", () => {
     const card = (name: string) => `<article><h3>${name}</h3><p>We provide practical instruction.</p></article>`;
     const body = (reverse = false) => `<main><section><h2>Our Services</h2>${(reverse ? ["Report Workshops", "Database Training"] : ["Database Training", "Report Workshops"]).map(card).join("")}</section>
       <h2>Technology Consulting</h2><a href="/services/database-training">Database Training</a>
+      <h2>Welcome To Training Services, Inc.</h2><a href="/services/report-workshops">Report Workshops</a>
       <section><h2>Latest Articles</h2><h3>Training trends</h3><p>We discuss trends in education.</p></section></main>`;
     const first = extract(body(), "/services"), second = extract(body(true), "/services");
     expect(values(first.candidates, "category").map((candidate) => candidate.value)).toEqual(["Technology Consulting"]);
