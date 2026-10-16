@@ -194,7 +194,14 @@ function ProfileSection({ entry, citationContext, actions }: {
   return (
     <article className="company-profile__entry">
       <div className="company-profile__entry-heading">
-        <h3>{title}</h3><StatusBadge value={entry.review_status} />
+        <h3>
+          {title}{" "}
+          {"name" in content && (
+            <CitationPopover path={`${root}/name`} provenance={entry.provenance}
+              citationContext={citationContext} approved={entry.review_status === "approved"} />
+          )}
+        </h3>
+        <StatusBadge value={entry.review_status} />
       </div>
       {entry.kind === "branding_and_style" && (
         <p className="company-profile__context">Website observations describe what was captured. They do not confirm brand guidance or assess visual meaning.</p>

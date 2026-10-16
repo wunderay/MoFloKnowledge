@@ -72,3 +72,18 @@ it("previews long exact wording without losing its full passage or stable eviden
   expect(html).toContain('data-evidence-path="/offerings/@offering-id/features/@extra-feature-6/text"');
   expect(entries[0]!.content.description).toBe(long);
 });
+
+it.each([
+  ["offering", "offerings"],
+  ["key_person", "key_people"],
+] as const)("keeps the %s name's source accessible beside its title", (kind, collection) => {
+  const entries = [{
+    id: "entry-id", kind,
+    content: { ...createEntryDefault(kind, "stable-id"), name: "Source-backed name" },
+    provenance: createEmptyProvenance(), review_status: "unreviewed" as const,
+  }];
+  const html = renderToStaticMarkup(<CompanyProfile entries={entries} />);
+  const heading = html.match(/<h3>.*?<\/h3>/)?.[0];
+  expect(heading).toContain("Source-backed name");
+  expect(heading).toContain(`data-evidence-path="/${collection}/@stable-id/name"`);
+});
