@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { captureHtml } from "../../src/worker/capture/html";
-import { marketTextCandidates, MARKET_TEXT_SUPPORTED_FIELDS } from "../../src/worker/extract/market-text";
+import { buyerIdentityKey, marketTextCandidates, MARKET_TEXT_SUPPORTED_FIELDS } from "../../src/worker/extract/market-text";
 import { technicalObservations } from "../../src/worker/extract/observations";
 import { validateCandidates } from "../../src/worker/extract/validate-candidates";
 
@@ -31,17 +31,33 @@ describe("literal market and conversion extraction", () => {
     expect(candidates.every((candidate) => candidate.segment_ids.length > 0 && candidate.origin === "source_backed")).toBe(true);
     expect(candidates.some((candidate) => candidate.field.endsWith("/employee_count"))).toBe(false);
     expect(validated).toHaveLength(candidates.length);
-    const merged = extract("<p>For small businesses, we provide planning to reduce your costs.</p><p>For smaller companies, we provide support to save your time.</p>");
+    const merged = extract("<p>For small businesses, we provide planning to reduce your costs.</p><p>For small business, we provide support to save your time.</p>");
     expect(merged.values("ideal_customer_personas")).toEqual([{ name: null, role: null,
       organization_type: "small businesses", goals: [
         { text: "For small businesses, we provide planning to reduce your costs." },
-        { text: "For smaller companies, we provide support to save your time." },
+        { text: "For small business, we provide support to save your time." },
       ], pain_points: [] }]);
     expect(merged.candidates.find((candidate) => candidate.field.endsWith("/ideal_customer_personas"))?.segment_ids).toHaveLength(2);
+    expect(buyerIdentityKey("small businesses")).toBe(buyerIdentityKey("Small business"));
+    expect(buyerIdentityKey("small businesses")).not.toBe(buyerIdentityKey("smaller companies"));
+  });
+
+  it("retains explicit broad audiences and qualified client lifecycle without promoting client headcount", () => {
+    const scope = "We specialize in planning for individuals and businesses, ensuring our clients manage complex filings.";
+    const lifecycle = "We cater to clients, from brand-new businesses to those nearing retirement, typically small businesses with 1 to 10 employees.";
+    const { values, candidates } = extract(`<p>${scope}</p><p>${lifecycle}</p>
+      <p>Your top-rated partner helps you relax!</p><p>Contact our office today to save your time.</p>
+      <p>It is important that you understand these regulations to avoid problems.</p>`);
+    expect(values("target_buyers")).toEqual(expect.arrayContaining([{ text: "individuals" }, { text: "businesses" },
+      { text: "small businesses with 1 to 10 employees" }]));
+    expect(values("ideal_customer_personas")).toContainEqual(expect.objectContaining({ organization_type:
+      "brand-new businesses to those nearing retirement, typically small businesses with 1 to 10 employees", name: null, role: null }));
+    expect(values("customer_needs")).toEqual([{ text: scope }]);
+    expect(candidates.some((candidate) => candidate.field.endsWith("/employee_count"))).toBe(false);
   });
 
   it("copies observed CTAs and channels without treating links or form inputs as funnel stages", () => {
-    const { values, page, observations } = extract(`<main><a href="/appointment">Schedule Appointment</a><a href="/contact">Get started</a>
+    const { values, page, observations } = extract(`<main><a href="/appointment">Schedule Appointment</a><a href="/contact">Get started</a><a href="/contact">Contact</a>
       <a href="/privacy">Privacy Policy</a><button>Open menu</button><button>2</button>
       <form action="/inquiries"><label>Email</label><label>Message</label><button type="submit">Submit</button></form></main>`);
     expect(values("ctas")).toEqual(expect.arrayContaining([
@@ -50,7 +66,8 @@ describe("literal market and conversion extraction", () => {
     ]));
     expect(values("ctas").map((value) => (value as { label: string }).label))
       .not.toEqual(expect.arrayContaining(["Open menu", "Privacy Policy", "2"]));
-    expect(values("channels")).toContainEqual({ channel_type: null, label: "Get started", url: "https://example.com/contact" });
+    expect(values("channels")).toContainEqual({ channel_type: null, label: "Contact", url: "https://example.com/contact" });
+    expect(values("channels").filter((item) => (item as { url: string }).url === "https://example.com/contact")).toHaveLength(1);
     expect(values("funnels")).toEqual([]);
     expect(MARKET_TEXT_SUPPORTED_FIELDS).not.toContain("/market_and_customers/funnels");
     // A capture can expose its own form submit without a separate page-level CTA observation.
@@ -62,6 +79,15 @@ describe("literal market and conversion extraction", () => {
       .toEqual([{ label: "Send request", url: "https://example.com/inquiries", purpose: null }]);
     expect(explicitSubmit.some((candidate) => candidate.field.endsWith("/funnels"))).toBe(false);
     expect(explicitSubmit.some((candidate) => JSON.stringify(candidate.value).includes("Sending..."))).toBe(false);
+    const context = "Get weekly articles in your inbox with practical planning updates.";
+    const notification = extract(`<p>${context}</p><form><label>Email address</label><button>Notify me</button></form>`);
+    notification.page.capture.observations.forms = [{ action: null, context, submitLabels: ["Notify me"] }];
+    const notificationCandidates = marketTextCandidates(notification.page, notification.observations);
+    const channel = notificationCandidates.find((candidate) => candidate.field.endsWith("/channels"));
+    expect(channel?.value).toEqual([{ channel_type: null, label: context, url: notification.page.capture.finalUrl }]);
+    expect(channel?.note).toMatch(/^Observed form location/);
+    expect(channel?.segment_ids.length).toBeGreaterThan(0);
+    validateCandidates(notificationCandidates, notification.page, notification.observations, "11111111-1111-4111-8111-111111111111");
   });
 
   it("requires an explicit supplier relationship rather than a resource host or software mention", () => {
