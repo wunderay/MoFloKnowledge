@@ -1,5 +1,11 @@
 import { Pool, type PoolConfig } from "pg";
-import type { Progress, Proposal, SafeJobError } from "../contracts";
+import {
+  CheckpointSchema,
+  ProgressSchema,
+  type Progress,
+  type Proposal,
+  type SafeJobError,
+} from "../contracts";
 export type Job = {
   id: string;
   company_id: string;
@@ -67,8 +73,8 @@ export class PostgresJobRepository implements JobRepository {
       j.id,
       j.company_id,
       j.lease_token,
-      JSON.stringify(checkpoint),
-      JSON.stringify(progress),
+      JSON.stringify(CheckpointSchema.parse(checkpoint)),
+      JSON.stringify(ProgressSchema.parse(progress)),
     ]);
   }
   source(j: Job, capture: Record<string, unknown>) {
