@@ -8,7 +8,11 @@ maximum). Decoded response bytes and the total request deadline are bounded.
 
 `src/egress/main.ts` provides the authenticated private outbound HTTP/CONNECT
 proxy. HTTP only accepts GET/HEAD, strips incoming credentials and remote cookies,
-and returns redirects to the browser so each new URL is checked again. CONNECT
+and returns redirects to the browser so each new URL is checked again. The
+authenticated `/fetch` control endpoint accepts bounded GET/HEAD tasks, streams
+and decompresses HTTP or HTTPS through the pinned transport, and returns only
+bounded bytes. Renderer resource hooks use this control channel rather than
+buffering browser-driver responses before checking decoded size. CONNECT
 only accepts port 443 and pins a public address; encrypted tunnels have byte/time
 and connection limits. It does not decrypt TLS. Browser resource/method rules are
 additional controls; host egress restrictions remain mandatory.
