@@ -11,6 +11,8 @@ import { stableId } from "./identity";
 import { normalizeColor } from "./colors";
 import { documentScope } from "../network/url-scope";
 import { canonicalStringify } from "../../knowledge/canonical-json";
+import { exactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
+import { buyerIdentityKey } from "./market-text";
 export type ValidatedCandidate = FieldCandidate & {
   id: string;
   kind: (typeof FIELD_REGISTRY)[number]["kind"];
@@ -24,9 +26,11 @@ export type ValidatedCandidate = FieldCandidate & {
 const normalizeText = (value: string) => value.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
 const normalizeIdentity = (value: string) => normalizeText(value).replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 /** Identity excludes enrichment such as font observation methods. */
-function itemIdentity(value: unknown): string {
+function itemIdentity(value: unknown, fieldPath = "", note: string | null = null): string {
   if (!value || typeof value !== "object") return canonicalStringify(value);
   const item = value as Record<string, unknown>;
+  if (fieldPath === "/market_and_customers/target_buyers" && item.text) return "buyer:" + buyerIdentityKey(String(item.text));
+  if (fieldPath === "/market_and_customers/channels" && item.url && !note?.startsWith("Observed form")) return "channel:" + String(item.url);
   if (item.family) return "family:" + normalizeIdentity(String(item.family));
   if (item.hex) return "color:" + String(item.hex).toUpperCase() + ":" + String(item.alpha);
   if (item.profile_url) return "profile:" + String(item.profile_url);
@@ -39,21 +43,23 @@ export function materialize(
   value: unknown,
   seed: string,
   path = "",
+  fieldPath = "",
+  note: string | null = null,
 ): unknown {
   if (schema instanceof z.ZodEffects)
-    return materialize(schema.innerType(), value, seed, path);
+    return materialize(schema.innerType(), value, seed, path, fieldPath, note);
   if (schema instanceof z.ZodNullable || schema instanceof z.ZodOptional)
     return value === null
       ? null
-      : materialize(schema.unwrap(), value, seed, path);
+      : materialize(schema.unwrap(), value, seed, path, fieldPath, note);
   if (schema instanceof z.ZodArray)
     return (value as unknown[]).map((v) => {
-      const identity = itemIdentity(v);
+      const identity = itemIdentity(v, fieldPath, note);
       return materialize(
         schema.element,
         v,
         stableId(seed, identity),
-        `${path}/@item`,
+        `${path}/@item`, fieldPath, note,
       );
     });
   if (schema instanceof z.ZodObject) {
@@ -64,13 +70,13 @@ export function materialize(
           ? stableId(
               seed,
               path,
-              path === "" ? itemIdentity(value) : "item",
+              path === "" ? itemIdentity(value, fieldPath, note) : "item",
             )
           : materialize(
               child as z.ZodTypeAny,
               (value as Record<string, unknown>)[key],
               seed,
-              `${path}/${key}`,
+              `${path}/${key}`, fieldPath, note,
             );
     return result;
   }
@@ -285,7 +291,13 @@ export function validateCandidates(
         (() => {
           const expected = normalizeIdentity(c.entity_key!.slice((page.capture.finalUrl + "|service:").length));
           const sections = page.capture.observations.contentSections;
-          if (!Array.isArray(sections) || !segments.some((s) => normalizeIdentity(s.text) === expected)) return false;
+          if (!segments.some((s) => normalizeIdentity(s.text) === expected)) return false;
+          const lists = page.capture.observations.contentLists;
+          if (Array.isArray(lists) && lists.some((list: { intro?: unknown; items?: unknown }) =>
+            typeof list.intro === "string" && /\bservices?\b[^.!?]{0,100}\b(?:include|following|offer)|\bwe\s+(?:offer|provide)\b/i.test(list.intro) &&
+            segments.some((segment) => normalizeText(segment.text).includes(normalizeText(list.intro as string))) &&
+            Array.isArray(list.items) && list.items.some((name) => typeof name === "string" && normalizeIdentity(name) === expected))) return true;
+          if (!Array.isArray(sections)) return false;
           return sections.some((section: { heading?: unknown; paragraphs?: unknown; listItems?: unknown }) =>
             Array.isArray(section.listItems) && section.listItems.some((name) => typeof name === "string" && normalizeIdentity(name) === expected) &&
             Array.isArray(section.paragraphs) && section.paragraphs.some((paragraph) => typeof paragraph === "string" &&
@@ -381,6 +393,17 @@ export function validateCandidates(
           )
             throw new Error("social_profile_not_observed");
         }
+      const roleCompanyNames = observations.filter((observation) =>
+        /jsonld:.*\/(?:name|legalName)$/.test(observation.property ?? "") && observation.value &&
+        observations.some((kind) => kind.property === observation.property!.replace(/\/(?:name|legalName)$/, "/@type") &&
+          /^(?:Organization|Corporation|LocalBusiness|ProfessionalService|AccountingService)$/.test(kind.value ?? "")) &&
+        observations.some((url) => url.property === observation.property!.replace(/\/(?:name|legalName)$/, "/url") &&
+          (() => { try { return new URL(url.value ?? "").hostname.replace(/^www\./, "") === new URL(page.capture.finalUrl).hostname.replace(/^www\./, ""); } catch { return false; } })()))
+        .map((observation) => observation.value!);
+      const normalizedServiceRole = c.field === "/company_foundation/company_role" &&
+        c.note === "Normalized company role from an explicit current-company service statement." &&
+        !/\/(?:articles?|blog|news|resources?)(?:\/|$)/i.test(new URL(page.capture.finalUrl).pathname) &&
+        segments.some((segment) => exactSentences(segment.text).some((sentence) => isExplicitServiceProviderSentence(sentence, roleCompanyNames)));
       if (c.origin === "source_backed") {
         const haystack = [quotes, ...selected.map((o) => o.value ?? "")]
           .join(" ")
@@ -396,6 +419,7 @@ export function validateCandidates(
         const check = (value: unknown, key = "") => {
           if (skip.has(key)) return;
           if (typeof value === "string") {
+            if (normalizedServiceRole && key === "text" && value === "Service provider") return;
             if (["hex", "platform"].includes(key)) return;
             if (/^https?:/.test(value)) {
               if (
@@ -439,7 +463,7 @@ export function validateCandidates(
       const value = materialize(
         (shape as z.AnyZodObject).shape[field.field],
         c.value,
-        stableId(companyId, c.field, entity),
+        stableId(companyId, c.field, entity), "", c.field, c.note,
       );
       return {
         ...c,

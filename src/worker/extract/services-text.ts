@@ -1,5 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
+import { exactSentences, selectExactSentences } from "./source-excerpts";
 
 type Section = {
   heading: string | null;
@@ -13,6 +14,27 @@ const normalizeName = (value: string) => value.toLowerCase().replace(/&/g, " and
 const generic = /^(?:(?:(?:our|all|professional|business|tax)\s+)?(?:services|products|offerings)|what we offer)$/i;
 const utility = /^(?:learn more|read more|view|details|contact|click here|get started|book now)$/i;
 const categoryLabel = /^(?:[\p{L}\p{N}-]+\s+){0,2}(?:services|products|representation|consulting)$/iu;
+type ContentList = { heading: string | null; intro: string | null; items: string[] };
+const actionable = /\b(?:we|I)\s+(?:(?:also|can|will|have|are|been|been providing|will also)\s+){0,3}(?:provide|offer|perform|handle|monitor|prepare|repair|inspect|train|support|help|assist|use|manage|maintain|deliver|simplify)|\bour\b|\bis here to help\b|^Let .{1,120}\b(?:do|handle|provide)\b/i;
+const promotional = /(?:\b(?:please call|contact us|contact our|call us|advertisers?|competitors?)\b|^(?:many|other|most) (?:companies|firms|providers)\b|^we['’]ll explain\b|\?\s*$|:\s*$)/i;
+function serviceDescription(paragraphs: string[], name: string): string[] {
+  const tokens = normalizeName(name).split(" ").filter((token) => token.length > 3 && !/^(?:service|services|product|products|with|your|their)$/.test(token));
+  const sentences = [...new Set(paragraphs.flatMap(exactSentences))];
+  const ranked = sentences.map((sentence, index) => ({ sentence, index, score:
+    (actionable.test(sentence) || /\bwe have (?:a (?:deep )?understanding|been providing)\b/i.test(sentence)) && !promotional.test(sentence)
+      ? 2 + tokens.filter((token) => normalizeName(sentence).split(" ").includes(token)).length * 2 +
+        (/\b(?:we|I)\s+(?:also\s+)?(?:provide|offer|perform|handle|repair|prepare|manage)\b|\bour\b[^.!?]{0,60}\bservices\b/i.test(sentence) ? 3 : 0)
+      : 0,
+  })).filter((item) => item.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
+  if (!ranked.length) return selectExactSentences(paragraphs[0] ?? "", { maxSentences: 1, maxCharacters: 500 });
+  const selected: typeof ranked = [];
+  for (const item of ranked) {
+    if (selected.length >= 2) break;
+    if (selected.length && [...selected.map((s) => s.sentence), item.sentence].join(" ").length > 600) continue;
+    selected.push(item);
+  }
+  return selected.sort((a, b) => a.index - b.index).map((item) => item.sentence);
+}
 const servicePath = (url: string) => /\/(?:services|products|offerings)\/[^/]+\/?$/i.test(new URL(url).pathname);
 const topicPath = (url: string) => /\/(?:articles?|blog|news|resources?|learning-center)(?:\/|$)/i.test(new URL(url).pathname);
 export const serviceEntityKey = (url: string, name: string) => `${url}|service:${normalizeName(name)}`;
@@ -23,6 +45,8 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
   const raw = page.capture.observations.contentSections;
   const sections = Array.isArray(raw) ? raw.slice(0, 80) as Section[] : [];
   const finalUrl = page.capture.finalUrl;
+  const rawLists = page.capture.observations.contentLists;
+  const contentLists = Array.isArray(rawLists) ? rawLists as ContentList[] : [];
   const sameSite = (url: string) => new URL(url).hostname === new URL(finalUrl).hostname;
   const idsFor = (texts: string[]) => [...new Set(texts.flatMap((text) =>
     page.capture.segments.filter((segment) => segment.text.includes(text)).map((segment) => segment.id)))].slice(0, 30);
@@ -37,10 +61,13 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
   const linkEvidence = (url: string, label: string) => observations.filter((o) =>
     (o.property === "href" && o.value === url) ||
     (o.property === "anchor-label" && o.value === label && o.asset_url === url)).map((o) => o.id);
-  const features = (entity: string, texts: string[], context: string[], priority = 90) => {
-    for (const text of [...new Set(texts)].slice(0, 80))
-      if (text && text.length <= 4000 && !(text.length < 250 && /:\s*$/.test(text)) && idsFor([text]).length)
-        add("features", [{ text }], entity, [...context, text], [], priority);
+  const features = (entity: string, texts: string[], context: string[], priority = 90, excluded: string[] = []) => {
+    for (const original of [...new Set(texts)].slice(0, 80)) {
+      const first = exactSentences(original)[0] ?? "";
+      const text = selectExactSentences(original, { maxSentences: first.length < 80 ? 2 : 1, maxCharacters: 300 }).join(" ");
+      if (text && text.length <= 4000 && !excluded.includes(text) && !promotional.test(text) && idsFor([original]).length)
+        add("features", [{ text }], entity, [...context, original], [], priority);
+    }
   };
 
   // A destination identifies an offering across index, navigation and detail pages.
@@ -108,13 +135,14 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
     const resourceAt = authoredParagraphs.findIndex((text) => /^(?:(?:tax|useful|helpful)\s+)?resources$/i.test(text));
     const paragraphs = [...new Set(resourceAt < 0 ? authoredParagraphs : authoredParagraphs.slice(0, resourceAt))]
       .filter((text) => text && idsFor([text]).length).slice(0, 25);
-    const description = paragraphs.join("\n\n");
+    const descriptionParts = serviceDescription(primary.paragraphs?.length ? primary.paragraphs : paragraphs, primary.heading);
+    const description = descriptionParts.join("\n\n");
     if (description && description.length <= 20000)
-      add("description", description, finalUrl, [...context, ...paragraphs], [], 95);
+      add("description", description, finalUrl, [...context, ...paragraphs.filter((paragraph) => descriptionParts.some((part) => paragraph.includes(part)))], [], 95);
     features(finalUrl, detail.flatMap((section) => [
       ...(section.listItems ?? []).filter((text) => !(section.links ?? []).some((link) => link.label === text && !sameSite(link.url))),
-      ...(section !== primary && section.heading ? [section.heading, ...(section.paragraphs ?? [])] : []),
-    ]).concat(paragraphs.filter((text) => /\b(?:we(?:[’']ll| will| can)?\s+(?:also\s+)?(?:perform|provide|handle|monitor|adhere|offer|help)|our (?:services|team)|(?:services|functions) (?:include|are))\b/i.test(text))), context);
+      ...(section !== primary ? (section.paragraphs ?? []).filter((text) => actionable.test(text)) : []),
+    ]).concat(paragraphs.flatMap(exactSentences).filter((text) => !descriptionParts.includes(text) && /\b(?:we(?:[’']ll| will| can)?\s+(?:also\s+)?(?:perform|provide|handle|monitor|adhere|offer|help)|our (?:services|team)|(?:services|functions) (?:include|are))\b/i.test(text))), context, 90, descriptionParts);
 
     // A specialized named return or start-up service can be marketed within a broader
     // preparation page. Ordinary return variants remain features of the parent service.
@@ -128,11 +156,13 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
         .some((text) => /\b(?:services? include|preparation|we (?:offer|provide))\b/i.test(text))) continue;
       const entity = serviceEntityKey(finalUrl, name);
       const childContext = [...context, name, ...(section.paragraphs ?? []).filter((p) => /services? include/i.test(p))];
-      const childDescription = startup ? paragraphs.filter((p) => /\bstart[- ]?ups?\b/i.test(p)).join("\n\n") : name;
+      const childParagraphs = startup ? paragraphs.filter((p) => /\bstart[- ]?ups?\b/i.test(p)) : [];
+      const childDescription = serviceDescription(childParagraphs, name).join("\n\n");
       add("name", name, entity, childContext, [], 85);
-      add("description", childDescription || name, entity, [...childContext, ...(startup ? paragraphs.filter((p) => /\bstart[- ]?ups?\b/i.test(p)) : [])], [], 85);
+      if (childDescription) add("description", childDescription, entity, [...childContext, ...childParagraphs], [], 85);
       add("category", primary.heading, entity, childContext, [], 85);
-      features(entity, paragraphs.filter((p) => startup && /\bstart[- ]?ups?\b/i.test(p)), childContext);
+      const childFeatures = childParagraphs.flatMap(exactSentences).filter((sentence) => !childDescription.includes(sentence));
+      features(entity, childFeatures, [...childContext, ...childParagraphs]);
     }
   }
 
@@ -145,8 +175,40 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
       const name = match[1];
       const entity = serviceEntityKey(finalUrl, name);
       add("name", name, entity, [paragraph], [], 85);
-      add("description", paragraph, entity, [paragraph], [], 95);
-      features(entity, [paragraph], [name]);
+      const description = selectExactSentences(paragraph, { maxSentences: 2, maxCharacters: 600 }).join("\n\n");
+      add("description", description, entity, [paragraph], [], 95);
+      features(entity, exactSentences(paragraph).filter((sentence) => !description.includes(sentence) && !promotional.test(sentence)), [paragraph]);
+    }
+  }
+
+  // Company pages may declare an explicit service catalog or a restriction on
+  // an existing linked service. The catalog's siblings never become child features.
+  if (!topicPath(finalUrl)) {
+    for (const list of primary ? [] : contentLists) {
+      if (!list.intro || !/\b(?:our\s+)?services?\b[^.!?]{0,100}\b(?:include|following|offer)|\bwe\s+(?:offer|provide)\b/i.test(list.intro)) continue;
+      const context = [list.intro, ...(list.heading ? [list.heading] : [])];
+      const taxParent = page.capture.links.find((link) => sameSite(link.url) && servicePath(link.url) && /\btax\b.*\b(?:preparation|planning)\b/i.test(link.label));
+      for (const name of list.items) {
+        if (!name || name.length > 200 || promotional.test(name)) continue;
+        const linked = page.capture.links.find((link) => sameSite(link.url) && servicePath(link.url) && normalizeName(link.label) === normalizeName(name));
+        if (taxParent && /\b(?:returns?|tax planning|e-file)\b/i.test(name))
+          features(taxParent.url, [name], context);
+        if (linked || /\b(?:estate|gift|trust)\b/i.test(name) && /\breturns?\b/i.test(name)) {
+          const entity = linked?.url ?? serviceEntityKey(finalUrl, name);
+          add("name", name, entity, [...context, name], [], 96);
+          if (linked) add("url", linked.url, entity, [...context, name], linkEvidence(linked.url, linked.label));
+        }
+      }
+    }
+    const authored = sections.flatMap((section) => section.paragraphs ?? []).flatMap(exactSentences);
+    for (const sentence of authored) {
+      if (!/\b(?:primarily|only|available (?:to|for)|existing clients|requires?|restricted|limited to)\b/i.test(sentence)) continue;
+      for (const link of page.capture.links) {
+        if (!sameSite(link.url) || !servicePath(link.url) || link.url === finalUrl || generic.test(link.label)) continue;
+        const names = normalizeName(link.label).split(" ").filter((token) => token.length > 3 && !/^(?:services|service|products|product)$/.test(token));
+        if (names.length && names.every((token) => normalizeName(sentence).split(" ").includes(token)))
+          features(link.url, [sentence], [sentence], 96);
+      }
     }
   }
 

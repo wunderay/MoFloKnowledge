@@ -16,6 +16,7 @@ import { canonicalStringify } from "../../knowledge/canonical-json";
 import { stableId } from "./identity";
 import type { ValidatedCandidate } from "./validate-candidates";
 import { SUPPORTED_FIELDS } from "./deterministic";
+import { buyerIdentityKey } from "./market-text";
 // Narrative wording differs naturally across pages; factual scalar values still conflict.
 const narrativeFields = new Set([
   "overview", "industry", "business_model", "company_pitch", "founding_story",
@@ -51,6 +52,38 @@ function mergeFontItems(items: { id: string }[]): { id: string }[] {
   }
   return [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
+/** Reconcile only explicit unlinked compound tax-return scopes within this run. */
+function reconcileReturnFamilies(candidates: ValidatedCandidate[]): ValidatedCandidate[] {
+  const groups = new Map<string, ValidatedCandidate[]>();
+  for (const candidate of candidates) if (candidate.kind === "offering") {
+    const members = groups.get(candidate.entryId) ?? [];
+    members.push(candidate); groups.set(candidate.entryId, members);
+  }
+  const families = [...groups].flatMap(([id, members]) => {
+    if (members.some((c) => c.fieldName === "url" || c.fieldName === "pricing") ||
+      members.some((c) => !c.entity_key?.includes("|service:"))) return [];
+    const name = members.find((c) => c.fieldName === "name" && typeof c.value === "string");
+    if (!name || !/\breturns?\b/i.test(String(name.value))) return [];
+    const words = normalizedWording(name.value).split(" ");
+    if (words.some((word) => !/^(?:estate|gift|trust|tax|return|returns|preparation|and)$/.test(word))) return [];
+    const scope = [...new Set(words.filter((word) => /^(?:estate|gift|trust)$/.test(word)))].sort();
+    return scope.length >= 2 ? [{ id, members, scope }] : [];
+  });
+  const remap = new Map<string, string>();
+  const broadNames = new Set<string>();
+  for (const broad of families) {
+    const narrower = families.filter((narrow) => narrow.scope.length < broad.scope.length && narrow.scope.every((word) => broad.scope.includes(word)));
+    // Multiple possible sibling families are ambiguous, so leave them for review.
+    if (narrower.length !== 1) continue;
+    remap.set(broad.id, narrower[0].id);
+    broad.members.filter((candidate) => candidate.fieldName === "name").forEach((candidate) => broadNames.add(candidate.id));
+  }
+  return candidates.map((candidate) => ({ ...candidate,
+    entryId: remap.get(candidate.entryId) ?? candidate.entryId,
+    priority: broadNames.has(candidate.id) ? 100 : candidate.fieldName === "name" && [...remap.values()].includes(candidate.entryId)
+      ? Math.min(candidate.priority ?? 0, 99) : candidate.priority,
+  }));
+}
 export function reduceCandidates(
   candidates: ValidatedCandidate[],
   options: {
@@ -61,7 +94,7 @@ export function reduceCandidates(
 ): Proposal[] {
   if (candidates.some((candidate) => candidate.origin !== "source_backed"))
     throw new Error("invalid_origin");
-  candidates = [...candidates].sort(
+  candidates = reconcileReturnFamilies(candidates).sort(
     (a, b) =>
       a.entryId.localeCompare(b.entryId) ||
       a.field.localeCompare(b.field) ||
@@ -111,7 +144,7 @@ export function reduceCandidates(
         } else unique.set(key, { ...c, evidenceIds: [...c.evidenceIds] });
       }
       let values = [...unique.values()];
-      let overviewSources: ValidatedCandidate[] | null = null;
+      let assembledSources: ValidatedCandidate[] | null = null;
       if (!collection && narrativeFields.has(field.field) && values.length) {
         // Labels can disagree factually even at equal quality. Only lower-quality
         // labels are superseded; free prose can select one exact best passage.
@@ -120,24 +153,39 @@ export function reduceCandidates(
           ? values.filter((c) => (c.priority ?? 0) === (best.priority ?? 0) && sourceQuality(c) === sourceQuality(best))
           : values.slice(0, 1);
       }
-      if (group.kind === "company_foundation" && field.field === "overview" && all.length) {
+      if (group.kind === "company_foundation" && field.field === "overview" && all.length && (all[0].priority ?? 0) < 99) {
         // Keep the strongest visible company description and its published homepage
         // summary together. Each passage retains its own validated source evidence.
         const key = (value: unknown) => String(value).replace(/\s+/g, " ").trim().toLowerCase();
-        overviewSources = [all[0]];
+        assembledSources = [all[0]];
         const seen = new Set([key(all[0].value)]);
         for (const c of all) {
-          if (overviewSources.length >= 3 || typeof c.value !== "string" ||
+          if (assembledSources.length >= 3 || typeof c.value !== "string" ||
             new URL(c.page.capture.finalUrl).pathname !== "/" || seen.has(key(c.value))) continue;
           const publishedSummary = c.observations.some((o) =>
             (o.property === "meta-description" || /^jsonld:.*\/description$/.test(o.property ?? "")) &&
             o.value !== null && key(o.value) === key(c.value));
-          if (!publishedSummary || [...overviewSources, c].map((v) => String(v.value)).join("\n\n").length > 20000) continue;
-          overviewSources.push(c);
+          if (!publishedSummary || [...assembledSources, c].map((v) => String(v.value)).join("\n\n").length > 20000) continue;
+          assembledSources.push(c);
           seen.add(key(c.value));
         }
-        values = [{ ...all[0], value: overviewSources.map((c) => c.value).join("\n\n"),
-          evidenceIds: [...new Set(overviewSources.flatMap((c) => c.evidenceIds))] }];
+        values = [{ ...all[0], value: assembledSources.map((c) => c.value).join("\n\n"),
+          evidenceIds: [...new Set(assembledSources.flatMap((c) => c.evidenceIds))] }];
+      }
+      if (group.kind === "key_person" && field.field === "background_or_relevance" && values.length) {
+        const best = values[0];
+        assembledSources = [best];
+        const parts = String(best.value).split(/\n\s*\n/);
+        const seen = new Set(parts.map(normalizedWording));
+        for (const candidate of all) {
+          if (candidate.note !== "Additional explicitly named founder background.") continue;
+          const additions = String(candidate.value).split(/\n\s*\n/).filter((part) => !seen.has(normalizedWording(part)));
+          if (!additions.length) continue;
+          parts.push(...additions);
+          additions.forEach((part) => seen.add(normalizedWording(part)));
+          assembledSources.push(candidate);
+        }
+        values = [{ ...best, value: parts.join("\n\n"), evidenceIds: [...new Set(assembledSources.flatMap((candidate) => candidate.evidenceIds))] }];
       }
       const target = field.path.replace("@id", `@${entryId}`);
       const itemValues = new Map<string, string>();
@@ -146,7 +194,9 @@ export function reduceCandidates(
         for (const c of values)
           for (const item of c.value as { id: string }[]) {
             const previous = itemValues.get(item.id),
-              next = canonicalStringify(equivalentItem(item));
+              next = canonicalStringify(field.field === "target_buyers"
+                ? { ...item, text: buyerIdentityKey(String((item as { id: string; text: string }).text)) }
+                : field.field === "channels" ? equivalentItem({ ...item, label: null }) : equivalentItem(item));
             if (previous && previous !== next && field.field !== "fonts") collectionConflict = true;
             itemValues.set(item.id, next);
           }
@@ -191,7 +241,7 @@ export function reduceCandidates(
                 ? "Relevant capture, rendering or extraction was unavailable, failed, truncated or bounded."
                 : "No explicit value matched the supported rules in the successfully processed bounded pages.",
       });
-      for (const c of overviewSources ?? all) {
+      for (const c of assembledSources ?? all) {
         const page = c.page;
         sourceMap.set(page.id, {
           id: page.id,
@@ -243,7 +293,10 @@ export function reduceCandidates(
               const font = (c.value as { id: string; observations: string[] }[]).find((v) => v.id === itemId);
               return font?.observations.includes(String(leaf.value)) ?? false;
             }
-            return resolveStablePointer(c.value, leaf.path.slice(target.length)) === leaf.value;
+            const observed = resolveStablePointer(c.value, leaf.path.slice(target.length));
+            if (field.field === "target_buyers" && leaf.path.endsWith("/text"))
+              return buyerIdentityKey(String(observed)) === buyerIdentityKey(String(leaf.value));
+            return observed === leaf.value;
           } catch { return false; }
         });
         if (!matching.length) continue;
