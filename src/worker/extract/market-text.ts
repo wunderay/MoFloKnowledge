@@ -1,0 +1,149 @@
+import type { StoredCapture } from "../crawl/run-crawl";
+import type { FieldCandidate, TechnicalObservation } from "./types";
+
+const root = "/market_and_customers/";
+export const MARKET_TEXT_SUPPORTED_FIELDS = [
+  "target_buyers", "customer_needs", "ideal_customer_personas",
+  "industry_groupings", "channels", "funnels", "ctas", "suppliers_and_partners",
+].map((field) => root + field);
+
+type Section = {
+  heading: string | null;
+  paragraphs: string[];
+  listItems: string[];
+};
+const clean = (text: string) => text.replace(/\s+/g, " ").trim();
+const problem = /\b(?:stress(?:ful)?|difficult|complex|headaches?|burden|costly mistakes|delays|problems?|worry|overlook(?:ing)?|struggl\w*)\b/i;
+const benefit = /\b(?:save|saving|reduce|reducing|minimi[sz]e|maximi[sz]e|simplify|improve|ensure|protect|secure|focus on|comp[l]?iant|compliance|peace of mind|keep you)\b/i;
+const customer = /\b(?:you|your|clients?|customers?|business(?:es)?|companies|individuals|start-ups)\b/i;
+const actionable = /^(?:get started|schedule\b|book\b|make an appointment\b|contact\b|request\b|sign up\b|subscribe\b|notify me\b|submit\b|send\b|start (?:a|your)\b|join\b|buy\b|shop\b|order\b|try\b|download\b|refer\b|referrals\b|call\b)/i;
+const buyerNoun = /\b(?:(?:(?:brand[- ]new|small and (?:mid|medium)[- ]sized|small(?:er)?|mid[- ]sized|medium[- ]sized|large|growing|established|start[- ]up|mature|local)\s+){0,3}(?:businesses|business owners|business|companies|corporations|corporation|individuals|entrepreneurs|start-ups|families|homeowners|nonprofits|retirees))(?:\s+(?:with\s+\d+\s*(?:to|[-–—])\s*\d+\s+employees|nearing retirement))?\b/gi;
+
+/** Literal passages and observed controls only. These rules never invent a buyer or a conversion step. */
+export function marketTextCandidates(
+  page: StoredCapture,
+  observations: TechnicalObservation[],
+): FieldCandidate[] {
+  const result: FieldCandidate[] = [];
+  const seen = new Set<string>();
+  const segmentsFor = (text: string) => page.capture.segments
+    .filter((segment) => clean(segment.text).includes(clean(text)))
+    .slice(0, 3).map((segment) => segment.id);
+  const add = (field: string, value: unknown, texts: string[] = [], ids: string[] = []) => {
+    const segment_ids = [...new Set(texts.flatMap(segmentsFor))].slice(0, 30);
+    if ((!segment_ids.length && !ids.length) || texts.some((text) => !segmentsFor(text).length)) return;
+    const key = field + JSON.stringify(value);
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push({ field: root + field, entity_key: null, value,
+      origin: "source_backed", segment_ids, observation_ids: [...new Set(ids)].slice(0, 30),
+      supporting_fields: [], note: null });
+  };
+  const textItem = (field: string, text: string, context = text) => {
+    if (text && text.length <= 1000) add(field, [{ text }], [context]);
+  };
+  const raw = page.capture.observations;
+  const sections = Array.isArray(raw.contentSections)
+    ? (raw.contentSections as Section[]).slice(0, 80) : [];
+  const prose = [...new Set(sections.length ? sections
+    .filter((section) => !/\b(?:articles|latest news|testimonials|reviews|privacy|terms)\b/i.test(section.heading ?? ""))
+    .flatMap((section) => [section.heading ?? "", ...section.paragraphs, ...section.listItems])
+    : page.capture.segments.map((segment) => segment.text))]
+    .filter((text) => text.length >= 15 && text.length <= 8000);
+  // Editorial articles, search results and legal notices do not declare the firm's target market.
+  const marketing = !/\/(?:blog|articles?|news|learning-center|privacy(?:-policy)?|terms(?:-of-service)?)(?:\/|$)/i
+    .test(new URL(page.capture.finalUrl).pathname);
+  const splitList = (text: string) => text.replace(/[.;]$/, "").split(/\s*,\s*(?:and\s+)?|\s*;\s*/)
+    .map((item) => item.trim()).filter((item) => item.length > 1 && item.length <= 160);
+
+  if (marketing) {
+    for (const section of sections) {
+      const heading = section.heading ?? "";
+      if (/^(?:(?:our|the)\s+)?(?:industries(?: we serve)?|industry (?:groupings|sectors)|sectors(?: we serve)?)\s*:?$/i.test(heading))
+        for (const item of section.listItems) textItem("industry_groupings", item);
+      if (/^(?:(?:our|ideal|target)\s+)?(?:customers|clients|buyers|audience)(?:\s+we\s+(?:serve|help))?\s*:?$|^who we (?:serve|help|work with)\s*:?$/i.test(heading))
+        for (const item of section.listItems) {
+          textItem("target_buyers", item);
+          add("ideal_customer_personas", [{ name: null, role: null, organization_type: item,
+            goals: [], pain_points: [] }], [item]);
+        }
+      if (/^(?:customer|client) (?:needs|goals|pain points)\s*:?$/i.test(heading))
+        for (const item of [...section.paragraphs, ...section.listItems]) textItem("customer_needs", item);
+      if (/^(?:our\s+)?(?:suppliers|partners|vendors)\s*:?$/i.test(heading))
+        for (const name of section.listItems.filter((item) => item.length <= 160))
+          add("suppliers_and_partners", [{ name, relationship_type: heading,
+            relationship_text: null, url: null }], [heading, name]);
+    }
+    for (const paragraph of prose) {
+      // A literal client-industry list is retained as published, without mapping to a taxonomy.
+      const industries = /(?:worked|work|working) with (?:a (?:wide )?variety of )?(?:businesses|clients|companies|industries),?\s+including\s*:\s*([^.!?]+)/i.exec(paragraph);
+      if (industries) for (const item of splitList(industries[1])) textItem("industry_groupings", item, industries[0]);
+      const declaredBuyers = /^(?:target (?:buyers|customers)|our (?:clients|customers) include|we serve)\s*:?\s+([^.!?]+)/i.exec(paragraph);
+      if (declaredBuyers) for (const item of splitList(declaredBuyers[1])) textItem("target_buyers", item, declaredBuyers[0]);
+      const declaredPartners = /\bour (suppliers|partners|vendors) (?:include|are)\s+(.+?)(?:[.!?](?:\s|$)|$)/i.exec(paragraph);
+      if (declaredPartners) for (const name of splitList(declaredPartners[2]))
+        add("suppliers_and_partners", [{ name, relationship_type: declaredPartners[1],
+          relationship_text: declaredPartners[0], url: null }], [declaredPartners[0]]);
+
+      // Restrict buyer phrases to a first-party service declaration, not incidental staff counts or commentary.
+      const buyerDeclaration = /\b(?:we (?:serve|help|work|offer|provide)|I (?:serve|help|work|offer|provide)|our (?:services|clients|customers)|whether you are|for [^.!?]{1,100}, I can provide|we (?:can |will )?(?:also )?(?:assist|help)|services (?:for|to))\b/i.test(paragraph);
+      if (buyerDeclaration && !/\b(?:we (?:do not|don't)|not (?:for|intended for)|never serve)\b/i.test(paragraph))
+        for (const match of paragraph.matchAll(buyerNoun)) {
+          const buyer = match[0];
+          const before = paragraph.slice(Math.max(0, match.index! - 100), match.index);
+          if (!/\b(?:for|serve|help|assist|clients|customers|whether you are|as well as|or a|a growing)\b[^.!?]*$/i.test(before)) continue;
+          textItem("target_buyers", buyer, paragraph);
+          // The persona remains an unnamed source segment; attributes are quoted from that same declaration.
+          const short = paragraph.length <= 900;
+          add("ideal_customer_personas", [{ name: null, role: null, organization_type: buyer,
+            goals: short && benefit.test(paragraph) ? [{ text: paragraph }] : [],
+            pain_points: short && problem.test(paragraph) ? [{ text: paragraph }] : [] }], [paragraph]);
+        }
+      // Copy a complete source sentence, retaining the benefit/problem wording and its qualifications.
+      for (const sentence of paragraph.match(/[^.!?]+(?:[.!?]+|$)/g) ?? []) {
+        const text = sentence.trim();
+        if (text.length >= 35 && text.length <= 900 && customer.test(text) &&
+          (problem.test(text) || benefit.test(text)) &&
+          /\b(?:you|your|we|our|clients?|customers?)\b/i.test(text) &&
+          !/^(?:copyright|terms|privacy)|\b(?:cookie|advertis(?:ing|ement)|third[- ]party)\b/i.test(text))
+          textItem("customer_needs", text);
+      }
+    }
+  }
+  const labelEvidence = (label: string, url: string | null) => observations.filter((item) =>
+    ["cta-label", "anchor-label"].includes(item.property ?? "") && item.value === label &&
+    (!url || item.asset_url === url)).map((item) => item.id);
+  const conversion = (label: string, url: string | null, ids: string[], funnel: boolean) => {
+    if (!actionable.test(label) || label.length > 500 || !ids.length) return;
+    add("ctas", [{ label, url, purpose: null }], [], ids);
+    if (url) add("channels", [{ channel_type: null, label, url }], [], ids);
+    if (funnel) add("funnels", [{ name: label, steps: [{ label, url }] }], [], ids);
+  };
+  for (const link of page.capture.links)
+    conversion(link.label, link.url, labelEvidence(link.label, link.url), true);
+  if (Array.isArray(raw.ctas))
+    for (const item of raw.ctas as { label?: string; destination?: string | null }[]) {
+      if (!item.label) continue;
+      const label = item.label.split(/\n/)[0].trim();
+      // A button may include a hidden loading label; retain only the actual first visible label.
+      conversion(label, item.destination ?? null, labelEvidence(item.label, item.destination ?? null), false);
+    }
+  if (Array.isArray(raw.forms))
+    for (const form of raw.forms as { action?: string | null; labels?: string[]; heading?: string | null; submitLabels?: string[] }[]) {
+      const labels = [...new Set(form.labels ?? [])].filter((label) => label.length > 0 && label.length <= 500);
+      const sources = observations.filter((item) => item.property === "form-label" &&
+        labels.includes(item.value ?? "") && (!form.action || item.asset_url === form.action));
+      if (!labels.length || !sources.length) continue;
+      const steps = labels.filter((label) => sources.some((item) => item.value === label))
+        .map((label) => ({ label, url: form.action ?? null }));
+      const heading = form.heading && segmentsFor(form.heading).length ? form.heading : null;
+      const submitEvidence = (label: string) => observations.filter((item) =>
+        item.property === "form-submit-label" && item.value === label &&
+        (!form.action || item.asset_url === form.action)).map((item) => item.id);
+      const submits = (form.submitLabels ?? []).filter((label) => actionable.test(label) && submitEvidence(label).length);
+      for (const label of submits) steps.push({ label, url: form.action ?? null });
+      add("funnels", [{ name: heading, steps }], heading ? [heading] : [],
+        [...sources.map((item) => item.id), ...submits.flatMap(submitEvidence)]);
+    }
+  return result;
+}
