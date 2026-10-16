@@ -70,7 +70,9 @@ export function marketTextCandidates(
     ? (raw.contentSections as Section[]).slice(0, 80) : [];
   const prose = [...new Set(sections.length ? sections
     .filter((section) => !/\b(?:articles|latest news|testimonials|reviews|privacy|terms)\b/i.test(section.heading ?? ""))
-    .flatMap((section) => [section.heading ?? "", ...section.paragraphs, ...section.listItems])
+    // Lists keep their declared section role (features, issues, audiences, etc.).
+    // Only explicit customer-needs headings below classify a list as customer needs.
+    .flatMap((section) => [section.heading ?? "", ...section.paragraphs])
     : page.capture.segments.map((segment) => segment.text))]
     .filter((text) => text.length >= 15 && text.length <= 8000);
   // Editorial articles, search results and legal notices do not declare the firm's target market.
