@@ -1,12 +1,28 @@
-import type { FieldCandidate } from "../model/schema";
+import type { FieldCandidate, TechnicalObservation } from "./types";
 import type { StoredCapture } from "../crawl/run-crawl";
-import type { TechnicalObservation } from "../model/responses";
 import { normalizeColor } from "./colors";
+import { structuredCandidates } from "./structured";
+import { visibleCandidates } from "./visible";
+export const SUPPORTED_FIELDS: readonly string[] = [
+  "/company_foundation/website", "/company_foundation/overview",
+  "/company_foundation/industry", "/company_foundation/business_model",
+  "/company_foundation/year_founded", "/company_foundation/main_address",
+  "/company_foundation/service_locations", "/company_foundation/alternative_company_names",
+  "/positioning/company_pitch", "/market_and_customers/target_buyers",
+  "/key_people/@id/name", "/key_people/@id/title", "/key_people/@id/background_or_relevance",
+  "/offerings/@id/name", "/offerings/@id/description", "/offerings/@id/category",
+  "/offerings/@id/url", "/offerings/@id/pricing",
+  "/online_presence/social_media_links", "/branding_and_style/fonts",
+  "/branding_and_style/brand_colors", "/branding_and_style/logos",
+];
 export function deterministicCandidates(
   page: StoredCapture,
   observations: TechnicalObservation[],
 ): FieldCandidate[] {
-  const result: FieldCandidate[] = [];
+  const result: FieldCandidate[] = [
+    ...structuredCandidates(page, observations),
+    ...visibleCandidates(page, observations),
+  ];
   const add = (
     field: string,
     value: unknown,
@@ -24,9 +40,8 @@ export function deterministicCandidates(
       supporting_fields: [],
       note,
     });
-  add("/company_foundation/website", page.capture.finalUrl, [
-    observations[0].id,
-  ]);
+  const urlObservation = observations.find((o) => o.property === "url" && o.value === page.capture.finalUrl);
+  if (urlObservation) add("/company_foundation/website", page.capture.finalUrl, [urlObservation.id]);
   for (const o of observations) {
     if (o.property === "font-family" && o.value)
       add(
