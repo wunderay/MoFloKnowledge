@@ -11,8 +11,15 @@ const secondEmail = process.env.MOFLO_E2E_SECOND_EMAIL;
 const secondPassword = process.env.MOFLO_E2E_SECOND_PASSWORD;
 const fixtureUrl = process.env.MOFLO_E2E_FIXTURE_URL;
 
-async function signIn(page: Page, email: string, password: string) {
+async function signIn(
+  page: Page,
+  email: string,
+  password: string,
+  screenshotPath?: string,
+) {
   await page.goto("/sign-in");
+  if (screenshotPath)
+    await page.screenshot({ path: screenshotPath, fullPage: true });
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -59,7 +66,16 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   const secondActor = secondDraft.actorId;
   expect(secondActor).toMatch(/^[0-9a-f-]{36}$/);
 
-  await signIn(page, ownerEmail!, ownerPassword!);
+  await signIn(
+    page,
+    ownerEmail!,
+    ownerPassword!,
+    testInfo.outputPath("sign-in-desktop.png"),
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("companies-desktop.png"),
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Add company" }).first().click();
   const createDialog = page.getByRole("dialog", { name: "Add a company" });
   await createDialog.getByLabel("Company name").fill("Lumen Ledger E2E");
@@ -114,6 +130,10 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   await evidenceDialog.getByRole("link").first().hover();
   await page.waitForTimeout(200); // Cross the popover's pointer-leave grace period.
   await expect(evidenceDialog).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("evidence-desktop.png"),
+    fullPage: false,
+  });
   await page.keyboard.press("Escape");
   await expect(evidenceDialog).toBeHidden();
   await evidenceTrigger.focus();
@@ -122,6 +142,17 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     .getByRole("heading", { name: "Lumen Ledger E2E", exact: true })
     .click();
   await expect(evidenceDialog).toBeHidden();
+  const desktopViewport = page.viewportSize()!;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await evidenceTrigger.click();
+  await expect(evidenceDialog).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("evidence-mobile.png"),
+    fullPage: false,
+  });
+  await page.keyboard.press("Escape");
+  await expect(evidenceDialog).toBeHidden();
+  await page.setViewportSize(desktopViewport);
   // Clear the fixture's disputed address explicitly, leaving its review decision.
   for (const clear of await page
     .getByRole("button", { name: "Clear disputed value", exact: true })
