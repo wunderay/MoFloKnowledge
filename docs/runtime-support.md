@@ -14,6 +14,6 @@ Checked 2026-10-16 against the upstream release metadata and support policies li
 | Validation and extraction | Zod 3.25.76; OpenAI SDK 7.34.0 | Exact pins. Provider/model support is not implied by npm package compatibility. |
 | Browser and database | Playwright Core 1.64.1; `@playwright/test` 1.64.1; PostgreSQL client `pg` 8.16.3 | Exact pins. Playwright uses the host Chromium path; dependencies do not download a browser. |
 
-`npm audit` is the dependency advisory check for the locked graph. A clean audit does not prove provider support or replace a future patch review. Re-run it when dependency pins change and before release.
+On 2026-10-16, `npm audit --omit=dev` reported zero vulnerabilities in the production dependency graph. This excludes development-only tooling and does not prove provider support or replace a future patch review. Re-run the full audit when dependency pins change and before release.
 
 The Node 22.23.3 binary is provisioned at `/workspace/toolchains/node-v22.23.3` for this shared environment. This local binary is not a deployment-host qualification. The owner-selected deployment host and its supported runtime image remain unresolved; release must confirm that it can run the pinned Node 22 line and retain supported patches.

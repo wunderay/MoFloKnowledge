@@ -1,0 +1,95 @@
+{
+  "fixtureOnly": true,
+  "cases": [
+    {
+      "id": "refusal",
+      "input": {
+        "status": "refused",
+        "refusal": "I cannot process this request."
+      },
+      "expectedFailure": "model_refusal"
+    },
+    {
+      "id": "incomplete",
+      "input": {
+        "status": "incomplete",
+        "incomplete_details": {
+          "reason": "max_output_tokens"
+        }
+      },
+      "expectedFailure": "incomplete_response"
+    },
+    {
+      "id": "fake_quote",
+      "input": {
+        "claim": "Founded in 1998",
+        "excerpt": "Founded in 1998"
+      },
+      "availableSegments": [
+        "seg-home-overview"
+      ],
+      "expectedFailure": "quote_not_in_captured_text"
+    },
+    {
+      "id": "forbidden_origin",
+      "input": {
+        "path": "/company_foundation/year_founded",
+        "origin": "generated",
+        "evidence_ids": []
+      },
+      "expectedFailure": "origin_not_allowed_for_field"
+    },
+    {
+      "id": "same_name_people",
+      "input": [
+        {
+          "id": "00000000-0000-4000-8000-000000000015",
+          "name": "Alex Lee"
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000016",
+          "name": "Alex Lee"
+        }
+      ],
+      "expectedFailure": null,
+      "expectedBehavior": "retain_as_separate_possible_duplicates_until stable URL or reviewer decision"
+    },
+    {
+      "id": "free_price_with_zero",
+      "input": {
+        "kind": "free",
+        "raw": "Free",
+        "amount": "0",
+        "min_amount": null,
+        "max_amount": null,
+        "currency": "USD"
+      },
+      "expectedFailure": "free_or_contact_price_cannot_claim_numeric_amount"
+    },
+    {
+      "id": "contact_price_with_amount",
+      "input": {
+        "kind": "contact_for_pricing",
+        "raw": "Contact us for a quote",
+        "amount": "500",
+        "min_amount": null,
+        "max_amount": null,
+        "currency": "USD"
+      },
+      "expectedFailure": "free_or_contact_price_cannot_claim_numeric_amount"
+    },
+    {
+      "id": "unknown_price",
+      "input": {
+        "kind": "paid",
+        "raw": "Pricing information was not found",
+        "amount": null,
+        "min_amount": null,
+        "max_amount": null,
+        "currency": null
+      },
+      "expectedFailure": null,
+      "expectedBehavior": "price unknown remains nullable and coverage is not_found or not_checked"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "fixtureOnly": true,
+  "organization": "Northstar Fieldworks",
+  "domain": "northstar.example",
+  "reservedDomain": true,
+  "binding": "127.0.0.1",
+  "defaultPort": 4173,
+  "routes": {
+    "/": { "status": 200, "expectedSegments": ["overview", "employee range 25-50", "service geographies", "CTA", "organization JSON-LD", "hostile text"] },
+    "/about.html": { "status": 200, "expectedSegments": ["team member name and title", "no gender statement", "company overview"] },
+    "/pricing.html": { "status": 200, "expectedSegments": ["offering", "two features", "paid kit price", "annual dashboard price"] },
+    "/contact.html": { "status": 200, "expectedSegments": ["second address candidate", "email CTA"] },
+    "/faq.html": { "status": 200, "expectedSegments": ["JavaScript-rendered answer", "hostile instruction-like text"] },
+    "/careers.html": { "status": 503, "coverage": "partial; retry-after one second" },
+    "/robots.txt": { "status": 200, "allow": ["/"], "disallow": ["/private"] }
+  },
+  "expectedObservations": {
+    "overview": "Designs and builds monitoring tools for community water teams, watershed groups, and small utilities.",
+    "employeeCount": { "raw": "25–50 people", "min": 25, "max": 50, "exact": null },
+    "serviceLocations": ["Pacific Northwest", "Great Lakes region"],
+    "person": { "name": "Riley Chen", "title": "Director of Field Programs", "gender": null },
+    "offering": { "name": "CreekWatch Kit", "features": ["Temperature and conductivity probes", "Weather-resistant carrying case"], "startingPrice": "USD 1200 per kit", "dashboardPrice": "USD 240 annually" },
+    "addressCandidates": ["400 River Street, Portland, OR 97204", "20 Bridge Avenue, Portland, OR 97205"],
+    "expectedAbsent": ["founding story", "legal entity type", "industry outlook"],
+    "style": { "declaredFont": "Field Sans", "headingColor": "#245C4B", "backgroundColor": "#FFFFFF" },
+    "companyLogo": "/logo.svg",
+    "socialProfile": "https://social.example/northstarfieldworks",
+    "hostileTextIsUntrusted": true
+  },
+  "networkPolicy": {
+    "fixtureEgressOnly": true,
+    "allowedOriginExample": "http://127.0.0.1:4173",
+    "productionLocalhostException": false,
+    "liveSitesOrModelCallsRequired": false
+  }
+}
