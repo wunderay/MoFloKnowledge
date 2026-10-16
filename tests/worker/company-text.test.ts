@@ -110,6 +110,7 @@ describe("extractive company and person passages", () => {
       { heading: "Founder and Medical Director", level: 2, paragraphs: [experience, practice, qualification] },
     ], "/about-us/maya-patel");
     expect(candidates.some((c) => c.field.endsWith("/year_founded"))).toBe(false);
+    expect(candidates.some((c) => c.field.endsWith("/service_locations"))).toBe(false);
     const history = candidates.find((c) => c.field.endsWith("/founding_story"))!;
     expect(history.value).toBe(experience);
     expect(validateCandidates([history], page, observations, "11111111-1111-4111-8111-111111111111")).toHaveLength(1);

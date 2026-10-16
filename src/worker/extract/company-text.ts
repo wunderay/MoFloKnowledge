@@ -280,11 +280,6 @@ export function companyTextCandidates(
     const area = /\b(?:we|our (?:firm|company|practice|team))\s+(?:serve|serves|operate(?:s)? in|work(?:s)? (?:across|throughout))\s+([^.!?;]{3,120})/i.exec(text)?.[1];
     if (area && !/\b(?:businesses|clients|customers|individuals|people|companies|needs)\b/i.test(area))
       add("/company_foundation/service_locations", [{ text: area }], [text], 80);
-    // The geographic scope of an explicitly current own practice is also an explicit service area.
-    if (ownPractice) {
-      const area = /\bmy own\s+(?:[\p{L}-]+\s+){0,3}practice in\s+([^.!?;]{3,100})/iu.exec(text)?.[1];
-      if (area) add("/company_foundation/service_locations", [{ text: area }], [text], 85);
-    }
   }
   return result;
 }
