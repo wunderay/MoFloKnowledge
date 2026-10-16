@@ -441,3 +441,39 @@ describe("durable worker checkpoint wire", () => {
     ).toBe(false);
   });
 });
+
+describe("explicit original gender wording", () => {
+  it("accepts an observed first-person self-description and rejects a note-only source attestation", () => {
+    const b = business();
+    b.key_people[0].gender = "woman";
+    const p = clone().provenance;
+    const evidenceId = "00000000-0000-4000-8000-000000000041";
+    p.evidence.push({
+      id: evidenceId,
+      source_page_id: p.sources[1].id,
+      kind: "text",
+      excerpt: "I identify as a woman.",
+      technical: null,
+    });
+    p.claims.push({
+      id: "00000000-0000-4000-8000-000000000042",
+      entry_id: b.key_people[0].id,
+      targets: [`/key_people/@${b.key_people[0].id}/gender`],
+      origin: "source_backed",
+      evidence_ids: [evidenceId],
+      based_on_claim_ids: [],
+      actor_id: null,
+      authored_at: null,
+      note: null,
+    });
+    expect(validateProvenance(b, p as never)).toEqual([]);
+    p.evidence[p.evidence.length - 1].excerpt =
+      "An unrelated professional biography.";
+    p.claims[p.claims.length - 1].note = "Explicit public self-description";
+    expect(
+      validateProvenance(b, p as never).some(
+        (issue) => issue.code === "gender_attestation",
+      ),
+    ).toBe(true);
+  });
+});
