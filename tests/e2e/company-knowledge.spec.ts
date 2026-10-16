@@ -177,6 +177,23 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   await address.getByLabel("Line1", { exact: true }).fill("11 Market Street");
   await address.getByLabel("Postal code", { exact: true }).fill("97205");
   await address.getByLabel("Country", { exact: true }).fill("United States");
+  // Both shell links and browser history must retain edits when leaving is cancelled.
+  const editorUrl = page.url();
+  for (const leave of [
+    () =>
+      page.getByRole("link", { name: "View knowledge", exact: true }).click(),
+    () => page.evaluate(() => window.history.back()),
+  ]) {
+    const dialog = page.waitForEvent("dialog");
+    const leaving = leave();
+    await (await dialog).dismiss();
+    await leaving;
+    await expect(page).toHaveURL(editorUrl);
+    await expect(address.getByLabel("Line1", { exact: true })).toHaveValue(
+      "11 Market Street",
+    );
+  }
+
   await page
     .getByRole("button", { name: "Save and approve", exact: true })
     .first()
@@ -291,6 +308,24 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     .getByLabel("Overview", { exact: true })
     .fill("A later draft edit that must not change version one.");
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Draft saved." }),
+  ).toBeVisible();
+  const savedOverview = "A later draft edit that must not change version one.";
+  await page
+    .getByLabel("Overview", { exact: true })
+    .fill("An unsaved edit to discard.");
+  const discardDialog = page.waitForEvent("dialog");
+  const leaveEditor = page
+    .getByRole("link", { name: "View knowledge", exact: true })
+    .click();
+  await (await discardDialog).accept();
+  await leaveEditor;
+  await expect(page).toHaveURL(/\/knowledge\/view/);
+  await page.goto(editorUrl);
+  await expect(page.getByLabel("Overview", { exact: true })).toHaveValue(
+    savedOverview,
+  );
   const afterEdit = (await (await page.request.get(`${base}/draft`)).json())
     .data;
   expect(

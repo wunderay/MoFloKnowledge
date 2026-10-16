@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ZodError } from "zod";
+import { useUnsavedNavigation } from "./unsaved-navigation";
 import { ValueView } from "./entry-value";
 import { CitationPopover } from "./citation-popover";
 import { CompanyDraftProvider, useCompanyDraft } from "./company-draft-context";
@@ -98,14 +99,7 @@ function KnowledgeEditorContent({
         .getElementById(`entry-${entryId}`)
         ?.scrollIntoView({ block: "center" });
   }, [draft, state.category]);
-  useEffect(() => {
-    if (!state.dirty.length) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [state.dirty]);
+  const canNavigate = useUnsavedNavigation(state.dirty.length > 0);
   if (!companyId)
     return (
       <Notice error>
@@ -341,12 +335,7 @@ function KnowledgeEditorContent({
             className="company-switcher"
             value={companyId}
             onChange={(e) => {
-              if (
-                !state.dirty.length ||
-                window.confirm(
-                  "Leave this company and discard unsaved changes?",
-                )
-              )
+              if (canNavigate())
                 window.location.assign(
                   `/knowledge?companyId=${e.target.value}`,
                 );
