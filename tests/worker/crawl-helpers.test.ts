@@ -36,6 +36,8 @@ it('honors longest robots rule and bot group; retries indeterminate origins once
     expect(robotsAllows('/private/secret', policy.rules)).toBe(false);
     expect(robotsAllows('/private/public', policy.rules)).toBe(true);
     expect(robotsAllows('/about', policy.rules)).toBe(true);
+    expect(robotsAllows('/private',parseRobots('User-agent: *\nDisallow: /%70rivate').rules)).toBe(false);
+    expect(robotsAllows('/caf%C3%A9',parseRobots('User-agent: *\nDisallow: /café').rules)).toBe(false);
     expect(policy.delayMs).toBe(2000);
     expect(retryAfterMs('9999')).toBe(10000);
     let calls = 0;
