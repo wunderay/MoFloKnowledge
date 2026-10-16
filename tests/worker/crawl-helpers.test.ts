@@ -46,3 +46,22 @@ it('honors longest robots rule and bot group; retries indeterminate origins once
     await robots.check('https://example.com/b');
     expect(calls).toBe(2);
 });
+
+it('uses destination relevance without letting repeated services crowd out company context', () => {
+    const frontier = new Frontier('https://example.com', { documentLimit: 10 });
+    frontier.next();
+    for (const [url, label] of [
+        ['/services', 'Services'], ['/company-background', 'About us'], ['/about/team-member', 'About our founder'],
+        ['/contact', 'Contact'], ['/appointment', 'Schedule'], ['/company-background/privacy-policy', 'Privacy'],
+        ['/company-background/referrals', 'Referrals'], ['/blog/service-news', 'Service news'],
+        ...Array.from({ length: 5 }, (_, index) => [`/services/detail-${index}`, 'Service']),
+    ]) frontier.add(url, label, 1);
+    const selected = Array.from({ length: 9 }, () => frontier.next()?.url);
+    expect(selected).toContain('https://example.com/company-background');
+    expect(selected).toContain('https://example.com/contact');
+    expect(selected).toContain('https://example.com/about/team-member');
+    expect(selected.filter((url) => url?.includes('/services/detail-'))).toHaveLength(5);
+    expect(frontier.next()).toBeUndefined();
+    expect([...frontier.limitsReached]).toContain('documents');
+    expect(frontier.snapshot().pending).toHaveLength(4);
+});
