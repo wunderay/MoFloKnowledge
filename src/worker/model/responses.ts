@@ -40,19 +40,22 @@ export class ResponsesPageExtractor implements PageExtractor {
     const schema = zodToJsonSchema(PageModelOutputSchema, {
       $refStrategy: "none",
     });
+    const input = JSON.stringify({
+      envelope: "UNTRUSTED_WEBSITE_DATA",
+      prompt_version: PROMPT_VERSION,
+      page_url: page.capture.finalUrl,
+      segments: page.capture.segments,
+      observations,
+    });
+    if (Buffer.byteLength(input) > 100000)
+      throw new ExtractionFailure("input_budget");
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const response = await this.client.responses.create(
           {
             model: this.model,
             instructions: EXTRACTION_INSTRUCTIONS,
-            input: JSON.stringify({
-              envelope: "UNTRUSTED_WEBSITE_DATA",
-              prompt_version: PROMPT_VERSION,
-              page_url: page.capture.finalUrl,
-              segments: page.capture.segments,
-              observations,
-            }),
+            input,
             max_output_tokens: this.maxTokens,
             text: {
               format: {
@@ -67,7 +70,13 @@ export class ResponsesPageExtractor implements PageExtractor {
         );
         return {
           ...parseExtractionResponse(response),
-          tokensUsed: response.usage?.total_tokens,
+          tokensUsed:
+            response.usage?.total_tokens === undefined
+              ? undefined
+              : response.usage.total_tokens +
+                (attempt > 0
+                  ? Buffer.byteLength(input) + this.maxTokens + 8000
+                  : 0),
         };
       } catch (error) {
         if (
