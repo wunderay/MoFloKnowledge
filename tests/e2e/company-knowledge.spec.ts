@@ -1,8 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
-import {
-  KnowledgeBaseExportSchema,
-  resolveStablePointer,
-} from "../../src/contracts";
+import { KnowledgeBaseExportSchema } from "../../src/contracts/knowledge-base";
+import { resolveStablePointer } from "../../src/contracts/stable-pointer";
 import { canonicalStringify } from "../../src/knowledge/canonical-json";
 
 const ownerEmail = process.env.MOFLO_E2E_OWNER_EMAIL;
