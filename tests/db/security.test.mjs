@@ -77,6 +77,10 @@ test('protected manual path, tenant isolation, immutable history, worker fencing
   await denied(call(user,'public.publish_knowledge_base',[company,99,request]),/idempotency_conflict/);
   await denied(admin.query('DELETE FROM public.knowledge_base_versions WHERE id=$1',[published.id]),/immutable_record/);
   await user.query('UPDATE public.companies SET name=$1 WHERE id=$2',['Renamed',company]);
+  const stalePublishRequest=randomUUID();
+  await assert.rejects(call(user,'public.publish_knowledge_base',[company,c.draft_generation,stalePublishRequest]),error=>{assert.match(error.message,/stale_generation/);assert.equal(JSON.parse(error.detail).currentGeneration,Number(c.draft_generation)+1);return true;});
+  assert.equal((await user.query('SELECT id FROM public.knowledge_base_versions WHERE company_id=$1 AND request_id=$2',[company,stalePublishRequest])).rowCount,0);
+  assert.equal((await user.query('SELECT next_snapshot_version FROM public.companies WHERE id=$1',[company])).rows[0].next_snapshot_version,'2');
   assert.equal((await user.query('SELECT payload FROM public.knowledge_base_versions WHERE id=$1',[published.id])).rows[0].payload.provenance.company.name,'Acme');
  });
  await t.test('one-active job, captured source integrity, lease fencing and membership revocation',async()=>{
@@ -207,6 +211,9 @@ test('protected manual path, tenant isolation, immutable history, worker fencing
   for(let attempt=1;attempt<=3;attempt++){const j=(await worker.query("SELECT private.claim_job('crash-cap') AS job")).rows[0].job;assert.equal(j.attempt_count,attempt);await admin.query("UPDATE public.scrape_jobs SET lease_expires_at=now()-interval '1 second' WHERE id=$1",[j.id]);}
   assert.equal((await worker.query("SELECT private.claim_job('crash-cap') AS job")).rows[0].job,null);assert.equal((await user.query('SELECT status FROM public.scrape_jobs WHERE id=$1',[queued.id])).rows[0].status,'failed');
   const old=await call(user,'public.revert_entry',[company,entry,1,4,randomUUID()]);assert.equal(old.revision,5);assert.equal(old.review_status,'unreviewed');assert.equal(old.content.company_pitch,'We support teams.');assert.equal((await user.query('SELECT payload FROM public.knowledge_base_versions WHERE id=$1',[published.id])).rows[0].payload.positioning.company_pitch,'We support teams.');
+  await assert.rejects(call(user,'public.revert_entry',[company,entry,1,4,randomUUID()]),error=>{assert.match(error.message,/stale_revision/);assert.equal(JSON.parse(error.detail).currentRevision,5);return true;});
+  assert.equal((await user.query('SELECT current_revision FROM public.knowledge_entries WHERE company_id=$1 AND id=$2',[company,entry])).rows[0].current_revision,5);
+  assert.equal((await user.query('SELECT count(*) FROM public.knowledge_entry_versions WHERE company_id=$1 AND entry_id=$2',[company,entry])).rows[0].count,'5');
   const other=(await call(user,'public.create_company',['Owners','https://owners.example',randomUUID()])).create_company;await call(user,'public.set_company_member',[other,outsider,'owner']);
   const removals=await Promise.allSettled([call(user,'public.set_company_member',[other,owner,'viewer']),call(stranger,'public.set_company_member',[other,outsider,'viewer'])]);assert.equal(removals.filter(r=>r.status==='fulfilled').length,1);assert.match(removals.find(r=>r.status==='rejected').reason.message,/last_owner/);
   const beforeMetadata=(await user.query('SELECT draft_generation FROM public.companies WHERE id=$1',[company])).rows[0].draft_generation;const changed=await call(user,'public.update_company',[company,beforeMetadata,null,'https://acme.example/updated']);assert.equal(Number(changed.draft_generation),Number(beforeMetadata)+1);
