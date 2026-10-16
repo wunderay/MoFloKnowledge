@@ -6,7 +6,6 @@ const present: Record<string, string> = {
   have: "has", do: "does",
 };
 const modals = new Set(["can", "could", "will", "would", "may", "might", "must", "should"]);
-const exampleClause = new RegExp(`\\b(?:but|nor|yet)\\b|\\b(?:and|or)\\s+(?:also\\s+)?(?:${Object.keys(present).join("|")}|are|is|has|does|need|not|never|${[...modals].join("|")})\\b`, "u");
 const sentences = new Intl.Segmenter("en", { granularity: "sentence" });
 
 function seed(text: string) {
@@ -25,6 +24,8 @@ export function varyCompanyNarrative(text: string, company: string): string {
     const [, before, opening, predicate, after] = match;
     // Nested first-person clauses, contractions and reflexives require more parsing than this renderer does.
     if (/\b(?:we|us|ourselves|ours)\b|[‘’';]/iu.test(predicate)) return segment;
+    // Example lists can continue into another predicate; retain their full saved wording.
+    if (/\bsuch as\b/u.test(predicate)) return segment;
     const choice = seed(`${company}\0${segment.trim()}`);
 
     // Front an existing range without changing its capability modal, agent or endpoints.
@@ -33,16 +34,6 @@ export function varyCompanyNarrative(text: string, company: string): string {
       return `${before}From ${range[3]}, we ${range[1]} ${range[2]}${range[4]}${after}`;
     }
     if (/,\s+from\b/u.test(predicate)) return segment;
-    // The examples remain an explicitly non-exhaustive list, with the original agent and predicate.
-    const examples = predicate.match(/^(perform|provide|offer) ([^,;:]+s), such as ([\s\S]+)$/u);
-    if (!opening.includes("also") && examples && /\b(?:functions|services|programs|tasks|activities|products|solutions|tools)$/u.test(examples[2])
-      && !/\b(?:no|not|never|only|each|every)\b/u.test(examples[2])
-      && !exampleClause.test(examples[3])
-      && /,|\band\b/u.test(examples[3])) {
-      const determiner = /^(?:a|an|the|our|your|their|its|these|those|some|any)\b/u.test(examples[2]) ? "" : "the ";
-      return `${before}Among ${determiner}${examples[2]} we ${examples[1]} are ${examples[3]}${after}`;
-    }
-
     const verb = predicate.match(/^(\w+)\b([\s\S]*)$/u);
     if (!verb || (!present[verb[1]] && !modals.has(verb[1]))) return segment;
     // Avoid ambiguous coordinated predicates and perfect aspect, including omitted auxiliary subjects.
