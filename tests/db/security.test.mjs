@@ -23,7 +23,7 @@ before(async()=>{
  admin=await connect();await admin.query(await readFile(new URL('./bootstrap.sql',import.meta.url),'utf8'));
  const generated=spawnSync(process.execPath,[fileURLToPath(new URL('../../scripts/generate-sql-contract.mjs',import.meta.url)),'--check',process.env.CONTRACTS_ROOT??'.'],{encoding:'utf8'});assert.equal(generated.status,0,generated.stderr);
  const migration=()=>spawnSync(process.execPath,[fileURLToPath(new URL('../../scripts/migrate.mjs',import.meta.url))],{env:{...process.env,DATABASE_URL:url.href},encoding:'utf8'});
- const initial=migration();assert.equal(initial.status,0,initial.stderr);assert.equal(initial.stdout.match(/Applied /g)?.length,15);
+ const initial=migration();assert.equal(initial.status,0,initial.stderr);assert.equal(initial.stdout.match(/Applied /g)?.length,16);
  const replay=migration();assert.equal(replay.status,0,replay.stderr);assert.equal(replay.stdout,'');
  await admin.query('RESET ROLE');await admin.query('INSERT INTO auth.users(id) VALUES($1),($2),($3)',[owner,viewer,outsider]);
 });
@@ -92,13 +92,23 @@ test('protected manual path, tenant isolation, immutable history, worker fencing
   const source=await call(worker,'private.insert_source_capture',[job.id,company,job.lease_token,capture]);assert.equal((await call(worker,'private.insert_source_capture',[job.id,company,job.lease_token,capture])).id,source.id);
   await denied(call(worker,'private.insert_source_capture',[job.id,company,job.lease_token,{...capture,cleaned_content:'Changed'}]),/capture_idempotency_conflict/);
   await denied(admin.query('UPDATE public.source_pages SET title=$1 WHERE id=$2',['tampered',source.id]),/immutable_record/);
-  const checkpoint={extractor_version:'deterministic-v1',stage:'crawling',effectiveRoot:'https://acme.example/',frontier:{root:'https://acme.example/',pending:[{url:'https://acme.example/about',depth:1,score:20}],seen:['https://acme.example/','https://acme.example/about'],aliases:[],selected:1,limitsReached:[]},budgets:{documents:1,htmlBytes:200,designBytes:0,startedAt:Date.now(),limitsReached:[]},captured_source_ids:[source.id],extracted_source_ids:[],errors:[]};const crawlProgress={stage:'crawling',discovered:2,selected:1,captured:1,failed:0,blocked:0,extracted:0,document_limit:10,limits_reached:[]};
-  await call(worker,'private.checkpoint_job',[job.id,company,job.lease_token,checkpoint,crawlProgress]);
+  const checkpoint={extractor_version:'deterministic-v2',stage:'crawling',effectiveRoot:'https://acme.example/',frontier:{root:'https://acme.example/',pending:[{url:'https://acme.example/about',depth:1,score:20}],seen:['https://acme.example/','https://acme.example/about'],aliases:[],selected:1,limitsReached:[]},budgets:{documents:1,htmlBytes:200,designBytes:0,startedAt:Date.now(),limitsReached:[]},captured_source_ids:[source.id],extracted_source_ids:[],errors:[]};const crawlProgress={stage:'crawling',discovered:2,selected:1,captured:1,failed:0,blocked:0,extracted:0,document_limit:10,limits_reached:[]};
+  const rankedCandidate={id:randomUUID(),priority:95,kind:'company_foundation',field:'/company_foundation/overview',fieldName:'overview',entryId:randomUUID(),sourceId:source.id,entity_key:null,value:text,origin:'source_backed',segment_ids:['segment-1'],observation_ids:[],supporting_fields:[],note:null,evidenceIds:[randomUUID()]};
+  checkpoint.validated_candidates=[rankedCandidate];
+  const {PostgresJobRepository}=await tsImport(resolve(process.env.CONTRACTS_ROOT??'.','src/worker/job-repository.ts'),import.meta.url);
+  const durableRepository=new PostgresJobRepository({connectionString:url.href,options:'-c role=moflo_worker'});
+  try {
+   const persisted=await durableRepository.checkpoint(job,checkpoint,crawlProgress);
+   assert.deepEqual(persisted.checkpoint.validated_candidates,[rankedCandidate]);
+   assert.throws(()=>durableRepository.checkpoint(job,{...checkpoint,validated_candidates:[{...rankedCandidate,priority:101}]},crawlProgress));
+  } finally {await durableRepository.close();}
+  for(const priority of [-1,101,1.5,'95'])await denied(call(worker,'private.checkpoint_job',[job.id,company,job.lease_token,{...checkpoint,validated_candidates:[{...rankedCandidate,priority}]},crawlProgress]),/number_range|invalid_type|invalid_integer/);
+  await denied(call(worker,'private.checkpoint_job',[job.id,company,job.lease_token,{...checkpoint,validated_candidates:[{...rankedCandidate,rogue:true}]},crawlProgress]),/unknown_key/);
   await denied(call(worker,'private.checkpoint_job',[job.id,company,job.lease_token,{...checkpoint,extractor_version:1},crawlProgress]),/invalid_type:\/extractor_version/);
   await denied(call(worker,'private.checkpoint_job',[job.id,company,job.lease_token,{...checkpoint,budgets:{...checkpoint.budgets,documents:-1}},crawlProgress]),/number_range/);
   await denied(call(worker,'private.checkpoint_job',[job.id,company,job.lease_token,{...checkpoint,captured_source_ids:[randomUUID()]},crawlProgress]),/unavailable_checkpoint_source/);
   const stale=job.lease_token;await admin.query("UPDATE public.scrape_jobs SET lease_expires_at=now()-interval '1 second' WHERE id=$1",[job.id]);
-  job=(await worker.query("SELECT private.claim_job('restarted-worker') AS job")).rows[0].job;assert.equal(job.attempt_count,2);assert.notEqual(job.lease_token,stale);assert.equal(job.source_captures[0].id,source.id);assert.equal(job.checkpoint.frontier.pending[0].url,'https://acme.example/about');assert.equal(job.checkpoint.extractor_version,'deterministic-v1');
+  job=(await worker.query("SELECT private.claim_job('restarted-worker') AS job")).rows[0].job;assert.equal(job.attempt_count,2);assert.notEqual(job.lease_token,stale);assert.equal(job.source_captures[0].id,source.id);assert.equal(job.checkpoint.frontier.pending[0].url,'https://acme.example/about');assert.equal(job.checkpoint.extractor_version,'deterministic-v2');assert.deepEqual(job.checkpoint.validated_candidates,[rankedCandidate]);
   await denied(call(worker,'private.heartbeat_job',[job.id,company,stale]),/invalid_lease/);
 
   const bad=provenance(entry,owner);bad.sources=[{id:randomUUID(),url:'https://other.example',title:null,author:null,site_name:null,published_on:null,retrieved_at:'2026-10-16T00:00:00.000Z'}];

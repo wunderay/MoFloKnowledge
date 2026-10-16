@@ -64,6 +64,7 @@ export const CrawlBudgetSnapshotSchema = z
 export const CheckpointCandidateSchema = z
   .object({
     id: UUIDSchema,
+    priority: z.number().int().min(0).max(100).optional(),
     kind: EntryKindSchema,
     field: z.enum(
       FIELD_REGISTRY.map((field) => field.path) as [string, ...string[]],
