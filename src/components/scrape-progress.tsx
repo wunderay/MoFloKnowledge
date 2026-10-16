@@ -87,7 +87,11 @@ export function ScrapeProgress({
     try {
       const result = await api<{ jobId: string; status: string }>(
         companyPath(companyId, "/scrapes"),
-        write("POST", { url, requestId: crypto.randomUUID() }),
+        write("POST", {
+          url,
+          options: { documentLimit, depthLimit },
+          requestId: pendingRequest.current.id,
+        }),
       );
       pendingRequest.current = null;
       setJob({ id: result.jobId, status: result.status, progress: {} });
