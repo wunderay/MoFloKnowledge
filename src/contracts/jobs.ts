@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { UUIDSchema, URLSchema, TextSchema } from "./primitives";
+import { EntryKindSchema } from "./business";
+import { FIELD_REGISTRY } from "./field-registry";
+import { JSONValueSchema } from "./provenance";
 export const JobStatusSchema = z.enum([
   "queued",
   "validating",
@@ -32,25 +35,80 @@ export const SafeJobErrorSchema = z
     message: z.string().min(1).max(1000),
   })
   .strict();
-export const CheckpointSchema = z
+/** Durable wire shapes emitted by Frontier.snapshot(), CrawlBudgets.snapshot() and extraction pipeline. */
+export const FrontierSnapshotSchema = z
   .object({
-    stage: JobStatusSchema,
-    frontier: z
-      .array(z.object({ url: URLSchema, depth: count.max(3) }).strict())
+    root: URLSchema,
+    pending: z
+      .array(
+        z
+          .object({ url: URLSchema, depth: count.max(3), score: count })
+          .strict(),
+      )
       .max(200),
-    captured_source_ids: z.array(UUIDSchema).max(100),
-    extracted_source_ids: z.array(UUIDSchema).max(100),
-    budgets: z
-      .object({
-        documents: count,
-        bytes: count,
-        rendered_pages: count,
-        model_tokens: count,
-      })
-      .strict(),
-    errors: z.array(SafeJobErrorSchema).max(100),
+    seen: z.array(URLSchema).max(225),
+    aliases: z.array(z.tuple([URLSchema, URLSchema])).max(25),
+    selected: count.max(25),
+    limitsReached: z.array(TextSchema).max(100),
   })
   .strict();
+export const CrawlBudgetSnapshotSchema = z
+  .object({
+    documents: count.max(25),
+    htmlBytes: count.max(25 * 2 * 1024 * 1024),
+    designBytes: count.max(15 * 1024 * 1024),
+    startedAt: count,
+    limitsReached: z.array(TextSchema).max(100),
+  })
+  .strict();
+export const CheckpointCandidateSchema = z
+  .object({
+    id: UUIDSchema,
+    kind: EntryKindSchema,
+    field: z.enum(
+      FIELD_REGISTRY.map((field) => field.path) as [string, ...string[]],
+    ),
+    fieldName: z
+      .string()
+      .regex(/^[a-z_]+$/)
+      .max(100),
+    entryId: UUIDSchema,
+    sourceId: UUIDSchema,
+    entity_key: z.string().max(300).nullable(),
+    value: JSONValueSchema,
+    origin: z.enum(["source_backed", "inferred", "generated"]),
+    segment_ids: z.array(z.string().max(200)).max(30),
+    observation_ids: z.array(z.string().max(200)).max(30),
+    supporting_fields: z.array(z.string().max(500)).max(30),
+    note: z.string().max(2000).nullable(),
+    evidenceIds: z.array(UUIDSchema).max(60),
+  })
+  .strict();
+export const CrawlCheckpointSchema = z
+  .object({
+    stage: JobStatusSchema.optional(),
+    effectiveRoot: URLSchema.optional(),
+    frontier: FrontierSnapshotSchema,
+    budgets: CrawlBudgetSnapshotSchema,
+    captured_source_ids: z.array(UUIDSchema).max(25),
+    extracted_source_ids: z.array(UUIDSchema).max(25).optional(),
+    errors: z.array(SafeJobErrorSchema).max(200),
+    model_tokens: count.max(120000).optional(),
+    model_successes: count.max(25).optional(),
+    model_failures: count.max(25).optional(),
+    validated_candidates: z
+      .array(CheckpointCandidateSchema)
+      .max(5000)
+      .optional(),
+  })
+  .strict();
+export const CheckpointSchema = z
+  .union([z.object({}).strict(), CrawlCheckpointSchema])
+  .refine(
+    (value) =>
+      new TextEncoder().encode(JSON.stringify(value)).byteLength <= 1048576,
+    "Checkpoint exceeds 1 MiB",
+  );
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 export type Progress = z.infer<typeof ProgressSchema>;
 export type SafeJobError = z.infer<typeof SafeJobErrorSchema>;
