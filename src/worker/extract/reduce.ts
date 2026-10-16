@@ -14,16 +14,17 @@ import {
 import { canonicalStringify } from "../../knowledge/canonical-json";
 import { stableId } from "./identity";
 import type { ValidatedCandidate } from "./validate-candidates";
+import { SUPPORTED_FIELDS } from "./deterministic";
 export function reduceCandidates(
   candidates: ValidatedCandidate[],
   options: {
     companyId: string;
     jobId: string;
     partial: boolean;
-    model: string;
-    promptVersion: string;
   },
 ): Proposal[] {
+  if (candidates.some((candidate) => candidate.origin !== "source_backed"))
+    throw new Error("invalid_origin");
   candidates = [...candidates].sort(
     (a, b) =>
       a.entryId.localeCompare(b.entryId) ||
@@ -59,7 +60,6 @@ export function reduceCandidates(
     const provenance = createEmptyProvenance();
     const sourceMap = new Map<string, (typeof provenance.sources)[number]>();
     const evidenceMap = new Map<string, (typeof provenance.evidence)[number]>();
-    const claimByField = new Map<string, Claim[]>();
     for (const field of FIELD_REGISTRY.filter((f) => f.kind === group.kind)) {
       const all = group.candidates.filter((c) => c.field === field.path);
       const unique = new Map<string, ValidatedCandidate>();
@@ -116,17 +116,21 @@ export function reduceCandidates(
           ? "conflict"
           : values.length
             ? "found"
-            : options.partial
-              ? "partial"
-              : "not_found",
+            : !SUPPORTED_FIELDS.includes(field.path)
+              ? "not_checked"
+              : options.partial
+                ? "partial"
+                : "not_found",
         job_id: options.jobId,
         reason: conflict
           ? "Differing supported candidates need a reviewer decision."
           : values.length
             ? null
-            : options.partial
-              ? "Relevant extraction or rendering was unavailable, failed, truncated or bounded."
-              : "No usable value found in the successfully processed bounded pages.",
+            : !SUPPORTED_FIELDS.includes(field.path)
+              ? "No deterministic rule assesses this field; enter or review it manually."
+              : options.partial
+                ? "Relevant capture, rendering or extraction was unavailable, failed, truncated or bounded."
+                : "No explicit value matched the supported rules in the successfully processed bounded pages.",
       });
       for (const c of all) {
         const page = c.page;
@@ -190,25 +194,8 @@ export function reduceCandidates(
           note: c.note,
         };
         provenance.claims.push(claim);
-        const fieldClaims = claimByField.get(field.path) ?? [];
-        fieldClaims.push(claim);
-        claimByField.set(field.path, fieldClaims);
       }
     }
-    for (const c of group.candidates.filter((c) => c.origin === "generated"))
-      for (const claim of claimByField.get(c.field) ?? [])
-        claim.based_on_claim_ids = [
-          ...new Set(
-            c.supporting_fields.flatMap((field) =>
-              (claimByField.get(field) ?? [])
-                .filter(
-                  (parent) =>
-                    parent.id !== claim.id && parent.origin !== "generated",
-                )
-                .map((parent) => parent.id),
-            ),
-          ),
-        ];
     provenance.sources = [...sourceMap.values()];
     provenance.evidence = [...evidenceMap.values()];
     // Empty repeatable entities are never emitted.
@@ -247,66 +234,12 @@ export function reduceCandidates(
             id: stableId(options.jobId, entryId, target, "change"),
             target,
           })),
-        model: options.model,
-        prompt_version: options.promptVersion,
       }),
     );
   }
 
   const allClaims = proposals.flatMap((p) => p.provenance.claims);
   for (const proposal of proposals) {
-    for (const conflict of proposal.provenance.conflicts)
-      for (const candidate of conflict.candidates.filter(
-        (c) => c.origin === "generated",
-      )) {
-        const original = candidates.find((c) => c.id === candidate.id);
-        candidate.based_on_claim_ids = [
-          ...new Set(
-            (original?.supporting_fields ?? []).flatMap((field) =>
-              allClaims
-                .filter(
-                  (parent) =>
-                    parent.origin !== "generated" &&
-                    parent.targets.some(
-                      (target) =>
-                        target === field || target.startsWith(field + "/"),
-                    ),
-                )
-                .map((parent) => parent.id),
-            ),
-          ),
-        ];
-      }
-    for (const claim of proposal.provenance.claims.filter(
-      (c) => c.origin === "generated",
-    )) {
-      const candidate = candidates.find(
-        (c) =>
-          c.entryId === claim.entry_id &&
-          claim.targets.some(
-            (t) =>
-              t === c.field.replace("@id", `@${c.entryId}`) ||
-              t.startsWith(c.field.replace("@id", `@${c.entryId}`) + "/"),
-          ) &&
-          c.origin === "generated",
-      );
-      claim.based_on_claim_ids = [
-        ...new Set(
-          (candidate?.supporting_fields ?? []).flatMap((field) =>
-            allClaims
-              .filter(
-                (parent) =>
-                  parent.id !== claim.id &&
-                  parent.origin !== "generated" &&
-                  parent.targets.some(
-                    (t) => t === field || t.startsWith(field + "/"),
-                  ),
-              )
-              .map((parent) => parent.id),
-          ),
-        ),
-      ];
-    }
     const entryId =
       proposal.provenance.claims[0]?.entry_id ??
       ("id" in proposal.content

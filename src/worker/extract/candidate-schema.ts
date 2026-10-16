@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { FIELD_REGISTRY, businessEntrySchemas } from "../../contracts";
-// Model values omit all UUIDs. The worker assigns stable identities after local validation.
-export function modelValueSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
+// Candidate values omit UUIDs. The worker assigns stable identities after local validation.
+export function candidateValueSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
   if (schema instanceof z.ZodEffects)
-    return modelValueSchema(schema.innerType());
+    return candidateValueSchema(schema.innerType());
   if (schema instanceof z.ZodObject)
     return z
       .object(
@@ -12,17 +12,17 @@ export function modelValueSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
             .filter(([key]) => key !== "id")
             .map(([key, value]) => [
               key,
-              modelValueSchema(value as z.ZodTypeAny),
+              candidateValueSchema(value as z.ZodTypeAny),
             ]),
         ),
       )
       .strict();
   if (schema instanceof z.ZodArray)
-    return z.array(modelValueSchema(schema.element)).max(100);
+    return z.array(candidateValueSchema(schema.element)).max(100);
   if (schema instanceof z.ZodNullable)
-    return modelValueSchema(schema.unwrap()).nullable();
+    return candidateValueSchema(schema.unwrap()).nullable();
   if (schema instanceof z.ZodOptional)
-    return modelValueSchema(schema.unwrap()).nullable();
+    return candidateValueSchema(schema.unwrap()).nullable();
   return schema;
 }
 function objectSchema(schema: z.ZodTypeAny): z.AnyZodObject {
@@ -36,10 +36,10 @@ export const fieldCandidateSchemas = FIELD_REGISTRY.map((field) =>
     .object({
       field: z.literal(field.path),
       entity_key: z.string().max(300).nullable(),
-      value: modelValueSchema(
+      value: candidateValueSchema(
         objectSchema(businessEntrySchemas[field.kind]).shape[field.field],
       ),
-      origin: z.enum(["source_backed", "inferred", "generated"]),
+      origin: z.literal("source_backed"),
       segment_ids: z.array(z.string().max(200)).max(30),
       observation_ids: z.array(z.string().max(200)).max(30),
       supporting_fields: z.array(z.string().max(500)).max(30),
@@ -47,33 +47,3 @@ export const fieldCandidateSchemas = FIELD_REGISTRY.map((field) =>
     })
     .strict(),
 );
-export const PageModelOutputSchema = z
-  .object({
-    candidates: z
-      .array(
-        z.union(
-          fieldCandidateSchemas as unknown as [
-            z.ZodTypeAny,
-            z.ZodTypeAny,
-            ...z.ZodTypeAny[],
-          ],
-        ),
-      )
-      .max(200),
-    limitations: z.array(z.string().max(500)).max(100),
-  })
-  .strict();
-export type FieldCandidate = {
-  field: string;
-  entity_key: string | null;
-  value: unknown;
-  origin: "source_backed" | "inferred" | "generated";
-  segment_ids: string[];
-  observation_ids: string[];
-  supporting_fields: string[];
-  note: string | null;
-};
-export type PageModelOutput = {
-  candidates: FieldCandidate[];
-  limitations: string[];
-};
