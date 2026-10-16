@@ -368,6 +368,7 @@ export function validateCandidates(
           const url = new URL(social.profile_url);
           if (
             /\/(?:share|intent|sharer|dialog)(?:\/|$)/i.test(url.pathname) ||
+            (social.platform.toLowerCase() === "linkedin" && !/^\/(?:company|school|showcase)\/[^/]+/i.test(url.pathname)) ||
             !(
               page.capture.links.some((l) => l.url === social.profile_url) ||
               selected.some((o) =>

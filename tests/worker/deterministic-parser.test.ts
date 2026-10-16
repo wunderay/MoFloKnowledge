@@ -128,3 +128,26 @@ describe("source-only deterministic parsing", () => {
       .some((c) => c.field.startsWith("/key_people"))).toBe(false);
   });
 });
+
+it("keeps LinkedIn organization profiles separate from personal profiles", () => {
+  const { candidates, page, observations } = extract(`<main>
+    <a href="https://www.linkedin.com/in/alex-rowan">Alex Rowan</a>
+    <a href="https://www.linkedin.com/company/workshop-works">Company</a>
+    <a href="https://www.linkedin.com/school/workshop-academy">School</a>
+    <a href="https://www.linkedin.com/showcase/workshop-products">Products</a>
+    <a href="https://www.linkedin.com/share/article">Share</a></main>`);
+  const profiles = candidates.filter((c) => c.field === "/online_presence/social_media_links")
+    .flatMap((c) => c.value as { profile_url: string }[]).map((social) => social.profile_url);
+  expect(profiles).toEqual([
+    "https://www.linkedin.com/company/workshop-works",
+    "https://www.linkedin.com/school/workshop-academy",
+    "https://www.linkedin.com/showcase/workshop-products",
+  ]);
+  expect(page.capture.links.some((link) => link.url === "https://www.linkedin.com/in/alex-rowan")).toBe(true);
+  const personal = observations.find((o) => o.property === "href" && o.value === "https://www.linkedin.com/in/alex-rowan")!;
+  expect(() => validateCandidates([{
+    field: "/online_presence/social_media_links", entity_key: null,
+    value: [{ platform: "linkedin", profile_url: personal.value }], origin: "source_backed",
+    segment_ids: [], observation_ids: [personal.id], supporting_fields: [], note: null,
+  }], page, observations, companyId)).toThrow("social_profile_not_observed");
+});
