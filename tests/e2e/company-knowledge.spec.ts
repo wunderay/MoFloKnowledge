@@ -153,14 +153,29 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   await page.keyboard.press("Escape");
   await expect(evidenceDialog).toBeHidden();
   await page.setViewportSize(desktopViewport);
-  // Clear the fixture's disputed address explicitly, leaving its review decision.
-  for (const clear of await page
-    .getByRole("button", { name: "Clear disputed value", exact: true })
-    .all())
-    await clear.click();
+  // Review a source candidate first, then correct it explicitly. This exercises
+  // source-origin selection, a permanent draft revision, and superseding user provenance.
   await page
-    .getByLabel("Overview", { exact: true })
-    .fill("A reviewer-corrected overview of Lumen Ledger.");
+    .getByRole("button", { name: /400 River Street/ })
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: "Save draft", exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Draft saved." }),
+  ).toBeVisible();
+  const address = page.getByRole("group", {
+    name: "Main address",
+    exact: true,
+  });
+  await address
+    .getByLabel("Original address", { exact: true })
+    .fill("11 Market Street, Portland, OR 97205, United States");
+  await address.getByLabel("Line1", { exact: true }).fill("11 Market Street");
+  await address.getByLabel("Postal code", { exact: true }).fill("97205");
+  await address.getByLabel("Country", { exact: true }).fill("United States");
   await page
     .getByRole("button", { name: "Save and approve", exact: true })
     .first()
@@ -220,8 +235,11 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   expect(downloaded.headers()["content-type"]).toContain("application/json");
   const snapshot = KnowledgeBaseExportSchema.parse(await downloaded.json());
   const frozen = canonicalStringify(snapshot);
-  expect(snapshot.company_foundation.overview).toBe(
-    "A reviewer-corrected overview of Lumen Ledger.",
+  expect(snapshot.company_foundation.main_address?.raw).toBe(
+    "11 Market Street, Portland, OR 97205, United States",
+  );
+  expect(snapshot.company_foundation.main_address?.line1).toBe(
+    "11 Market Street",
   );
   expect(snapshot.key_people.length).toBeGreaterThan(0);
   expect(snapshot.key_people.every((person) => person.gender === null)).toBe(
@@ -250,7 +268,7 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   expect(
     snapshot.provenance.claims.some(
       (claim) =>
-        claim.targets.includes("/company_foundation/overview") &&
+        claim.targets.includes("/company_foundation/main_address/raw") &&
         claim.origin === "user_provided",
     ),
   ).toBe(true);
