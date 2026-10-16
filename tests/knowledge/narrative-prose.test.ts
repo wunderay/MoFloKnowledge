@@ -25,6 +25,10 @@ it("keeps sentence agreement, negation and modals, with stable choices and uncha
   expect(vary("We do not provide financial advice.")).toBe("The company does not provide financial advice.");
   for (const text of [
     "We provide software and train staff.", "We can help clients and need payment.", "We are experts in inventory.",
+    "We provide tools or offer training.", "We can help clients but need payment.",
+    "We do not provide tools nor offer training.", "We provide tools yet need training.", "We provide tools; offer training.",
+    "We offer services, such as planning, but do not provide advice.",
+    "We offer services, such as budgeting and do not provide legal advice.",
     "We have used this system for years.", "We'll also monitor laws that may affect your tax filings.",
     "My experience matters. We provide tools for our clients.", "I have worked with clients. We offer tools.",
     'We provide tools with a "we know best" message.', "We offer tools. ‘We do not promise results,’ the customer said.",
