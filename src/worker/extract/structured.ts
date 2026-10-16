@@ -136,6 +136,7 @@ export function structuredCandidates(
     const org = object(value);
     return org && (organizationIds.has(org["@id"]) || sameSite(org.url));
   };
+  const services = nodes.filter(({ value }) => types(value).includes("Service"));
   for (const node of nodes) {
     const { value, path } = node;
     const kind = types(value);
@@ -163,7 +164,23 @@ export function structuredCandidates(
       if (!nested && !referred && !belongs(value.worksFor) && !headingMatch) continue;
     } else if ((value.provider && !belongs(value.provider)) ||
       (value.url && !sameSite(value.url)) || (value["@id"] && !sameSite(value["@id"]))) continue;
-    const entity = page.capture.links.find((link) =>
+    // A single Service can identify the current detail page even when its metadata URL is stale.
+    // Require an observed self-link whose exact label is also a heading, and that whole heading
+    // appears in the declared service name. Catalog entries and products keep their own identities.
+    const primaryLink = offering && kind.includes("Service") && services.length === 1
+      ? page.capture.links.find((link) => link.url === page.capture.finalUrl &&
+        link.label.length >= 3 && observations.some((o) =>
+          o.property === "heading" && o.value === link.label) &&
+        (" " + name.toLowerCase() + " ").includes(" " + link.label.toLowerCase() + " "))
+      : undefined;
+    const primaryEvidence = primaryLink ? [
+      observations.find((o) => o.property === "href" && o.value === primaryLink.url),
+      observations.find((o) => o.property === "anchor-label" && o.value === primaryLink.label && o.asset_url === primaryLink.url),
+      observations.find((o) => o.property === "heading" && o.value === primaryLink.label),
+    ].filter((o): o is TechnicalObservation => Boolean(o)) : [];
+    const primary = primaryLink && primaryEvidence.length === 3;
+    if (primary) context.push(...primaryEvidence);
+    const entity = primary ? page.capture.finalUrl : page.capture.links.find((link) =>
       link.url !== page.capture.finalUrl &&
       (link.url === value.url || link.url === value["@id"]) &&
       sameSite(link.url),
@@ -175,7 +192,8 @@ export function structuredCandidates(
     if (person) addText(prefix + "title", value.jobTitle, path + "/jobTitle", entity, context);
     else {
       addText(prefix + "category", value.category, path + "/category", entity, context);
-      if (value.url === page.capture.finalUrl || page.capture.links.some((l) => l.url === value.url))
+      if (primary) add(prefix + "url", page.capture.finalUrl, context, entity);
+      else if (value.url === page.capture.finalUrl || page.capture.links.some((l) => l.url === value.url))
         addText(prefix + "url", value.url, path + "/url", entity, context);
       const offers = Array.isArray(value.offers) ? value.offers : [value.offers];
       offers.forEach((rawOffer, i) => {
