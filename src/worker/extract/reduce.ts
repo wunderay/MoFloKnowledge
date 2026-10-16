@@ -111,6 +111,7 @@ export function reduceCandidates(
         } else unique.set(key, { ...c, evidenceIds: [...c.evidenceIds] });
       }
       let values = [...unique.values()];
+      let overviewSources: ValidatedCandidate[] | null = null;
       if (!collection && narrativeFields.has(field.field) && values.length) {
         // Labels can disagree factually even at equal quality. Only lower-quality
         // labels are superseded; free prose can select one exact best passage.
@@ -118,6 +119,25 @@ export function reduceCandidates(
         values = categoricalFields.has(field.field)
           ? values.filter((c) => (c.priority ?? 0) === (best.priority ?? 0) && sourceQuality(c) === sourceQuality(best))
           : values.slice(0, 1);
+      }
+      if (group.kind === "company_foundation" && field.field === "overview" && all.length) {
+        // Keep the strongest visible company description and its published homepage
+        // summary together. Each passage retains its own validated source evidence.
+        const key = (value: unknown) => String(value).replace(/\s+/g, " ").trim().toLowerCase();
+        overviewSources = [all[0]];
+        const seen = new Set([key(all[0].value)]);
+        for (const c of all) {
+          if (overviewSources.length >= 3 || typeof c.value !== "string" ||
+            new URL(c.page.capture.finalUrl).pathname !== "/" || seen.has(key(c.value))) continue;
+          const publishedSummary = c.observations.some((o) =>
+            (o.property === "meta-description" || /^jsonld:.*\/description$/.test(o.property ?? "")) &&
+            o.value !== null && key(o.value) === key(c.value));
+          if (!publishedSummary || [...overviewSources, c].map((v) => String(v.value)).join("\n\n").length > 20000) continue;
+          overviewSources.push(c);
+          seen.add(key(c.value));
+        }
+        values = [{ ...all[0], value: overviewSources.map((c) => c.value).join("\n\n"),
+          evidenceIds: [...new Set(overviewSources.flatMap((c) => c.evidenceIds))] }];
       }
       const target = field.path.replace("@id", `@${entryId}`);
       const itemValues = new Map<string, string>();
@@ -171,7 +191,7 @@ export function reduceCandidates(
                 ? "Relevant capture, rendering or extraction was unavailable, failed, truncated or bounded."
                 : "No explicit value matched the supported rules in the successfully processed bounded pages.",
       });
-      for (const c of all) {
+      for (const c of overviewSources ?? all) {
         const page = c.page;
         sourceMap.set(page.id, {
           id: page.id,

@@ -8,6 +8,7 @@ import { reduceCandidates } from "../../src/worker/extract/reduce";
 import { validateProvenance, entryBusiness, resolveStablePointer } from "../../src/contracts";
 import { normalizeColor } from "../../src/worker/extract/colors";
 import { extractAndFinish } from "../../src/worker/extract/pipeline";
+import { captureHtml } from "../../src/worker/capture/html";
 import type { Job, JobRepository } from "../../src/worker/job-repository";
 const observations = technicalObservations(page);
 it("validates all41 required assessments, stable IDs, exact evidence and explicit address conflicts", () => {
@@ -322,6 +323,37 @@ it("ranks exact narrative extracts while preserving factual disagreements and le
   expect(foundation.conflicts[0].candidates.map((c) => c.value).sort()).toEqual([2012, 2013]);
   expect(reduceCandidates([...values].reverse(), options)).toEqual(proposals);
   expect(() => reduceCandidates([{ ...values[0], origin: "generated" } as never], options)).toThrow("invalid_origin");
+});
+
+it("retains distinct homepage summaries alongside the best company overview with only their cited evidence", () => {
+  const summary = "Cedar Studio serves local councils with engineering advice.";
+  const catalog = "Bridge surveys and site inspections for public infrastructure.";
+  const makePage = (id: string, path: string, body: string) => ({ ...page, id,
+    capture: captureHtml({ requestedUrl: "https://example.com" + path,
+      finalUrl: "https://example.com" + path, body }) });
+  const homepage = makePage("44444444-4444-4444-8444-444444444444", "/",
+    `<meta name="description" content="${summary}"><script type="application/ld+json">${JSON.stringify({
+      "@type": "Organization", name: "Cedar Studio", description: summary,
+    })}</script>`);
+  const service = makePage("55555555-5555-4555-8555-555555555555", "/services", `<p>${catalog}</p>`);
+  const discarded = makePage("66666666-6666-4666-8666-666666666666", "/about", "<p>We aim to help.</p>");
+  const values = [homepage, service, discarded].flatMap((p) => {
+    const observed = technicalObservations(p);
+    if (p === homepage) return validateCandidates(deterministicCandidates(p, observed)
+      .filter((c) => c.field === "/company_foundation/overview"), p, observed, companyId);
+    return validateCandidates([{ ...candidate("/company_foundation/overview", p === service ? catalog : "We aim to help.", "Northstar builds"),
+      segment_ids: [p.capture.segments[0].id], priority: p === service ? 96 : 10 }], p, observed, companyId);
+  });
+  const options = { companyId, jobId, partial: false };
+  const foundation = reduceCandidates(values, options).find((p) => p.kind === "company_foundation")!;
+  expect(foundation.content).toMatchObject({ overview: catalog + "\n\n" + summary });
+  expect(foundation.provenance.sources.map((s) => s.id).sort()).toEqual([homepage.id, service.id].sort());
+  const claim = foundation.provenance.claims.find((c) => c.targets.includes("/company_foundation/overview"))!;
+  expect(claim.evidence_ids).toHaveLength(2);
+  expect(claim.evidence_ids.every((id) => foundation.provenance.evidence.some((e) => e.id === id &&
+    [homepage.id, service.id].includes(e.source_page_id)))).toBe(true);
+  expect(validateProvenance(entryBusiness(foundation.kind, foundation.content), foundation.provenance)).toEqual([]);
+  expect(reduceCandidates([...values].reverse(), options)).toEqual(reduceCandidates(values, options));
 });
 
 it("merges font observation methods by family and attributes each method to its actual evidence", () => {
