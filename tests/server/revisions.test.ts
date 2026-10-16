@@ -38,3 +38,86 @@ it("creates authentic manual claims and stable request identities with all field
     validateProvenance(entryBusiness("company_foundation", content), first),
   ).toEqual([]);
 });
+import { preserveSelectedCandidates } from "../../src/server/revisions";
+import { createEmptyProvenance } from "../../src/contracts";
+it("preserves selected candidate origin/evidence and rejects changing its value", () => {
+  const entry = "11111111-1111-4111-8111-111111111111",
+    id = "22222222-2222-4222-8222-222222222222";
+  const p = createEmptyProvenance();
+  p.conflicts = [
+    {
+      id,
+      target: "/company_foundation/industry",
+      material: true,
+      candidates: [
+        {
+          id: entry,
+          value: "Water monitoring",
+          origin: "source_backed",
+          evidence_ids: [entry],
+          based_on_claim_ids: [],
+        },
+      ],
+    },
+  ];
+  p.decisions = [
+    {
+      id: entry,
+      conflict_id: id,
+      target: "/company_foundation/industry",
+      action: "select",
+      candidate_id: entry,
+      actor_id: id,
+      decided_at: "2026-10-16T00:00:00Z",
+      note: null,
+    },
+  ];
+  p.evidence = [
+    {
+      id: entry,
+      source_page_id: id,
+      kind: "text",
+      excerpt: "Water monitoring",
+      technical: null,
+    },
+  ];
+  p.sources = [
+    {
+      id,
+      url: "https://example.com",
+      title: null,
+      author: null,
+      site_name: null,
+      published_on: null,
+      retrieved_at: "2026-10-16T00:00:00Z",
+    },
+  ];
+  const content = {
+    ...createEntryDefault("company_foundation"),
+    industry: "Water monitoring",
+  };
+  const saved = preserveSelectedCandidates(
+    "company_foundation",
+    content,
+    structuredClone(p),
+    p,
+    entry,
+    id,
+  );
+  expect(saved.claims[0]).toMatchObject({
+    origin: "source_backed",
+    evidence_ids: [entry],
+    actor_id: null,
+  });
+  expect(saved.evidence).toHaveLength(1);
+  expect(() =>
+    preserveSelectedCandidates(
+      "company_foundation",
+      { ...content, industry: "Forged" },
+      structuredClone(p),
+      p,
+      entry,
+      id,
+    ),
+  ).toThrow("does not match");
+});
