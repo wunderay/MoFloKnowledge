@@ -93,3 +93,16 @@ it("reports capture failures separately while keeping unsupported fields unasses
   const checkpoint = vi.mocked(repo.checkpoint).mock.calls.at(-1)![1];
   expect(checkpoint.errors).toEqual(limited.errors);
 });
+
+
+it("reparses a source whose cached evidence no longer resolves in its capture", async () => {
+  const repo = repository();
+  const first = await extractAndFinish(job, repo, crawl(), new AbortController().signal);
+  const checkpoint = structuredClone(vi.mocked(repo.checkpoint).mock.calls.at(-1)![1]);
+  const candidates = checkpoint.validated_candidates as { observation_ids: string[] }[];
+  candidates[0].observation_ids = ["missing-captured-observation"];
+  const second = await extractAndFinish(job, repo, crawl(checkpoint), new AbortController().signal);
+  expect(second).toEqual(first);
+  const repaired = vi.mocked(repo.checkpoint).mock.calls.at(-1)![1];
+  expect(JSON.stringify(repaired)).not.toContain("missing-captured-observation");
+});
