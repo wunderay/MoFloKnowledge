@@ -8,7 +8,7 @@ it("varies actual company sentence structures while retaining the complete list,
   const company = "Account-it Consulting Services, LLC";
   const functions = "accounts payable/receivable, payroll, general ledger accounting, bank reconciliations, financial statement preparation and financial analysis.";
   expect(varyCompanyNarrative(`We perform vital accounting functions, such as ${functions}`, company))
-    .toBe(`Among the vital accounting functions we perform are ${functions}`);
+    .toBe(`We perform vital accounting functions, such as ${functions}`);
   expect(varyCompanyNarrative("We can handle it all, from your payroll needs to banking and check writing.", company))
     .toBe("From your payroll needs to banking and check writing, we can handle it all.");
   const service = "QuickBooks Online services, assisting business owners with seamless financial management solutions.";
@@ -29,6 +29,7 @@ it("keeps sentence agreement, negation and modals, with stable choices and uncha
     "We do not provide tools nor offer training.", "We provide tools yet need training.", "We provide tools; offer training.",
     "We offer services, such as planning, but do not provide advice.",
     "We offer services, such as budgeting and do not provide legal advice.",
+    "We offer services, such as planning, and sell software.",
     "We have used this system for years.", "We'll also monitor laws that may affect your tax filings.",
     "My experience matters. We provide tools for our clients.", "I have worked with clients. We offer tools.",
     'We provide tools with a "we know best" message.', "We offer tools. ‘We do not promise results,’ the customer said.",
