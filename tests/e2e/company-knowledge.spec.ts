@@ -302,12 +302,22 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     canonicalStringify(await (await page.request.get(downloadUrl!)).json()),
   ).toBe(frozen);
   const previousJobId = new URL(page.url()).searchParams.get("jobId");
+  await page.getByText("Capture limits", { exact: true }).click();
+  await page.getByLabel("Document limit", { exact: true }).fill("1");
+  await page.getByLabel("Depth limit", { exact: true }).fill("0");
+  const freshRequest = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" && request.url().endsWith(`${base}/scrapes`),
+  );
   await page
     .getByRole("button", { name: "Start fresh scrape", exact: true })
     .click();
   await expect
     .poll(() => new URL(page.url()).searchParams.get("jobId"))
     .not.toBe(previousJobId);
+  const submittedScrape = (await freshRequest).postDataJSON();
+  expect(submittedScrape.options).toEqual({ documentLimit: 1, depthLimit: 0 });
+  expect(submittedScrape.requestId).toMatch(/^[0-9a-f-]{36}$/);
   const nextJobId = new URL(page.url()).searchParams.get("jobId");
   await expect
     .poll(
@@ -320,6 +330,12 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   await expect(
     page.getByText(/results are ready for review|Partial results are ready/),
   ).toBeVisible({ timeout: 100_000 });
+  const limitedJob = (
+    await (await page.request.get(`${base}/scrapes/${nextJobId}`)).json()
+  ).data;
+  expect(limitedJob.progress.document_limit).toBe(1);
+  expect(limitedJob.progress.captured).toBeLessThanOrEqual(1);
+
   expect(
     (await (await page.request.get(`${base}/draft`)).json()).data.entries.find(
       (entry: { kind: string }) => entry.kind === "company_foundation",

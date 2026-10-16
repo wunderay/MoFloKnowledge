@@ -7,19 +7,13 @@ import {
   entryRoot,
   type EntryKind,
   type EntryProvenance,
-  type FieldCandidate,
+  type Proposal,
+  entryBusiness,
+  resolveStablePointer,
 } from "@/contracts";
 import { ValueView } from "./entry-value";
 import { labelOf, summarizeValue } from "./business-fields";
-type ProposalItem = {
-  id: string;
-  kind: string;
-  target_entry_id: string | null;
-  base_revision: number | null;
-  content: Record<string, unknown>;
-  provenance: EntryProvenance;
-  conflicts: { id: string; target: string; candidates: FieldCandidate[] }[];
-};
+type ProposalItem = Proposal & { changes?: { id: string; target: string }[] };
 export function ProposalReview({
   companyId,
   entries,
@@ -138,20 +132,104 @@ export function ProposalReview({
                   value={proposal.content}
                   path={entryRoot(
                     proposal.kind as EntryKind,
-                    String(
-                      proposal.content.id ?? proposal.target_entry_id ?? "",
-                    ),
+                    "id" in proposal.content
+                      ? proposal.content.id
+                      : (proposal.target_entry_id ?? ""),
                   )}
                   provenance={proposal.provenance}
                   approved={false}
                 />
               </div>
             </div>
+            {(proposal.changes?.length ?? 0) > 0 && (
+              <fieldset className="knowledge-editor__group">
+                <legend>Choose proposed fields</legend>
+                <p className="field__hint">
+                  Only selected fields change. Other values and their evidence
+                  remain as saved.
+                </p>
+                {proposal.changes
+                  ?.filter(
+                    (change) =>
+                      !proposal.conflicts.some(
+                        (conflict) => conflict.target === change.target,
+                      ),
+                  )
+                  .map((change) => (
+                    <div className="field" key={change.id}>
+                      <div className="field__label">
+                        <label>
+                          <input
+                            type="checkbox"
+                            disabled={!canEdit || busy}
+                            checked={(selected[proposal.id] ?? []).includes(
+                              change.id,
+                            )}
+                            onChange={(event) =>
+                              setSelected((previous) => ({
+                                ...previous,
+                                [proposal.id]: event.target.checked
+                                  ? [
+                                      ...(previous[proposal.id] ?? []),
+                                      change.id,
+                                    ]
+                                  : (previous[proposal.id] ?? []).filter(
+                                      (id) => id !== change.id,
+                                    ),
+                              }))
+                            }
+                          />{" "}
+                          Use proposed{" "}
+                          {labelOf(change.target.split("/").at(-1) ?? "field")}
+                        </label>
+                        <CitationPopover
+                          path={change.target}
+                          provenance={proposal.provenance}
+                        />
+                      </div>
+                      <span className="field__hint">
+                        {summarizeValue(
+                          resolveStablePointer(
+                            entryBusiness(proposal.kind, proposal.content),
+                            change.target,
+                          ),
+                        )}
+                      </span>
+                    </div>
+                  ))}
+              </fieldset>
+            )}
             {proposal.conflicts?.map((conflict) => (
               <fieldset className="knowledge-editor__group" key={conflict.id}>
                 <legend>
                   {labelOf(conflict.target.split("/").at(-1) ?? "Field")}
                 </legend>
+                <label className="field">
+                  <span>
+                    <input
+                      type="radio"
+                      name={`candidate-${conflict.id}`}
+                      disabled={!canEdit || busy}
+                      checked={
+                        !conflict.candidates.some((candidate) =>
+                          (selected[proposal.id] ?? []).includes(candidate.id),
+                        )
+                      }
+                      onChange={() =>
+                        setSelected((previous) => ({
+                          ...previous,
+                          [proposal.id]: (previous[proposal.id] ?? []).filter(
+                            (id) =>
+                              !conflict.candidates.some(
+                                (candidate) => candidate.id === id,
+                              ),
+                          ),
+                        }))
+                      }
+                    />{" "}
+                    Keep this field unchanged
+                  </span>
+                </label>
                 {conflict.candidates.map((candidate) => (
                   <div key={candidate.id}>
                     <label className="field">
@@ -193,7 +271,7 @@ export function ProposalReview({
             <div className="actions">
               <button
                 className="button button--primary"
-                disabled={!canEdit || busy}
+                disabled={!canEdit || busy || !selected[proposal.id]?.length}
                 onClick={() => act(proposal)}
               >
                 Apply selected changes to draft
