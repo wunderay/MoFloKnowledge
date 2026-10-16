@@ -7,18 +7,18 @@ MoFloKnowledge extracts company facts with deterministic rules over captured web
 The extractor maps explicit, supported website evidence to registered fields. Current supported sources are:
 
 - JSON-LD `Organization` and `LocalBusiness` properties: `description` to company overview, `alternateName` to alternate name, `address` to address, and `areaServed` to service locations.
-- JSON-LD `Person`: `name`, `jobTitle`, and `description`, associated with the company only when the captured page provides an organization relationship or a matching person-page heading.
-- JSON-LD `Service` and `Product`: `name`, `description`, `category`, and explicit offer `price` with its stated currency.
-- Explicit visible labels: `Industry:`, `Business model:`, `Company pitch:`, `Target buyers:`, `Service locations:`, and `Founded:`, `Established:`, or `Since` followed by a year. A year is used only when stated; it is not inferred from copyright dates or other clues.
+- JSON-LD `Person`: `name`, `jobTitle`, and `description`, associated with the company only when the captured page provides an organization relationship or a matching person-page heading. On a named profile page under `/team/`, `/people/`, `/staff/`, `/about-us/`, or `/about/`, a matching visible name heading and a title heading such as `Founder` or `CEO` can support that exact name and title. Gender is never inferred.
+- JSON-LD `Service` and `Product`: `name`, `description`, `category`, and explicit offer `price` with its stated currency. Service, product, or offerings links can identify the linked item by its visible name and URL; captured detail metadata may support its description or category.
+- Explicit visible labels: `Industry:`, `Business model:`, `Company pitch:`, `Target buyers:`, `Service locations:`, `Employee count:`, and `Founded:`, `Established:`, or `Since` followed by a year. Employee count is extracted only from that literal label: exact integers and explicit numeric ranges are parsed; approximate wording is retained as evidence without an exact/minimum/maximum value. Arbitrary team or staff prose does not establish a count. A year is used only when stated; it is not inferred from copyright dates or other clues.
 - Deterministic design and online-presence observations already supported by the worker, including observed colors, font declarations/computed families, qualifying logo candidates, and company-linked social profile URLs. These observations retain their technical evidence and are not promoted to human-confirmed brand meaning.
 
-The parser may add narrowly specified deterministic patterns when they preserve this evidence standard. FAQ/contact text and other captured page content stay available as source evidence when no registered field can safely represent them. The extractor must not guess a field from nearby wording, infer missing facts, or synthesize copy.
+Other captured page content remains source evidence when no registered field can safely represent it. FAQ answers and contact details such as email addresses have no current field mapping and must not be presented as extracted business fields. The extractor must not guess a field from nearby wording, infer missing facts, or synthesize copy.
 
 ## Unknowns and human review
 
 Every registered field remains visible to review. Evidence-backed matches can be proposed; conflicts remain conflicts. `found` means a supported candidate passed evidence validation. `not_found` is appropriate only when a supported extraction check completed without finding evidence. Unsupported fields are `not_checked` and require manual entry or review; incomplete capture or parsing is `partial`. Missing evidence stays unknown rather than being guessed. A user can enter a correction, attach the appropriate source evidence, or leave a field unresolved. The interface and exported review state must not imply that every field was found automatically.
 
-Re-scrapes preserve existing human drafts and approvals. New captures create review proposals and do not silently overwrite current values. Publishing remains an explicit human review action that creates an immutable snapshot.
+Source-only re-scrapes preserve existing human drafts and approvals. New captures create source-backed review proposals and do not silently overwrite current values. Legacy pending AI-generated proposals remain readable and can be dismissed, but cannot be applied; obtaining new content requires a source-only recrawl. Historical revisions and saved snapshots remain preserved. Publishing remains an explicit human review action that creates an immutable snapshot.
 
 ## Boundaries and compatibility
 
