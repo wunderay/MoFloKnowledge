@@ -1,0 +1,513 @@
+[
+  {
+    "path": "/company_foundation/overview",
+    "kind": "company_foundation",
+    "field": "overview",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/website",
+    "kind": "company_foundation",
+    "field": "website",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/industry",
+    "kind": "company_foundation",
+    "field": "industry",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/business_model",
+    "kind": "company_foundation",
+    "field": "business_model",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/year_founded",
+    "kind": "company_foundation",
+    "field": "year_founded",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/legal_entity_type",
+    "kind": "company_foundation",
+    "field": "legal_entity_type",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/employee_count",
+    "kind": "company_foundation",
+    "field": "employee_count",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/main_address",
+    "kind": "company_foundation",
+    "field": "main_address",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/company_role",
+    "kind": "company_foundation",
+    "field": "company_role",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/other_locations",
+    "kind": "company_foundation",
+    "field": "other_locations",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/service_locations",
+    "kind": "company_foundation",
+    "field": "service_locations",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/company_foundation/alternative_company_names",
+    "kind": "company_foundation",
+    "field": "alternative_company_names",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/positioning/company_pitch",
+    "kind": "positioning",
+    "field": "company_pitch",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "generated",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/positioning/founding_story",
+    "kind": "positioning",
+    "field": "founding_story",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/target_buyers",
+    "kind": "market_and_customers",
+    "field": "target_buyers",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/customer_needs",
+    "kind": "market_and_customers",
+    "field": "customer_needs",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/ideal_customer_personas",
+    "kind": "market_and_customers",
+    "field": "ideal_customer_personas",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "generated",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/industry_groupings",
+    "kind": "market_and_customers",
+    "field": "industry_groupings",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/industry_outlook",
+    "kind": "market_and_customers",
+    "field": "industry_outlook",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/channels",
+    "kind": "market_and_customers",
+    "field": "channels",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/funnels",
+    "kind": "market_and_customers",
+    "field": "funnels",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/ctas",
+    "kind": "market_and_customers",
+    "field": "ctas",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/market_and_customers/suppliers_and_partners",
+    "kind": "market_and_customers",
+    "field": "suppliers_and_partners",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/branding_and_style/writing_style_description",
+    "kind": "branding_and_style",
+    "field": "writing_style_description",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/branding_and_style/art_style_description",
+    "kind": "branding_and_style",
+    "field": "art_style_description",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/branding_and_style/fonts",
+    "kind": "branding_and_style",
+    "field": "fonts",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/branding_and_style/brand_colors",
+    "kind": "branding_and_style",
+    "field": "brand_colors",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/branding_and_style/logos",
+    "kind": "branding_and_style",
+    "field": "logos",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/online_presence/social_media_links",
+    "kind": "online_presence",
+    "field": "social_media_links",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/key_people/@id/name",
+    "kind": "key_person",
+    "field": "name",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/key_people/@id/title",
+    "kind": "key_person",
+    "field": "title",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/key_people/@id/role",
+    "kind": "key_person",
+    "field": "role",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/key_people/@id/gender",
+    "kind": "key_person",
+    "field": "gender",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/key_people/@id/background_or_relevance",
+    "kind": "key_person",
+    "field": "background_or_relevance",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/offerings/@id/name",
+    "kind": "offering",
+    "field": "name",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/offerings/@id/description",
+    "kind": "offering",
+    "field": "description",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/offerings/@id/offering_type",
+    "kind": "offering",
+    "field": "offering_type",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/offerings/@id/category",
+    "kind": "offering",
+    "field": "category",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/offerings/@id/features",
+    "kind": "offering",
+    "field": "features",
+    "type": "collection",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/offerings/@id/pricing",
+    "kind": "offering",
+    "field": "pricing",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/offerings/@id/url",
+    "kind": "offering",
+    "field": "url",
+    "type": "scalar",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  }
+]
