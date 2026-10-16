@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, companyPath, write } from "./api-client";
+import { api, ApiError, companyPath, write } from "./api-client";
 import { Dialog, Notice } from "./ui";
 type Preview = {
   draftGeneration: number;
@@ -51,7 +51,12 @@ export function PublicationDialog({
       setSaved(result);
       onSaved();
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 409) {
+        setPreview(null);
+        setError(
+          "The draft changed after this preview. Refresh the preview and review the current entries before saving a version.",
+        );
+      } else setError((e as Error).message);
     } finally {
       setBusy(false);
     }

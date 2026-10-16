@@ -221,7 +221,7 @@ export function BusinessField({
                   onChange={(event) =>
                     onChange(
                       event.target.checked
-                        ? [...selected, option]
+                        ? [...new Set([...selected, option])].sort()
                         : selected.filter((value) => value !== option),
                     )
                   }
