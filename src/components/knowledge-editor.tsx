@@ -19,7 +19,7 @@ import {
 import { api, ApiError, companyPath, write } from "./api-client";
 import { CATEGORY_SPECS } from "./business-fields";
 import { BusinessField } from "./business-form";
-import { EmptyState, Notice, StatusBadge } from "./ui";
+import { EmptyState, Notice, StatusBadge, useHydrated } from "./ui";
 import { ScrapeProgress } from "./scrape-progress";
 import { EntryHistory } from "./entry-history";
 import { PublicationDialog } from "./publication-dialog";
@@ -54,6 +54,7 @@ function KnowledgeEditorContent({
 }) {
   const [draft, setDraft] = useState<Draft | null>(initialDraft ?? null);
   const { state, dispatch } = useCompanyDraft();
+  const hydrated = useHydrated();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -113,7 +114,9 @@ function KnowledgeEditorContent({
     ) : (
       <Notice>Loading company knowledge…</Notice>
     );
-  const canEdit = draft.company.role !== "viewer" && !draft.company.archived_at;
+  const membershipCanEdit =
+    draft.company.role !== "viewer" && !draft.company.archived_at;
+  const canEdit = hydrated && membershipCanEdit;
   const spec = CATEGORY_SPECS[state.category]!;
   const entries = draft.entries.filter((e) => e.kind === state.category);
   const visibleEntries = entries.length
@@ -383,7 +386,7 @@ function KnowledgeEditorContent({
           {state.dirty.length > 0 && <StatusBadge value="unsaved_changes" />}
         </div>
       </div>
-      {!canEdit && (
+      {!membershipCanEdit && (
         <Notice>
           {draft.company.archived_at
             ? "This company is archived. Saved knowledge and history remain available."
@@ -475,6 +478,7 @@ function KnowledgeEditorContent({
                 key={kind}
                 className={`category-nav__item${state.category === kind ? " category-nav__item--active" : ""}`}
                 onClick={() => changeCategory(kind as EntryKind)}
+                disabled={!hydrated}
                 aria-current={state.category === kind ? "page" : undefined}
               >
                 <span aria-hidden>{category.icon}</span>
@@ -699,7 +703,7 @@ function KnowledgeEditorContent({
                   </button>
                   <button
                     className="button button--quiet"
-                    disabled={!entry.current_revision}
+                    disabled={!hydrated || !entry.current_revision}
                     onClick={() => setHistory(entry)}
                   >
                     History

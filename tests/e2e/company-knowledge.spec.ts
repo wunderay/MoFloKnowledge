@@ -70,6 +70,9 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     ownerPassword!,
     testInfo.outputPath("sign-in-desktop.png"),
   );
+  await expect(
+    page.getByRole("button", { name: "Add company" }).first(),
+  ).toBeEnabled();
   await page.screenshot({
     path: testInfo.outputPath("companies-desktop.png"),
     fullPage: true,
