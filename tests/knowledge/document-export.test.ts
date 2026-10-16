@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import JSZip from "jszip";
 import { load } from "cheerio";
 import fixture from "../contracts/illustrative-export.json";
-import { KnowledgeBaseExportSchema } from "../../src/contracts";
+import { KnowledgeBaseExportSchema, createEmptyBusiness } from "../../src/contracts";
 import { documentData, documentFilename, documentParagraphs, documentRuns, renderKnowledgeDocument } from "../../src/knowledge/document-export";
 
 it("creates a real OOXML document formatting a complete profile with full nested values, lists, human coverage notes and source references", async () => {
@@ -56,6 +56,11 @@ it("creates a real OOXML document formatting a complete profile with full nested
   expect(xml).toContain('w:h="15840"');
   expect(xml).toContain('w:bottom');
   expect(xml).toContain(`w:fill="${snapshot.branding_and_style.brand_colors[0].hex.slice(1)}"`);
+  const native = load(xml, { xmlMode: true });
+  const swatch = native("w\\:tc").filter((_index, node) => native(node).find("w\\:shd").attr("w:fill") === snapshot.branding_and_style.brand_colors[0].hex.slice(1));
+  expect(swatch.find("w\\:tcW").attr("w:w")).toBe("480");
+  expect(swatch.closest("w\\:tr").find("w\\:trHeight").attr("w:val")).toBe("480");
+  expect(swatch.closest("w\\:tr").find("w\\:trHeight").attr("w:hRule")).toBe("exact");
   expect(xml).toContain("&lt;script&gt;");
   expect(xml).not.toContain("<script>");
   expect(Object.keys(zip.files).some((path) => /vba|embeddings|media\//.test(path))).toBe(false);
@@ -89,7 +94,7 @@ it("caps distinct narrative citations at three and basic facts at one without ch
   const input = { kind: "snapshot" as const, snapshot };
   const paragraphs = documentParagraphs(input);
   expect(paragraphs.find((item) => item.text === snapshot.company_foundation.overview)?.citations).toEqual([1, 2, 3]);
-  expect(paragraphs.find((item) => item.text.startsWith("The main address is"))?.runs?.[0].citations).toEqual([1]);
+  expect(paragraphs.find((item) => item.text.startsWith("Address:"))?.runs?.[0].citations).toEqual([1]);
   expect(paragraphs.flatMap(documentRuns).find((run) => run.citations?.length && run.text.includes(snapshot.company_foundation.website!))?.citations).toEqual([1]);
   expect(paragraphs.find((item) => item.text === snapshot.offerings[0].name)?.citations).toEqual([1]);
   for (const run of paragraphs.flatMap(documentRuns)) {
@@ -99,7 +104,7 @@ it("caps distinct narrative citations at three and basic facts at one without ch
   const zip = await JSZip.loadAsync(await renderKnowledgeDocument(input));
   const text = load(await zip.file("word/document.xml")!.async("string"), { xmlMode: true }).text();
   expect(text).toContain(`${snapshot.company_foundation.overview} [1,2,3]`);
-  expect(text).toContain(`The main address is ${snapshot.company_foundation.main_address!.raw}. [1]`);
+  expect(text).toContain(`Address: ${snapshot.company_foundation.main_address!.raw}. [1]`);
   expect(text).toContain(`${snapshot.offerings[0].name} [1]`);
   for (const source of snapshot.provenance.sources) {
     expect(paragraphs.some((item) => item.text === source.url)).toBe(true);
@@ -122,8 +127,8 @@ it("writes connected prose and real small superscript source links without inter
   const wording = body.map((paragraph) => paragraph.text).join("\n");
   expect(wording.split(duplicate)).toHaveLength(2);
   expect(wording).toContain("A unique qualification remains unchanged.");
-  expect(wording).toContain("The company works in Retail software.");
-  expect(wording).toContain(`The main address is ${snapshot.company_foundation.main_address!.raw}.`);
+  expect(wording).toContain("Retail software");
+  expect(wording).toContain(`Address: ${snapshot.company_foundation.main_address!.raw}.`);
   expect(body.some((paragraph) => paragraph.label === "City" || paragraph.label === "Region")).toBe(false);
   expect(wording).toContain("Literal [1] text stays ordinary. An intact short pitch.");
   const zip = await JSZip.loadAsync(await renderKnowledgeDocument(input));
@@ -144,4 +149,61 @@ it("writes connected prose and real small superscript source links without inter
   expect(literal.length).toBe(1);
   expect(literal.closest("w\\:hyperlink").length).toBe(0);
   expect(snapshot).toEqual(before);
+});
+
+
+it("composes distinct populated and sparse company shapes without repetitive sentence scaffolding", () => {
+  const rich = KnowledgeBaseExportSchema.parse(fixture);
+  rich.company_foundation.overview = null;
+  rich.company_foundation.legal_entity_type = "Cooperative";
+  rich.company_foundation.year_founded = 2017;
+  rich.key_people[0].title = "Engineering lead";
+  rich.key_people[0].role = "Founder";
+  rich.offerings[0].category = "Inventory tools";
+  rich.market_and_customers.target_buyers.push({ id: "90000000-0000-4000-8000-000000000001", text: "wholesale teams" });
+  const before = structuredClone(rich);
+  const richBody = documentParagraphs({ kind: "snapshot", snapshot: rich }).map((item) => item.text).join("\n").split("Coverage & unknowns")[0];
+  expect(richBody).toContain("Retail software · Cooperative · Founded 2017");
+  expect(richBody).toContain("Engineering lead; Founder");
+  expect(richBody).toContain("Subscription · Inventory tools");
+  expect(richBody).toContain("Customers: Independent retailers and wholesale teams");
+  expect(richBody).toContain(rich.offerings[0].description);
+  expect(richBody).not.toMatch(/(?:Its |It operates|Their role|offering type is|listed under)/);
+  expect(rich).toEqual(before);
+  const fontRuns = () => documentRuns(documentParagraphs({ kind: "snapshot", snapshot: rich })
+    .find((item) => item.text.startsWith("Inter ·"))!);
+  expect(fontRuns().filter((run) => run.citations?.length)).toHaveLength(1);
+  const fontClaim = rich.provenance.claims.find((claim) => claim.targets.some((target) => target.endsWith("/brand_confirmed")))!;
+  const brandTarget = fontClaim.targets.pop()!;
+  expect(fontRuns().filter((run) => run.citations?.length)).toHaveLength(3); // An uncited qualification keeps separate support.
+  rich.provenance.claims.push({ ...rich.provenance.claims[0], id: "90000000-0000-4000-8000-000000000003", targets: [brandTarget],
+    evidence_ids: [rich.provenance.evidence[6].id] });
+  expect(fontRuns().filter((run) => run.citations?.length)).toHaveLength(4); // Different sources retain their own markers.
+  rich.market_and_customers.target_buyers = Array.from({ length: 11 }, (_, index) => ({
+    id: `90000000-0000-4000-8000-${String(index + 10).padStart(12, "0")}`, text: `Retail group ${index + 1}`,
+  }));
+  const compact = documentParagraphs({ kind: "snapshot", snapshot: rich }).find((item) => item.text.startsWith("Customers: "))!;
+  expect(compact.bullet).toBeUndefined();
+  expect(compact.text).toBe(`Customers: ${rich.market_and_customers.target_buyers.slice(0, -1).map((item) => item.text).join(", ")}, and Retail group 11`);
+
+  const sparse = KnowledgeBaseExportSchema.parse(fixture);
+  Object.assign(sparse, createEmptyBusiness());
+  sparse.provenance.company.name = "Cedar Weave LLC";
+  sparse.company_foundation.overview = "Cedar Weave LLC makes woven baskets for independent shops.";
+  sparse.company_foundation.industry = "woven baskets";
+  sparse.company_foundation.legal_entity_type = "LLC";
+  sparse.company_foundation.website = sparse.provenance.company.website;
+  const literal = "We help independent shops choose durable materials.";
+  sparse.market_and_customers.target_buyers = [{ id: "90000000-0000-4000-8000-000000000002", text: literal }];
+  const paragraphs = documentParagraphs({ kind: "snapshot", snapshot: sparse });
+  const sparseBody = paragraphs.slice(0, paragraphs.findIndex((item) => item.text === "Coverage & unknowns"));
+  expect(sparseBody.some((item) => item.text === "Company details")).toBe(false);
+  expect(sparseBody.some((item) => item.text === literal && item.bullet)).toBe(true);
+  expect(sparseBody.some((item) => item.text === "Key people" || item.text === "Offerings")).toBe(false);
+  expect(paragraphs.map((item) => item.text).join("\n")).toContain("Unknown");
+  sparse.provenance.company.name = "IT Basket Studio";
+  sparse.company_foundation.overview = "It makes durable baskets. Visit https://it.example/ for details.";
+  sparse.company_foundation.industry = "IT";
+  const shortIndustry = documentParagraphs({ kind: "snapshot", snapshot: sparse }).map((item) => item.text);
+  expect(shortIndustry).toContain("IT · LLC");
 });

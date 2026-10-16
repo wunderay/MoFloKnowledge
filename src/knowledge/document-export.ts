@@ -1,4 +1,4 @@
-import { AlignmentType, Bookmark, BorderStyle, Document, ExternalHyperlink, HeadingLevel, InternalHyperlink, Packer, Paragraph, TextRun } from "docx";
+import { AlignmentType, Bookmark, BorderStyle, Document, ExternalHyperlink, HeadingLevel, InternalHyperlink, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType, HeightRule, VerticalAlign, TableLayoutType } from "docx";
 import type { z } from "zod";
 import type { KnowledgeBaseExport, EntryProvenance, Claim } from "../contracts";
 import type { DraftResponseSchema } from "../contracts/api-responses";
@@ -16,7 +16,7 @@ export type DocumentParagraph = {
   label?: string;
   bullet?: boolean;
   muted?: boolean;
-  swatch?: string;
+  palette?: { hex: string; citations: number[] }[];
   citations?: number[];
   runs?: DocumentTextRun[];
   anchor?: string;
@@ -63,12 +63,20 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const add = (text: string, options: Partial<DocumentParagraph> = {}) => paragraphs.push({ text, depth: 0, ...options });
   const heading = (text: string, level: DocumentParagraph["heading"] = "section") => add(text, { heading: level });
   const prose = (runs: DocumentTextRun[], options: Partial<DocumentParagraph> = {}) => {
+    const facts = runs.filter((run) => run.citations !== undefined);
+    const shared = facts.length > 1 && facts[0].citations?.length
+      && facts.every((run) => run.citations?.join() === facts[0].citations?.join()) ? facts[0].citations : undefined;
     const merged: DocumentTextRun[] = [];
     for (const run of runs) {
       const previous = merged.at(-1);
       if (previous?.citations?.length && run.citations?.length && previous.citations.join() === run.citations.join()
         && !previous.href && !run.href && previous.bold === run.bold) previous.text += run.text;
       else merged.push({ ...run });
+    }
+    // Only connective text may be uncited: an explicitly unsupported fact prevents a shared end marker.
+    if (shared) {
+      merged.forEach((run) => { run.citations = undefined; });
+      merged.push({ text: "", citations: shared });
     }
     add(merged.map((run) => run.text).join(""), { ...options, runs: merged });
   };
@@ -128,13 +136,35 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const sentence = (text: string) => /[.!?]$/.test(text.trim()) ? text : `${text}.`;
   const normalized = (text: string) => text.replace(/\s+/g, " ").trim();
   const overview = normalized(business.company_foundation.overview ?? "");
-  const withoutOverviewDuplicates = (text: string) => text.split(/\n+/).filter((part) => {
-    const exact = normalized(part);
-    return exact && !overview.includes(exact);
-  }).join("\n\n");
+  const repeatedNarrative = (text: string) => {
+    const exact = normalized(text);
+    const index = overview.indexOf(exact);
+    const before = index >= 0 ? overview.slice(0, index).trimEnd() : "";
+    return Boolean(exact) && (exact === overview || (index >= 0 && /[.!?]$/.test(exact) && (!before || /[.!?]$/.test(before))));
+  };
+  const withoutOverviewDuplicates = (text: string) => text.split(/\n+/).filter((part) => normalized(part) && !repeatedNarrative(part)).join("\n\n");
+  const covered = (value: string | null | undefined, context: string) => {
+    if (!value) return false;
+    const needle = normalized(value).toLowerCase();
+    const haystack = normalized(context).toLowerCase();
+    const index = haystack.indexOf(needle);
+    return index >= 0 && (index === 0 || !/[\p{L}\p{N}]/u.test(haystack[index - 1]))
+      && (index + needle.length === haystack.length || !/[\p{L}\p{N}]/u.test(haystack[index + needle.length]));
+  };
+  const joined = (items: DocumentTextRun[], separator = " · ") => items.flatMap((item, index) => [...(index ? [{ text: separator }] : []), item]);
   const listRuns = (items: { text: string; path: string }[]): DocumentTextRun[] => items.flatMap((item, index) => [
-    ...(index ? [{ text: index === items.length - 1 ? "; and " : "; " }] : []), fact(item.text, item.path),
+    ...(index ? [{ text: index === items.length - 1 ? items.length === 2 ? " and " : ", and " : ", " }] : []), fact(item.text, item.path),
   ]);
+  const collection = (title: string, items: { text: string; path: string }[]) => {
+    // Complete sentences remain authored passages; short noun groups can share one line.
+    const distinct = items.filter((item, index) => items.findIndex((other) => normalized(other.text) === normalized(item.text)) === index);
+    if (!distinct.length) return;
+    if (distinct.reduce((length, item) => length + item.text.length, 0) > 420
+      || distinct.some((item) => /[.!?]$/.test(item.text.trim()) || item.text.length > 100)) {
+      heading(title, "field");
+      distinct.forEach((item) => add(item.text, { bullet: true, citations: citations(item.path) }));
+    } else prose([{ text: `${title}: `, bold: true }, ...listRuns(distinct)]);
+  };
   const address = (value: Record<string, unknown>, path: string, prefix: string) => {
     const parts = [value.line1, value.line2, [value.city, [value.region, value.postal_code].filter(Boolean).join(" ")].filter(Boolean).join(", "), value.country]
       .filter((part): part is string => typeof part === "string" && Boolean(part));
@@ -149,63 +179,88 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const renderValue = (value: unknown, title: string, path: string, depth = 0): void => {
     if (!populated(value)) return;
     if (path === "/company_foundation/main_address" && value && typeof value === "object") {
-      address(value as Record<string, unknown>, path, "The main address is ");
+      address(value as Record<string, unknown>, path, "Address: ");
       return;
     }
     if (Array.isArray(value) && path === "/company_foundation/other_locations") {
-      value.forEach((item) => address(item, `${path}/@${item.id}`, "Another recorded location is "));
+      value.forEach((item) => address(item, `${path}/@${item.id}`, "Additional location: "));
       return;
     }
     if (Array.isArray(value) && ["target_buyers", "company_role", "service_locations", "alternative_company_names", "industry_groupings"].includes(path.split("/").at(-1)!)) {
-      const introductions: Record<string, string> = { target_buyers: "Its customers include ", company_role: "It operates as ",
-        service_locations: "Its service locations include ", alternative_company_names: "It is also known as ", industry_groupings: "It serves these industry groups: " };
-      const items = value.filter((item) => typeof item.text === "string").map((item) => ({ text: path.endsWith("/company_role") ? `${/^[aeiou]/i.test(item.text) ? "an" : "a"} ${item.text}` : item.text, path: `${path}/@${item.id}/text` }));
-      if (items.length) prose([{ text: introductions[path.split("/").at(-1)!] }, ...listRuns(items), { text: "." }]);
+      const titles: Record<string, string> = { target_buyers: "Customers", company_role: value.length === 1 ? "Role" : "Roles",
+        service_locations: value.length === 1 ? "Service area" : "Service areas", alternative_company_names: "Also known as", industry_groupings: "Customer industries" };
+      const items = value.filter((item) => typeof item.text === "string")
+        .map((item) => ({ text: item.text, path: `${path}/@${item.id}/text` }));
+      collection(titles[path.split("/").at(-1)!], items);
+      return;
+    }
+    if (Array.isArray(value) && path.endsWith("/ideal_customer_personas")) {
+      const buyerText = business.market_and_customers.target_buyers.map((buyer) => buyer.text);
+      const profiles = value.map((item) => ({ ...item,
+        goals: item.goals.filter((goal: { text: string }) => !repeatedNarrative(goal.text)),
+        pain_points: item.pain_points.filter((point: { text: string }) => !repeatedNarrative(point.text)),
+      })).filter((item) => item.name || item.role || item.goals.length || item.pain_points.length
+        || (item.organization_type && !buyerText.some((buyer) => normalized(buyer) === normalized(item.organization_type))));
+      if (!profiles.length) return;
+      heading("Audience profiles", "field");
+      for (const item of profiles) {
+        const root = `${path}/@${item.id}`;
+        const primary = item.name ? "name" : item.organization_type ? "organization_type" : item.role ? "role" : null;
+        if (primary) add(item[primary], { heading: "entry", citations: citations(`${root}/${primary}`) });
+        const details = ["role", "organization_type"].filter((field) => field !== primary && populated(item[field])).map((field) => fact(item[field], `${root}/${field}`));
+        if (details.length) prose(joined(details), { muted: true });
+        renderValue(item.goals, "Goals", `${root}/goals`);
+        renderValue(item.pain_points, "Pain points", `${root}/pain_points`);
+      }
       return;
     }
     if (Array.isArray(value) && path.endsWith("/fonts")) {
+      heading(value.length === 1 ? "Font" : "Fonts", "field");
       for (const item of value) {
         const root = `${path}/@${item.id}`;
         const methods: Record<string, string> = { css_declared: "declared CSS", resource_loaded: "loaded resources", computed_family: "computed font family" };
-        const runs = [fact(`${item.family} is an observed website font`, `${root}/family`)];
-        if (item.observations.length) runs.push(fact(` (${item.observations.map((method: string) => methods[method] ?? method).join(", ")})`, `${root}/observations`));
-        if (item.apparent_use) runs.push(fact(`, with apparent use: ${item.apparent_use}`, `${root}/apparent_use`));
-        runs.push(fact(item.brand_confirmed ? ". It is confirmed as brand guidance." : ". It is not confirmed as brand guidance.", `${root}/brand_confirmed`));
-        prose(runs);
+        const runs = [fact(item.family, `${root}/family`)];
+        if (item.apparent_use) runs.push(fact(item.apparent_use, `${root}/apparent_use`));
+        if (item.observations.length) runs.push(fact(item.observations.map((method: string) => methods[method] ?? method).join(", "), `${root}/observations`));
+        runs.push(fact(item.brand_confirmed ? "confirmed brand guidance" : "observed, not confirmed as brand guidance", `${root}/brand_confirmed`));
+        prose(joined(runs));
       }
       return;
     }
     if (Array.isArray(value) && path.endsWith("/brand_colors")) {
+      heading("Color palette", "field");
+      const palette = value.map((item) => ({ hex: item.hex, citations: citations(`${path}/@${item.id}`) }));
+      add(palette.map((item) => item.hex).join(" · "), { palette,
+        runs: palette.flatMap((item, index) => [...(index ? [{ text: " · " }] : []), { text: item.hex, citations: item.citations }]),
+      });
+      const groups = new Map<string, { colors: string[]; details: string }>();
       for (const item of value) {
-        const root = `${path}/@${item.id}`;
-        const runs = [fact(item.hex, `${root}/hex`), fact(` is ${item.classification === "brand_guide_confirmed" ? "a brand-guide-confirmed color" : "an observed website color"}`, `${root}/classification`),
-          fact(` with opacity ${item.alpha}`, `${root}/alpha`)];
-        if (item.apparent_role) runs.push(fact(`; apparent role: ${item.apparent_role}`, `${root}/apparent_role`));
-        runs.push({ text: "." });
-        prose(runs, { swatch: item.hex });
+        const classification = item.classification === "brand_guide_confirmed" ? "brand-guide-confirmed color" : "observed website color";
+        const details = `${classification}; opacity ${item.alpha}${item.apparent_role ? `; apparent role: ${item.apparent_role}` : ""}`;
+        if (!groups.has(details)) groups.set(details, { colors: [], details });
+        groups.get(details)!.colors.push(item.hex);
       }
+      for (const group of groups.values()) add(`${group.colors.join(", ")} — ${group.details}.`, { muted: true });
       return;
     }
     if (Array.isArray(value) && path.endsWith("/social_media_links")) {
       for (const item of value) {
         const root = `${path}/@${item.id}`;
-        prose([fact(`The company-linked ${item.platform} profile`, `${root}/platform`), { text: " is " }, fact(item.profile_url, `${root}/profile_url`), { text: "." }]);
+        prose([fact(`${item.platform}: `, `${root}/platform`), fact(item.profile_url, `${root}/profile_url`)]);
       }
       return;
     }
     if (Array.isArray(value) && path.endsWith("/logos")) {
+      heading(value.length === 1 ? "Logo" : "Logos", "field");
       for (const item of value) {
         const root = `${path}/@${item.id}`;
-        const runs = [fact("A company logo was observed at ", `${root}/kind`), fact(item.url, `${root}/url`)];
-        if (item.variant) runs.push(fact(` (${item.variant})`, `${root}/variant`));
-        runs.push({ text: "." });
-        prose(runs);
+        prose([fact(item.variant ? `${item.variant}: ` : "Observed company logo: ", item.variant ? `${root}/variant` : `${root}/kind`), fact(item.url, `${root}/url`)]);
       }
       return;
     }
     if (Array.isArray(value)) {
       if (/\/(?:customer_needs|goals|pain_points|industry_outlook)$/.test(path)) {
-        value = value.filter((item) => !(typeof item?.text === "string" && /[.!?]$/.test(item.text.trim()) && overview.includes(normalized(item.text))));
+        value = value.filter((item) => !(typeof item?.text === "string" && repeatedNarrative(item.text)));
         if (!(value as unknown[]).length) return;
       }
       heading(title, "field");
@@ -228,7 +283,6 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
           }
           if (primary) add(String(primary[1]), {
             citations: citations(`${itemPath}/${primary[0]}`), heading: "entry", depth,
-            ...(primary[0] === "hex" && /^#[0-9a-f]{6}$/i.test(String(primary[1])) ? { swatch: String(primary[1]) } : {}),
           });
           for (const [key, child] of fields) if (key !== primary?.[0]) renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
         } else add(String(item), { citations: citations(itemPath), bullet: true, depth });
@@ -243,12 +297,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
         heading(title, "field");
         add(formatted, { depth, citations: citation });
       } else {
-        const field = path.split("/").at(-1)!;
-        const templates: Record<string, string> = { title: `The professional title is ${formatted}`, role: `The role is ${formatted}`,
-          offering_type: `This is a ${formatted}`, category: `It is listed under ${formatted}`, gender: `The stated gender is ${formatted}`,
-          organization_type: `This audience includes ${formatted}`, purpose: `The stated purpose is ${formatted}`, url: `The website is ${formatted}` };
-        if (templates[field]) add(sentence(templates[field]), { depth, citations: citation });
-        else add(formatted, { label: title, depth, citations: citation });
+        add(formatted, { label: title, depth, citations: citation });
       }
     }
   };
@@ -261,7 +310,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const name = input.kind === "draft" ? input.draft.company.name : input.snapshot.provenance.company.name;
   const website = input.kind === "draft" ? input.draft.company.website_url : input.snapshot.provenance.company.website;
   heading(name, "title");
-  add(website, { muted: true });
+  add(website, { muted: true, ...(business.company_foundation.website === website ? { citations: citations("/company_foundation/website") } : {}) });
   if (input.kind === "draft") {
     const states = [...new Set(input.draft.entries.map((entry) => entry.review_status))].map(label);
     add(`Current saved draft · ${states.join(", ") || "No saved entries"}. Exporting does not approve or publish these values.`, { muted: true });
@@ -270,16 +319,21 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   section("Overview", business.company_foundation.overview, "/company_foundation/overview");
   const foundation = business.company_foundation;
   const details: DocumentTextRun[] = [];
-  if (foundation.industry) details.push(fact(sentence(`The company works in ${foundation.industry}`), "/company_foundation/industry"));
-  if (foundation.legal_entity_type) details.push(fact(sentence(`Its legal structure is ${foundation.legal_entity_type}`), "/company_foundation/legal_entity_type"));
-  if (foundation.year_founded !== null) details.push(fact(`It was founded in ${foundation.year_founded}.`, "/company_foundation/year_founded"));
-  if (foundation.website) details.push(fact(sentence(`Its website is ${foundation.website}`), "/company_foundation/website"));
+  const industryContext = overview.toLowerCase().split(normalized(name).toLowerCase()).join(" ").replace(/https?:\/\/\S+/g, " ");
+  if (foundation.industry && (normalized(foundation.industry).length <= 3 || !covered(foundation.industry, industryContext))) details.push(fact(foundation.industry, "/company_foundation/industry"));
+  const legalSuffix = foundation.legal_entity_type && normalized(name).toLowerCase().replace(/[.,]+$/, "").endsWith(` ${normalized(foundation.legal_entity_type).toLowerCase()}`);
+  if (foundation.legal_entity_type && !legalSuffix) details.push(fact(foundation.legal_entity_type, "/company_foundation/legal_entity_type"));
+  if (foundation.year_founded !== null && !new RegExp(`(?:founded|established|formed)\\s+(?:in\\s+)?${foundation.year_founded}\\b`, "i").test(overview)) details.push(fact(`Founded ${foundation.year_founded}`, "/company_foundation/year_founded"));
+  if (foundation.website && foundation.website !== website && !covered(foundation.website, overview)) details.push(fact(`Website: ${foundation.website}`, "/company_foundation/website"));
+  // Matching header facts do not need another sentence; source details remain in JSON.
   const model = foundation.business_model ? withoutOverviewDuplicates(foundation.business_model) : "";
-  if (details.length || model || Object.entries(foundation).some(([key, value]) => !["overview", "industry", "legal_entity_type", "year_founded", "website", "business_model"].includes(key) && populated(value))) {
+  const extraFields = Object.entries(foundation).filter(([key, value]) => !["overview", "industry", "legal_entity_type", "year_founded", "website", "business_model"].includes(key)
+    && populated(value));
+  if (details.length || model || extraFields.length) {
     heading("Company details");
-    if (details.length) prose(details.flatMap((run, index) => [...(index ? [{ text: " " }] : []), run]));
+    if (details.length) prose(joined(details));
     if (model) add(model, { citations: citations("/company_foundation/business_model") });
-    for (const [key, value] of Object.entries(foundation)) if (!["overview", "industry", "legal_entity_type", "year_founded", "website", "business_model"].includes(key)) renderValue(value, label(key), `/company_foundation/${key}`);
+    for (const [key, value] of extraFields) renderValue(value, label(key), `/company_foundation/${key}`);
   }
   const pitch = business.positioning.company_pitch ? withoutOverviewDuplicates(business.positioning.company_pitch) : "";
   section("Pitch", pitch.length <= 500 ? normalized(pitch) : pitch, "/positioning/company_pitch");
@@ -294,17 +348,12 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     for (const item of business[key]) {
       const path = `/${key}/@${item.id}`;
       add(item.name || (key === "offerings" ? "Unnamed offering" : "Unnamed person"), { heading: "entry", citations: citations(`${path}/name`) });
-      const detailRuns: DocumentTextRun[] = [];
       const fields = item as Record<string, unknown>;
-      if (key === "key_people") {
-        if (fields.title) detailRuns.push(fact(sentence(`${item.name || "This person"} is listed as ${fields.title}`), `${path}/title`));
-        if (fields.role) detailRuns.push(fact(sentence(`Their role is ${fields.role}`), `${path}/role`));
-        if (fields.gender) detailRuns.push(fact(sentence(`Their stated gender is ${fields.gender}`), `${path}/gender`));
-      } else {
-        if (fields.offering_type) detailRuns.push(fact(sentence(`The offering type is ${fields.offering_type}`), `${path}/offering_type`));
-        if (fields.category) detailRuns.push(fact(sentence(`This offering is listed under ${fields.category}`), `${path}/category`));
-      }
-      if (detailRuns.length) prose(detailRuns.flatMap((run, index) => [...(index ? [{ text: " " }] : []), run]));
+      const detailFields = key === "key_people" ? ["title", "role"] : ["offering_type", "category"];
+      const populatedDetails = detailFields.filter((field) => typeof fields[field] === "string" && populated(fields[field]));
+      const distinctDetails = populatedDetails.filter((field, index) => populatedDetails.findIndex((other) => normalized(String(fields[other])) === normalized(String(fields[field]))) === index);
+      if (distinctDetails.length) prose(joined(distinctDetails.map((field) => fact(String(fields[field]), `${path}/${field}`)), key === "key_people" ? "; " : " · "), { muted: true });
+      if (key === "key_people" && fields.gender) add(String(fields.gender), { label: "Stated gender", citations: citations(`${path}/gender`) });
       for (const [field, value] of Object.entries(item)) {
         if (["id", "name", ...(key === "key_people" ? ["title", "role", "gender"] : ["offering_type", "category"])].includes(field)) continue;
         if (["description", "background_or_relevance"].includes(field) && typeof value === "string" && populated(value)) add(value, { citations: citations(`${path}/${field}`) });
@@ -350,7 +399,7 @@ const NAVY = "173B5C";
 const BLUE = "21699B";
 /** Native Word headings, bold fact labels and bullets; no markup or external assets. */
 export async function renderKnowledgeDocument(input: DocumentInput): Promise<Buffer> {
-  const paragraphs = documentParagraphs(input).map((paragraph) => {
+  const makeParagraph = (paragraph: DocumentParagraph): Paragraph => {
     const printable = (text: string) => text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, (character) => `[U+${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}]`);
     const isTitle = paragraph.heading === "title";
     const isSection = paragraph.heading === "section";
@@ -381,12 +430,31 @@ export async function renderKnowledgeDocument(input: DocumentInput): Promise<Buf
       keepNext: isHeading,
       spacing: { before: isSection ? 280 : isTitle ? 0 : isHeading ? 140 : 0, after: isTitle ? 220 : isHeading ? 100 : 120, line: 280 },
       children: [
-        ...(paragraph.swatch ? [new TextRun({ text: "\u00a0\u00a0", size: 20,
-          shading: { fill: paragraph.swatch.slice(1) },
-          border: { color: "88929B", style: BorderStyle.SINGLE, size: 4 },
-        }), new TextRun({ text: "  " })] : []),
         ...(paragraph.anchor ? [new Bookmark({ id: paragraph.anchor, children: content })] : content),
       ],
+    });
+  };
+  const noBorder = { style: BorderStyle.NONE, size: 0 };
+  const paragraphs = documentParagraphs(input).map((paragraph) => {
+    if (!paragraph.palette) return makeParagraph(paragraph);
+    const rows: TableRow[] = [];
+    for (let offset = 0; offset < paragraph.palette.length; offset += 4) {
+      const colors = Array.from({ length: 4 }, (_item, index) => paragraph.palette![offset + index]);
+      rows.push(new TableRow({ height: { value: 480, rule: HeightRule.EXACT }, children: colors.flatMap((color) => color ? [
+        new TableCell({ width: { size: 480, type: WidthType.DXA }, shading: { fill: color.hex.slice(1) },
+          margins: { top: 0, bottom: 0, left: 0, right: 0 }, borders: Object.fromEntries(["top", "bottom", "left", "right"].map((edge) => [edge, { color: "88929B", style: BorderStyle.SINGLE, size: 4 }])),
+          children: [new Paragraph({ spacing: { before: 0, after: 0 }, children: [new TextRun({ text: "", size: 2 })] })] }),
+        new TableCell({ width: { size: 2100, type: WidthType.DXA }, verticalAlign: VerticalAlign.CENTER,
+          margins: { left: 120, right: 120, top: 0, bottom: 0 },
+          children: [makeParagraph({ text: color.hex, citations: color.citations, depth: 0 })] }),
+      ] : [new TableCell({ width: { size: 480, type: WidthType.DXA }, children: [new Paragraph("")] }),
+        new TableCell({ width: { size: 2100, type: WidthType.DXA }, children: [new Paragraph("")] })]) }));
+      if (offset + 4 < paragraph.palette.length) rows.push(new TableRow({ height: { value: 120, rule: HeightRule.EXACT },
+        children: [new TableCell({ columnSpan: 8, children: [new Paragraph({ children: [new TextRun({ text: "", size: 2 })], spacing: { before: 0, after: 0 } })] })] }));
+    }
+    return new Table({ rows, width: { size: 10320, type: WidthType.DXA }, layout: TableLayoutType.FIXED,
+      columnWidths: [480, 2100, 480, 2100, 480, 2100, 480, 2100],
+      borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder },
     });
   });
   const name = input.kind === "draft" ? input.draft.company.name : input.snapshot.provenance.company.name;
