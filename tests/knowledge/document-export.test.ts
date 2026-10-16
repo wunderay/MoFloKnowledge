@@ -3,7 +3,7 @@ import JSZip from "jszip";
 import { load } from "cheerio";
 import fixture from "../contracts/illustrative-export.json";
 import { KnowledgeBaseExportSchema } from "../../src/contracts";
-import { documentData, documentFilename, documentParagraphs, renderKnowledgeDocument } from "../../src/knowledge/document-export";
+import { documentData, documentFilename, documentParagraphs, documentRuns, renderKnowledgeDocument } from "../../src/knowledge/document-export";
 
 it("creates a real OOXML document formatting a complete profile with full nested values, lists, human coverage notes and source references", async () => {
   const snapshot = KnowledgeBaseExportSchema.parse(fixture);
@@ -42,7 +42,9 @@ it("creates a real OOXML document formatting a complete profile with full nested
       if (key !== "id") checkValues(child);
     });
     else if (value !== null && value !== "") {
-      const expected = typeof value === "boolean" ? value ? "Yes" : "No" : String(value);
+      const meanings: Record<string, string> = { css_declared: "declared CSS", resource_loaded: "loaded resources", computed_family: "computed font family",
+        observed_website_color: "observed website color", brand_guide_confirmed: "brand-guide-confirmed color", company_logo: "company logo" };
+      const expected = typeof value === "boolean" ? value ? "confirmed as brand guidance" : "not confirmed as brand guidance" : meanings[String(value)] ?? String(value);
       expect(compactText).toContain(expected.replace(/\s+/g, ""));
     }
   };
@@ -58,7 +60,10 @@ it("creates a real OOXML document formatting a complete profile with full nested
   expect(xml).not.toContain("<script>");
   expect(Object.keys(zip.files).some((path) => /vba|embeddings|media\//.test(path))).toBe(false);
   const relationships = await zip.file("word/_rels/document.xml.rels")!.async("string");
-  expect(relationships).not.toContain('TargetMode="External"');
+  const relationshipXml = load(relationships, { xmlMode: true });
+  relationshipXml('Relationship[TargetMode="External"]').each((_index, item) => {
+    expect(relationshipXml(item).attr("Target")).toMatch(/^https?:\/\//);
+  });
   expect(snapshot).toEqual(before);
 });
 
@@ -83,27 +88,60 @@ it("caps distinct narrative citations at three and basic facts at one without ch
   const before = structuredClone(snapshot);
   const input = { kind: "snapshot" as const, snapshot };
   const paragraphs = documentParagraphs(input);
-  expect(paragraphs.find((item) => item.text.startsWith(snapshot.company_foundation.overview!))?.text)
-    .toBe(`${snapshot.company_foundation.overview} [1, 2, 3]`);
-  expect(paragraphs.find((item) => item.label === "City")?.text)
-    .toBe(`${snapshot.company_foundation.main_address!.city} [1]`);
-  expect(paragraphs.find((item) => item.label === "Website")?.text)
-    .toBe(`${snapshot.company_foundation.website} [1]`);
-  expect(paragraphs.find((item) => item.text.startsWith(snapshot.offerings[0].name!))?.text)
-    .toBe(`${snapshot.offerings[0].name} [1]`);
-  for (const paragraph of paragraphs) for (const marker of paragraph.text.matchAll(/\[([\d, ]+)\]/g)) {
-    const citations = marker[1].split(", ");
-    expect(citations.length).toBeLessThanOrEqual(3);
-    expect(new Set(citations).size).toBe(citations.length);
+  expect(paragraphs.find((item) => item.text === snapshot.company_foundation.overview)?.citations).toEqual([1, 2, 3]);
+  expect(paragraphs.find((item) => item.text.startsWith("The main address is"))?.runs?.[0].citations).toEqual([1]);
+  expect(paragraphs.flatMap(documentRuns).find((run) => run.citations?.length && run.text.includes(snapshot.company_foundation.website!))?.citations).toEqual([1]);
+  expect(paragraphs.find((item) => item.text === snapshot.offerings[0].name)?.citations).toEqual([1]);
+  for (const run of paragraphs.flatMap(documentRuns)) {
+    expect(run.citations?.length ?? 0).toBeLessThanOrEqual(3);
+    expect(new Set(run.citations).size).toBe(run.citations?.length ?? 0);
   }
   const zip = await JSZip.loadAsync(await renderKnowledgeDocument(input));
   const text = load(await zip.file("word/document.xml")!.async("string"), { xmlMode: true }).text();
-  expect(text).toContain(`${snapshot.company_foundation.overview} [1, 2, 3]`);
-  expect(text).toContain(`City: ${snapshot.company_foundation.main_address!.city} [1]`);
+  expect(text).toContain(`${snapshot.company_foundation.overview} [1,2,3]`);
+  expect(text).toContain(`The main address is ${snapshot.company_foundation.main_address!.raw}. [1]`);
   expect(text).toContain(`${snapshot.offerings[0].name} [1]`);
   for (const source of snapshot.provenance.sources) {
     expect(paragraphs.some((item) => item.text === source.url)).toBe(true);
     expect(text).toContain(source.url);
   }
   expect(documentData(input)).toEqual(before);
+});
+
+
+it("writes connected prose and real small superscript source links without interpreting literal user brackets", async () => {
+  const snapshot = KnowledgeBaseExportSchema.parse(fixture);
+  const duplicate = "An exact repeated business statement.";
+  snapshot.company_foundation.overview = `A verbatim company overview. ${duplicate}`;
+  snapshot.company_foundation.business_model = `${duplicate}\nA unique qualification remains unchanged.`;
+  snapshot.positioning.company_pitch = "Literal [1] text stays ordinary.\nAn intact short pitch.";
+  const before = structuredClone(snapshot);
+  const input = { kind: "snapshot" as const, snapshot };
+  const paragraphs = documentParagraphs(input);
+  const body = paragraphs.slice(0, paragraphs.findIndex((paragraph) => paragraph.text === "Coverage & unknowns"));
+  const wording = body.map((paragraph) => paragraph.text).join("\n");
+  expect(wording.split(duplicate)).toHaveLength(2);
+  expect(wording).toContain("A unique qualification remains unchanged.");
+  expect(wording).toContain("The company works in Retail software.");
+  expect(wording).toContain(`The main address is ${snapshot.company_foundation.main_address!.raw}.`);
+  expect(body.some((paragraph) => paragraph.label === "City" || paragraph.label === "Region")).toBe(false);
+  expect(wording).toContain("Literal [1] text stays ordinary. An intact short pitch.");
+  const zip = await JSZip.loadAsync(await renderKnowledgeDocument(input));
+  const $ = load(await zip.file("word/document.xml")!.async("string"), { xmlMode: true });
+  const bookmarks = new Set($("w\\:bookmarkStart").toArray().map((node) => $(node).attr("w:name")));
+  const links = $("w\\:hyperlink").filter((_index, node) => Boolean($(node).attr("w:anchor")));
+  expect(links.length).toBe(paragraphs.flatMap(documentRuns).reduce((count, run) => count + (run.citations?.length ?? 0), 0));
+  expect(links.length).toBeGreaterThan(0);
+  links.each((_index, node) => {
+    const link = $(node);
+    expect(bookmarks.has(link.attr("w:anchor"))).toBe(true);
+    expect(link.attr("w:anchor")).toBe(`source_${link.text()}`);
+    expect(link.find("w\\:sz").attr("w:val")).toBe("14");
+    expect(link.find("w\\:vertAlign").attr("w:val")).toBe("superscript");
+    expect(link.find("w\\:color").attr("w:val")).toBe("21699B");
+  });
+  const literal = $("w\\:t").filter((_index, node) => $(node).text().includes("Literal [1]"));
+  expect(literal.length).toBe(1);
+  expect(literal.closest("w\\:hyperlink").length).toBe(0);
+  expect(snapshot).toEqual(before);
 });
