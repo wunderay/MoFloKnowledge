@@ -53,16 +53,22 @@ export async function runWorker(
       options.onEvent?.({ event: "job_started", jobId: job.id });
       await work(job, attempt.signal);
       options.onEvent?.({ event: "job_finished", jobId: job.id });
-    } catch {
+    } catch (error) {
       if (!leaseLost && !options.signal.aborted) {
         await repository
           .fail(job, {
-            code: attempt.signal.aborted ? "cancelled" : "worker_failure",
+            code: attempt.signal.aborted
+              ? "cancelled"
+              : (error as { code?: string })?.code === "NETWORK_POLICY"
+                ? "website_policy"
+                : "worker_failure",
             url: null,
             retryable: false,
             message: attempt.signal.aborted
               ? "Job was cancelled."
-              : "The worker could not complete the job.",
+              : (error as { code?: string })?.code === "NETWORK_POLICY"
+                ? "The website or redirect did not pass the public website policy."
+                : "The worker could not complete the job.",
           })
           .catch(() => {});
       }
