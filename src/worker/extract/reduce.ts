@@ -22,7 +22,7 @@ const narrativeFields = new Set([
   "name", "title", "role", "background_or_relevance", "description", "category",
 ]);
 const normalizedWording = (value: unknown) => typeof value === "string"
-  ? value.normalize("NFKC").toLowerCase().replace(/&/g, "and").replace(/[^\p{L}\p{N}]+/gu, " ").trim()
+  ? value.normalize("NFKC").toLowerCase().replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim()
   : canonicalStringify(value);
 function equivalentItem(value: unknown): unknown {
   if (typeof value === "string") return /^https?:/.test(value) ? value : normalizedWording(value);

@@ -359,3 +359,28 @@ it("keeps equally authoritative distinct names as factual conflicts", () => {
   expect(offering.conflicts).toHaveLength(1);
   expect(offering.conflicts[0].candidates.map((c) => c.value).sort()).toEqual(["Field Kit", "Monitoring equipment"]);
 });
+
+it("filters CSS inheritance keywords while retaining actual declared family names", () => {
+  const observed = [{ id: "declared-fonts", property: "stylesheet", selector: "style", asset_url: page.capture.finalUrl,
+    value: "a{font-family: inherit} b{font-family: initial} c{font-family: unset} d{font-family: revert} e{font-family: revert-layer} f{font-family: Inter !important} g{font-family: var(--font)}" }];
+  const fonts = deterministicCandidates(page, observed).filter((c) => c.field === "/branding_and_style/fonts");
+  expect(fonts.map((c) => (c.value as { family: string }[])[0].family)).toEqual(["Inter"]);
+  expect(validateCandidates(fonts, page, observed, companyId)).toHaveLength(1);
+});
+
+it("grounds a named subservice in its cited containing service list", () => {
+  const sections = [{ heading: "Tax Planning", paragraphs: ["Our services include:"], listItems: ["Business Start-Ups"] }];
+  const servicePage = { ...page, capture: { ...page.capture,
+    segments: [{ id: "name", text: "Business Start-Ups" }, { id: "context", text: "Our services include:" }],
+    observations: { ...page.capture.observations, contentSections: sections },
+  } };
+  const service = { ...candidate("/offerings/@id/name", "Field Kit", "Field Kit.", "https://example.com/kit"),
+    value: "Business Start-Ups", entity_key: page.capture.finalUrl + "|service:business start ups", segment_ids: ["name", "context"] };
+  expect(validateCandidates([service], servicePage, [], companyId)).toHaveLength(1);
+  const separated = { ...servicePage, capture: { ...servicePage.capture,
+    observations: { ...servicePage.capture.observations, contentSections: [
+      { ...sections[0], paragraphs: [] }, { heading: "Unrelated Services", paragraphs: ["Our services include:"], listItems: [] },
+    ] },
+  } };
+  expect(() => validateCandidates([service], separated, [], companyId)).toThrow("entity_key_not_observed");
+});

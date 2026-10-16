@@ -22,7 +22,7 @@ export type ValidatedCandidate = FieldCandidate & {
   observations: TechnicalObservation[];
 };
 const normalizeText = (value: string) => value.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
-const normalizeIdentity = (value: string) => normalizeText(value).replace(/&/g, "and").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+const normalizeIdentity = (value: string) => normalizeText(value).replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 /** Identity excludes enrichment such as font observation methods. */
 function itemIdentity(value: unknown): string {
   if (!value || typeof value !== "object") return canonicalStringify(value);
@@ -281,6 +281,17 @@ export function validateCandidates(
         selected.some((o) => o.property?.startsWith("jsonld:") && o.property.endsWith("/name") && o.value &&
           normalizeIdentity(o.value) === normalizeIdentity(c.entity_key!.slice((page.capture.finalUrl + "|service:").length)) &&
           structuredEntity(o.property.slice("jsonld:".length, -"/name".length)));
+      const listedService = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
+        (() => {
+          const expected = normalizeIdentity(c.entity_key!.slice((page.capture.finalUrl + "|service:").length));
+          const sections = page.capture.observations.contentSections;
+          if (!Array.isArray(sections) || !segments.some((s) => normalizeIdentity(s.text) === expected)) return false;
+          return sections.some((section: { heading?: unknown; paragraphs?: unknown; listItems?: unknown }) =>
+            Array.isArray(section.listItems) && section.listItems.some((name) => typeof name === "string" && normalizeIdentity(name) === expected) &&
+            Array.isArray(section.paragraphs) && section.paragraphs.some((paragraph) => typeof paragraph === "string" &&
+              /\b(?:services? include|we (?:offer|provide))\b/i.test(paragraph) &&
+              segments.some((s) => normalizeText(s.text).includes(normalizeText(paragraph)))));
+        })();
       const narrativeService = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
         (() => {
           const expected = c.entity_key!.slice((page.capture.finalUrl + "|service:").length);
@@ -293,7 +304,7 @@ export function validateCandidates(
       if (
         c.entity_key &&
         !(c.entity_key === page.capture.finalUrl && serviceHeading) &&
-        !narrativeService && !structuredServiceKey &&
+        !narrativeService && !listedService && !structuredServiceKey &&
         !page.capture.links.some((link) =>
           link.url === c.entity_key && (
             link.url !== page.capture.finalUrl || (

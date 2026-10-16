@@ -35,7 +35,15 @@ export function deterministicCandidates(
     ids: string[],
     origin: FieldCandidate["origin"] = "source_backed",
     note: string | null = null,
-  ) =>
+  ) => {
+    if (field === "/branding_and_style/fonts") {
+      value = (value as { family: string }[]).flatMap((font) => {
+        const family = font.family.replace(/\s*!important\s*$/i, "").trim();
+        return !family || /^(?:inherit|initial|unset|revert|revert-layer)$/i.test(family) || /^var\(/i.test(family)
+          ? [] : [{ ...font, family }];
+      });
+      if (!(value as unknown[]).length) return;
+    }
     result.push({
       field,
       entity_key: null,
@@ -46,6 +54,7 @@ export function deterministicCandidates(
       supporting_fields: [],
       note,
     });
+  };
   const urlObservation = observations.find((o) => o.property === "url" && o.value === page.capture.finalUrl);
   if (urlObservation) add("/company_foundation/website", page.capture.finalUrl, [urlObservation.id]);
   for (const o of observations) {
