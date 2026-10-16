@@ -7,6 +7,7 @@ import {
   type TextSegment,
 } from "./segments";
 import type { RenderResult } from "../../contracts/render-task";
+import { captureContentSections, captureDeclaredDesign, evidencedSections, sectionParts } from "./sections";
 export type PageCapture = {
   normalizedUrl: string;
   finalUrl: string;
@@ -103,6 +104,8 @@ export function captureHtml(
   const canonical = rendered?.metadata
     ? safeLink(rendered.metadata.canonical)
     : safeLink($('link[rel="canonical"]').first().attr("href"));
+  const declaredDesign = captureDeclaredDesign($, safeLink, jsonLd);
+  const content = captureContentSections($, safeLink);
   $(
     'script,style,noscript,template,svg,canvas,iframe,object,embed,[hidden],[aria-hidden="true"],input[type="hidden"]',
   ).remove();
@@ -192,6 +195,8 @@ export function captureHtml(
       action: safeLink(action),
       method,
       labels,
+      heading: null as string | null,
+      submitLabels: [] as string[],
     })) ??
     $("form")
       .slice(0, 40)
@@ -203,6 +208,11 @@ export function captureHtml(
           .map((_j, label) => normalizeText($(label).text()).slice(0, 500))
           .get()
           .slice(0, 30),
+        heading: normalizeText(($(node).find("h1,h2,h3,h4,h5,h6").first().length
+          ? $(node).find("h1,h2,h3,h4,h5,h6").first()
+          : $(node).closest("section,article").children("h1,h2,h3,h4,h5,h6").first()).text()).slice(0, 2000) || null,
+        submitLabels: $(node).find('button:not([type]),button[type="submit"],input[type="submit"]')
+          .slice(0, 20).map((_j, submit) => normalizeText($(submit).text() || $(submit).attr("value") || "").slice(0, 500)).get().filter(Boolean),
       }))
       .get();
   const ctas =
@@ -274,16 +284,22 @@ export function captureHtml(
     ...headings.map((item) => item.text),
     ...links.map((item) => item.label),
     ...forms.flatMap((item) => item.labels),
+    ...forms.flatMap((item) => [item.heading ?? "", ...item.submitLabels]),
     ...ctas.map((item) => item.label),
     ...addresses,
     ...priceText,
   ]
     .map(normalizeText)
     .filter(Boolean);
+  // Keep section text first so structural claims always have exact retained segment evidence.
+  const seenParts = new Set<string>();
   const parsed = makeSegments(
-    [...new Set([...mainParts, ...observedParts])].map((text) => ({ text })),
+    [...sectionParts(content.sections), ...mainParts.map((text) => ({ text })), ...observedParts.map((text) => ({ text }))]
+      .filter((part) => !seenParts.has(part.text) && !!seenParts.add(part.text)),
   );
   const limitations = [...new Set([...(rendered?.limitations ?? []), ...metadataLimitations])];
+  if (content.truncated) limitations.push("Content sections exceeded the structural capture limit.");
+  if (declaredDesign.truncated) limitations.push("HTML design declarations exceeded the capture limit.");
   if (
     parsed.truncated &&
     !limitations.includes("Captured text exceeded the source segment limit.")
@@ -291,6 +307,9 @@ export function captureHtml(
     limitations.push("Captured text exceeded the source segment limit.");
   const observations: Record<string, unknown> = {
     headings,
+    contentSections: evidencedSections(content.sections, parsed.segments),
+    declaredStyles: declaredDesign.styles,
+    declaredLogos: declaredDesign.logos,
     offeringBlocks,
     clientSectionDetected: requiresClientSection,
     jsonLd,
