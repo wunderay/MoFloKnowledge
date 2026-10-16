@@ -1,4 +1,5 @@
 "use client";
+import { ArrowUpRight } from "./icons";
 import { useEffect, useId, useRef, useState } from "react";
 import type { EntryProvenance, FieldCandidate } from "@/contracts";
 import { formatAPACitations } from "@/knowledge/apa";
@@ -196,7 +197,8 @@ export function CitationPopover({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {apa?.citation ?? source.title ?? "View source"} ↗
+                      {apa?.citation ?? source.title ?? "View source"}{" "}
+                      <ArrowUpRight />
                     </a>
                     <span
                       className="citation-popover__reference"

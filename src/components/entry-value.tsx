@@ -1,4 +1,5 @@
 "use client";
+import { ArrowUpRight } from "./icons";
 import type { EntryProvenance } from "@/contracts";
 import { CitationPopover, safeHref } from "./citation-popover";
 import { labelOf } from "./business-fields";
@@ -81,7 +82,7 @@ export function ValueView({
           <span className="muted">Unknown</span>
         ) : typeof value === "string" && /^https?:\/\//.test(value) ? (
           <a href={safeHref(value)} target="_blank" rel="noopener noreferrer">
-            {value} ↗
+            {value} <ArrowUpRight />
           </a>
         ) : typeof value === "boolean" ? (
           value ? (
