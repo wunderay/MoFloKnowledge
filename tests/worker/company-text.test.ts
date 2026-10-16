@@ -82,11 +82,22 @@ describe("extractive company and person passages", () => {
     expect(value("industry")).toBe("engineering consultancy");
     expect(value("company_role")).toEqual([{ text: "engineering consultancy" }]);
     expect(value("legal_entity_type")).toBe("LLC");
-    expect(value("alternative_company_names")).toEqual([{ text: "Cedar Engineering LLC" }]);
+    expect(value("alternative_company_names")).toBeUndefined();
     expect(value("year_founded")).toBe(2012);
     expect(value("founding_story")).toBe(history);
     expect(value("company_pitch")).toBe(pitch);
     expect(value("service_locations")).toEqual([{ text: "North County and East County" }]);
+  });
+
+  it("uses an explicitly stated trading name without treating the primary organization identity as its own alias", () => {
+    const statement = "Cedar Engineering LLC is trading as Cedar Bridge Studio.";
+    const { candidates } = extract(metadata({ "@type": "Organization", url: "https://example.com/", name: "Cedar Engineering LLC" }) +
+      `<h1>About Cedar Engineering LLC</h1><p>${statement}</p>`, [
+      { heading: "About Cedar Engineering LLC", level: 1, paragraphs: [statement] },
+    ], "/about");
+    expect(candidates.filter((c) => c.field.endsWith("/alternative_company_names")).map((c) => c.value))
+      .toEqual([[{ text: "Cedar Bridge Studio" }]]);
+    expect(candidates.find((c) => c.field.endsWith("/legal_entity_type"))?.value).toBe("LLC");
   });
 
   it("retains a founder's practice start as history without assigning it to the company's founding year", () => {
