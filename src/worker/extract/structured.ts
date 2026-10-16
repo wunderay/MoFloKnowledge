@@ -1,5 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
+import { serviceEntityKey } from "./services-text";
 
 type ObjectValue = Record<string, unknown>;
 type Node = { value: ObjectValue; path: string };
@@ -57,8 +58,12 @@ export function structuredCandidates(
   ) => {
     if (!cited.length || cited.length > 30) return;
     result.push({ field, value, entity_key, origin: "source_backed",
-      segment_ids: [], observation_ids: [...new Set(cited.map((o) => o.id))],
-      supporting_fields: [], note: null });
+      segment_ids: field.startsWith("/offerings/") ? page.capture.segments.filter((segment) =>
+        cited.some((o) => o.property === "heading" && o.value && segment.text.includes(o.value))).map((segment) => segment.id).slice(0, 30) : [],
+      observation_ids: [...new Set(cited.map((o) => o.id))],
+      supporting_fields: [], note: null,
+      ...(field.startsWith("/offerings/") ? { priority: field.endsWith("/description") ? 70 : 90 } : {}),
+    });
   };
   const addText = (
     field: string, value: unknown, path: string,
@@ -167,24 +172,36 @@ export function structuredCandidates(
     // A single Service can identify the current detail page even when its metadata URL is stale.
     // Require an observed self-link whose exact label is also a heading, and that whole heading
     // appears in the declared service name. Catalog entries and products keep their own identities.
+    const normalizedName = (raw: string) => raw.toLowerCase().replace(/&/g, " and ")
+      .replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
     const primaryLink = offering && kind.includes("Service") && services.length === 1
       ? page.capture.links.find((link) => link.url === page.capture.finalUrl &&
         link.label.length >= 3 && observations.some((o) =>
           o.property === "heading" && o.value === link.label) &&
-        (" " + name.toLowerCase() + " ").includes(" " + link.label.toLowerCase() + " "))
+        (" " + normalizedName(name) + " ").includes(" " + normalizedName(link.label) + " "))
       : undefined;
     const primaryEvidence = primaryLink ? [
       observations.find((o) => o.property === "href" && o.value === primaryLink.url),
       observations.find((o) => o.property === "anchor-label" && o.value === primaryLink.label && o.asset_url === primaryLink.url),
       observations.find((o) => o.property === "heading" && o.value === primaryLink.label),
     ].filter((o): o is TechnicalObservation => Boolean(o)) : [];
-    const primary = primaryLink && primaryEvidence.length === 3;
+    const primaryHeading = offering && kind.includes("Service") && services.length === 1 &&
+      /\/(?:services|products|offerings)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname)
+      ? observations.find((o) => o.property === "heading" && o.value && o.value.length >= 3 &&
+        (" " + normalizedName(name) + " ").includes(" " + normalizedName(o.value) + " ") &&
+        page.capture.segments.some((segment) => segment.text.includes(o.value!))) : undefined;
+    const primary = (primaryLink && primaryEvidence.length === 3) || primaryHeading;
     if (primary) context.push(...primaryEvidence);
+    if (primaryHeading) context.push(primaryHeading);
+    const declaredUrl = text(value.url);
+    const declaredUrlObservation = leaf(path + "/url");
+    if (offering && declaredUrl && declaredUrlObservation?.value === declaredUrl) context.push(declaredUrlObservation);
     const entity = primary ? page.capture.finalUrl : page.capture.links.find((link) =>
       link.url !== page.capture.finalUrl &&
       (link.url === value.url || link.url === value["@id"]) &&
       sameSite(link.url),
-    )?.url ?? `${page.capture.finalUrl}|jsonld:${path}`;
+    )?.url ?? (offering ? (declaredUrl && sameSite(declaredUrl) ? declaredUrl :
+      serviceEntityKey(page.capture.finalUrl, name)) : `${page.capture.finalUrl}|jsonld:${path}`);
     const prefix = person ? "/key_people/@id/" : "/offerings/@id/";
     addText(prefix + "name", value.name, path + "/name", entity, context);
     addText(prefix + (person ? "background_or_relevance" : "description"),

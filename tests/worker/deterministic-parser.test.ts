@@ -102,7 +102,9 @@ describe("source-only deterministic parsing", () => {
       "/services/equipment-repair");
     const structured = catalog.candidates.filter((c) => c.field === "/offerings/@id/name" && c.observation_ids
       .some((id) => catalog.observations.find((o) => o.id === id)?.property?.startsWith("jsonld:")));
-    expect(structured.every((c) => c.entity_key?.includes("|jsonld:"))).toBe(true);
+    expect(structured.map((c) => c.entity_key)).toEqual([
+      "https://example.com/old-repair-page", "https://example.com/services/equipment-repair|service:calibration",
+    ]);
     expect(new Set(structured.map((c) => c.entity_key)).size).toBe(2);
   });
 
