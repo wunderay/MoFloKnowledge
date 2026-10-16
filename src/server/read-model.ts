@@ -7,6 +7,7 @@ import {
 } from "../contracts/api-responses";
 import { authorizeCompany } from "./authorize";
 import { parseBusinessEntry, EntryProvenanceSchema } from "../contracts";
+import { readCitationContext } from "./citation-context";
 type Client = Awaited<ReturnType<typeof verifiedSession>>["client"];
 export async function checked<T>(
   query: PromiseLike<{
@@ -89,5 +90,10 @@ export async function readDraft(client: Client, id: string, userId: string) {
     draftGeneration: company.draft_generation,
     entries: current,
     sources: sources ?? [],
+    citationContext: await readCitationContext(
+      client,
+      id,
+      current.map((entry) => entry.provenance),
+    ),
   });
 }

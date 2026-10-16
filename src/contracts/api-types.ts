@@ -1,4 +1,9 @@
-import type { BusinessEntry, EntryProvenance, EntryKind } from "./index";
+import type {
+  BusinessEntry,
+  EntryProvenance,
+  EntryKind,
+  CitationContext,
+} from "./index";
 export type CompanySummary = {
   id: string;
   name: string;
@@ -32,8 +37,9 @@ export type DraftEntry = {
 };
 export type DraftResponse = {
   actorId: string;
-  company: CompanySummary;
+  company: Omit<CompanySummary, "latestJob" | "latestVersion">;
   draftGeneration: number;
   entries: DraftEntry[];
   sources: Record<string, unknown>[];
+  citationContext: CitationContext;
 };
