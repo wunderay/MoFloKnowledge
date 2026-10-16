@@ -118,3 +118,22 @@ it("invalidates v1 rule caches even when their source IDs and origin still resol
   expect(second).toEqual(first);
   expect(JSON.stringify(vi.mocked(repo.checkpoint).mock.calls.at(-1)![1])).not.toContain("Stale v1 wording");
 });
+
+it("preserves ranked validated candidates through durable schema parsing and extraction resume", async () => {
+  const observations = technicalObservations(page);
+  const [ranked] = validateCandidates([{
+    field: "/company_foundation/overview", priority: 95, entity_key: null,
+    value: "Example company", origin: "source_backed", segment_ids: [page.capture.segments[0].id],
+    observation_ids: [], supporting_fields: [], note: null,
+  }], page, observations, companyId);
+  const { page: _page, observations: _observations, ...candidate } = ranked;
+  const repo = repository();
+  const saved = crawl({ extractor_version: EXTRACTOR_VERSION, extracted_source_ids: [page.id],
+    validated_candidates: [{ ...candidate, sourceId: page.id }] });
+  const first = await extractAndFinish(job, repo, saved, new AbortController().signal);
+  expect(first.find((proposal) => proposal.kind === "company_foundation")?.content).toMatchObject({ overview: "Example company" });
+  const checkpoint = vi.mocked(repo.checkpoint).mock.calls.at(-1)![1];
+  expect((checkpoint.validated_candidates as { priority: number }[])[0].priority).toBe(95);
+  const second = await extractAndFinish(job, repo, crawl(checkpoint), new AbortController().signal);
+  expect(second).toEqual(first);
+});
