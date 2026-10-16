@@ -2,6 +2,7 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import type { TechnicalObservation } from "./types";
 import type { RenderResult } from "../../contracts/render-task";
 import { stableId } from "./identity";
+import type { DeclaredLogo, DeclaredStyle } from "../capture/sections";
 /** Bounded plain observations, never executable metadata or provider instructions. */
 export function technicalObservations(
   page: StoredCapture,
@@ -43,6 +44,16 @@ export function technicalObservations(
   if (typeof raw.metaDescription === "string")
     add(null, "meta-description", raw.metaDescription);
   const design = raw.design as RenderResult | undefined;
+  if (Array.isArray(raw.declaredStyles))
+    for (const style of (raw.declaredStyles as DeclaredStyle[]).slice(0, 100)) {
+      // Static declarations are deliberately distinct from renderer-computed properties.
+      add(style.selector, "stylesheet", style.declarations, page.capture.finalUrl);
+      for (const color of style.colors)
+        add(style.selector, "declared-" + color.property, color.value);
+    }
+  if (Array.isArray(raw.declaredLogos))
+    for (const logo of (raw.declaredLogos as DeclaredLogo[]).slice(0, 20))
+      add(logo.selector, "logo", `${logo.alt} | ${logo.selector}`, logo.url);
   if (design) {
     for (const style of design.styles) {
       add(style.selector, "font-family", style.fontFamily);
@@ -103,9 +114,14 @@ export function technicalObservations(
       action?: string | null;
       method?: string;
       labels?: string[];
+      heading?: string | null;
+      submitLabels?: string[];
     }[]) {
       for (const label of item.labels ?? [])
         add(item.selector ?? null, "form-label", label, item.action ?? null);
+      if (item.heading) add(item.selector ?? null, "form-heading", item.heading, item.action ?? null);
+      for (const label of item.submitLabels ?? [])
+        add(item.selector ?? null, "form-submit-label", label, item.action ?? null);
       if (item.action)
         add(item.selector ?? null, "form-action", item.action, item.action);
       if (item.method) add(item.selector ?? null, "form-method", item.method);
