@@ -12,7 +12,7 @@ it("varies actual company sentence structures while retaining the complete list,
   expect(varyCompanyNarrative("We can handle it all, from your payroll needs to banking and check writing.", company))
     .toBe("From your payroll needs to banking and check writing, we can handle it all.");
   const service = "QuickBooks Online services, assisting business owners with seamless financial management solutions.";
-  expect(varyCompanyNarrative(`We also provide ${service}`, company)).toBe(`In addition, the company provides ${service}`);
+  expect(varyCompanyNarrative(`We also provide ${service}`, company)).toBe(`In addition, we provide ${service}`);
   const qualified = "While payroll services are available, they are primarily offered to existing clients or those transitioning to a tax setup that requires payroll.";
   expect(varyCompanyNarrative(qualified, company)).toBe(qualified);
 });
@@ -23,6 +23,7 @@ it("keeps sentence agreement, negation and modals, with stable choices and uncha
   expect(vary("We also offer training for our clients.")).toBe("In addition, it offers training for its clients.");
   expect(vary("We can help our clients and may work remotely.")).toBe("It can help its clients and may work remotely.");
   expect(vary("We do not provide financial advice.")).toBe("The company does not provide financial advice.");
+  expect(vary("We also provide tools for our clients, with support.")).toBe("In addition, we provide tools for our clients, with support.");
   for (const text of [
     "We provide software and train staff.", "We can help clients and need payment.", "We are experts in inventory.",
     "We provide tools or offer training.", "We can help clients but need payment.",
@@ -30,6 +31,9 @@ it("keeps sentence agreement, negation and modals, with stable choices and uncha
     "We offer services, such as planning, but do not provide advice.",
     "We offer services, such as budgeting and do not provide legal advice.",
     "We offer services, such as planning, and sell software.",
+    "We provide software, sell tools.",
+    "We can help clients, from setup to filing if eligible.", "We can help clients, from setup to filing until approved.",
+    "We can help clients, from setup to filing provided approval is granted.", "We can help clients, from setup to filing as long as they qualify.",
     "We have used this system for years.", "We'll also monitor laws that may affect your tax filings.",
     "My experience matters. We provide tools for our clients.", "I have worked with clients. We offer tools.",
     'We provide tools with a "we know best" message.', "We offer tools. ‘We do not promise results,’ the customer said.",

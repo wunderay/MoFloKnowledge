@@ -30,10 +30,12 @@ export function varyCompanyNarrative(text: string, company: string): string {
 
     // Front an existing range without changing its capability modal, agent or endpoints.
     const range = predicate.match(/^(can|could|will|would|may|might|must|should) ([^,;:]+), from ([^,;:.!?]+ to [^,;:.!?]+)([.!?]?)$/u);
-    if (!opening.includes("also") && range && !/\b(?:but|although|unless|except|when|while|because)\b/u.test(range[3])) {
+    if (!opening.includes("also") && range && !/\b(?:but|although|unless|except|when|while|because|if|until|provided|providing|assuming|once|whenever|where|wherever|as long as|so long as|on condition that|subject to)\b/u.test(range[3])) {
       return `${before}From ${range[3]}, we ${range[1]} ${range[2]}${range[4]}${after}`;
     }
     if (/,\s+from\b/u.test(predicate)) return segment;
+    // Keep omitted-subject clauses intact; only the existing additive transition can move safely.
+    if (predicate.includes(",")) return opening.includes("also") ? `${before}In addition, we ${predicate}${after}` : segment;
     const verb = predicate.match(/^(\w+)\b([\s\S]*)$/u);
     if (!verb || (!present[verb[1]] && !modals.has(verb[1]))) return segment;
     // Avoid ambiguous coordinated predicates and perfect aspect, including omitted auxiliary subjects.
