@@ -19,9 +19,12 @@ import {
   resolveStablePointer,
   enumerateFactualLeaves,
   validateProvenance,
-  entryBusiness,
-  EntryProvenanceSchema,
   type Business,
+  ProposalSchema,
+  ModelOutputSchema,
+  ProgressSchema,
+  CheckpointSchema,
+  EntryProvenanceSchema,
 } from "../../src/contracts";
 const clone = () => structuredClone(fixture);
 const business = (): Business => {
@@ -232,5 +235,312 @@ describe("stable pointer and field-level provenance", () => {
         (x) => x.code === "claim_missing",
       ),
     ).toBe(true);
+  });
+});
+
+describe("selected value boundaries", () => {
+  it("rejects assigning one entry claim to another person or section", () => {
+    const p = clone().provenance;
+    const claim = p.claims.find((c) =>
+      c.targets.some((t) => t.startsWith("/key_people/")),
+    )!;
+    claim.entry_id = p.entries[0].entry_id;
+    expect(
+      validateProvenance(business(), p as never).some(
+        (i) => i.code === "entry_target",
+      ),
+    ).toBe(true);
+  });
+  it("requires candidate evidence, human resolution and selected-origin preservation", () => {
+    const p = clone().provenance;
+    const claim = p.claims.find((c) => c.origin === "generated")!;
+    const id = "00000000-0000-4000-8000-000000000001";
+    const other = "00000000-0000-4000-8000-000000000002";
+    const provenance = {
+      sources: p.sources,
+      evidence: p.evidence,
+      claims: p.claims,
+      coverage: p.coverage,
+      operations: p.operations,
+      conflicts: [
+        {
+          id,
+          target: "/positioning/company_pitch",
+          material: true,
+          candidates: [
+            {
+              id: other,
+              value: fixture.positioning.company_pitch,
+              origin: "source_backed",
+              evidence_ids: claim.evidence_ids,
+              based_on_claim_ids: [],
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000003",
+              value: "Another pitch",
+              origin: "source_backed",
+              evidence_ids: [],
+              based_on_claim_ids: [],
+            },
+          ],
+        },
+      ],
+      decisions: [],
+    };
+    const unresolved = validateProvenance(business(), provenance as never, {
+      approved: true,
+    });
+    expect(unresolved.map((i) => i.code)).toEqual(
+      expect.arrayContaining(["candidate_support", "unresolved_conflict"]),
+    );
+    Object.assign(provenance, {
+      decisions: [
+        {
+          id: "00000000-0000-4000-8000-000000000004",
+          conflict_id: id,
+          target: "/positioning/company_pitch",
+          action: "select",
+          candidate_id: other,
+          actor_id: p.company.snapshot_author_id,
+          decided_at: fixture.saved_at,
+          note: "Selected exact statement",
+        },
+      ],
+    });
+    expect(
+      validateProvenance(business(), provenance as never, {
+        approved: true,
+      }).some((i) => i.code === "conflict_claim"),
+    ).toBe(true);
+  });
+});
+
+describe("worker proposal trust boundary", () => {
+  it("rejects wrong entry shapes, unsafe model metadata and negative progress", () => {
+    const proposal = {
+      id: fixture.provenance.entries[0].entry_id,
+      kind: "company_foundation",
+      target_entry_id: null,
+      base_revision: null,
+      schema_version: "1.0.0",
+      content: fixture.positioning,
+      provenance: EntryProvenanceSchema.parse({
+        sources: [],
+        evidence: [],
+        claims: [],
+        coverage: [],
+        operations: [],
+      }),
+      conflicts: [],
+    };
+    expect(ProposalSchema.safeParse(proposal).success).toBe(false);
+    expect(
+      ModelOutputSchema.safeParse({
+        candidates: [],
+        limitations: [],
+        actor_id: fixture.provenance.company.snapshot_author_id,
+      }).success,
+    ).toBe(false);
+    expect(
+      ProgressSchema.safeParse({
+        stage: "crawling",
+        discovered: 2,
+        selected: 2,
+        captured: -1,
+        failed: 0,
+        blocked: 0,
+        extracted: 0,
+        document_limit: 10,
+        limits_reached: [],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("cross-entry generated support", () => {
+  it("resolves supporting immutable claims without importing foreign active targets", () => {
+    const generated = fixture.provenance.claims.find(
+      (c) => c.origin === "generated",
+    )!;
+    const support = fixture.provenance.claims.find(
+      (c) => c.id === generated.based_on_claim_ids[0],
+    )!;
+    const evidenceIds = new Set(generated.evidence_ids);
+    const evidence = fixture.provenance.evidence.filter((e) =>
+      evidenceIds.has(e.id),
+    );
+    const sourceIds = new Set(evidence.map((e) => e.source_page_id));
+    const provenance = EntryProvenanceSchema.parse({
+      claims: [generated],
+      evidence,
+      sources: fixture.provenance.sources.filter((s) => sourceIds.has(s.id)),
+      coverage: fixture.provenance.coverage.flatMap((c) => {
+        const targets = c.targets.filter((t) => t.startsWith("/positioning/"));
+        return targets.length ? [{ ...c, targets }] : [];
+      }),
+      operations: [],
+    });
+    const current = { positioning: fixture.positioning };
+    expect(
+      validateProvenance(current, provenance).some(
+        (i) => i.code === "claim_missing",
+      ),
+    ).toBe(true);
+    expect(
+      validateProvenance(current, provenance, {
+        supportingClaims: [support as never],
+        entryIds: [generated.entry_id],
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe("durable worker checkpoint wire", () => {
+  it("accepts initial and crawl/extraction snapshots with strict nested bounds", () => {
+    const checkpoint = {
+      effectiveRoot: "https://example.com/",
+      frontier: {
+        root: "https://example.com/",
+        pending: [{ url: "https://example.com/about", depth: 1, score: 20 }],
+        seen: ["https://example.com/", "https://example.com/about"],
+        aliases: [],
+        selected: 1,
+        limitsReached: [],
+      },
+      budgets: {
+        documents: 1,
+        htmlBytes: 600,
+        designBytes: 400,
+        startedAt: Date.now(),
+        limitsReached: [],
+      },
+      captured_source_ids: [fixture.provenance.sources[0].id],
+      errors: [],
+    };
+    expect(CheckpointSchema.parse({})).toEqual({});
+    expect(CheckpointSchema.parse(checkpoint)).toEqual(checkpoint);
+    expect(
+      CheckpointSchema.safeParse({
+        ...checkpoint,
+        stage: "extracting",
+        extracted_source_ids: [fixture.provenance.sources[0].id],
+        model_tokens: 100,
+        model_successes: 1,
+        model_failures: 0,
+        validated_candidates: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      CheckpointSchema.safeParse({
+        ...checkpoint,
+        budgets: { ...checkpoint.budgets, designBytes: 16 * 1024 * 1024 },
+      }).success,
+    ).toBe(false);
+    expect(
+      CheckpointSchema.safeParse({ ...checkpoint, secret: "leaked" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("explicit original gender wording", () => {
+  it("accepts an observed first-person self-description and rejects a note-only source attestation", () => {
+    const b = business();
+    b.key_people[0].gender = "woman";
+    const p = clone().provenance;
+    const evidenceId = "00000000-0000-4000-8000-000000000041";
+    p.evidence.push({
+      id: evidenceId,
+      source_page_id: p.sources[1].id,
+      kind: "text",
+      excerpt: "I identify as a woman.",
+      technical: null,
+    });
+    p.claims.push({
+      id: "00000000-0000-4000-8000-000000000042",
+      entry_id: b.key_people[0].id,
+      targets: [`/key_people/@${b.key_people[0].id}/gender`],
+      origin: "source_backed",
+      evidence_ids: [evidenceId],
+      based_on_claim_ids: [],
+      actor_id: null,
+      authored_at: null,
+      note: null,
+    });
+    expect(validateProvenance(b, p as never)).toEqual([]);
+    p.evidence[p.evidence.length - 1].excerpt =
+      "An unrelated professional biography.";
+    p.claims[p.claims.length - 1].note = "Explicit public self-description";
+    expect(
+      validateProvenance(b, p as never).some(
+        (issue) => issue.code === "gender_attestation",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("ordinary proposal field selections", () => {
+  it("accepts metadata for populated nonconflicting fields and rejects ambiguous/unknown selections", () => {
+    const base = {
+      id: "00000000-0000-4000-8000-000000000051",
+      kind: "positioning",
+      target_entry_id: null,
+      base_revision: null,
+      schema_version: "1.0.0",
+      content: { company_pitch: "Observed pitch.", founding_story: null },
+      provenance: EntryProvenanceSchema.parse({
+        sources: [],
+        evidence: [],
+        claims: [],
+        coverage: [],
+        operations: [],
+      }),
+      conflicts: [],
+    };
+    const change = {
+      id: "00000000-0000-4000-8000-000000000052",
+      target: "/positioning/company_pitch",
+    };
+    expect(ProposalSchema.parse(base).changes).toEqual([]);
+    expect(
+      ProposalSchema.parse({ ...base, changes: [change] }).changes,
+    ).toEqual([change]);
+    for (const changes of [
+      [change, change],
+      [{ ...change, target: "/positioning/founding_story" }],
+      [{ ...change, target: "/company_foundation/overview" }],
+      [{ ...change, target: "/positioning/company_pitch/nested" }],
+      [{ ...change, value: "Another authority" }],
+    ])
+      expect(ProposalSchema.safeParse({ ...base, changes }).success).toBe(
+        false,
+      );
+    const conflict = {
+      id: "00000000-0000-4000-8000-000000000053",
+      target: change.target,
+      material: true,
+      candidates: [
+        {
+          id: "00000000-0000-4000-8000-000000000054",
+          value: "First",
+          origin: "source_backed",
+          evidence_ids: [],
+          based_on_claim_ids: [],
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000055",
+          value: "Second",
+          origin: "source_backed",
+          evidence_ids: [],
+          based_on_claim_ids: [],
+        },
+      ],
+    };
+    expect(
+      ProposalSchema.safeParse({
+        ...base,
+        conflicts: [conflict],
+        changes: [change],
+      }).success,
+    ).toBe(false);
   });
 });
