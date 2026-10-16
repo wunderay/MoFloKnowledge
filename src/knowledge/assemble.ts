@@ -60,6 +60,21 @@ export function previewPublication(entries: SnapshotEntry[]): {
         reason: "Material conflict is unresolved",
       });
   }
+  const approvedEntries = entries.filter((e) => e.review_status === "approved");
+  const currentClaimIds = new Set(
+    approvedEntries.flatMap((e) => e.provenance.claims.map((c) => c.id)),
+  );
+  for (const entry of approvedEntries) {
+    if (
+      entry.provenance.claims.some((c) =>
+        c.based_on_claim_ids.some((id) => !currentClaimIds.has(id)),
+      )
+    )
+      blockingEntries.push({
+        entry_id: entry.entry_id,
+        reason: "Supporting fact is not present in approved current revisions.",
+      });
+  }
   const approvedCount = entries.filter(
     (e) => e.review_status === "approved",
   ).length;
