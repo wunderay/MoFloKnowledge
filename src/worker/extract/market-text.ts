@@ -4,7 +4,7 @@ import type { FieldCandidate, TechnicalObservation } from "./types";
 const root = "/market_and_customers/";
 export const MARKET_TEXT_SUPPORTED_FIELDS = [
   "target_buyers", "customer_needs", "ideal_customer_personas",
-  "industry_groupings", "channels", "funnels", "ctas", "suppliers_and_partners",
+  "industry_groupings", "channels", "ctas", "suppliers_and_partners",
 ].map((field) => root + field);
 
 type Section = {
@@ -113,37 +113,29 @@ export function marketTextCandidates(
   const labelEvidence = (label: string, url: string | null) => observations.filter((item) =>
     ["cta-label", "anchor-label"].includes(item.property ?? "") && item.value === label &&
     (!url || item.asset_url === url)).map((item) => item.id);
-  const conversion = (label: string, url: string | null, ids: string[], funnel: boolean) => {
+  const conversion = (label: string, url: string | null, ids: string[]) => {
     if (!actionable.test(label) || label.length > 500 || !ids.length) return;
     add("ctas", [{ label, url, purpose: null }], [], ids);
     if (url) add("channels", [{ channel_type: null, label, url }], [], ids);
-    if (funnel) add("funnels", [{ name: label, steps: [{ label, url }] }], [], ids);
   };
   for (const link of page.capture.links)
-    conversion(link.label, link.url, labelEvidence(link.label, link.url), true);
+    conversion(link.label, link.url, labelEvidence(link.label, link.url));
   if (Array.isArray(raw.ctas))
     for (const item of raw.ctas as { label?: string; destination?: string | null }[]) {
       if (!item.label) continue;
       const label = item.label.split(/\n/)[0].trim();
       // A button may include a hidden loading label; retain only the actual first visible label.
-      conversion(label, item.destination ?? null, labelEvidence(item.label, item.destination ?? null), false);
+      conversion(label, item.destination ?? null, labelEvidence(item.label, item.destination ?? null));
     }
+  // Form fields are inputs, not conversion stages. Only the form's observed submit controls are CTAs.
+  // A funnel remains unassessed until an explicit stage/transition extraction rule exists.
   if (Array.isArray(raw.forms))
-    for (const form of raw.forms as { action?: string | null; labels?: string[]; heading?: string | null; submitLabels?: string[] }[]) {
-      const labels = [...new Set(form.labels ?? [])].filter((label) => label.length > 0 && label.length <= 500);
-      const sources = observations.filter((item) => item.property === "form-label" &&
-        labels.includes(item.value ?? "") && (!form.action || item.asset_url === form.action));
-      if (!labels.length || !sources.length) continue;
-      const steps = labels.filter((label) => sources.some((item) => item.value === label))
-        .map((label) => ({ label, url: form.action ?? null }));
-      const heading = form.heading && segmentsFor(form.heading).length ? form.heading : null;
+    for (const form of raw.forms as { action?: string | null; submitLabels?: string[] }[]) {
       const submitEvidence = (label: string) => observations.filter((item) =>
         item.property === "form-submit-label" && item.value === label &&
         (!form.action || item.asset_url === form.action)).map((item) => item.id);
-      const submits = (form.submitLabels ?? []).filter((label) => actionable.test(label) && submitEvidence(label).length);
-      for (const label of submits) steps.push({ label, url: form.action ?? null });
-      add("funnels", [{ name: heading, steps }], heading ? [heading] : [],
-        [...sources.map((item) => item.id), ...submits.flatMap(submitEvidence)]);
+      for (const label of form.submitLabels ?? [])
+        conversion(label, form.action ?? null, submitEvidence(label));
     }
   return result;
 }

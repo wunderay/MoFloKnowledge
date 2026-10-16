@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { captureHtml } from "../../src/worker/capture/html";
-import { marketTextCandidates } from "../../src/worker/extract/market-text";
+import { marketTextCandidates, MARKET_TEXT_SUPPORTED_FIELDS } from "../../src/worker/extract/market-text";
 import { technicalObservations } from "../../src/worker/extract/observations";
 import { validateCandidates } from "../../src/worker/extract/validate-candidates";
 
@@ -33,8 +33,8 @@ describe("literal market and conversion extraction", () => {
     expect(validated).toHaveLength(candidates.length);
   });
 
-  it("copies actionable anchors, controls and actual form fields without submitting or inventing steps", () => {
-    const { values } = extract(`<main><a href="/appointment">Schedule Appointment</a><a href="/contact">Get started</a>
+  it("copies observed CTAs and channels without treating links or form inputs as funnel stages", () => {
+    const { values, page, observations } = extract(`<main><a href="/appointment">Schedule Appointment</a><a href="/contact">Get started</a>
       <a href="/privacy">Privacy Policy</a><button>Open menu</button><button>2</button>
       <form action="/inquiries"><label>Email</label><label>Message</label><button type="submit">Submit</button></form></main>`);
     expect(values("ctas")).toEqual(expect.arrayContaining([
@@ -44,9 +44,16 @@ describe("literal market and conversion extraction", () => {
     expect(values("ctas").map((value) => (value as { label: string }).label))
       .not.toEqual(expect.arrayContaining(["Open menu", "Privacy Policy", "2"]));
     expect(values("channels")).toContainEqual({ channel_type: null, label: "Get started", url: "https://example.com/contact" });
-    expect(values("funnels")).toContainEqual(expect.objectContaining({ steps: expect.arrayContaining([
-      { label: "Email", url: "https://example.com/inquiries" }, { label: "Message", url: "https://example.com/inquiries" },
-    ]) }));
+    expect(values("funnels")).toEqual([]);
+    expect(MARKET_TEXT_SUPPORTED_FIELDS).not.toContain("/market_and_customers/funnels");
+    // A capture can expose its own form submit without a separate page-level CTA observation.
+    page.capture.observations.forms = [{ action: "https://example.com/inquiries", submitLabels: ["Send request"] }];
+    observations.push({ id: "form-submit", selector: "form", property: "form-submit-label",
+      value: "Send request", asset_url: "https://example.com/inquiries" });
+    const explicitSubmit = marketTextCandidates(page, observations);
+    expect(explicitSubmit.find((candidate) => candidate.observation_ids.includes("form-submit"))?.value)
+      .toEqual([{ label: "Send request", url: "https://example.com/inquiries", purpose: null }]);
+    expect(explicitSubmit.some((candidate) => candidate.field.endsWith("/funnels"))).toBe(false);
   });
 
   it("requires an explicit supplier relationship rather than a resource host or software mention", () => {
