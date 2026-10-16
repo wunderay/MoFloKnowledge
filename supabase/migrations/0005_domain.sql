@@ -17,6 +17,16 @@ BEGIN
  IF p_target ~ '/(ctas|funnels)/' AND p_target !~ '/(purpose|name)$' OR p_target ~ '/fonts/' AND p_target !~ '/apparent_use$' OR p_target ~ '/brand_colors/' AND p_target !~ '/apparent_role$' OR p_target ~ '/logos/' AND p_target !~ '/variant$' THEN RETURN p_origin IN ('source_backed','user_provided'); END IF;
  RETURN field->'allowedOrigins' ? p_origin;
 END $$;
+CREATE FUNCTION private.target_schema(p_kind text,p_target text) RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path='' AS $$
+DECLARE result jsonb:=private.contract_schema(p_kind); path text[]:=string_to_array(substr(p_target,2),'/'); i integer; first integer:=2;
+BEGIN
+ IF p_kind IN ('key_person','offering') THEN first:=3; END IF;
+ FOR i IN first..cardinality(path) LOOP
+  IF result ? 'anyOf' THEN SELECT value INTO result FROM jsonb_array_elements(result->'anyOf') candidate WHERE candidate->>'type' IN ('object','array') LIMIT 1; END IF;
+  IF path[i] ~ '^@' OR path[i] ~ '^[0-9]+$' THEN result:=result->'items'; ELSE result:=result->'properties'->replace(replace(path[i],'~1','/'),'~0','~'); END IF;
+ END LOOP;
+ IF result IS NULL THEN RAISE EXCEPTION 'unknown_candidate_target'; END IF; RETURN result;
+END $$;
 CREATE FUNCTION private.validate_domain(p_kind text,v jsonb) RETURNS void LANGUAGE plpgsql SET search_path='' AS $$
 DECLARE e jsonb; p jsonb; c jsonb;
 BEGIN

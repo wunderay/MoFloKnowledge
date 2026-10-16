@@ -32,7 +32,7 @@ BEGIN
   IF c.archived_at IS NOT NULL OR j.cancel_requested_at IS NOT NULL OR NOT EXISTS(SELECT FROM public.company_members WHERE company_id=c.id AND user_id=j.requested_by AND role IN ('owner','editor')) OR j.attempt_count>=3 THEN
    UPDATE public.scrape_jobs SET status=CASE WHEN j.attempt_count>=3 THEN 'failed' ELSE 'cancelled' END,finished_at=now(),lease_token=NULL,lease_expires_at=NULL,updated_at=now() WHERE id=j.id; CONTINUE;
   END IF;
-  UPDATE public.scrape_jobs SET lease_token=gen_random_uuid(),lease_expires_at=now()+interval '60 seconds',heartbeat_at=now(),attempt_count=attempt_count+1,started_at=coalesce(started_at,now()),status=CASE WHEN status='queued' THEN 'validating' ELSE status END,updated_at=now() WHERE id=j.id RETURNING * INTO j; RETURN to_jsonb(j)||jsonb_build_object('source_captures',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY s.recorded_at,s.id),'[]') FROM public.source_pages s WHERE s.company_id=j.company_id AND s.scrape_job_id=j.id));
+  UPDATE public.scrape_jobs SET lease_token=gen_random_uuid(),lease_expires_at=now()+interval '60 seconds',heartbeat_at=now(),attempt_count=attempt_count+1,started_at=coalesce(started_at,now()),status=CASE WHEN status='queued' THEN 'validating' ELSE status END,updated_at=now() WHERE id=j.id RETURNING * INTO j; RETURN to_jsonb(j)||jsonb_build_object('source_captures',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY s.recorded_at,s.id),'[]') FROM public.source_pages s WHERE s.company_id=j.company_id AND s.scrape_job_id=j.id),'current_entries',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',e.id,'kind',e.kind,'current_revision',e.current_revision,'content',r.content) ORDER BY e.created_at,e.id),'[]') FROM public.knowledge_entries e JOIN public.knowledge_entry_versions r ON r.company_id=e.company_id AND r.entry_id=e.id AND r.revision=e.current_revision WHERE e.company_id=j.company_id));
  END LOOP;
 END $$;
 CREATE FUNCTION private.worker_job(p_job uuid,p_company uuid,p_lease_token uuid,p_allow_cancel boolean DEFAULT false) RETURNS public.scrape_jobs LANGUAGE plpgsql SET search_path='' AS $$
@@ -56,13 +56,22 @@ BEGIN
   IF k NOT IN ('stage','discovered','selected','captured','failed','blocked','extracted','document_limit','limits_reached') THEN RAISE EXCEPTION 'unknown_progress_key'; END IF;
  END LOOP;
 END $$;
+CREATE FUNCTION private.validate_errors(p_errors jsonb) RETURNS void LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE e jsonb;
+BEGIN
+ IF jsonb_typeof(p_errors)<>'array' OR jsonb_array_length(p_errors)>100 THEN RAISE EXCEPTION 'invalid_safe_errors'; END IF;
+ FOR e IN SELECT value FROM jsonb_array_elements(p_errors) LOOP
+  IF jsonb_typeof(e)<>'object' OR e-ARRAY['code','url','retryable','message']<>'{}' OR NOT e ?& ARRAY['code','url','retryable','message'] OR length(coalesce(e->>'code','')) NOT BETWEEN 1 AND 100 OR length(coalesce(e->>'message','')) NOT BETWEEN 1 AND 1000 OR jsonb_typeof(e->'retryable')<>'boolean' OR e->'url'<>'null'::jsonb AND NOT private.valid_url(e->>'url') THEN RAISE EXCEPTION 'invalid_safe_error'; END IF;
+ END LOOP;
+END $$;
 CREATE FUNCTION private.checkpoint_job(p_job uuid,p_company uuid,p_lease_token uuid,p_checkpoint jsonb,p_progress jsonb) RETURNS public.scrape_jobs LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE j public.scrape_jobs:=private.worker_job(p_job,p_company,p_lease_token); stage text:=p_progress->>'stage';
 BEGIN
  PERFORM private.validate_progress(p_progress);
+ IF p_checkpoint ? 'errors' THEN PERFORM private.validate_errors(p_checkpoint->'errors'); END IF;
  IF jsonb_typeof(p_checkpoint)<>'object' OR octet_length(p_checkpoint::text)>1048576 THEN RAISE EXCEPTION 'invalid_checkpoint'; END IF;
  IF stage NOT IN ('validating','crawling','extracting') OR array_position(ARRAY['validating','crawling','extracting'],stage)<array_position(ARRAY['validating','crawling','extracting'],j.status) THEN RAISE EXCEPTION 'invalid_transition'; END IF;
- UPDATE public.scrape_jobs SET checkpoint=p_checkpoint,progress=p_progress,status=stage,updated_at=now() WHERE id=p_job RETURNING * INTO j; RETURN j;
+ UPDATE public.scrape_jobs SET checkpoint=p_checkpoint,progress=p_progress,errors=coalesce(p_checkpoint->'errors',errors),status=stage,updated_at=now() WHERE id=p_job RETURNING * INTO j; RETURN j;
 END $$;
 CREATE FUNCTION private.validate_capture() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
 DECLARE seg jsonb; ids text[]:='{}';
