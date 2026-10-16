@@ -68,16 +68,23 @@ function KnowledgeEditorContent({
   const [publish, setPublish] = useState(false);
   const [settings, setSettings] = useState(false);
   const [stale, setStale] = useState(false);
+  const [savedAwaitingRefresh, setSavedAwaitingRefresh] = useState<string | null>(
+    null,
+  );
   const [genderAttestations, setGenderAttestations] = useState<
     Record<string, string>
   >({});
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>(
     [],
   );
-  const refresh = useCallback(() => {
-    api<Draft>(companyPath(companyId, "/draft"))
-      .then(setDraft)
-      .catch((e) => setError(e.message));
+  const refresh = useCallback(async () => {
+    try {
+      setDraft(await api<Draft>(companyPath(companyId, "/draft")));
+      return true;
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    }
   }, [companyId]);
   useEffect(() => {
     const category = new URLSearchParams(window.location.search).get(
@@ -115,7 +122,8 @@ function KnowledgeEditorContent({
     );
   const membershipCanEdit =
     draft.company.role !== "viewer" && !draft.company.archived_at;
-  const canEdit = hydrated && membershipCanEdit;
+  const canEdit =
+    hydrated && membershipCanEdit && busy === null && !savedAwaitingRefresh;
   const spec = CATEGORY_SPECS[state.category]!;
   const entries = draft.entries.filter((e) => e.kind === state.category);
   const visibleEntries = entries.length
@@ -222,7 +230,12 @@ function KnowledgeEditorContent({
           }),
         );
       }
+      // The server may normalize conflict decisions and content. Keep local edits
+      // and controls locked until that authoritative revision is available.
+      setSavedAwaitingRefresh(entry.id);
+      if (!(await refresh())) return;
       dispatch({ type: "saved", id: entry.id });
+      setSavedAwaitingRefresh(null);
       setStale(false);
       setMessage(
         status === "approved"
@@ -231,7 +244,6 @@ function KnowledgeEditorContent({
             ? "Entry rejected. It will be excluded from future snapshots."
             : "Draft saved. Your changes have a new revision.",
       );
-      refresh();
     } catch (e) {
       setError(
         e instanceof ZodError
@@ -396,7 +408,32 @@ function KnowledgeEditorContent({
       {error && (
         <Notice error>
           {error}
-          {stale && (
+          {savedAwaitingRefresh && (
+            <>
+              <p>
+                Your revision was saved, but the latest draft could not be loaded.
+                Load it before making more changes. Your edits are still here.
+              </p>
+              <button
+                className="button"
+                disabled={busy !== null}
+                onClick={async () => {
+                  setBusy(savedAwaitingRefresh);
+                  if (await refresh()) {
+                    dispatch({ type: "saved", id: savedAwaitingRefresh });
+                    setSavedAwaitingRefresh(null);
+                    setStale(false);
+                    setError("");
+                    setMessage("Latest saved revisions loaded.");
+                  }
+                  setBusy(null);
+                }}
+              >
+                Load saved revision
+              </button>
+            </>
+          )}
+          {stale && !savedAwaitingRefresh && (
             <>
               <p>
                 Your edits are still here. Load the latest saved revision,
