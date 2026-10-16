@@ -352,7 +352,14 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       const detailFields = key === "key_people" ? ["title", "role"] : ["offering_type", "category"];
       const populatedDetails = detailFields.filter((field) => typeof fields[field] === "string" && populated(fields[field]));
       const distinctDetails = populatedDetails.filter((field, index) => populatedDetails.findIndex((other) => normalized(String(fields[other])) === normalized(String(fields[field]))) === index);
-      if (distinctDetails.length) prose(joined(distinctDetails.map((field) => fact(String(fields[field]), `${path}/${field}`)), key === "key_people" ? "; " : " · "), { muted: true });
+      const subtitleFragment = (value: unknown) => {
+        const text = String(value).trim();
+        const word = text.match(/(\p{L}+)\.$/u)?.[1];
+        // Remove sentence punctuation before the join, retaining initials, acronyms and common abbreviations.
+        return key === "key_people" && distinctDetails.length > 1 && word && word.length > 3 && word !== word.toUpperCase()
+          && !/^(?:prof|assoc|asst|pres|exec|admin|dept|corp)$/i.test(word) ? text.slice(0, -1) : text;
+      };
+      if (distinctDetails.length) prose(joined(distinctDetails.map((field) => fact(subtitleFragment(fields[field]), `${path}/${field}`)), key === "key_people" ? "; " : " · "), { muted: true });
       if (key === "key_people" && fields.gender) add(String(fields.gender), { label: "Stated gender", citations: citations(`${path}/gender`) });
       for (const [field, value] of Object.entries(item)) {
         if (["id", "name", ...(key === "key_people" ? ["title", "role", "gender"] : ["offering_type", "category"])].includes(field)) continue;
