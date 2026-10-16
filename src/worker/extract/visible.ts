@@ -27,6 +27,22 @@ export function visibleCandidates(
         if (value && value.length <= 4000)
           add(field, collection ? [{ text: value }] : value, [segment.id]);
       }
+      const employee = /^Employee count\s*:\s*(.+)$/i.exec(line)?.[1]?.trim();
+      if (employee && employee.length <= 4000) {
+        const integer = "(?:0|[1-9]\\d*|[1-9]\\d{0,2}(?:,\\d{3})+)";
+        const units = "(?:\\s*(?:employees|people|staff(?: members)?))?";
+        const exact = new RegExp("^(" + integer + ")" + units + "$", "i").exec(employee);
+        const range = new RegExp("^(" + integer + ")\\s*(?:[-–—]|to)\\s*(" + integer + ")" + units + "$", "i").exec(employee);
+        const number = (raw: string) => Number(raw.replace(/,/g, ""));
+        const exactNumber = exact ? number(exact[1]) : null;
+        const min = range ? number(range[1]) : null, max = range ? number(range[2]) : null;
+        const validRange = min !== null && max !== null &&
+          Number.isSafeInteger(min) && Number.isSafeInteger(max) && min <= max;
+        add("/company_foundation/employee_count", {
+          raw: employee, exact: Number.isSafeInteger(exactNumber) ? exactNumber : null,
+          min: validRange ? min : null, max: validRange ? max : null, as_of: null,
+        }, [segment.id]);
+      }
       const founding = /^(?:Founded|Established)\s*(?::|in)?\s*(\d{4})(?:\b|$)/i.exec(line);
       if (founding) {
         const year = Number(founding[1]);
@@ -63,6 +79,26 @@ export function visibleCandidates(
         if (description) add("/offerings/@id/description", description.value, [],
           [href.id, label.id, description.id], link.url);
       }
+    }
+  }
+  // A named profile page must independently agree in its title and visible heading.
+  // Only an explicit role at the end of the published page title is copied.
+  const profileTitle = page.capture.title &&
+    /^(.+?)\s+[-—–|]\s+.+?\s+(Co-Founder|Founder|CEO|Chief Executive Officer|Owner|President|Director)$/i.exec(page.capture.title);
+  if (profileTitle && /\/(?:team|people|staff|about-us|about)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname) &&
+      !observations.some((o) => /\/@type(?:\/\d+)?$/.test(o.property ?? "") && /^(?:https?:\/\/schema\.org\/)?Person$/.test(o.value ?? ""))) {
+    const name = profileTitle[1].trim();
+    const heading = observations.find((o) => o.property === "heading" &&
+      (o.value === name || o.value?.startsWith(name + ",")));
+    const source = page.capture.segments.find((s) => s.text.includes(name));
+    const title = observations.find((o) => o.property === "page-title" && o.value === page.capture.title);
+    if (heading && source && title && !name.includes("|")) {
+      const entity = `${page.capture.finalUrl}|${name}|${source.id}`;
+      add("/key_people/@id/name", name, [source.id], [title.id, heading.id], entity);
+      add("/key_people/@id/title", profileTitle[2], [source.id], [title.id, heading.id], entity);
+      const description = observations.find((o) => o.property === "meta-description" && o.value?.includes(name));
+      if (description) add("/key_people/@id/background_or_relevance", description.value,
+        [source.id], [description.id], entity);
     }
   }
   const blocks = page.capture.observations.offeringBlocks;
