@@ -230,6 +230,21 @@ export function reduceCandidates(
         content: parsed,
         provenance,
         conflicts: provenance.conflicts,
+        changes: FIELD_REGISTRY.filter((field) => field.kind === group.kind)
+          .map((field) => field.path.replace("@id", `@${entryId}`))
+          .filter(
+            (target) =>
+              !provenance.conflicts.some((conflict) => conflict.target === target) &&
+              provenance.claims.some((claim) =>
+                claim.targets.some(
+                  (path) => path === target || path.startsWith(target + "/"),
+                ),
+              ),
+          )
+          .map((target) => ({
+            id: stableId(options.jobId, entryId, target, "change"),
+            target,
+          })),
         model: options.model,
         prompt_version: options.promptVersion,
       }),

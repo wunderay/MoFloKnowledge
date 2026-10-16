@@ -49,6 +49,15 @@ it("validates all41 required assessments, stable IDs, exact evidence and explici
     employee_count: { exact: null, min: 25, max: 50 },
   });
   expect(foundation.conflicts[0].candidates).toHaveLength(2);
+  expect(foundation.changes.map((change) => change.target)).toContain(
+    "/company_foundation/overview",
+  );
+  expect(foundation.changes.map((change) => change.target)).not.toContain(
+    "/company_foundation/main_address",
+  );
+  expect(foundation.changes.map((change) => change.target)).not.toContain(
+    "/company_foundation/legal_entity_type",
+  );
   expect(proposals.find((p) => p.kind === "key_person")?.content).toMatchObject(
     { name: "Jamie Park", gender: null },
   );
