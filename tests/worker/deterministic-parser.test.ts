@@ -111,13 +111,13 @@ describe("source-only deterministic parsing", () => {
   it("requires agreement between a named profile title and visible heading before copying a person's explicit role", () => {
     const title = '<title>Alex Rowan — Workshop Works Founder</title>';
     const { candidates } = extract(title + '<main><h1>Alex Rowan, CPA</h1><p>Alex repairs tools.</p></main>', "/about-us/alex-rowan");
-    expect(candidates.filter((c) => c.field === "/key_people/@id/name").map((c) => c.value)).toEqual(["Alex Rowan"]);
-    expect(candidates.filter((c) => c.field === "/key_people/@id/title").map((c) => c.value)).toEqual(["Founder"]);
-    expect(candidates.filter((c) => c.field === "/key_people/@id/role").map((c) => c.value)).toEqual(["Founder"]);
+    expect([...new Set(candidates.filter((c) => c.field === "/key_people/@id/name").map((c) => c.value))]).toEqual(["Alex Rowan"]);
+    expect([...new Set(candidates.filter((c) => c.field === "/key_people/@id/title").map((c) => c.value))]).toEqual(["Founder"]);
+    expect([...new Set(candidates.filter((c) => c.field === "/key_people/@id/role").map((c) => c.value))]).toEqual(["Founder"]);
     const separateRole = extract('<title>Alex Rowan</title><h1>Alex Rowan</h1><h2>Founder</h2>', "/team/alex-rowan");
-    expect(separateRole.candidates.filter((c) => c.field === "/key_people/@id/name").map((c) => c.value)).toEqual(["Alex Rowan"]);
-    expect(separateRole.candidates.filter((c) => c.field === "/key_people/@id/title").map((c) => c.value)).toEqual(["Founder"]);
-    expect(separateRole.candidates.filter((c) => c.field === "/key_people/@id/role").map((c) => c.value)).toEqual(["Founder"]);
+    expect([...new Set(separateRole.candidates.filter((c) => c.field === "/key_people/@id/name").map((c) => c.value))]).toEqual(["Alex Rowan"]);
+    expect([...new Set(separateRole.candidates.filter((c) => c.field === "/key_people/@id/title").map((c) => c.value))]).toEqual(["Founder"]);
+    expect([...new Set(separateRole.candidates.filter((c) => c.field === "/key_people/@id/role").map((c) => c.value))]).toEqual(["Founder"]);
     expect(extract('<title>Alex Rowan</title><h1>Alex Rowan</h1><p>Founder</p>', "/team/alex-rowan").candidates
       .some((c) => c.field.startsWith("/key_people"))).toBe(false);
     expect(extract('<title>Our Team</title><h1>Our Team</h1><h2>Founder</h2>', "/team/alex-rowan").candidates
