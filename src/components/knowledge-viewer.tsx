@@ -8,10 +8,11 @@ import {
   type EntryProvenance,
   type KnowledgeBaseExport,
 } from "@/contracts";
-import { api, companyPath } from "./api-client";
+import { api, companyPath, write } from "./api-client";
 import { CATEGORY_SPECS, labelOf } from "./business-fields";
 import { CitationPopover, safeHref } from "./citation-popover";
 import { EmptyState, Notice, StatusBadge } from "./ui";
+import { EntryHistory } from "./entry-history";
 type ViewEntry = {
   id: string;
   kind: EntryKind;
@@ -152,6 +153,9 @@ export function KnowledgeViewer({
   initialVersionId?: string;
 }) {
   const [name, setName] = useState("Company knowledge");
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [versions, setVersions] = useState<Version[]>([]);
   const [versionId, setVersionId] = useState(initialVersionId ?? "");
   const [entries, setEntries] = useState<ViewEntry[]>([]);
@@ -164,43 +168,133 @@ export function KnowledgeViewer({
   const [coverage, setCoverage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [canEdit, setCanEdit] = useState(false);
+  const [history, setHistory] = useState<ViewEntry | null>(null);
+  const [reload, setReload] = useState(0);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
+    api<{ companies: { id: string; name: string }[] }>("/api/companies")
+      .then((data) => setCompanies(data.companies))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    setVersionId(initialVersionId ?? "");
+    setVersions([]);
+    setHistory(null);
     if (!companyId) return;
+    const abort = new AbortController();
     api<Version[] | { versions: Version[] }>(
       companyPath(companyId, "/versions"),
+      { signal: abort.signal },
     )
       .then((data) => {
+        if (abort.signal.aborted) return;
         const all = Array.isArray(data) ? data : data.versions;
         setVersions(all);
-        if (!initialVersionId) setVersionId(all[0]?.id ?? "draft");
+        setVersionId(initialVersionId ?? all[0]?.id ?? "draft");
       })
-      .catch((e) => setError(e.message));
+      .catch((error) => {
+        if (!abort.signal.aborted) setError(error.message);
+      });
+    return () => abort.abort();
   }, [companyId, initialVersionId]);
   useEffect(() => {
-    if (!versionId) return;
+    setQuery("");
+    setSection("");
+    setOrigin("");
+    setReview("");
+    setCoverage("");
+  }, [companyId, versionId]);
+  useEffect(() => {
+    if (!versionId || !companyId) return;
+    const abort = new AbortController();
     setLoading(true);
     setError("");
-    if (versionId === "draft")
-      api<{ company: { name: string }; entries: ViewEntry[] }>(
-        companyPath(companyId, "/draft"),
-      )
-        .then((data) => {
-          setName(data.company.name);
-          setEntries(data.entries);
-          setPayload(null);
-        })
-        .catch((e) => setError(e.message))
-        .finally(() => setLoading(false));
-    else
-      api<KnowledgeBaseExport>(companyPath(companyId, `/versions/${versionId}`))
-        .then((data) => {
-          setPayload(data);
-          setName(data.provenance.company.name);
-          setEntries(snapshotEntries(data));
-        })
-        .catch((e) => setError(e.message))
-        .finally(() => setLoading(false));
-  }, [companyId, versionId]);
+    setEntries([]);
+    setPayload(null);
+    setCanEdit(false);
+    const request =
+      versionId === "draft"
+        ? api<{
+            company: { name: string; role: string; archived_at: string | null };
+            entries: ViewEntry[];
+          }>(companyPath(companyId, "/draft"), { signal: abort.signal }).then(
+            (data) => {
+              if (abort.signal.aborted) return;
+              setName(data.company.name);
+              setCanEdit(
+                data.company.role !== "viewer" && !data.company.archived_at,
+              );
+              setEntries(data.entries);
+            },
+          )
+        : api<KnowledgeBaseExport>(
+            companyPath(companyId, `/versions/${versionId}`),
+            { signal: abort.signal },
+          ).then((data) => {
+            if (abort.signal.aborted) return;
+            setPayload(data);
+            setName(data.provenance.company.name);
+            setEntries(snapshotEntries(data));
+          });
+    request
+      .catch((error) => {
+        if (!abort.signal.aborted) setError(error.message);
+      })
+      .finally(() => {
+        if (!abort.signal.aborted) setLoading(false);
+      });
+    return () => abort.abort();
+  }, [companyId, versionId, reload]);
+  async function reject(entry: ViewEntry) {
+    setBusy(true);
+    setError("");
+    try {
+      await api(
+        companyPath(companyId, `/entries/${entry.id}/revisions`),
+        write("POST", {
+          expectedRevision: entry.current_revision,
+          content: entry.content,
+          provenance: entry.provenance,
+          reviewStatus: "rejected",
+          reason: "Reviewer removed this entry from future snapshots.",
+          requestId: crypto.randomUUID(),
+        }),
+      );
+      setReload((value) => value + 1);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function draftActions(entry: ViewEntry) {
+    return versionId === "draft" ? (
+      <div className="actions">
+        <Link
+          className="button button--quiet"
+          href={`/knowledge?companyId=${companyId}&category=${entry.kind}&entryId=${entry.id}`}
+        >
+          {canEdit ? "Edit draft" : "View draft"}
+        </Link>
+        <button
+          className="button button--quiet"
+          onClick={() => setHistory(entry)}
+        >
+          History
+        </button>
+        {canEdit && (
+          <button
+            className="button button--quiet button--danger"
+            disabled={busy}
+            onClick={() => reject(entry)}
+          >
+            Remove from future versions
+          </button>
+        )}
+      </div>
+    ) : null;
+  }
   const filtered = useMemo(
     () =>
       entries.filter(
@@ -271,25 +365,46 @@ export function KnowledgeViewer({
       </div>
       <div className="panel">
         <div className="section-heading">
-          <select
-            aria-label="Knowledge version"
-            className="company-switcher"
-            value={versionId}
-            onChange={(e) => {
-              setVersionId(e.target.value);
-              const url = new URL(window.location.href);
-              url.searchParams.set("versionId", e.target.value);
-              window.history.replaceState(null, "", url);
-            }}
-          >
-            <option value="draft">Current draft</option>
-            {versions.map((v) => (
-              <option key={v.id} value={v.id}>
-                Version {v.version_number} ·{" "}
-                {new Date(v.created_at).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
+          <div className="actions">
+            <select
+              className="company-switcher"
+              aria-label="Switch company"
+              value={companyId}
+              onChange={(event) =>
+                window.location.assign(
+                  `/knowledge/view?companyId=${event.target.value}`,
+                )
+              }
+            >
+              {!companies.some((company) => company.id === companyId) && (
+                <option value={companyId}>{name}</option>
+              )}
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Knowledge version"
+              className="company-switcher"
+              value={versionId}
+              onChange={(e) => {
+                setVersionId(e.target.value);
+                const url = new URL(window.location.href);
+                url.searchParams.set("versionId", e.target.value);
+                window.history.replaceState(null, "", url);
+              }}
+            >
+              <option value="draft">Current draft</option>
+              {versions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  Version {v.version_number} ·{" "}
+                  {new Date(v.created_at).toLocaleDateString()}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="actions" aria-label="Display mode">
             {["cards", "table", "detail", "json"].map((item) => (
               <button
@@ -419,6 +534,7 @@ export function KnowledgeViewer({
                     >
                       Details →
                     </button>
+                    {draftActions(e)}
                   </td>
                 </tr>
               ))}
@@ -482,12 +598,23 @@ export function KnowledgeViewer({
                       approved={e.review_status === "approved"}
                     />
                   )}
+                  {draftActions(e)}
                 </article>
               );
             })}
           </div>
         )}
       </div>
+      {history && (
+        <EntryHistory
+          companyId={companyId}
+          entryId={history.id}
+          revision={history.current_revision}
+          canEdit={canEdit && versionId === "draft"}
+          onClose={() => setHistory(null)}
+          onRestore={() => setReload((value) => value + 1)}
+        />
+      )}
     </div>
   );
 }

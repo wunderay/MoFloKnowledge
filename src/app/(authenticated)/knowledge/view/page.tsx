@@ -7,6 +7,7 @@ export default async function ViewPage({
   const params = await searchParams;
   return (
     <KnowledgeViewer
+      key={params.companyId}
       companyId={params.companyId ?? ""}
       initialVersionId={params.versionId}
     />
