@@ -5,6 +5,8 @@ DO $$ BEGIN
 END $$;
 CREATE SCHEMA auth;
 CREATE TABLE auth.users(id uuid PRIMARY KEY);
+-- Native GoTrue/Supabase protect the Auth roster with RLS. No application read policy.
+ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
  SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
 $$;
