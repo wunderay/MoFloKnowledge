@@ -3,7 +3,11 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import { normalizeColor } from "./colors";
 import { structuredCandidates } from "./structured";
 import { visibleCandidates } from "./visible";
+import { companyTextCandidates, COMPANY_TEXT_FIELDS } from "./company-text";
+import { marketTextCandidates, MARKET_TEXT_SUPPORTED_FIELDS } from "./market-text";
 export const SUPPORTED_FIELDS: readonly string[] = [
+  ...COMPANY_TEXT_FIELDS, ...MARKET_TEXT_SUPPORTED_FIELDS,
+  "/offerings/@id/features",
   "/company_foundation/website", "/company_foundation/overview",
   "/company_foundation/industry", "/company_foundation/business_model",
   "/company_foundation/year_founded", "/company_foundation/employee_count", "/company_foundation/main_address",
@@ -22,6 +26,8 @@ export function deterministicCandidates(
   const result: FieldCandidate[] = [
     ...structuredCandidates(page, observations),
     ...visibleCandidates(page, observations),
+    ...companyTextCandidates(page, observations),
+    ...marketTextCandidates(page, observations),
   ];
   const add = (
     field: string,
@@ -100,7 +106,7 @@ export function deterministicCandidates(
             );
         }
       }
-    if (["color", "background-color"].includes(o.property ?? "") && o.value) {
+    if (["color", "background-color", "declared-color", "declared-background-color"].includes(o.property ?? "") && o.value) {
       const color = normalizeColor(o.value);
       if (color)
         add(
@@ -118,7 +124,7 @@ export function deterministicCandidates(
     if (
       o.property === "logo" &&
       o.asset_url &&
-      /header|footer/i.test(o.selector ?? "") &&
+      /header|footer|^jsonld:(?:Organization|LocalBusiness)\/logo$/i.test(o.selector ?? "") &&
       !/partner|favicon/i.test(o.value ?? "")
     )
       add(

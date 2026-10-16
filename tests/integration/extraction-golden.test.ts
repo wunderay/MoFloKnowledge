@@ -5,7 +5,7 @@ import { deterministicCandidates } from "../../src/worker/extract/deterministic"
 import * as sourceExtractor from "../../src/worker/extract/deterministic";
 import { validateCandidates } from "../../src/worker/extract/validate-candidates";
 import { reduceCandidates } from "../../src/worker/extract/reduce";
-import { validateProvenance, entryBusiness } from "../../src/contracts";
+import { validateProvenance, entryBusiness, resolveStablePointer } from "../../src/contracts";
 import { normalizeColor } from "../../src/worker/extract/colors";
 import { extractAndFinish } from "../../src/worker/extract/pipeline";
 import type { Job, JobRepository } from "../../src/worker/job-repository";
@@ -303,4 +303,47 @@ it("keeps explicit free, contact, range and unknown pricing distinct", () => {
       companyId,
     ),
   ).toEqual([]);
+});
+
+it("ranks exact narrative extracts while preserving factual disagreements and leaf evidence", () => {
+  const values = validateCandidates([
+    candidate("/company_foundation/overview", "water monitoring equipment", "water monitoring equipment", null, { priority: 10 }),
+    candidate("/company_foundation/overview", "Northstar builds water monitoring equipment for community water teams.", "Northstar builds", null, { priority: 95 }),
+    candidate("/company_foundation/year_founded", 2012, "Founded in 2012", null, { priority: 95 }),
+    candidate("/company_foundation/year_founded", 2013, "Founded in 2012", null, { priority: 1, segment_ids: ["different-year"] }),
+  ], { ...page, capture: { ...page.capture, segments: [...page.capture.segments,
+    { id: "different-year", text: "Established in 2013." }] } }, observations, companyId);
+  const options = { companyId, jobId, partial: false };
+  const proposals = reduceCandidates(values, options);
+  const foundation = proposals.find((p) => p.kind === "company_foundation")!;
+  expect(foundation.content).toMatchObject({ overview: "Northstar builds water monitoring equipment for community water teams.", year_founded: null });
+  expect(foundation.conflicts).toHaveLength(1);
+  expect(foundation.conflicts[0].target).toBe("/company_foundation/year_founded");
+  expect(foundation.conflicts[0].candidates.map((c) => c.value).sort()).toEqual([2012, 2013]);
+  expect(reduceCandidates([...values].reverse(), options)).toEqual(proposals);
+  expect(() => reduceCandidates([{ ...values[0], origin: "generated" } as never], options)).toThrow("invalid_origin");
+});
+
+it("merges font observation methods by family and attributes each method to its actual evidence", () => {
+  const source = deterministicCandidates(page, observations).filter((c) => c.field === "/branding_and_style/fonts");
+  const values = validateCandidates(source, page, observations, companyId);
+  const branding = reduceCandidates(values, { companyId, jobId, partial: false }).find((p) => p.kind === "branding_and_style")!;
+  const fonts = (branding.content as { fonts: { family: string; observations: string[] }[] }).fonts;
+  expect(fonts.filter((f) => f.family === "Inter, sans-serif")).toHaveLength(1);
+  expect(fonts.find((f) => f.family === "Inter, sans-serif")?.observations).toEqual(["computed_family", "css_declared"]);
+  for (const claim of branding.provenance.claims.filter((c) => c.targets.some((t) => /\/observations\/\d+$/.test(t)))) {
+    const method = resolveStablePointer(entryBusiness(branding.kind, branding.content), claim.targets[0]);
+    const evidence = claim.evidence_ids.map((id) => branding.provenance.evidence.find((e) => e.id === id)!);
+    // Both metadata leaves have exact technical evidence, never just a same-family match.
+    expect(evidence.some((e) => method === "computed_family" ? e.technical?.property === "font-family" : method === "css_declared" ? e.technical?.property === "stylesheet" : e.technical?.property === "font-resource")).toBe(true);
+  }
+});
+
+it("accepts joined exact passages and rejects paraphrases and unrelated since-years", () => {
+  const grounded = candidate("/company_foundation/overview", "Northstar builds water monitoring equipment for community water teams.\n\nWe serve the Pacific Northwest.", "Northstar builds");
+  grounded.segment_ids.push(page.capture.segments.find((s) => s.text === "We serve the Pacific Northwest.")!.id);
+  expect(validateCandidates([grounded], page, observations, companyId)).toHaveLength(1);
+  expect(() => validateCandidates([{ ...grounded, value: "Northstar provides excellent monitoring solutions." }], page, observations, companyId)).toThrow("value_not_in_evidence");
+  const unrelated = { ...page, capture: { ...page.capture, segments: [{ id: "career", text: "Since 2010, I have worked for a large firm." }] } };
+  expect(() => validateCandidates([{ ...candidate("/company_foundation/year_founded", 2012, "Founded in 2012"), value: 2010, segment_ids: ["career"] }], unrelated, observations, companyId)).toThrow("founding_not_explicit");
 });

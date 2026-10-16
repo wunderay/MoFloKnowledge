@@ -21,6 +21,19 @@ export type ValidatedCandidate = FieldCandidate & {
   evidenceIds: string[];
   observations: TechnicalObservation[];
 };
+const normalizeText = (value: string) => value.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+const normalizeIdentity = (value: string) => normalizeText(value).replace(/&/g, "and").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+/** Identity excludes enrichment such as font observation methods. */
+function itemIdentity(value: unknown): string {
+  if (!value || typeof value !== "object") return canonicalStringify(value);
+  const item = value as Record<string, unknown>;
+  if (item.family) return "family:" + normalizeIdentity(String(item.family));
+  if (item.hex) return "color:" + String(item.hex).toUpperCase() + ":" + String(item.alpha);
+  if (item.profile_url) return "profile:" + String(item.profile_url);
+  if (item.url) return "url:" + String(item.url) + (item.label ? ":" + normalizeIdentity(String(item.label)) : "");
+  if (item.text) return "text:" + normalizeIdentity(String(item.text));
+  return canonicalStringify(value);
+}
 export function materialize(
   schema: z.ZodTypeAny,
   value: unknown,
@@ -35,10 +48,7 @@ export function materialize(
       : materialize(schema.unwrap(), value, seed, path);
   if (schema instanceof z.ZodArray)
     return (value as unknown[]).map((v) => {
-      const identity =
-        v && typeof v === "object" && "url" in v && v.url
-          ? String(v.url)
-          : canonicalStringify(v);
+      const identity = itemIdentity(v);
       return materialize(
         schema.element,
         v,
@@ -54,7 +64,7 @@ export function materialize(
           ? stableId(
               seed,
               path,
-              path === "" ? canonicalStringify(value) : "item",
+              path === "" ? itemIdentity(value) : "item",
             )
           : materialize(
               child as z.ZodTypeAny,
@@ -119,26 +129,23 @@ export function validateCandidates(
         throw new Error("gender_not_explicit");
       if (field.field === "gender")
         c.note = "Explicit public self-description observed in cited text.";
-      if (
-        field.field === "year_founded" &&
-        !new RegExp(
-          `(?:founded|established|since)[^.!?]{0,50}\\b${c.value}\\b`,
-          "i",
-        ).test(quotes)
-      )
-        throw new Error("founding_not_explicit");
-      if (
-        field.field === "founding_story" &&
-        !/\b(?:because|began|started|journey|mission|story|to solve)\b/i.test(
-          quotes,
-        )
-      )
+      if (field.field === "year_founded") {
+        const year = String(c.value);
+        const explicitYear = new RegExp(`(?:founded|established)[^.!?]{0,50}\\b${year}\\b`, "i").test(quotes) ||
+          segments.some((segment) => new RegExp(`^Since\\s+${year}[.!]?$`, "i").test(segment.text.trim())) ||
+          new RegExp(`\\bsince\\s+${year}[^.!?]{0,80}\\b(?:my|our|his|her|their) (?:own )?(?:accounting )?practice\\b`, "i").test(quotes);
+        const practiceOrigin = new RegExp(`(?:started|began|opened)[^.!?]{0,90}(?:\\b(?:my|our|his|her|their) (?:own )?(?:accounting )?(?:practice|company|business|firm))[^.!?]{0,50}\\b${year}\\b`, "i").test(quotes);
+        const declaredDate = selected.some((o) => /jsonld:.*\/foundingDate$/.test(o.property ?? "") && new RegExp(`^${year}(?:-|$)`).test(o.value ?? ""));
+        if (!explicitYear && !practiceOrigin && !declaredDate) throw new Error("founding_not_explicit");
+      }
+      if (field.field === "founding_story" &&
+        !/\b(?:because|began|started|journey|mission|story|to solve)\b|\bsince\s+\d{4}[^.!?]{0,80}\b(?:my|our) (?:own )?(?:accounting )?practice\b/i.test(quotes))
         throw new Error("story_not_supported");
-      if (
-        field.field === "legal_entity_type" &&
-        !quotes.toLowerCase().includes(String(c.value).toLowerCase())
-      )
-        throw new Error("legal_not_explicit");
+      if (field.field === "legal_entity_type") {
+        const identity = [quotes, ...selected.filter((o) => o.property === "page-title" || /jsonld:.*\/(?:name|legalName)$/.test(o.property ?? "")).map((o) => o.value ?? "")].join(" ");
+        const escaped = String(c.value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        if (!new RegExp(`\\b${escaped}\\b`, "i").test(identity)) throw new Error("legal_not_explicit");
+      }
       if (field.field === "employee_count") {
         const v = c.value as {
           raw: string;
@@ -244,7 +251,7 @@ export function validateCandidates(
               (o) =>
                 o.property === "logo" &&
                 o.asset_url === logo.url &&
-                /header|footer/i.test(o.selector ?? "") &&
+                /header|footer|^jsonld:(?:Organization|LocalBusiness)\/logo$/i.test(o.selector ?? "") &&
                 !/partner|favicon/i.test(o.value ?? ""),
             )
           )
@@ -265,8 +272,28 @@ export function validateCandidates(
         );
       };
       const structuredPrefix = page.capture.finalUrl + "|jsonld:";
+      const serviceHeading = field.kind === "offering" && segments.some((segment) =>
+        selected.some((o) => o.property === "heading" && o.value &&
+          normalizeText(segment.text).includes(normalizeText(o.value))) &&
+        /\b(?:service|product|offering|tax|payroll|accounting|bookkeeping|quickbooks|repair|consulting|controller|cfo)\b/i.test(segment.text),
+      );
+      const structuredServiceKey = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
+        selected.some((o) => o.property?.startsWith("jsonld:") && o.property.endsWith("/name") && o.value &&
+          normalizeIdentity(o.value) === normalizeIdentity(c.entity_key!.slice((page.capture.finalUrl + "|service:").length)) &&
+          structuredEntity(o.property.slice("jsonld:".length, -"/name".length)));
+      const narrativeService = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
+        (() => {
+          const expected = c.entity_key!.slice((page.capture.finalUrl + "|service:").length);
+          return segments.some((segment) => {
+            const names = [segment.text, ...selected.filter((o) => o.property === "heading" || o.property === "anchor-label").map((o) => o.value ?? "")];
+            return names.some((name) => (" " + normalizeIdentity(name) + " ").includes(" " + normalizeIdentity(expected) + " ")) &&
+              /\b(?:service|product|offering|tax|payroll|accounting|bookkeeping|quickbooks|repair|consulting|controller|cfo)\b/i.test(segment.text);
+          });
+        })();
       if (
         c.entity_key &&
+        !(c.entity_key === page.capture.finalUrl && serviceHeading) &&
+        !narrativeService && !structuredServiceKey &&
         !page.capture.links.some((link) =>
           link.url === c.entity_key && (
             link.url !== page.capture.finalUrl || (
@@ -345,8 +372,7 @@ export function validateCandidates(
       if (c.origin === "source_backed") {
         const haystack = [quotes, ...selected.map((o) => o.value ?? "")]
           .join(" ")
-          .replace(/\s+/g, " ")
-          .toLowerCase();
+          .normalize("NFKC").replace(/\s+/g, " ").toLowerCase();
         const skip = new Set([
           "kind",
           "classification",
@@ -370,7 +396,9 @@ export function validateCandidates(
                 throw new Error("url_not_observed");
               return;
             }
-            if (!haystack.includes(value.replace(/\s+/g, " ").toLowerCase()))
+            // Multi-paragraph extracts may join nonadjacent exact passages. Every
+            // paragraph must remain grounded; joining never permits paraphrasing.
+            if (!value.split(/\n\s*\n/).every((paragraph) => haystack.includes(normalizeText(paragraph))))
               throw new Error("value_not_in_evidence");
           } else if (Array.isArray(value))
             for (const item of value) check(item, key);
@@ -379,7 +407,20 @@ export function validateCandidates(
         };
         check(c.value);
       }
-      const entity = c.entity_key ?? "singleton";
+      let entity = c.entity_key ?? "singleton";
+      if (field.kind === "key_person" && c.entity_key) {
+        const legacyName = c.entity_key.startsWith(page.capture.finalUrl + "|")
+          ? c.entity_key.split("|")[1] : null;
+        const structuredName = selected.find((o) => o.property?.startsWith("jsonld:") && o.property.endsWith("/name"))?.value;
+        const name = legacyName?.startsWith("jsonld:") ? structuredName : legacyName ?? structuredName;
+        // A corroborated profile heading identifies the page independently of
+        // paragraph order or JSON-LD array positions. Home-page people retain
+        // their declared linked identities.
+        if (name && /\/(?:team|people|staff|about-us|about)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname) &&
+          observations.some((o) => o.property === "heading" && o.value &&
+            (normalizeIdentity(o.value) === normalizeIdentity(name) || normalizeIdentity(o.value).startsWith(normalizeIdentity(name) + " "))))
+          entity = page.capture.finalUrl;
+      }
       const entryId = stableId(companyId, field.kind, entity);
       let shape: z.ZodTypeAny = businessEntrySchemas[field.kind];
       while (shape instanceof z.ZodEffects) shape = shape.innerType();
