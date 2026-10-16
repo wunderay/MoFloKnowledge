@@ -81,6 +81,9 @@ BEGIN
    FOR leaf IN SELECT * FROM private.business_leaves(option_value->'value',conflict->>'target') LOOP
     IF NOT private.allowed_origin(leaf,option_value->>'origin') THEN RAISE EXCEPTION 'candidate_origin_disallowed'; END IF;
    END LOOP;
+   FOR target IN SELECT jsonb_array_elements_text(option_value->'based_on_claim_ids') LOOP
+    IF NOT EXISTS(SELECT FROM jsonb_array_elements((p_revision.provenance->'claims')||p_supporting_claims) b WHERE b->>'id'=target) AND NOT EXISTS(SELECT FROM public.knowledge_entry_versions h,jsonb_array_elements(h.provenance->'claims') b WHERE h.company_id=p_revision.company_id AND b->>'id'=target) THEN RAISE EXCEPTION 'unknown_candidate_support'; END IF;
+   END LOOP;
    IF option_value->>'origin'<>'user_provided' AND jsonb_array_length(option_value->'evidence_ids')=0 THEN RAISE EXCEPTION 'candidate_evidence_required'; END IF;
    IF option_value->>'origin'='generated' AND jsonb_array_length(option_value->'based_on_claim_ids')=0 THEN RAISE EXCEPTION 'generated_candidate_support_required'; END IF;
   END LOOP;
