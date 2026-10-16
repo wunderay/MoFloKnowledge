@@ -3,7 +3,7 @@ import JSZip from "jszip";
 import { load } from "cheerio";
 import fixture from "../contracts/illustrative-export.json";
 import { KnowledgeBaseExportSchema } from "../../src/contracts";
-import { documentFilename, renderKnowledgeDocument } from "../../src/knowledge/document-export";
+import { documentData, documentFilename, documentParagraphs, renderKnowledgeDocument } from "../../src/knowledge/document-export";
 
 it("creates a real OOXML document formatting a complete profile with full nested values, lists, human coverage notes and source references", async () => {
   const snapshot = KnowledgeBaseExportSchema.parse(fixture);
@@ -66,4 +66,44 @@ it("sanitizes document filenames for both draft and saved versions", () => {
   expect(documentFilename('../../Über Acme\r\n"', "draft")).toBe("uber-acme-knowledge-base-draft.docx");
   expect(documentFilename("公司", 12)).toBe("company-knowledge-base-v12.docx");
   expect(() => documentFilename("company", -1)).toThrow();
+});
+
+it("caps distinct narrative citations at three and basic facts at one without changing full provenance or bibliography", async () => {
+  const snapshot = KnowledgeBaseExportSchema.parse(fixture);
+  const uuid = (number: number) => `90000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
+  snapshot.provenance.sources = Array.from({ length: 5 }, (_, index) => ({
+    ...snapshot.provenance.sources[0], id: uuid(index + 1), url: `https://source-${index + 1}.example/`,
+  }));
+  snapshot.provenance.evidence = Array.from({ length: 6 }, (_, index) => ({
+    ...snapshot.provenance.evidence[0], id: uuid(index + 11),
+    source_page_id: snapshot.provenance.sources[index % 5].id,
+  }));
+  const support = [3, 1, 5, 0, 2, 4, 1].map((index) => snapshot.provenance.evidence[index].id);
+  snapshot.provenance.claims = snapshot.provenance.claims.map((claim) => ({ ...claim, evidence_ids: support }));
+  const before = structuredClone(snapshot);
+  const input = { kind: "snapshot" as const, snapshot };
+  const paragraphs = documentParagraphs(input);
+  expect(paragraphs.find((item) => item.text.startsWith(snapshot.company_foundation.overview!))?.text)
+    .toBe(`${snapshot.company_foundation.overview} [1, 2, 3]`);
+  expect(paragraphs.find((item) => item.label === "City")?.text)
+    .toBe(`${snapshot.company_foundation.main_address!.city} [1]`);
+  expect(paragraphs.find((item) => item.label === "Website")?.text)
+    .toBe(`${snapshot.company_foundation.website} [1]`);
+  expect(paragraphs.find((item) => item.text.startsWith(snapshot.offerings[0].name!))?.text)
+    .toBe(`${snapshot.offerings[0].name} [1]`);
+  for (const paragraph of paragraphs) for (const marker of paragraph.text.matchAll(/\[([\d, ]+)\]/g)) {
+    const citations = marker[1].split(", ");
+    expect(citations.length).toBeLessThanOrEqual(3);
+    expect(new Set(citations).size).toBe(citations.length);
+  }
+  const zip = await JSZip.loadAsync(await renderKnowledgeDocument(input));
+  const text = load(await zip.file("word/document.xml")!.async("string"), { xmlMode: true }).text();
+  expect(text).toContain(`${snapshot.company_foundation.overview} [1, 2, 3]`);
+  expect(text).toContain(`City: ${snapshot.company_foundation.main_address!.city} [1]`);
+  expect(text).toContain(`${snapshot.offerings[0].name} [1]`);
+  for (const source of snapshot.provenance.sources) {
+    expect(paragraphs.some((item) => item.text === source.url)).toBe(true);
+    expect(text).toContain(source.url);
+  }
+  expect(documentData(input)).toEqual(before);
 });

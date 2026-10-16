@@ -83,7 +83,9 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     for (const claim of activeClaims) {
       if (claim.targets.some((target) => target === path || target.startsWith(`${path}/`) || path.startsWith(`${target}/`))) visit(claim);
     }
-    return numbers.size ? ` [${[...numbers].sort((a, b) => a - b).join(", ")}]` : "";
+    // Narrative passages may use three sources; basic structured facts need only one.
+    const limit = /\/(?:overview|business_model|company_pitch|founding_story|description|background_or_relevance|writing_style_description|art_style_description|relationship_text|purpose)$|\/(?:customer_needs|features|qualifications|goals|pain_points|industry_outlook)\/[^/]+\/text$/.test(path) ? 3 : 1;
+    return numbers.size ? ` [${[...numbers].sort((a, b) => a - b).slice(0, limit).join(", ")}]` : "";
   }
   const references = new Map<string, string>();
   const unknowns = new Map<string, string>();
