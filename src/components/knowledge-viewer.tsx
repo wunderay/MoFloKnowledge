@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createEmptyProvenance,
   type BusinessEntry,
+  type CitationContext,
   type EntryKind,
   type EntryProvenance,
   type KnowledgeBaseExport,
@@ -71,6 +72,7 @@ export function KnowledgeViewer({
     draft?: {
       company: { role: string; archived_at: string | null };
       entries: ViewEntry[];
+      citationContext?: CitationContext;
     };
   };
 }) {
@@ -89,6 +91,9 @@ export function KnowledgeViewer({
       ? snapshotEntries(initialData.snapshot)
       : (initialData?.draft?.entries ?? []),
   );
+  const [citationContext, setCitationContext] = useState<
+    CitationContext | undefined
+  >(initialData?.snapshot ? undefined : initialData?.draft?.citationContext);
   const [payload, setPayload] = useState<KnowledgeBaseExport | null>(
     initialData?.snapshot ?? null,
   );
@@ -162,12 +167,14 @@ export function KnowledgeViewer({
     setError("");
     setEntries([]);
     setPayload(null);
+    setCitationContext(undefined);
     setCanEdit(false);
     const request =
       versionId === "draft"
         ? api<{
             company: { name: string; role: string; archived_at: string | null };
             entries: ViewEntry[];
+            citationContext?: CitationContext;
           }>(companyPath(companyId, "/draft"), { signal: abort.signal }).then(
             (data) => {
               if (abort.signal.aborted) return;
@@ -176,6 +183,7 @@ export function KnowledgeViewer({
                 data.company.role !== "viewer" && !data.company.archived_at,
               );
               setEntries(data.entries);
+              setCitationContext(data.citationContext);
             },
           )
         : api<KnowledgeBaseExport>(
@@ -539,6 +547,7 @@ export function KnowledgeViewer({
                               label={labelOf(key)}
                               path={`${root}/${key}`}
                               provenance={e.provenance}
+                              citationContext={citationContext}
                               approved={e.review_status === "approved"}
                             />
                           ))}
@@ -558,6 +567,7 @@ export function KnowledgeViewer({
                       value={e.content}
                       path={root}
                       provenance={e.provenance}
+                      citationContext={citationContext}
                       approved={e.review_status === "approved"}
                     />
                   )}

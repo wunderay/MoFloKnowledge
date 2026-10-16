@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, companyPath, write } from "./api-client";
 import { Dialog, Notice, StatusBadge } from "./ui";
+import { readCitationContext } from "./citation-context";
 import { ValueView } from "./entry-value";
 import { EntryProvenanceSchema, entryRoot, type EntryKind } from "@/contracts";
 export function EntryHistory({
@@ -71,6 +72,7 @@ export function EntryHistory({
             <summary className="field__hint">View saved values</summary>
             {EntryProvenanceSchema.safeParse(item.provenance).success ? (
               <ValueView
+                citationContext={readCitationContext(item.citationContext)}
                 value={item.content}
                 path={entryRoot(kind, entryId)}
                 provenance={EntryProvenanceSchema.parse(item.provenance)}

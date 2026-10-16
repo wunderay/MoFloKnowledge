@@ -1,6 +1,6 @@
 "use client";
 import { useId } from "react";
-import type { EntryProvenance } from "@/contracts";
+import type { CitationContext, EntryProvenance } from "@/contracts";
 import { CitationPopover } from "./citation-popover";
 import { labelOf, newValue, type FieldSpec } from "./business-fields";
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
   path: string;
   disabled?: boolean;
   provenance: EntryProvenance;
+  citationContext?: CitationContext;
   approved?: boolean;
 };
 export function BusinessField({
@@ -21,6 +22,7 @@ export function BusinessField({
   path,
   disabled,
   provenance,
+  citationContext,
   approved,
 }: Props) {
   const id = useId();
@@ -37,7 +39,12 @@ export function BusinessField({
         ? "Partially checked — review coverage"
         : "Could not check";
   const evidence = (
-    <CitationPopover path={path} provenance={provenance} approved={approved} />
+    <CitationPopover
+      path={path}
+      provenance={provenance}
+      citationContext={citationContext}
+      approved={approved}
+    />
   );
   if (spec.items) {
     const list = (Array.isArray(value) ? value : []) as Record<
@@ -111,6 +118,7 @@ export function BusinessField({
               path={`${path}/@${item.id}`}
               disabled={disabled}
               provenance={provenance}
+              citationContext={citationContext}
               approved={approved}
               onChange={(next) =>
                 onChange(list.map((v, i) => (i === index ? next : v)))
@@ -171,6 +179,7 @@ export function BusinessField({
               path={`${path}/${key}`}
               disabled={disabled}
               provenance={provenance}
+              citationContext={citationContext}
               approved={approved}
               onChange={(next) => onChange({ ...object, [key]: next })}
             />
@@ -223,6 +232,7 @@ export function BusinessField({
                 <CitationPopover
                   path={`${path}/${selected.indexOf(option)}`}
                   provenance={provenance}
+                  citationContext={citationContext}
                   approved={approved}
                 />
               )}
