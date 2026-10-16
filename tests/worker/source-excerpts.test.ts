@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { exactSentences, selectExactSentences } from "../../src/worker/extract/source-excerpts";
+import { exactSentences, selectExactSentences, isExplicitServiceProviderSentence } from "../../src/worker/extract/source-excerpts";
 
 it("selects whole original sentences with qualifications, punctuation and source order", () => {
   const first = "We offer inspections for $12.50 per visit, only for existing clients.";
@@ -12,6 +12,15 @@ it("selects whole original sentences with qualifications, punctuation and source
   expect(exactSentences("Authorized work (subject to review); ask us first.")).toEqual([
     "Authorized work (subject to review); ask us first.",
   ]);
+});
+
+it("recognizes explicit current-company service predicates without classifying comparisons or conditions", () => {
+  expect(isExplicitServiceProviderSentence("We also provide online design services.")).toBe(true);
+  expect(isExplicitServiceProviderSentence("Cedar Studio offers bridge survey services.", ["Cedar Studio"])).toBe(true);
+  expect(isExplicitServiceProviderSentence("Many companies offer this type of professional service.")).toBe(false);
+  expect(isExplicitServiceProviderSentence("If requested, we might offer engineering services.")).toBe(false);
+  expect(isExplicitServiceProviderSentence("We do not provide legal services.")).toBe(false);
+  expect(isExplicitServiceProviderSentence("Another Studio provides engineering services.", ["Cedar Studio"])).toBe(false);
 });
 
 it("deduplicates exact wording without clipping a unique oversized source claim", () => {
