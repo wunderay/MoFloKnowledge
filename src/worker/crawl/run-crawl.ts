@@ -48,12 +48,24 @@ export async function runCrawl(
     },
     saved.frontier as FrontierSnapshot | undefined,
   );
+  const firstStartedAt =
+    job.started_at instanceof Date
+      ? job.started_at.getTime()
+      : job.started_at
+        ? Date.parse(job.started_at)
+        : Date.now();
   const budgets = new CrawlBudgets(
     {
       documentLimit: job.options.max_pages ?? 10,
       depthLimit: job.options.max_depth ?? 2,
     },
-    saved.budgets as BudgetSnapshot | undefined,
+    (saved.budgets as BudgetSnapshot | undefined) ?? {
+      documents: 0,
+      htmlBytes: 0,
+      designBytes: 0,
+      startedAt: firstStartedAt,
+      limitsReached: [],
+    },
   );
   const scheduler = new Scheduler(signal);
   const robots = new RobotsCache(fetcher, (url) =>
@@ -124,11 +136,20 @@ export async function runCrawl(
       0,
     ),
   );
+  const inFlight = new Map<string, FrontierItem>();
   const checkpoint = () => ({
     ...saved,
     effectiveRoot,
-    frontier: frontier.snapshot(),
-    budgets: { ...budgets.snapshot(), designBytes: designUsed },
+    frontier: {
+      ...frontier.snapshot(),
+      pending: [...inFlight.values(), ...frontier.snapshot().pending],
+      selected: Math.max(0, frontier.snapshot().selected - inFlight.size),
+    },
+    budgets: {
+      ...budgets.snapshot(),
+      documents: Math.max(0, budgets.snapshot().documents - inFlight.size),
+      designBytes: designUsed,
+    },
     errors,
     captured_source_ids: captures.map((c) => c.id),
   });
@@ -227,11 +248,14 @@ export async function runCrawl(
       if (shouldRenderPage(capture, item.depth === 0)) {
         if (render) {
           try {
-            const rendered = await scheduler.runRender((taskSignal) => {
+            const rendered = await scheduler.runRender(async (taskSignal) => {
+              const usedBefore = designUsed;
               const remaining = Math.max(
                 0,
                 CRAWL_LIMITS.designBytes - designUsed,
               );
+              designUsed = CRAWL_LIMITS.designBytes;
+              await persist();
               return render(
                 {
                   url: document.finalUrl,
@@ -243,7 +267,7 @@ export async function runCrawl(
               ).then((result) => {
                 if (result.resourceBytes > remaining)
                   throw new Error("design_budget");
-                designUsed += result.resourceBytes;
+                designUsed = usedBefore + result.resourceBytes;
                 return result;
               });
             }, signal);
@@ -322,8 +346,10 @@ export async function runCrawl(
       });
     } finally {
       if (!finished) budgets.finish(reservation, 0, 0);
+      inFlight.delete(item.url);
     }
   }
+  await persist();
   while (!signal.aborted) {
     const batch: { item: FrontierItem; reservation: Reservation }[] = [];
     for (let index = 0; index < 3; index++) {
@@ -339,6 +365,7 @@ export async function runCrawl(
         continue;
       try {
         batch.push({ item, reservation: budgets.reserve(item.depth, 0) });
+        inFlight.set(item.url, item);
       } catch {
         break;
       }

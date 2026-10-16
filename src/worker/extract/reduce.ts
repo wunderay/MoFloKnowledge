@@ -238,6 +238,28 @@ export function reduceCandidates(
 
   const allClaims = proposals.flatMap((p) => p.provenance.claims);
   for (const proposal of proposals) {
+    for (const conflict of proposal.provenance.conflicts)
+      for (const candidate of conflict.candidates.filter(
+        (c) => c.origin === "generated",
+      )) {
+        const original = candidates.find((c) => c.id === candidate.id);
+        candidate.based_on_claim_ids = [
+          ...new Set(
+            (original?.supporting_fields ?? []).flatMap((field) =>
+              allClaims
+                .filter(
+                  (parent) =>
+                    parent.origin !== "generated" &&
+                    parent.targets.some(
+                      (target) =>
+                        target === field || target.startsWith(field + "/"),
+                    ),
+                )
+                .map((parent) => parent.id),
+            ),
+          ),
+        ];
+      }
     for (const claim of proposal.provenance.claims.filter(
       (c) => c.origin === "generated",
     )) {

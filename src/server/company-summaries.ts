@@ -1,5 +1,7 @@
 import "server-only";
 import type { verifiedSession } from "../lib/supabase/server";
+import { parseResponse } from "./http";
+import { CompanyListSchema } from "../contracts/api-responses";
 import { checked } from "./read-model";
 export async function readCompanySummaries(
   client: Awaited<ReturnType<typeof verifiedSession>>["client"],
@@ -46,8 +48,8 @@ export async function readCompanySummaries(
       latestVersion: versions?.[0] ?? null,
     });
   }
-  return {
+  return parseResponse(CompanyListSchema, {
     companies: result,
     nextCursor: companies.length === 50 ? companies.at(-1)!.id : null,
-  };
+  });
 }
