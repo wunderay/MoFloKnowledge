@@ -17,7 +17,7 @@ import {
   type EntryKind,
 } from "@/contracts";
 import { api, ApiError, companyPath, write } from "./api-client";
-import { CATEGORY_SPECS } from "./business-fields";
+import { CATEGORY_SPECS, labelOf, summarizeValue } from "./business-fields";
 import { BusinessField } from "./business-form";
 import { EmptyState, Notice, StatusBadge, useHydrated } from "./ui";
 import { ScrapeProgress } from "./scrape-progress";
@@ -575,11 +575,17 @@ function KnowledgeEditorContent({
                     a correction, or clear a value before approval.
                     {conflicts.map((conflict) => (
                       <div key={conflict.id}>
-                        <p>{conflict.target}</p>
+                        <p>
+                          <strong>
+                            {labelOf(
+                              conflict.target.split("/").at(-1) ?? "Field",
+                            )}
+                          </strong>
+                        </p>
                         {conflict.candidates.map((candidate) => (
                           <div className="actions" key={candidate.id}>
                             <button
-                              className="button"
+                              className="button knowledge-editor__candidate"
                               type="button"
                               disabled={!canEdit}
                               onClick={() => {
@@ -591,9 +597,7 @@ function KnowledgeEditorContent({
                                 );
                               }}
                             >
-                              {typeof candidate.value === "string"
-                                ? candidate.value
-                                : JSON.stringify(candidate.value)}
+                              {summarizeValue(candidate.value)}
                             </button>
                             <CitationPopover
                               path={conflict.target}
