@@ -118,7 +118,7 @@ Scalar default is `null`; collection default is `[]`. Composite scalars such as 
 | `industry` | string/null | Preserve company's explicit description and quote. | S, labeled I classification, U; null. |
 | `business_model` | string/null | Claims about B2B/B2C, revenue and operating model; quote each assertion. | S, labeled I, U; null. |
 | `company_role` | IdentifiedText[] | Manufacturer/distributor/reseller/provider/marketplace statements. | S, labeled I, U; []. |
-| `year_founded` | integer/null | Explicit founding statement, not copyright year. | S/U; null. |
+| `year_founded` | integer/null | Explicit statement that this company/business was founded or established in the year; a founder's personal-practice start is insufficient. Copyright year is not evidence. | S/U; null. |
 | `legal_entity_type` | string/null | Legal/about/footer statement. Never derive from domain or country. | S/U; null. |
 | `employee_count` | EmployeeCount/null | Exact/range/raw wording and explicit as-of date. | S/U; null; never manufacture exact count. |
 | `main_address` | Address/null | Contact/location primary-address statement and quote. | S/U; null; do not assume first address is headquarters. |
