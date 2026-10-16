@@ -99,6 +99,27 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     .getByRole("navigation", { name: "Knowledge categories" })
     .getByRole("button", { name: /Company foundation/ })
     .click();
+  const evidenceTrigger = page
+    .getByRole("button", { name: "Evidence for overview", exact: true })
+    .first();
+  await evidenceTrigger.hover();
+  const evidenceDialog = page.getByRole("dialog", {
+    name: "Field evidence",
+    exact: true,
+  });
+  await expect(evidenceDialog).toBeVisible();
+  await expect(evidenceDialog.locator("blockquote").first()).not.toBeEmpty();
+  await evidenceDialog.getByRole("link").first().hover();
+  await page.waitForTimeout(200); // Cross the popover's pointer-leave grace period.
+  await expect(evidenceDialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(evidenceDialog).toBeHidden();
+  await evidenceTrigger.focus();
+  await expect(evidenceDialog).toBeVisible();
+  await page
+    .getByRole("heading", { name: "Lumen Ledger E2E", exact: true })
+    .click();
+  await expect(evidenceDialog).toBeHidden();
   // Clear the fixture's disputed address explicitly, leaving its review decision.
   for (const clear of await page
     .getByRole("button", { name: "Clear disputed value", exact: true })
@@ -131,6 +152,21 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     }
   }
   await page
+    .getByRole("navigation", { name: "Knowledge categories" })
+    .getByRole("button", { name: /Key people/ })
+    .click();
+  await page.getByRole("button", { name: "Add person", exact: false }).click();
+  const excludedPerson = page.locator(".knowledge-editor__entry").last();
+  await excludedPerson
+    .getByLabel("Name", { exact: true })
+    .fill("Excluded profile");
+  await excludedPerson
+    .getByRole("button", { name: "Reject", exact: true })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Entry rejected." }),
+  ).toBeVisible();
+  await page
     .getByRole("button", { name: "Save knowledge version", exact: true })
     .click();
   const publish = page.getByRole("dialog", {
@@ -154,9 +190,42 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   expect(snapshot.company_foundation.overview).toBe(
     "A reviewer-corrected overview of Lumen Ledger.",
   );
+  expect(snapshot.key_people.length).toBeGreaterThan(0);
   expect(snapshot.key_people.every((person) => person.gender === null)).toBe(
     true,
   );
+  expect(
+    snapshot.key_people.some((person) => person.name === "Excluded profile"),
+  ).toBe(false);
+  expect(snapshot.company_foundation.legal_entity_type).toBeNull();
+  expect(snapshot.company_foundation.year_founded).toBeNull();
+  expect(snapshot.positioning.founding_story).toBeNull();
+  expect(snapshot.market_and_customers.industry_outlook).toEqual([]);
+  expect(snapshot.branding_and_style.logos.length).toBeGreaterThan(0);
+  expect(
+    snapshot.provenance.evidence.some(
+      (evidence) => evidence.kind === "technical",
+    ),
+  ).toBe(true);
+  expect(
+    snapshot.provenance.claims.some(
+      (claim) =>
+        claim.targets.includes("/positioning/company_pitch") &&
+        claim.origin === "generated",
+    ),
+  ).toBe(true);
+  expect(
+    snapshot.provenance.claims.some(
+      (claim) =>
+        claim.targets.includes("/company_foundation/overview") &&
+        claim.origin === "user_provided",
+    ),
+  ).toBe(true);
+  expect(
+    snapshot.provenance.operations.some(
+      (operation) => operation.supersedes_claim_id !== null,
+    ),
+  ).toBe(true);
   for (const claim of snapshot.provenance.claims)
     for (const target of claim.targets)
       expect(() => resolveStablePointer(snapshot, target)).not.toThrow();

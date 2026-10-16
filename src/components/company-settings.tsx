@@ -10,7 +10,12 @@ export function CompanySettings({
   onChanged,
 }: {
   companyId: string;
-  company: { name: string; website_url: string; archived_at: string | null };
+  company: {
+    name: string;
+    website_url: string;
+    archived_at: string | null;
+    role: string;
+  };
   generation: number;
   onClose: () => void;
   onChanged: () => void;
@@ -22,6 +27,7 @@ export function CompanySettings({
   const [busy, setBusy] = useState(false);
   const [archive, setArchive] = useState(false);
   function load() {
+    if (company.role !== "owner") return;
     api<
       | { user_id: string; role: string }[]
       | { members: { user_id: string; role: string }[] }
@@ -107,111 +113,120 @@ export function CompanySettings({
           Save company details
         </button>
       </form>
-      <hr
-        style={{
-          border: 0,
-          borderTop: "1px solid var(--line)",
-          margin: "25px 0",
-        }}
-      />
-      <h3>Company members</h3>
-      <p className="field__hint">
-        Add an existing registered user's UUID. Invitations are not sent.
-      </p>
-      {members.map((m) => (
-        <div className="section-heading" key={m.user_id}>
-          <span className="field__hint" style={{ overflowWrap: "anywhere" }}>
-            {m.user_id}
-          </span>
-          <div className="actions">
-            <StatusBadge value={m.role} />
-            <select
-              className="company-switcher"
-              aria-label={`Role for ${m.user_id}`}
-              value={m.role}
-              disabled={busy || !!company.archived_at}
-              onChange={(e) => member(m.user_id, { role: e.target.value })}
-            >
-              {["owner", "editor", "viewer"].map((role) => (
-                <option key={role}>{role}</option>
-              ))}
-            </select>
-            <button
-              className="button button--quiet button--danger"
-              disabled={busy || !!company.archived_at}
-              onClick={() => member(m.user_id, { remove: true })}
-            >
-              Remove
+      {company.role === "owner" && (
+        <>
+          <hr
+            style={{
+              border: 0,
+              borderTop: "1px solid var(--line)",
+              margin: "25px 0",
+            }}
+          />
+          <h3>Company members</h3>
+          <p className="field__hint">
+            Add an existing registered user's UUID. Invitations are not sent.
+          </p>
+          {members.map((m) => (
+            <div className="section-heading" key={m.user_id}>
+              <span
+                className="field__hint"
+                style={{ overflowWrap: "anywhere" }}
+              >
+                {m.user_id}
+              </span>
+              <div className="actions">
+                <StatusBadge value={m.role} />
+                <select
+                  className="company-switcher"
+                  aria-label={`Role for ${m.user_id}`}
+                  value={m.role}
+                  disabled={busy || !!company.archived_at}
+                  onChange={(e) => member(m.user_id, { role: e.target.value })}
+                >
+                  {["owner", "editor", "viewer"].map((role) => (
+                    <option key={role}>{role}</option>
+                  ))}
+                </select>
+                <button
+                  className="button button--quiet button--danger"
+                  disabled={busy || !!company.archived_at}
+                  onClick={() => member(m.user_id, { remove: true })}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const data = new FormData(e.currentTarget);
+              void member(String(data.get("userId")), {
+                role: data.get("role"),
+              });
+            }}
+          >
+            <div className="field-grid">
+              <label className="field">
+                <span className="field__label">User UUID</span>
+                <input
+                  name="userId"
+                  required
+                  pattern="[0-9a-fA-F-]{36}"
+                  placeholder="00000000-0000-0000-0000-000000000000"
+                />
+              </label>
+              <label className="field">
+                <span className="field__label">Role</span>
+                <select name="role" defaultValue="viewer">
+                  <option>viewer</option>
+                  <option>editor</option>
+                  <option>owner</option>
+                </select>
+              </label>
+            </div>
+            <button className="button" disabled={busy || !!company.archived_at}>
+              Add member
             </button>
-          </div>
-        </div>
-      ))}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const data = new FormData(e.currentTarget);
-          void member(String(data.get("userId")), { role: data.get("role") });
-        }}
-      >
-        <div className="field-grid">
-          <label className="field">
-            <span className="field__label">User UUID</span>
-            <input
-              name="userId"
-              required
-              pattern="[0-9a-fA-F-]{36}"
-              placeholder="00000000-0000-0000-0000-000000000000"
-            />
-          </label>
-          <label className="field">
-            <span className="field__label">Role</span>
-            <select name="role" defaultValue="viewer">
-              <option>viewer</option>
-              <option>editor</option>
-              <option>owner</option>
-            </select>
-          </label>
-        </div>
-        <button className="button" disabled={busy || !!company.archived_at}>
-          Add member
-        </button>
-      </form>
-      <hr
-        style={{
-          border: 0,
-          borderTop: "1px solid var(--line)",
-          margin: "25px 0",
-        }}
-      />
-      <h3>Archive company</h3>
-      <p className="field__hint">
-        Archive stops active work and prevents new changes. Members retain
-        access to saved versions and exports.
-      </p>
-      {archive ? (
-        <Notice error>
-          Archive {company.name}?
-          <div className="actions">
+          </form>
+          <hr
+            style={{
+              border: 0,
+              borderTop: "1px solid var(--line)",
+              margin: "25px 0",
+            }}
+          />
+          <h3>Archive company</h3>
+          <p className="field__hint">
+            Archive stops active work and prevents new changes. Members retain
+            access to saved versions and exports.
+          </p>
+          {archive ? (
+            <Notice error>
+              Archive {company.name}?
+              <div className="actions">
+                <button
+                  className="button button--danger"
+                  disabled={busy}
+                  onClick={archiveCompany}
+                >
+                  Confirm archive
+                </button>
+                <button className="button" onClick={() => setArchive(false)}>
+                  Keep company active
+                </button>
+              </div>
+            </Notice>
+          ) : (
             <button
               className="button button--danger"
-              disabled={busy}
-              onClick={archiveCompany}
+              disabled={!!company.archived_at}
+              onClick={() => setArchive(true)}
             >
-              Confirm archive
+              Archive company
             </button>
-            <button className="button" onClick={() => setArchive(false)}>
-              Keep company active
-            </button>
-          </div>
-        </Notice>
-      ) : (
-        <button
-          className="button button--danger"
-          disabled={!!company.archived_at}
-          onClick={() => setArchive(true)}
-        >
-          Archive company
-        </button>
+          )}
+        </>
       )}
     </Dialog>
   );

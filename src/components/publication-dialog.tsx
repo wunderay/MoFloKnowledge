@@ -8,6 +8,8 @@ type Preview = {
   payloadPreview: unknown;
   blockingEntries: { entry_id: string; reason: string }[];
   approvedCount: number;
+  rejectedCount: number;
+  unresolvedCount: number;
 };
 export function PublicationDialog({
   companyId,
@@ -107,6 +109,26 @@ export function PublicationDialog({
               <p className="field__hint">
                 Draft generation {preview.draftGeneration}
               </p>
+              <div className="summary-grid">
+                <div className="summary-card">
+                  <div>
+                    <p>Approved entries</p>
+                    <strong>{preview.approvedCount}</strong>
+                  </div>
+                </div>
+                <div className="summary-card">
+                  <div>
+                    <p>Rejected entries</p>
+                    <strong>{preview.rejectedCount}</strong>
+                  </div>
+                </div>
+                <div className="summary-card">
+                  <div>
+                    <p>Needs review</p>
+                    <strong>{preview.unresolvedCount}</strong>
+                  </div>
+                </div>
+              </div>
               {preview.blockingEntries.length > 0 ||
               preview.approvedCount === 0 ? (
                 <Notice error>

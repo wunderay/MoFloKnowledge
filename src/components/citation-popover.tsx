@@ -1,35 +1,48 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
-import type { EntryProvenance } from "@/contracts";
+import type { EntryProvenance, FieldCandidate } from "@/contracts";
 import { formatAPACitations } from "@/knowledge/apa";
 export function CitationPopover({
   path,
   provenance,
   approved = false,
+  candidate,
 }: {
   path: string;
   provenance: EntryProvenance;
   approved?: boolean;
+  candidate?: FieldCandidate;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLSpanElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const id = useId();
-  const claims = provenance.claims.filter((c) =>
-    c.targets.some((t) => path === t || path.startsWith(`${t}/`)),
-  );
+  const claims = candidate
+    ? []
+    : provenance.claims.filter((c) =>
+        c.targets.some((t) => path === t || path.startsWith(`${t}/`)),
+      );
   const coverage = provenance.coverage.find((c) =>
     c.targets.some((t) => path === t || path.startsWith(`${t}/`)),
   );
   const citations = formatAPACitations(provenance.sources);
-  const evidenceIds = new Set(claims.flatMap((c) => c.evidence_ids));
-  for (const claim of claims)
-    for (const based of claim.based_on_claim_ids)
-      provenance.claims
-        .find((c) => c.id === based)
-        ?.evidence_ids.forEach((e) => evidenceIds.add(e));
+  const evidenceIds = new Set(
+    candidate ? candidate.evidence_ids : claims.flatMap((c) => c.evidence_ids),
+  );
+  const visited = new Set<string>();
+  function addSupportingEvidence(claimId: string) {
+    if (visited.has(claimId)) return;
+    visited.add(claimId);
+    const claim = provenance.claims.find((item) => item.id === claimId);
+    claim?.evidence_ids.forEach((evidenceId) => evidenceIds.add(evidenceId));
+    claim?.based_on_claim_ids.forEach(addSupportingEvidence);
+  }
+  claims.forEach((claim) => addSupportingEvidence(claim.id));
+  candidate?.based_on_claim_ids.forEach(addSupportingEvidence);
   const evidence = provenance.evidence.filter((e) => evidenceIds.has(e.id));
-  const origins = [...new Set(claims.map((c) => c.origin))];
+  const origins = candidate
+    ? [candidate.origin]
+    : [...new Set(claims.map((c) => c.origin))];
   const label = origins.includes("user_provided")
     ? "User correction"
     : origins.includes("generated")
@@ -80,6 +93,7 @@ export function CitationPopover({
       <button
         type="button"
         className="citation-popover__trigger"
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={id}
         aria-label={`Evidence for ${path.split("/").at(-1)?.replaceAll("_", " ")}`}
@@ -105,10 +119,17 @@ export function CitationPopover({
               ✕
             </button>
           </span>
-          {claims.length === 0 && (
+          {claims.length === 0 && !candidate && (
             <span>
               {coverage?.reason ??
                 "Could not check this value. No source evidence is recorded."}
+            </span>
+          )}
+          {candidate && (
+            <span style={{ display: "block" }}>
+              Candidate origin: {candidate.origin.replaceAll("_", " ")}
+              {candidate.origin === "generated" &&
+                ". This is suggested wording, not a source quote."}
             </span>
           )}
           {claims.map((c) => (

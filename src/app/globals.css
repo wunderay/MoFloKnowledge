@@ -983,3 +983,9 @@ small {
   margin-right: 7px;
   accent-color: var(--green);
 }
+.category-nav__coverage {
+  display: block;
+  font-size: 9px;
+  margin-top: 3px;
+  font-weight: 400;
+}

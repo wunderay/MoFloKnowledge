@@ -4,30 +4,41 @@ import { useEffect, useRef, useState } from "react";
 import { api, write } from "./api-client";
 import { Dialog, EmptyState, Notice, StatusBadge } from "./ui";
 import type { CompanySummary } from "@/contracts/api-types";
-type Company = Pick<
-  CompanySummary,
-  "id" | "name" | "website_url" | "role" | "archived_at"
-> & {
-  latestJob?: { status: string } | null;
-  latestVersion?: { version_number: number; created_at: string } | null;
-};
-export function CompanyDashboard() {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
+type Company = CompanySummary;
+export function CompanyDashboard({
+  initialData,
+}: {
+  initialData?: { companies: Company[]; nextCursor: string | null };
+}) {
+  const [companies, setCompanies] = useState<Company[]>(
+    initialData?.companies ?? [],
+  );
+  const [loading, setLoading] = useState(!initialData);
+  const firstLoad = useRef(true);
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [archived, setArchived] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    initialData?.nextCursor ?? null,
+  );
   const requestIds = useRef(new Map<string, string>());
   useEffect(() => {
+    if (firstLoad.current && initialData) {
+      firstLoad.current = false;
+      return;
+    }
+    firstLoad.current = false;
+    const abort = new AbortController();
     setLoading(true);
     setError("");
     api<{ companies: Company[]; nextCursor: string | null }>(
       `/api/companies${archived ? "?archived=true" : ""}`,
+      { signal: abort.signal },
     )
       .then((data) => {
+        if (abort.signal.aborted) return;
         setCompanies((previous) => [
           ...previous.filter(
             (company) => Boolean(company.archived_at) !== archived,
@@ -36,8 +47,13 @@ export function CompanyDashboard() {
         ]);
         setNextCursor(data.nextCursor);
       })
-      .catch((error) => setError(error.message))
-      .finally(() => setLoading(false));
+      .catch((error) => {
+        if (!abort.signal.aborted) setError(error.message);
+      })
+      .finally(() => {
+        if (!abort.signal.aborted) setLoading(false);
+      });
+    return () => abort.abort();
   }, [archived]);
   async function loadMore() {
     if (!nextCursor) return;

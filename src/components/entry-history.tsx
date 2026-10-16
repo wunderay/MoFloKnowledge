@@ -2,8 +2,11 @@
 import { useEffect, useState } from "react";
 import { api, companyPath, write } from "./api-client";
 import { Dialog, Notice, StatusBadge } from "./ui";
+import { ValueView } from "./entry-value";
+import { EntryProvenanceSchema, entryRoot, type EntryKind } from "@/contracts";
 export function EntryHistory({
   companyId,
+  kind,
   entryId,
   revision,
   canEdit,
@@ -11,6 +14,7 @@ export function EntryHistory({
   onRestore,
 }: {
   companyId: string;
+  kind: EntryKind;
   entryId: string;
   revision: number;
   canEdit: boolean;
@@ -65,9 +69,16 @@ export function EntryHistory({
           {item.change_reason ? <p>{String(item.change_reason)}</p> : null}
           <details>
             <summary className="field__hint">View saved values</summary>
-            <pre className="version-viewer__json">
-              {JSON.stringify(item.content, null, 2)}
-            </pre>
+            {EntryProvenanceSchema.safeParse(item.provenance).success ? (
+              <ValueView
+                value={item.content}
+                path={entryRoot(kind, entryId)}
+                provenance={EntryProvenanceSchema.parse(item.provenance)}
+                approved={item.review_status === "approved"}
+              />
+            ) : (
+              <Notice>Evidence is unavailable for this saved revision.</Notice>
+            )}
           </details>
           {canEdit && Number(item.revision) !== revision && (
             <button

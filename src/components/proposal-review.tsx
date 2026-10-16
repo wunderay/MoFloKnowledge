@@ -3,8 +3,13 @@ import { useEffect, useState } from "react";
 import { api, companyPath, write } from "./api-client";
 import { CitationPopover } from "./citation-popover";
 import { Notice } from "./ui";
-import type { EntryProvenance } from "@/contracts";
-type Candidate = { id: string; value: unknown; evidence_ids?: string[] };
+import {
+  entryRoot,
+  type EntryKind,
+  type EntryProvenance,
+  type FieldCandidate,
+} from "@/contracts";
+import { ValueView } from "./entry-value";
 type ProposalItem = {
   id: string;
   kind: string;
@@ -12,7 +17,7 @@ type ProposalItem = {
   base_revision: number | null;
   content: Record<string, unknown>;
   provenance: EntryProvenance;
-  conflicts: { id: string; target: string; candidates: Candidate[] }[];
+  conflicts: { id: string; target: string; candidates: FieldCandidate[] }[];
 };
 export function ProposalReview({
   companyId,
@@ -43,9 +48,14 @@ export function ProposalReview({
       proposals: {
         candidates?: ProposalItem[];
         decisions?: { proposal_id: string; action: string }[];
+        initialized_entry_ids?: string[];
       };
     }>(companyPath(companyId, `/scrapes/${job}`))
       .then((data) => {
+        if (data.proposals.initialized_entry_ids?.length) {
+          setProposals([]);
+          return;
+        }
         const decided = new Set(
           (data.proposals.decisions ?? []).map(
             (decision) => decision.proposal_id,
@@ -111,85 +121,71 @@ export function ProposalReview({
               <div>
                 <p className="eyebrow">Current draft</p>
                 {current ? (
-                  Object.entries(current.content as Record<string, unknown>)
-                    .filter(([key]) => key !== "id")
-                    .map(([key, value]) => (
-                      <div className="entry-value" key={key}>
-                        <span className="entry-value__label">
-                          {key.replaceAll("_", " ")}
-                          <CitationPopover
-                            path={`/${proposal.kind}/${key}`}
-                            provenance={current.provenance}
-                          />
-                        </span>
-                        <span>
-                          {typeof value === "string"
-                            ? value
-                            : value === null
-                              ? "Unknown"
-                              : JSON.stringify(value)}
-                        </span>
-                      </div>
-                    ))
+                  <ValueView
+                    value={current.content}
+                    path={entryRoot(proposal.kind as EntryKind, current.id)}
+                    provenance={current.provenance}
+                    approved={false}
+                  />
                 ) : (
                   <p className="field__hint">New entry</p>
                 )}
               </div>
               <div>
                 <p className="eyebrow">Proposed</p>
-                {Object.entries(proposal.content ?? {})
-                  .filter(([key]) => key !== "id")
-                  .map(([key, value]) => (
-                    <div className="entry-value" key={key}>
-                      <span className="entry-value__label">
-                        {key.replaceAll("_", " ")}
-                        <CitationPopover
-                          path={`/${proposal.kind}/${key}`}
-                          provenance={proposal.provenance}
-                        />
-                      </span>
-                      <span>
-                        {typeof value === "string"
-                          ? value
-                          : value === null
-                            ? "Unknown"
-                            : JSON.stringify(value)}
-                      </span>
-                    </div>
-                  ))}
+                <ValueView
+                  value={proposal.content}
+                  path={entryRoot(
+                    proposal.kind as EntryKind,
+                    String(
+                      proposal.content.id ?? proposal.target_entry_id ?? "",
+                    ),
+                  )}
+                  provenance={proposal.provenance}
+                  approved={false}
+                />
               </div>
             </div>
             {proposal.conflicts?.map((conflict) => (
               <fieldset className="knowledge-editor__group" key={conflict.id}>
                 <legend>{conflict.target}</legend>
                 {conflict.candidates.map((candidate) => (
-                  <label className="field" key={candidate.id}>
-                    <span>
-                      <input
-                        type="radio"
-                        name={`candidate-${conflict.id}`}
-                        disabled={!canEdit || busy}
-                        checked={(selected[proposal.id] ?? []).includes(
-                          candidate.id,
-                        )}
-                        onChange={() =>
-                          setSelected({
-                            ...selected,
-                            [proposal.id]: [
-                              ...(selected[proposal.id] ?? []).filter(
-                                (id) =>
-                                  !conflict.candidates.some((c) => c.id === id),
-                              ),
-                              candidate.id,
-                            ],
-                          })
-                        }
-                      />{" "}
-                      {typeof candidate.value === "string"
-                        ? candidate.value
-                        : JSON.stringify(candidate.value)}
-                    </span>
-                  </label>
+                  <div key={candidate.id}>
+                    <label className="field">
+                      <span>
+                        <input
+                          type="radio"
+                          name={`candidate-${conflict.id}`}
+                          disabled={!canEdit || busy}
+                          checked={(selected[proposal.id] ?? []).includes(
+                            candidate.id,
+                          )}
+                          onChange={() =>
+                            setSelected({
+                              ...selected,
+                              [proposal.id]: [
+                                ...(selected[proposal.id] ?? []).filter(
+                                  (id) =>
+                                    !conflict.candidates.some(
+                                      (c) => c.id === id,
+                                    ),
+                                ),
+                                candidate.id,
+                              ],
+                            })
+                          }
+                        />{" "}
+                        {typeof candidate.value === "string"
+                          ? candidate.value
+                          : JSON.stringify(candidate.value)}
+                      </span>
+                    </label>
+                    <CitationPopover
+                      path={conflict.target}
+                      provenance={proposal.provenance}
+                      candidate={candidate}
+                    />
+                  </div>
                 ))}
               </fieldset>
             ))}

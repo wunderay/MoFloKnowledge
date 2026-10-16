@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { ZodError } from "zod";
-import { ValueView } from "./knowledge-viewer";
+import { ValueView } from "./entry-value";
+import { CitationPopover } from "./citation-popover";
 import { applyConflictDecision } from "@/knowledge/conflict-decisions";
 import { useCallback, useEffect, useReducer, useState } from "react";
 import type { DraftEntry, DraftResponse } from "@/contracts/api-types";
@@ -72,8 +73,14 @@ function reducer(state: EditorState, action: Action): EditorState {
     dirty: [...new Set([...state.dirty, action.id])],
   };
 }
-export function KnowledgeEditor({ companyId }: { companyId: string }) {
-  const [draft, setDraft] = useState<Draft | null>(null);
+export function KnowledgeEditor({
+  companyId,
+  initialDraft,
+}: {
+  companyId: string;
+  initialDraft?: DraftResponse;
+}) {
+  const [draft, setDraft] = useState<Draft | null>(initialDraft ?? null);
   const [state, dispatch] = useReducer(reducer, {
     category: "company_foundation",
     values: {},
@@ -106,7 +113,7 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
       dispatch({ type: "category", category: category as EntryKind });
   }, []);
   useEffect(() => {
-    refresh();
+    if (!initialDraft) refresh();
     api<{ companies: { id: string; name: string }[] }>("/api/companies")
       .then((data) => setCompanies(data.companies))
       .catch(() => {});
@@ -171,7 +178,10 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
         "gender" in content &&
         content.gender !== null &&
         content.gender !== (entry.content as { gender: string | null }).gender;
-      if (genderChanged && !genderAttestations[entry.id]?.trim())
+      if (
+        genderChanged &&
+        (genderAttestations[entry.id]?.trim().length ?? 0) < 10
+      )
         throw new Error(
           "Provide an explicit self-description attestation for the gender value, or leave gender unknown.",
         );
@@ -386,7 +396,7 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
           >
             Save knowledge version
           </button>
-          {draft.company.role === "owner" && (
+          {draft.company.role !== "viewer" && (
             <button
               className="button"
               onClick={() => setSettings(true)}
@@ -480,6 +490,18 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
         <nav className="category-nav" aria-label="Knowledge categories">
           {Object.entries(CATEGORY_SPECS).map(([kind, category]) => {
             const group = draft.entries.filter((e) => e.kind === kind);
+            const coverage = group.flatMap(
+              (entry) =>
+                (state.provenance[entry.id] ?? entry.provenance).coverage,
+            );
+            const assessed = coverage
+              .filter((item) => item.status !== "not_checked")
+              .reduce((total, item) => total + item.targets.length, 0);
+            const fieldCount =
+              group.length * Object.keys(category.fields).length ||
+              (["key_person", "offering"].includes(kind)
+                ? 0
+                : Object.keys(category.fields).length);
             return (
               <button
                 type="button"
@@ -489,11 +511,17 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
                 aria-current={state.category === kind ? "page" : undefined}
               >
                 <span aria-hidden>{category.icon}</span>
-                <span>{category.label}</span>
+                <span>
+                  {category.label}
+                  <small className="category-nav__coverage">
+                    {assessed}/{fieldCount} fields checked
+                  </small>
+                </span>
                 <span className="category-nav__count">
                   {group.filter((e) => e.review_status === "approved").length}/
                   {group.length ||
-                    (["key_person", "offering"].includes(kind) ? 0 : 1)}
+                    (["key_person", "offering"].includes(kind) ? 0 : 1)}{" "}
+                  reviewed
                 </span>
               </button>
             );
@@ -575,24 +603,30 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
                       <div key={conflict.id}>
                         <p>{conflict.target}</p>
                         {conflict.candidates.map((candidate) => (
-                          <button
-                            className="button"
-                            type="button"
-                            key={candidate.id}
-                            disabled={!canEdit}
-                            onClick={() => {
-                              resolveConflict(
-                                entry,
-                                conflict.id,
-                                candidate.id,
-                                candidate.value,
-                              );
-                            }}
-                          >
-                            {typeof candidate.value === "string"
-                              ? candidate.value
-                              : JSON.stringify(candidate.value)}
-                          </button>
+                          <div className="actions" key={candidate.id}>
+                            <button
+                              className="button"
+                              type="button"
+                              disabled={!canEdit}
+                              onClick={() => {
+                                resolveConflict(
+                                  entry,
+                                  conflict.id,
+                                  candidate.id,
+                                  candidate.value,
+                                );
+                              }}
+                            >
+                              {typeof candidate.value === "string"
+                                ? candidate.value
+                                : JSON.stringify(candidate.value)}
+                            </button>
+                            <CitationPopover
+                              path={conflict.target}
+                              provenance={provenance}
+                              candidate={candidate}
+                            />
+                          </div>
                         ))}
                         <button
                           type="button"
@@ -721,6 +755,7 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
       {history && (
         <EntryHistory
           companyId={companyId}
+          kind={history.kind}
           entryId={history.id}
           revision={history.current_revision}
           canEdit={canEdit}
