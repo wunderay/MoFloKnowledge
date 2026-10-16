@@ -23,6 +23,7 @@ export async function extractAndFinish(
       : [],
   );
   const capturesById = new Map(crawl.captures.map((p) => [p.id, p]));
+  const invalidatedSources = new Set<string>();
   const candidates: ValidatedCandidate[] = (
     compatible
       ? (checkpoint.validated_candidates as
@@ -32,17 +33,30 @@ export async function extractAndFinish(
           | undefined) ?? []
       : []
   )
-    .filter((c) => c.origin === "source_backed" && capturesById.has(c.sourceId))
-    .map((c) => {
-      const page = capturesById.get(c.sourceId)!;
-      return {
+    .flatMap((c) => {
+      const page = capturesById.get(c.sourceId);
+      const observationsById = new Map(
+        page ? technicalObservations(page).map((o) => [o.id, o]) : [],
+      );
+      if (
+        !page || c.origin !== "source_backed" ||
+        c.observation_ids.some((id) => !observationsById.has(id)) ||
+        c.segment_ids.some((id) => !page.capture.segments.some((s) => s.id === id))
+      ) {
+        invalidatedSources.add(c.sourceId);
+        return [];
+      }
+      return [{
         ...c,
         page,
-        observations: technicalObservations(page).filter((o) =>
-          c.observation_ids.includes(o.id),
-        ),
-      };
-    });
+        // Match validateCandidates ordering so resumed evidence is byte-stable.
+        observations: c.observation_ids.map((id) => observationsById.get(id)!),
+      }];
+    })
+    .filter((c) => !invalidatedSources.has(c.sourceId));
+  for (const sourceId of completed)
+    if (!capturesById.has(sourceId) || invalidatedSources.has(sourceId))
+      completed.delete(sourceId);
   // Legacy counters and model failures are never active configuration or errors.
   delete checkpoint.model_tokens;
   delete checkpoint.model_successes;
