@@ -142,7 +142,12 @@ export function assembleKnowledgeBase(
             .join("; "),
     );
   const business = approvedBusiness(input.entries);
-  const approved = input.entries.filter((e) => e.review_status === "approved");
+  const orderedEntries = [...input.entries].sort(
+    (a, b) =>
+      a.created_at.localeCompare(b.created_at) ||
+      a.entry_id.localeCompare(b.entry_id),
+  );
+  const approved = orderedEntries.filter((e) => e.review_status === "approved");
   const allClaims = unique(approved.flatMap((e) => e.provenance.claims));
   const claimsById = new Map(allClaims.map((c) => [c.id, c]));
   const selected = new Set<string>();
@@ -210,7 +215,7 @@ export function assembleKnowledgeBase(
         website: input.company.website,
         snapshot_author_id: input.authorId,
       },
-      entries: input.entries.map((e) => ({
+      entries: orderedEntries.map((e) => ({
         entry_id: e.entry_id,
         kind: e.kind,
         revision: e.revision,
@@ -224,6 +229,17 @@ export function assembleKnowledgeBase(
       coverage,
       operations: approved
         .flatMap((e) => e.provenance.operations)
+        .concat(
+          approved.flatMap((e) =>
+            (e.provenance.decisions ?? []).map((d) => ({
+              request_id: d.id,
+              entry_id: e.entry_id,
+              kind: `conflict_${d.action}`,
+              supersedes_claim_id: null,
+              note: `Target ${d.target}; conflict ${d.conflict_id}; selected candidate ${d.candidate_id ?? "none"}; reviewer ${d.actor_id}; decided ${d.decided_at}. ${d.note}`,
+            })),
+          ),
+        )
         .filter((o) => o.kind !== "rejected_candidate")
         .map((o) => ({ ...o, note: o.note?.slice(0, 2000) ?? null })),
     },
@@ -236,8 +252,8 @@ export function assembleKnowledgeBase(
   assertValidProvenance(
     business,
     {
-      sources,
-      evidence,
+      sources: unique(approved.flatMap((e) => e.provenance.sources)),
+      evidence: unique(approved.flatMap((e) => e.provenance.evidence)),
       claims,
       coverage,
       operations: payload.provenance.operations,

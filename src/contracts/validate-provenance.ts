@@ -1,13 +1,17 @@
 import type { EntryProvenance, ExportProvenance, Claim } from "./provenance";
+import { parseBusinessEntry, type EntryKind } from "./business";
+import { canonicalStringify } from "../knowledge/canonical-json";
 import { EntryProvenanceSchema, ExportProvenanceSchema } from "./provenance";
 import {
   enumerateFactualLeaves,
   resolveStablePointer,
   assertUniqueBusinessIds,
+  parseStablePointer,
 } from "./stable-pointer";
 import {
   requiredCoverageTargets,
   allowedOriginsForTarget,
+  fieldForTarget,
 } from "./field-registry";
 export type ProvenanceIssue = { code: string; path: string; message: string };
 export type CapturedSource = {
@@ -24,6 +28,7 @@ export type CapturedSource = {
 };
 export type ProvenanceOptions = {
   entryIds?: string[];
+  entryKinds?: Record<string, EntryKind>;
   historicalClaimIds?: string[];
   requireCoverage?: boolean;
   capturedSources?: CapturedSource[];
@@ -124,6 +129,11 @@ export function validateProvenance(
     ("entries" in provenance
       ? provenance.entries.map((e) => e.entry_id)
       : undefined);
+  const entryKinds =
+    options.entryKinds ??
+    ("entries" in provenance
+      ? Object.fromEntries(provenance.entries.map((e) => [e.entry_id, e.kind]))
+      : undefined);
   for (const claim of provenance.claims) {
     if (entryIds && !entryIds.includes(claim.entry_id))
       add("entry_missing", claim.id, "Claim entry is outside current manifest");
@@ -135,12 +145,6 @@ export function validateProvenance(
           "user_attribution",
           claim.id,
           "User claim requires actor, time and correction note",
-        );
-      if (claim.evidence_ids.length)
-        add(
-          "user_evidence",
-          claim.id,
-          "Changed user fact cannot inherit source evidence as current support",
         );
     } else if (claim.evidence_ids.length === 0)
       add(
@@ -165,6 +169,15 @@ export function validateProvenance(
           "Current supporting claim does not resolve",
         );
     for (const target of claim.targets) {
+      const field = fieldForTarget(target);
+      const repeatableId = /^\/(?:key_people|offerings)\/@([^/]+)\//.exec(
+        target,
+      )?.[1];
+      if (
+        (repeatableId && repeatableId !== claim.entry_id) ||
+        (entryKinds && field && entryKinds[claim.entry_id] !== field.kind)
+      )
+        add("entry_target", target, "Claim targets a different entry");
       let value: unknown;
       try {
         value = resolveStablePointer(business, target);
@@ -312,6 +325,79 @@ export function validateProvenance(
       );
   if ("conflicts" in provenance) {
     for (const conflict of provenance.conflicts) {
+      try {
+        resolveStablePointer(business, conflict.target);
+      } catch {
+        add(
+          "conflict_target",
+          conflict.target,
+          "Conflict target does not resolve",
+        );
+      }
+      for (const candidate of conflict.candidates) {
+        const field = fieldForTarget(conflict.target);
+        if (field) {
+          try {
+            const changed = structuredClone(business);
+            const keys = parseStablePointer(conflict.target);
+            const key = keys.at(-1)!;
+            const parent = resolveStablePointer(
+              changed,
+              conflict.target.slice(0, conflict.target.lastIndexOf("/")),
+            );
+            if (!parent || typeof parent !== "object")
+              throw new Error("Invalid parent");
+            if (Array.isArray(parent)) {
+              if (!/^(0|[1-9]\d*)$/.test(key))
+                throw new Error("Expected metadata index");
+              parent[Number(key)] = candidate.value;
+            } else (parent as Record<string, unknown>)[key] = candidate.value;
+            const root =
+              field.kind === "key_person" || field.kind === "offering"
+                ? conflict.target.split("/").slice(0, 3).join("/")
+                : `/${field.kind}`;
+            parseBusinessEntry(field.kind, resolveStablePointer(changed, root));
+          } catch {
+            add(
+              "candidate_value",
+              conflict.target,
+              "Candidate value violates the business field schema",
+            );
+          }
+        }
+
+        if (
+          !allowedOriginsForTarget(conflict.target).includes(candidate.origin)
+        )
+          add(
+            "candidate_origin",
+            conflict.target,
+            "Candidate origin is disallowed",
+          );
+        if (
+          candidate.origin !== "user_provided" &&
+          candidate.evidence_ids.length === 0
+        )
+          add(
+            "candidate_support",
+            conflict.target,
+            "Candidate requires captured evidence",
+          );
+        for (const id of candidate.evidence_ids)
+          if (!evidence.has(id))
+            add(
+              "candidate_evidence",
+              conflict.target,
+              "Candidate evidence does not resolve",
+            );
+        for (const id of candidate.based_on_claim_ids)
+          if (!claims.has(id))
+            add(
+              "candidate_claim",
+              conflict.target,
+              "Candidate supporting claim does not resolve",
+            );
+      }
       const decision = provenance.decisions.filter(
         (d) => d.conflict_id === conflict.id,
       );
@@ -344,8 +430,8 @@ export function validateProvenance(
           );
           try {
             if (
-              JSON.stringify(resolveStablePointer(business, d.target)) !==
-              JSON.stringify(selected?.value)
+              canonicalStringify(resolveStablePointer(business, d.target)) !==
+              canonicalStringify(selected?.value)
             )
               add(
                 "conflict_value",
@@ -354,6 +440,27 @@ export function validateProvenance(
               );
           } catch {
             add("conflict_value", d.target, "Selected target does not resolve");
+          }
+          if (selected) {
+            const active = provenance.claims.filter((c) =>
+              c.targets.some(
+                (t) => t === d.target || t.startsWith(`${d.target}/`),
+              ),
+            );
+            if (
+              active.some(
+                (c) =>
+                  c.origin !== selected.origin ||
+                  selected.evidence_ids.some(
+                    (id) => !c.evidence_ids.includes(id),
+                  ),
+              )
+            )
+              add(
+                "conflict_claim",
+                d.target,
+                "Selected value must retain its candidate origin/evidence",
+              );
           }
         }
         if (d.action === "clear") {

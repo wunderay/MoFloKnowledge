@@ -19,8 +19,6 @@ import {
   resolveStablePointer,
   enumerateFactualLeaves,
   validateProvenance,
-  entryBusiness,
-  EntryProvenanceSchema,
   type Business,
 } from "../../src/contracts";
 const clone = () => structuredClone(fixture);
@@ -231,6 +229,83 @@ describe("stable pointer and field-level provenance", () => {
       validateProvenance(business(), p as never).some(
         (x) => x.code === "claim_missing",
       ),
+    ).toBe(true);
+  });
+});
+
+describe("selected value boundaries", () => {
+  it("rejects assigning one entry claim to another person or section", () => {
+    const p = clone().provenance;
+    const claim = p.claims.find((c) =>
+      c.targets.some((t) => t.startsWith("/key_people/")),
+    )!;
+    claim.entry_id = p.entries[0].entry_id;
+    expect(
+      validateProvenance(business(), p as never).some(
+        (i) => i.code === "entry_target",
+      ),
+    ).toBe(true);
+  });
+  it("requires candidate evidence, human resolution and selected-origin preservation", () => {
+    const p = clone().provenance;
+    const claim = p.claims.find((c) => c.origin === "generated")!;
+    const id = "00000000-0000-4000-8000-000000000001";
+    const other = "00000000-0000-4000-8000-000000000002";
+    const provenance = {
+      sources: p.sources,
+      evidence: p.evidence,
+      claims: p.claims,
+      coverage: p.coverage,
+      operations: p.operations,
+      conflicts: [
+        {
+          id,
+          target: "/positioning/company_pitch",
+          material: true,
+          candidates: [
+            {
+              id: other,
+              value: fixture.positioning.company_pitch,
+              origin: "source_backed",
+              evidence_ids: claim.evidence_ids,
+              based_on_claim_ids: [],
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000003",
+              value: "Another pitch",
+              origin: "source_backed",
+              evidence_ids: [],
+              based_on_claim_ids: [],
+            },
+          ],
+        },
+      ],
+      decisions: [],
+    };
+    const unresolved = validateProvenance(business(), provenance as never, {
+      approved: true,
+    });
+    expect(unresolved.map((i) => i.code)).toEqual(
+      expect.arrayContaining(["candidate_support", "unresolved_conflict"]),
+    );
+    Object.assign(provenance, {
+      decisions: [
+        {
+          id: "00000000-0000-4000-8000-000000000004",
+          conflict_id: id,
+          target: "/positioning/company_pitch",
+          action: "select",
+          candidate_id: other,
+          actor_id: p.company.snapshot_author_id,
+          decided_at: fixture.saved_at,
+          note: "Selected exact statement",
+        },
+      ],
+    });
+    expect(
+      validateProvenance(business(), provenance as never, {
+        approved: true,
+      }).some((i) => i.code === "conflict_claim"),
     ).toBe(true);
   });
 });
