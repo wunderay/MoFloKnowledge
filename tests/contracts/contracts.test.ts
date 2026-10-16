@@ -20,6 +20,10 @@ import {
   enumerateFactualLeaves,
   validateProvenance,
   type Business,
+  ProposalSchema,
+  ModelOutputSchema,
+  ProgressSchema,
+  EntryProvenanceSchema,
 } from "../../src/contracts";
 const clone = () => structuredClone(fixture);
 const business = (): Business => {
@@ -307,5 +311,47 @@ describe("selected value boundaries", () => {
         approved: true,
       }).some((i) => i.code === "conflict_claim"),
     ).toBe(true);
+  });
+});
+
+describe("worker proposal trust boundary", () => {
+  it("rejects wrong entry shapes, unsafe model metadata and negative progress", () => {
+    const proposal = {
+      id: fixture.provenance.entries[0].entry_id,
+      kind: "company_foundation",
+      target_entry_id: null,
+      base_revision: null,
+      schema_version: "1.0.0",
+      content: fixture.positioning,
+      provenance: EntryProvenanceSchema.parse({
+        sources: [],
+        evidence: [],
+        claims: [],
+        coverage: [],
+        operations: [],
+      }),
+      conflicts: [],
+    };
+    expect(ProposalSchema.safeParse(proposal).success).toBe(false);
+    expect(
+      ModelOutputSchema.safeParse({
+        candidates: [],
+        limitations: [],
+        actor_id: fixture.provenance.company.snapshot_author_id,
+      }).success,
+    ).toBe(false);
+    expect(
+      ProgressSchema.safeParse({
+        stage: "crawling",
+        discovered: 2,
+        selected: 2,
+        captured: -1,
+        failed: 0,
+        blocked: 0,
+        extracted: 0,
+        document_limit: 10,
+        limits_reached: [],
+      }).success,
+    ).toBe(false);
   });
 });
