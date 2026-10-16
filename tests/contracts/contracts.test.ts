@@ -21,7 +21,8 @@ import {
   validateProvenance,
   type Business,
   ProposalSchema,
-  ModelOutputSchema,
+  ExtractionOutputSchema,
+  ExtractionCandidateSchema,
   ProgressSchema,
   CheckpointSchema,
   EntryProvenanceSchema,
@@ -316,7 +317,7 @@ describe("selected value boundaries", () => {
 });
 
 describe("worker proposal trust boundary", () => {
-  it("rejects wrong entry shapes, unsafe model metadata and negative progress", () => {
+  it("rejects wrong entry shapes, unsafe extraction metadata and negative progress", () => {
     const proposal = {
       id: fixture.provenance.entries[0].entry_id,
       kind: "company_foundation",
@@ -335,12 +336,23 @@ describe("worker proposal trust boundary", () => {
     };
     expect(ProposalSchema.safeParse(proposal).success).toBe(false);
     expect(
-      ModelOutputSchema.safeParse({
+      ExtractionOutputSchema.safeParse({
         candidates: [],
         limitations: [],
         actor_id: fixture.provenance.company.snapshot_author_id,
       }).success,
     ).toBe(false);
+    const candidate = {
+      target: "/company_foundation/overview",
+      value: "Captured text",
+      origin: "source_backed",
+      segment_ids: ["segment-1"],
+      observation_ids: [],
+      note: null,
+    };
+    expect(ExtractionCandidateSchema.safeParse(candidate).success).toBe(true);
+    for (const origin of ["inferred", "generated", "user_provided"])
+      expect(ExtractionCandidateSchema.safeParse({ ...candidate, origin }).success).toBe(false);
     expect(
       ProgressSchema.safeParse({
         stage: "crawling",
@@ -424,6 +436,7 @@ describe("durable worker checkpoint wire", () => {
         ...checkpoint,
         stage: "extracting",
         extracted_source_ids: [fixture.provenance.sources[0].id],
+        extractor_version: "deterministic-v1",
         model_tokens: 100,
         model_successes: 1,
         model_failures: 0,

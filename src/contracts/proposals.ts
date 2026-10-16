@@ -9,7 +9,6 @@ import {
 import {
   EntryProvenanceSchema,
   CandidateConflictSchema,
-  OriginSchema,
   JSONValueSchema,
   StablePointerSchema,
 } from "./provenance";
@@ -117,23 +116,23 @@ export const ProposalSchema = z
       }
     });
   });
-/** Model candidates carry only untrusted observations; trusted code assigns UUIDs and metadata. */
-export const ModelCandidateSchema = z
+/** Extraction candidates carry captured observations; trusted code assigns UUIDs and metadata. */
+export const ExtractionCandidateSchema = z
   .object({
     target: StablePointerSchema,
     value: JSONValueSchema,
-    origin: OriginSchema.exclude(["user_provided"]),
+    origin: z.literal("source_backed"),
     segment_ids: z.array(z.string().min(1).max(200)).max(100),
     observation_ids: z.array(z.string().min(1).max(200)).max(100),
     note: TextSchema.nullable(),
   })
   .strict();
-export const ModelOutputSchema = z
+export const ExtractionOutputSchema = z
   .object({
-    candidates: z.array(ModelCandidateSchema).max(500),
+    candidates: z.array(ExtractionCandidateSchema).max(500),
     limitations: z.array(TextSchema).max(100),
   })
   .strict();
 export type ProposalChange = z.infer<typeof ProposalChangeSchema>;
 export type Proposal = z.infer<typeof ProposalSchema>;
-export type ModelCandidate = z.infer<typeof ModelCandidateSchema>;
+export type ExtractionCandidate = z.infer<typeof ExtractionCandidateSchema>;
