@@ -2,7 +2,6 @@ import { KnowledgeEditor } from "@/components/knowledge-editor";
 import { verifiedSession } from "@/lib/supabase/server";
 import { readDraft } from "@/server/read-model";
 import { UUIDSchema } from "@/contracts";
-import type { DraftResponse } from "@/contracts/api-types";
 import { Notice } from "@/components/ui";
 import { redirect } from "next/navigation";
 export default async function KnowledgePage({
@@ -26,7 +25,7 @@ export default async function KnowledgePage({
       <KnowledgeEditor
         key={id.data}
         companyId={id.data}
-        initialDraft={initialDraft as DraftResponse}
+        initialDraft={initialDraft}
       />
     );
   } catch {

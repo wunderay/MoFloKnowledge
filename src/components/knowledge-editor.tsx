@@ -34,10 +34,13 @@ type Entry = Pick<
   | "provenance"
   | "review_status"
 >;
-type Draft = Omit<DraftResponse, "entries"> & { entries: Entry[] };
+type Draft = Omit<DraftResponse, "company" | "entries"> & {
+  company: Omit<DraftResponse["company"], "latestJob" | "latestVersion">;
+  entries: Entry[];
+};
 export function KnowledgeEditor(props: {
   companyId: string;
-  initialDraft?: DraftResponse;
+  initialDraft?: Draft;
 }) {
   return (
     <CompanyDraftProvider key={props.companyId} companyId={props.companyId}>
@@ -50,7 +53,7 @@ function KnowledgeEditorContent({
   initialDraft,
 }: {
   companyId: string;
-  initialDraft?: DraftResponse;
+  initialDraft?: Draft;
 }) {
   const [draft, setDraft] = useState<Draft | null>(initialDraft ?? null);
   const { state, dispatch } = useCompanyDraft();
