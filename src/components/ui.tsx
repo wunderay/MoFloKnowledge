@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 export function StatusBadge({ value }: { value: string }) {
   return (
     <span className={`status-badge status-badge--${value}`}>
@@ -105,4 +105,11 @@ export function Dialog({
       </section>
     </div>
   );
+}
+
+/** Keep server-rendered mutation controls inert until their handlers are attached. */
+export function useHydrated() {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  return hydrated;
 }

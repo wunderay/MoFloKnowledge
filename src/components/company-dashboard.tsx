@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, write } from "./api-client";
-import { Dialog, EmptyState, Notice, StatusBadge } from "./ui";
+import { Dialog, EmptyState, Notice, StatusBadge, useHydrated } from "./ui";
 import type { CompanySummary } from "@/contracts/api-types";
 type Company = CompanySummary;
 export function CompanyDashboard({
@@ -10,6 +10,7 @@ export function CompanyDashboard({
 }: {
   initialData?: { companies: Company[]; nextCursor: string | null };
 }) {
+  const hydrated = useHydrated();
   const [companies, setCompanies] = useState<Company[]>(
     initialData?.companies ?? [],
   );
@@ -114,6 +115,7 @@ export function CompanyDashboard({
         </div>
         <button
           className="button button--primary"
+          disabled={!hydrated}
           onClick={() => setAdding(true)}
         >
           ＋ Add company
@@ -158,11 +160,13 @@ export function CompanyDashboard({
         <div className="actions">
           <button
             className="button button--quiet"
+            disabled={!hydrated}
             onClick={() => setArchived(!archived)}
           >
             {archived ? "Show active" : "View archive"}
           </button>
           <input
+            disabled={!hydrated}
             aria-label="Search companies"
             className="filter-input"
             placeholder="Search companies…"
@@ -184,6 +188,7 @@ export function CompanyDashboard({
             </p>
             <button
               className="button button--primary"
+              disabled={!hydrated}
               onClick={() => setAdding(true)}
             >
               ＋ Add company
