@@ -974,3 +974,12 @@ small {
     overflow: auto;
   }
 }
+.field-grid > .knowledge-editor__group {
+  grid-column: 1 / -1;
+}
+.field input[type="checkbox"],
+.field input[type="radio"] {
+  width: auto;
+  margin-right: 7px;
+  accent-color: var(--green);
+}

@@ -2,10 +2,13 @@
 import Link from "next/link";
 import { ZodError } from "zod";
 import { ValueView } from "./knowledge-viewer";
+import { applyConflictDecision } from "@/knowledge/conflict-decisions";
 import { useCallback, useEffect, useReducer, useState } from "react";
 import type { DraftEntry, DraftResponse } from "@/contracts/api-types";
 import {
   createEntryDefault,
+  entryBusiness,
+  resolveStablePointer,
   createEmptyProvenance,
   parseBusinessEntry,
   type BusinessEntry,
@@ -84,6 +87,9 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
   const [publish, setPublish] = useState(false);
   const [settings, setSettings] = useState(false);
   const [stale, setStale] = useState(false);
+  const [genderAttestations, setGenderAttestations] = useState<
+    Record<string, string>
+  >({});
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>(
     [],
   );
@@ -93,11 +99,25 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
       .catch((e) => setError(e.message));
   }, [companyId]);
   useEffect(() => {
+    const category = new URLSearchParams(window.location.search).get(
+      "category",
+    );
+    if (category && CATEGORY_SPECS[category])
+      dispatch({ type: "category", category: category as EntryKind });
+  }, []);
+  useEffect(() => {
     refresh();
     api<{ companies: { id: string; name: string }[] }>("/api/companies")
       .then((data) => setCompanies(data.companies))
       .catch(() => {});
   }, [refresh]);
+  useEffect(() => {
+    const entryId = new URLSearchParams(window.location.search).get("entryId");
+    if (entryId && draft)
+      document
+        .getElementById(`entry-${entryId}`)
+        ?.scrollIntoView({ block: "center" });
+  }, [draft, state.category]);
   useEffect(() => {
     if (!state.dirty.length) return;
     const warn = (e: BeforeUnloadEvent) => {
@@ -146,6 +166,18 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
     try {
       const content = state.values[entry.id] ?? entry.content;
       parseBusinessEntry(entry.kind, content);
+      const genderChanged =
+        entry.kind === "key_person" &&
+        "gender" in content &&
+        content.gender !== null &&
+        content.gender !== (entry.content as { gender: string | null }).gender;
+      if (genderChanged && !genderAttestations[entry.id]?.trim())
+        throw new Error(
+          "Provide an explicit self-description attestation for the gender value, or leave gender unknown.",
+        );
+      const genderAttestation = genderChanged
+        ? genderAttestations[entry.id]?.trim()
+        : undefined;
       const provenance = structuredClone(
         state.provenance[entry.id] ?? entry.provenance,
       );
@@ -176,12 +208,19 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
         write(
           "POST",
           isNew
-            ? { kind: entry.kind, content, provenance, requestId }
+            ? {
+                kind: entry.kind,
+                content,
+                provenance,
+                genderAttestation,
+                requestId,
+              }
             : {
                 expectedRevision: entry.current_revision,
                 content,
                 provenance,
                 reviewStatus: status,
+                genderAttestation,
                 reason: state.dirty.includes(entry.id)
                   ? "User reviewed and corrected company knowledge."
                   : "Review status updated.",
@@ -235,42 +274,55 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
     conflictId: string,
     candidateId: string | null,
     nextValue: unknown,
+    action: "select" | "clear" | "correct" = candidateId ? "select" : "clear",
   ) {
-    const provenance = structuredClone(
-      state.provenance[entry.id] ?? entry.provenance,
-    );
-    const conflict = provenance.conflicts.find((c) => c.id === conflictId)!;
-    const content = structuredClone(
-      state.values[entry.id] ?? entry.content,
-    ) as Record<string, unknown>;
-    const segments = conflict.target
-      .split("/")
-      .slice(2)
-      .map((s) => s.replaceAll("~1", "/").replaceAll("~0", "~"));
-    if (entry.kind === "key_person" || entry.kind === "offering")
-      segments.shift();
-    let target: unknown = content;
-    for (const segment of segments.slice(0, -1)) {
-      target = segment.startsWith("@")
-        ? (target as { id: string }[]).find((x) => x.id === segment.slice(1))
-        : (target as Record<string, unknown>)[segment];
+    try {
+      const provenance = structuredClone(
+        state.provenance[entry.id] ?? entry.provenance,
+      );
+      const conflict = provenance.conflicts.find(
+        (item) => item.id === conflictId,
+      )!;
+      const currentBusiness = entryBusiness(
+        entry.kind,
+        state.values[entry.id] ?? entry.content,
+      );
+      const correction =
+        action === "correct"
+          ? resolveStablePointer(currentBusiness, conflict.target)
+          : nextValue;
+      const { business, decision } = applyConflictDecision(
+        currentBusiness,
+        conflict,
+        {
+          id: crypto.randomUUID(),
+          conflict_id: conflictId,
+          target: conflict.target,
+          action,
+          candidate_id: candidateId,
+          actor_id: draft!.actorId,
+          decided_at: new Date().toISOString(),
+          note:
+            action === "select"
+              ? "Reviewer selected this source candidate."
+              : action === "correct"
+                ? "Reviewer supplied the edited field value as a correction."
+                : "Reviewer cleared the disputed value.",
+        },
+        correction,
+      );
+      provenance.decisions.push(decision);
+      const content =
+        entry.kind === "key_person"
+          ? (business.key_people as BusinessEntry[])[0]!
+          : entry.kind === "offering"
+            ? (business.offerings as BusinessEntry[])[0]!
+            : (business[entry.kind] as BusinessEntry);
+      dispatch({ type: "edit", id: entry.id, content });
+      dispatch({ type: "provenance", id: entry.id, provenance });
+    } catch (error) {
+      setError((error as Error).message);
     }
-    if (target && segments.length)
-      (target as Record<string, unknown>)[segments.at(-1)!] = nextValue;
-    provenance.decisions.push({
-      id: crypto.randomUUID(),
-      conflict_id: conflictId,
-      target: conflict.target,
-      action: candidateId ? "select" : "clear",
-      candidate_id: candidateId,
-      actor_id: draft!.actorId,
-      decided_at: new Date().toISOString(),
-      note: candidateId
-        ? "Reviewer selected this source candidate."
-        : "Reviewer cleared the disputed value.",
-    });
-    dispatch({ type: "edit", id: entry.id, content: content as BusinessEntry });
-    dispatch({ type: "provenance", id: entry.id, provenance });
   }
   function addRepeatable() {
     const id = crypto.randomUUID();
@@ -488,7 +540,11 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
                 !provenance.decisions.some((d) => d.conflict_id === c.id),
             );
             return (
-              <article className="knowledge-editor__entry panel" key={entry.id}>
+              <article
+                className="knowledge-editor__entry panel"
+                id={`entry-${entry.id}`}
+                key={entry.id}
+              >
                 <div className="section-heading">
                   <div className="actions">
                     <h3>
@@ -513,8 +569,8 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
                 {conflicts.length > 0 && (
                   <Notice error>
                     {conflicts.length} unresolved conflict
-                    {conflicts.length === 1 ? "" : "s"}. Choose or clear a value
-                    before approval.
+                    {conflicts.length === 1 ? "" : "s"}. Choose a source, supply
+                    a correction, or clear a value before approval.
                     {conflicts.map((conflict) => (
                       <div key={conflict.id}>
                         <p>{conflict.target}</p>
@@ -548,6 +604,22 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
                         >
                           Clear disputed value
                         </button>
+                        <button
+                          type="button"
+                          className="button"
+                          disabled={!canEdit || !state.dirty.includes(entry.id)}
+                          onClick={() =>
+                            resolveConflict(
+                              entry,
+                              conflict.id,
+                              null,
+                              null,
+                              "correct",
+                            )
+                          }
+                        >
+                          Use my edited value as correction
+                        </button>
                       </div>
                     ))}
                   </Notice>
@@ -573,6 +645,33 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
                     />
                   ))}
                 </div>
+                {entry.kind === "key_person" &&
+                  "gender" in value &&
+                  value.gender !== null &&
+                  value.gender !==
+                    (entry.content as { gender: string | null }).gender && (
+                    <label className="field">
+                      <span className="field__label">
+                        Gender self-description attestation
+                      </span>
+                      <textarea
+                        value={genderAttestations[entry.id] ?? ""}
+                        onChange={(event) =>
+                          setGenderAttestations((previous) => ({
+                            ...previous,
+                            [entry.id]: event.target.value,
+                          }))
+                        }
+                        disabled={!canEdit}
+                        placeholder="Describe the person's explicit self-description and where you observed it."
+                      />
+                      <span className="field__hint">
+                        Confirm explicit self-description in your own words. A
+                        name, appearance, or title is not evidence. Leave gender
+                        unknown when self-description is unavailable.
+                      </span>
+                    </label>
+                  )}
                 <div className="knowledge-editor__toolbar">
                   <button
                     className="button"

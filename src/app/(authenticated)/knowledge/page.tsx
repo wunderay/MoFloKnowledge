@@ -5,5 +5,10 @@ export default async function KnowledgePage({
   searchParams: Promise<{ companyId?: string }>;
 }) {
   const params = await searchParams;
-  return <KnowledgeEditor companyId={params.companyId ?? ""} />;
+  return (
+    <KnowledgeEditor
+      key={params.companyId}
+      companyId={params.companyId ?? ""}
+    />
+  );
 }
