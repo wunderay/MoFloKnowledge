@@ -24,7 +24,7 @@
     "expectedAbsent": ["founding story", "legal entity type", "industry outlook"],
     "style": { "declaredFont": "Field Sans", "headingColor": "#245C4B", "backgroundColor": "#FFFFFF" },
     "companyLogo": "/logo.svg",
-    "socialProfile": "https://social.example/northstarfieldworks",
+    "socialProfile": "https://linkedin.com/company/northstarfieldworks",
     "hostileTextIsUntrusted": true
   },
   "networkPolicy": {
