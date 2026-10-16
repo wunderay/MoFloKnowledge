@@ -195,16 +195,26 @@ export function captureHtml(
     let region = $(node);
     let heading: string | null = null;
     let context: string | null = null;
-    for (let depth = 0; depth < 5 && region.length && !region.is("body,html"); depth++, region = region.parent()) {
+    const form = $(node);
+    const local = (candidate: Parameters<typeof $>[0]) => {
+      const element = $(candidate);
+      if (element.closest('nav,aside,footer,header,[role="navigation"],[role="contentinfo"],[role="complementary"]').length) return false;
+      // Sibling sections and recommendation cards cannot describe this form.
+      if (element.closest("section,article,main")[0] !== form.closest("section,article,main")[0]) return false;
+      return !element.parents("[class],[id]").toArray().some((ancestor) =>
+        /(?:^|[\s_-])(?:related|recommended|recommendations?|cookie|consent)(?:$|[\s_-])/i.test(`${$(ancestor).attr("class") ?? ""} ${$(ancestor).attr("id") ?? ""}`) &&
+        !$(ancestor).find("form").toArray().some((nestedForm) => nestedForm === form[0]));
+    };
+    for (let depth = 0; depth < 5 && region.length && !region.is("body,html,main,article"); depth++, region = region.parent()) {
       if (region.find("form").length > 1) break;
-      const headings = region.find("h1,h2,h3,h4,h5,h6");
+      const headings = region.find("h1,h2,h3,h4,h5,h6").filter((_i, heading) => local(heading));
       if (!heading && headings.length === 1) heading = normalizeText(headings.text()).slice(0, 2000) || null;
-      const paragraphs = region.find("p").filter((_i, paragraph) => !$(paragraph).closest("form").length);
+      const paragraphs = region.find("p").filter((_i, paragraph) => local(paragraph) && !$(paragraph).closest("form").length);
       if (!context && paragraphs.length === 1) {
         const text = normalizeText(paragraphs.text());
         if (text.length <= 2000) context = text || null;
       }
-      if (heading && context) break;
+      if ((heading && context) || region.is("section")) break;
     }
     return { heading, context };
   };
@@ -335,7 +345,11 @@ export function captureHtml(
     metaDescription: meta("description") ?? meta("og:description"),
     canonical,
     redirects: input.redirects ?? [],
-    forms,
+    forms: forms.map((form) => ({
+      ...form,
+      heading: form.heading && parsed.segments.some((segment) => segment.text === form.heading) ? form.heading : null,
+      ...("context" in form ? { context: form.context && parsed.segments.some((segment) => segment.text === form.context) ? form.context : null } : {}),
+    })),
     ctas,
     addresses,
     priceText,

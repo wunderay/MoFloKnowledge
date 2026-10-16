@@ -115,3 +115,18 @@ it("retains exact CMS form context and scoped nested lists without blending sibl
   for (const text of ["Receive weekly articles in your inbox.", "Records support", "Monthly reports", "Payroll support"])
     expect(capture.segments.some((segment) => segment.text === text)).toBe(true);
 });
+
+
+it("does not borrow form purpose from sibling chrome or uncaptured text", () => {
+  const capture = captureHtml({ requestedUrl: "https://example.com/", finalUrl: "https://example.com/", body: `
+    <main><div><nav><h2>Newsletter</h2><p>Subscribe to the latest articles.</p></nav>
+    <aside><h2>Newsletter</h2><p>Subscribe to updates.</p></aside>
+    <div class="related-articles"><h2>Newsletter</h2><p>Subscribe for news.</p></div>
+    <form><label>Your message</label><button>Send message</button></form></div></main>` });
+  expect(capture.observations.forms).toContainEqual(expect.objectContaining({ heading: null, context: null }));
+  const exhausted = captureHtml({ requestedUrl: "https://example.com/", finalUrl: "https://example.com/", body: `
+    <main><h1>Company</h1><p>${"Long substantive company description. ".repeat(4000)}</p></main>
+    <section><h2>Newsletter</h2><p>Receive updates by email.</p><form><label>Email</label></form></section>` });
+  expect(exhausted.observations.forms).toContainEqual(expect.objectContaining({ heading: null, context: null }));
+  expect(exhausted.observations.limitations).toContain("Captured text exceeded the source segment limit.");
+});
