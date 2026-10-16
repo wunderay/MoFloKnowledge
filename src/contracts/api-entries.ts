@@ -10,6 +10,7 @@ export const CreateEntrySchema = z
     kind: EntryKindSchema,
     content: BusinessEntrySchema,
     provenance: EntryProvenanceSchema,
+    genderAttestation: z.string().trim().min(10).max(2000).optional(),
     requestId: IdSchema,
   })
   .strict();
@@ -20,6 +21,7 @@ export const SaveEntrySchema = z
     provenance: EntryProvenanceSchema,
     reviewStatus: z.enum(["unreviewed", "approved", "rejected"]),
     reason: z.string().max(2000).optional(),
+    genderAttestation: z.string().trim().min(10).max(2000).optional(),
     requestId: IdSchema,
   })
   .strict();

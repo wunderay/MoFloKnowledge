@@ -23,6 +23,7 @@ export function prepareManualCreation(
   content: BusinessEntry,
   requestId: string,
   actorId: string,
+  genderAttestation?: string,
 ) {
   const id = "id" in content ? content.id : requestId;
   const provenance = createEmptyProvenance();
@@ -45,7 +46,9 @@ export function prepareManualCreation(
     actorId,
     savedAt: new Date().toISOString(),
     requestId,
-    note: "User-provided manual entry.",
+    note: genderAttestation
+      ? `User attestation of explicit self-description: ${genderAttestation}`
+      : "User-provided manual entry.",
   });
 }
 export async function prepareRevision(
@@ -60,6 +63,7 @@ export async function prepareRevision(
     reason?: string;
     requestId: string;
     reviewStatus: string;
+    genderAttestation?: string;
   },
 ) {
   const entry = await checked(
@@ -124,7 +128,9 @@ export async function prepareRevision(
         actorId,
         savedAt: new Date().toISOString(),
         requestId: input.requestId,
-        note: input.reason ?? "User-provided correction.",
+        note: input.genderAttestation
+          ? `User attestation of explicit self-description: ${input.genderAttestation}`
+          : (input.reason ?? "User-provided correction."),
       })
     : provenance;
   return {
@@ -158,6 +164,29 @@ export function preserveSelectedCandidates(
     const candidate = conflict?.candidates.find(
       (c) => c.id === decision.candidate_id,
     );
+    const existing = stored.decisions.find((d) => d.id === decision.id);
+    if (
+      existing &&
+      canonicalStringify(existing) === canonicalStringify(decision)
+    ) {
+      if (
+        conflict &&
+        candidate &&
+        canonicalStringify(resolveStablePointer(business, conflict.target)) !==
+          canonicalStringify(candidate.value)
+      ) {
+        const index = provenance.decisions.indexOf(decision);
+        provenance.decisions[index] = {
+          ...decision,
+          id: stableId(requestId, conflict.id, "correct"),
+          action: "correct",
+          candidate_id: null,
+          decided_at: new Date().toISOString(),
+          note: "User corrected a previously selected candidate.",
+        };
+      }
+      continue;
+    }
     if (
       !conflict ||
       !candidate ||
