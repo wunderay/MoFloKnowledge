@@ -7,6 +7,8 @@ export type TechnicalObservation = {
   asset_url: string | null;
 };
 export type FieldCandidate = {
+  /** Relative source quality for narrative selection; never suppresses factual conflicts. */
+  priority?: number;
   field: string;
   entity_key: string | null;
   value: unknown;

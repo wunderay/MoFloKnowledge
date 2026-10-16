@@ -35,6 +35,7 @@ export const fieldCandidateSchemas = FIELD_REGISTRY.map((field) =>
   z
     .object({
       field: z.literal(field.path),
+      priority: z.number().int().min(0).max(100).optional(),
       entity_key: z.string().max(300).nullable(),
       value: candidateValueSchema(
         objectSchema(businessEntrySchemas[field.kind]).shape[field.field],
