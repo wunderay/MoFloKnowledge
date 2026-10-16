@@ -477,3 +477,70 @@ describe("explicit original gender wording", () => {
     ).toBe(true);
   });
 });
+
+describe("ordinary proposal field selections", () => {
+  it("accepts metadata for populated nonconflicting fields and rejects ambiguous/unknown selections", () => {
+    const base = {
+      id: "00000000-0000-4000-8000-000000000051",
+      kind: "positioning",
+      target_entry_id: null,
+      base_revision: null,
+      schema_version: "1.0.0",
+      content: { company_pitch: "Observed pitch.", founding_story: null },
+      provenance: EntryProvenanceSchema.parse({
+        sources: [],
+        evidence: [],
+        claims: [],
+        coverage: [],
+        operations: [],
+      }),
+      conflicts: [],
+    };
+    const change = {
+      id: "00000000-0000-4000-8000-000000000052",
+      target: "/positioning/company_pitch",
+    };
+    expect(ProposalSchema.parse(base).changes).toEqual([]);
+    expect(
+      ProposalSchema.parse({ ...base, changes: [change] }).changes,
+    ).toEqual([change]);
+    for (const changes of [
+      [change, change],
+      [{ ...change, target: "/positioning/founding_story" }],
+      [{ ...change, target: "/company_foundation/overview" }],
+      [{ ...change, target: "/positioning/company_pitch/nested" }],
+      [{ ...change, value: "Another authority" }],
+    ])
+      expect(ProposalSchema.safeParse({ ...base, changes }).success).toBe(
+        false,
+      );
+    const conflict = {
+      id: "00000000-0000-4000-8000-000000000053",
+      target: change.target,
+      material: true,
+      candidates: [
+        {
+          id: "00000000-0000-4000-8000-000000000054",
+          value: "First",
+          origin: "source_backed",
+          evidence_ids: [],
+          based_on_claim_ids: [],
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000055",
+          value: "Second",
+          origin: "source_backed",
+          evidence_ids: [],
+          based_on_claim_ids: [],
+        },
+      ],
+    };
+    expect(
+      ProposalSchema.safeParse({
+        ...base,
+        conflicts: [conflict],
+        changes: [change],
+      }).success,
+    ).toBe(false);
+  });
+});
