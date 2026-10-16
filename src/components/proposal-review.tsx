@@ -6,19 +6,22 @@ import { Notice } from "./ui";
 import {
   entryRoot,
   type EntryKind,
+  type CitationContext,
   type EntryProvenance,
   type Proposal,
   entryBusiness,
   resolveStablePointer,
 } from "@/contracts";
+import { mergeCitationContexts } from "./citation-context";
 import { ValueView } from "./entry-value";
 import { labelOf, summarizeValue } from "./business-fields";
-type ProposalItem = Proposal & { changes?: { id: string; target: string }[] };
+type ProposalItem = Proposal;
 export function ProposalReview({
   companyId,
   entries,
   canEdit,
   onApplied,
+  citationContext,
 }: {
   companyId: string;
   entries: {
@@ -29,8 +32,12 @@ export function ProposalReview({
   }[];
   canEdit: boolean;
   onApplied: () => void;
+  citationContext?: CitationContext;
 }) {
   const [proposals, setProposals] = useState<ProposalItem[]>([]);
+  const [jobCitationContext, setJobCitationContext] =
+    useState<CitationContext>();
+  const lookup = mergeCitationContexts(citationContext, jobCitationContext);
   const [jobId, setJobId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, string[]>>({});
   const [error, setError] = useState("");
@@ -47,6 +54,13 @@ export function ProposalReview({
       };
     }>(companyPath(companyId, `/scrapes/${job}`))
       .then((data) => {
+        setJobCitationContext(
+          mergeCitationContexts(
+            ...(data.proposals.candidates ?? []).map(
+              (proposal) => proposal.provenance,
+            ),
+          ),
+        );
         if (data.proposals.initialized_entry_ids?.length) {
           setProposals([]);
           return;
@@ -120,6 +134,7 @@ export function ProposalReview({
                     value={current.content}
                     path={entryRoot(proposal.kind as EntryKind, current.id)}
                     provenance={current.provenance}
+                    citationContext={citationContext}
                     approved={false}
                   />
                 ) : (
@@ -137,6 +152,7 @@ export function ProposalReview({
                       : (proposal.target_entry_id ?? ""),
                   )}
                   provenance={proposal.provenance}
+                  citationContext={lookup}
                   approved={false}
                 />
               </div>
@@ -185,6 +201,7 @@ export function ProposalReview({
                         <CitationPopover
                           path={change.target}
                           provenance={proposal.provenance}
+                          citationContext={lookup}
                         />
                       </div>
                       <span className="field__hint">
@@ -262,6 +279,7 @@ export function ProposalReview({
                     <CitationPopover
                       path={conflict.target}
                       provenance={proposal.provenance}
+                      citationContext={lookup}
                       candidate={candidate}
                     />
                   </div>

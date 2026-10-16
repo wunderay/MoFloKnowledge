@@ -1,18 +1,20 @@
 "use client";
 import { ArrowUpRight } from "./icons";
-import type { EntryProvenance } from "@/contracts";
+import type { CitationContext, EntryProvenance } from "@/contracts";
 import { CitationPopover, safeHref } from "./citation-popover";
 import { labelOf } from "./business-fields";
 export function ValueView({
   value,
   path,
   provenance,
+  citationContext,
   approved,
   label,
 }: {
   value: unknown;
   path: string;
   provenance: EntryProvenance;
+  citationContext?: CitationContext;
   approved: boolean;
   label?: string;
 }) {
@@ -24,6 +26,7 @@ export function ValueView({
           <CitationPopover
             path={path}
             provenance={provenance}
+            citationContext={citationContext}
             approved={approved}
           />
         </div>
@@ -41,6 +44,7 @@ export function ValueView({
                 value={item}
                 path={`${path}/${item && typeof item === "object" && "id" in item ? `@${item.id}` : i}`}
                 provenance={provenance}
+                citationContext={citationContext}
                 approved={approved}
               />
             </div>
@@ -61,6 +65,7 @@ export function ValueView({
               value={child}
               path={`${path}/${key}`}
               provenance={provenance}
+              citationContext={citationContext}
               approved={approved}
               label={labelOf(key)}
             />
@@ -74,6 +79,7 @@ export function ValueView({
         <CitationPopover
           path={path}
           provenance={provenance}
+          citationContext={citationContext}
           approved={approved}
         />
       </span>

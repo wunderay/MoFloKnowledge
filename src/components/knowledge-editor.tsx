@@ -14,6 +14,7 @@ import {
   createEmptyProvenance,
   parseBusinessEntry,
   type BusinessEntry,
+  type CitationContext,
   type EntryKind,
 } from "@/contracts";
 import { api, ApiError, companyPath, write } from "./api-client";
@@ -37,6 +38,7 @@ type Entry = Pick<
 type Draft = Omit<DraftResponse, "company" | "entries"> & {
   company: Omit<DraftResponse["company"], "latestJob" | "latestVersion">;
   entries: Entry[];
+  citationContext?: CitationContext;
 };
 export function KnowledgeEditor(props: {
   companyId: string;
@@ -437,6 +439,7 @@ function KnowledgeEditorContent({
                           value={entry.content}
                           path={`/${entry.kind}`}
                           provenance={entry.provenance}
+                          citationContext={draft.citationContext}
                           approved={entry.review_status === "approved"}
                         />
                       </div>
@@ -445,6 +448,7 @@ function KnowledgeEditorContent({
                         <ValueView
                           value={state.values[entry.id]}
                           path={`/${entry.kind}`}
+                          citationContext={draft.citationContext}
                           provenance={
                             state.provenance[entry.id] ?? entry.provenance
                           }
@@ -602,6 +606,7 @@ function KnowledgeEditorContent({
                             <CitationPopover
                               path={conflict.target}
                               provenance={provenance}
+                              citationContext={draft.citationContext}
                               candidate={candidate}
                             />
                           </div>
@@ -646,6 +651,7 @@ function KnowledgeEditorContent({
                       value={(value as Record<string, unknown>)[key]}
                       disabled={!canEdit || busy === entry.id}
                       provenance={provenance}
+                      citationContext={draft.citationContext}
                       approved={entry.review_status === "approved"}
                       onChange={(next) =>
                         dispatch({
@@ -723,6 +729,7 @@ function KnowledgeEditorContent({
             );
           })}
           <ProposalReview
+            citationContext={draft.citationContext}
             companyId={companyId}
             entries={draft.entries}
             canEdit={canEdit}

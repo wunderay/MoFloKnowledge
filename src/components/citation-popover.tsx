@@ -1,18 +1,25 @@
 "use client";
 import { ArrowUpRight } from "./icons";
 import { useEffect, useId, useRef, useState } from "react";
-import type { EntryProvenance, FieldCandidate } from "@/contracts";
+import type {
+  CitationContext,
+  EntryProvenance,
+  FieldCandidate,
+} from "@/contracts";
+import { mergeCitationContexts } from "./citation-context";
 import { formatAPACitations } from "@/knowledge/apa";
 export function CitationPopover({
   path,
   provenance,
   approved = false,
   candidate,
+  citationContext,
 }: {
   path: string;
   provenance: EntryProvenance;
   approved?: boolean;
   candidate?: FieldCandidate;
+  citationContext?: CitationContext;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLSpanElement>(null);
@@ -26,7 +33,11 @@ export function CitationPopover({
   const coverage = provenance.coverage.find((c) =>
     c.targets.some((t) => path === t || path.startsWith(`${t}/`)),
   );
-  const citations = formatAPACitations(provenance.sources);
+  const lookup = mergeCitationContexts(citationContext, provenance);
+  const supportingClaims = new Map(
+    lookup.claims.map((claim) => [claim.id, claim]),
+  );
+  const citations = formatAPACitations(lookup.sources);
   const evidenceIds = new Set(
     candidate ? candidate.evidence_ids : claims.flatMap((c) => c.evidence_ids),
   );
@@ -34,13 +45,13 @@ export function CitationPopover({
   function addSupportingEvidence(claimId: string) {
     if (visited.has(claimId)) return;
     visited.add(claimId);
-    const claim = provenance.claims.find((item) => item.id === claimId);
+    const claim = supportingClaims.get(claimId);
     claim?.evidence_ids.forEach((evidenceId) => evidenceIds.add(evidenceId));
     claim?.based_on_claim_ids.forEach(addSupportingEvidence);
   }
   claims.forEach((claim) => addSupportingEvidence(claim.id));
   candidate?.based_on_claim_ids.forEach(addSupportingEvidence);
-  const evidence = provenance.evidence.filter((e) => evidenceIds.has(e.id));
+  const evidence = lookup.evidence.filter((e) => evidenceIds.has(e.id));
   const origins = candidate
     ? [candidate.origin]
     : [...new Set(claims.map((c) => c.origin))];
@@ -168,7 +179,7 @@ export function CitationPopover({
             </span>
           ))}
           {evidence.map((e) => {
-            const source = provenance.sources.find(
+            const source = lookup.sources.find(
               (s) => s.id === e.source_page_id,
             );
             const apa = source ? citations.get(source.id) : undefined;
