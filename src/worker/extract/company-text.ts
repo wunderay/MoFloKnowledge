@@ -264,13 +264,17 @@ export function companyTextCandidates(
     const established = new RegExp("(?:(?:" + namedSubject + "|(?:our|the) (?:firm|company|business|practice))\\s+(?:was |were )?(?:founded|established|started|launched|opened|began)|we were (?:founded|established))[^.!?]{0,45}?\\b(\\d{4})\\b", "i").exec(text);
     const startedOwn = /\b(?:I|we)\s+(?:founded|established|started|opened|began)\s+(?:my|our)\s+(?:own\s+)?(?:[\p{L}-]+\s+){0,3}(?:practice|firm|company|business)\b[^.!?]{0,45}?\b(\d{4})\b/iu.exec(text);
     const pastPractice = /\b(?:former|previous|old|prior)\s+(?:[\p{L}-]+\s+){0,2}(?:practice|firm|company|business)\b|\b(?:practice|firm|company|business)\b[^.!?]{0,35}\b(?:before joining|until \d{4}|closed|sold)\b/iu.test(text);
-    const founding = pastPractice ? null : ownPractice ?? established ?? startedOwn;
+    const founding = pastPractice ? null : established;
+    const practiceHistory = pastPractice ? null : ownPractice ?? startedOwn;
     if (founding) {
       const year = Number(founding[1]);
       if (year >= 1000 && year <= new Date().getUTCFullYear()) {
         add("/company_foundation/year_founded", year, [text], 90);
         add("/positioning/founding_story", text, [text], 88);
       }
+    } else if (practiceHistory) {
+      // A founder's practice history does not establish this company's founding date.
+      add("/positioning/founding_story", text, [text], 88);
     } else if (/\b(?:our story|firm background|company history)\b/i.test(section.heading ?? "") &&
       /\b(?:we|our|I|my)\b/.test(text) && /\b(?:began|started|founded|established|because|mission)\b/i.test(text))
       add("/positioning/founding_story", text, [text], 80);

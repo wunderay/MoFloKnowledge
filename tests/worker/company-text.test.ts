@@ -4,6 +4,7 @@ import { technicalObservations } from "../../src/worker/extract/observations";
 import { companyTextCandidates } from "../../src/worker/extract/company-text";
 import { fieldCandidateSchemas } from "../../src/worker/extract/candidate-schema";
 import { FIELD_REGISTRY } from "../../src/contracts";
+import { validateCandidates } from "../../src/worker/extract/validate-candidates";
 
 const metadata = (data: unknown) => `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
 function extract(body: string, sections: { heading: string; level: number; paragraphs: string[] }[], path = "/") {
@@ -19,7 +20,7 @@ function extract(body: string, sections: { heading: string; level: number; parag
     fieldCandidateSchemas[FIELD_REGISTRY.findIndex((f) => f.path === candidate.field)].parse(contract);
     expect(candidate.segment_ids.every((id) => page.capture.segments.some((s) => s.id === id))).toBe(true);
   }
-  return { candidates, page };
+  return { candidates, page, observations };
 }
 
 describe("extractive company and person passages", () => {
@@ -67,7 +68,7 @@ describe("extractive company and person passages", () => {
 
   it("extracts a design firm's actual business description, identity, promise, history, and geographic scope", () => {
     const intro = "Cedar Engineering LLC is an engineering consultancy. We design bridges for local authorities.";
-    const history = "We started our own engineering practice in 2012 because rural communities needed safer crossings.";
+    const history = "Cedar Engineering LLC was founded in 2012 because rural communities needed safer crossings.";
     const scope = "We serve North County and East County.";
     const pitch = "Engineering better connections for your community!";
     const { candidates } = extract(metadata({ "@type": "Organization", url: "https://example.com/", name: "Cedar Engineering LLC" }) +
@@ -88,17 +89,21 @@ describe("extractive company and person passages", () => {
     expect(value("service_locations")).toEqual([{ text: "North County and East County" }]);
   });
 
-  it("enriches a different firm's founder with exact biography paragraphs and current-practice founding evidence", () => {
+  it("retains a founder's practice start as history without assigning it to the company's founding year", () => {
     const experience = "My experience includes hospital work and, since 2011, my own medical practice in North Bay.";
     const qualification = "I am a board-certified physician with 18 years of clinical experience.";
     const practice = "I provide part-time medical services, with appointments available on weekends.";
-    const { candidates } = extract(`<title>Maya Patel — Blue Harbor Clinic Founder</title>` +
+    const { candidates, page, observations } = extract(`<title>Maya Patel — Blue Harbor Clinic Founder</title>` +
       `<main><h1>Maya Patel, MD</h1><h2>Founder and Medical Director</h2><p>${experience}</p><p>${practice}</p><p>${qualification}</p></main>`, [
       { heading: "Maya Patel, MD", level: 1, paragraphs: [] },
       { heading: "Founder and Medical Director", level: 2, paragraphs: [experience, practice, qualification] },
     ], "/about-us/maya-patel");
-    expect(candidates.find((c) => c.field.endsWith("/year_founded"))?.value).toBe(2011);
-    expect(candidates.find((c) => c.field.endsWith("/founding_story"))?.value).toBe(experience);
+    expect(candidates.some((c) => c.field.endsWith("/year_founded"))).toBe(false);
+    const history = candidates.find((c) => c.field.endsWith("/founding_story"))!;
+    expect(history.value).toBe(experience);
+    expect(validateCandidates([history], page, observations, "11111111-1111-4111-8111-111111111111")).toHaveLength(1);
+    expect(() => validateCandidates([{ ...history, field: "/company_foundation/year_founded", value: 2011 }],
+      page, observations, "11111111-1111-4111-8111-111111111111")).toThrow("founding_not_explicit");
     expect(candidates.find((c) => c.field.endsWith("/background_or_relevance"))?.value)
       .toBe(experience + "\n\n" + qualification);
     expect(candidates.find((c) => c.field === "/key_people/@id/title")?.value).toBe("Founder and Medical Director");

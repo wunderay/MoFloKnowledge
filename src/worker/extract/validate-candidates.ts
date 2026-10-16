@@ -138,14 +138,12 @@ export function validateCandidates(
       if (field.field === "year_founded") {
         const year = String(c.value);
         const explicitYear = new RegExp(`(?:founded|established)[^.!?]{0,50}\\b${year}\\b`, "i").test(quotes) ||
-          segments.some((segment) => new RegExp(`^Since\\s+${year}[.!]?$`, "i").test(segment.text.trim())) ||
-          new RegExp(`\\bsince\\s+${year}[^.!?]{0,80}\\b(?:my|our|his|her|their) (?:own )?(?:accounting )?practice\\b`, "i").test(quotes);
-        const practiceOrigin = new RegExp(`(?:started|began|opened)[^.!?]{0,90}(?:\\b(?:my|our|his|her|their) (?:own )?(?:accounting )?(?:practice|company|business|firm))[^.!?]{0,50}\\b${year}\\b`, "i").test(quotes);
+          segments.some((segment) => new RegExp(`^Since\\s+${year}[.!]?$`, "i").test(segment.text.trim()));
         const declaredDate = selected.some((o) => /jsonld:.*\/foundingDate$/.test(o.property ?? "") && new RegExp(`^${year}(?:-|$)`).test(o.value ?? ""));
-        if (!explicitYear && !practiceOrigin && !declaredDate) throw new Error("founding_not_explicit");
+        if (!explicitYear && !declaredDate) throw new Error("founding_not_explicit");
       }
       if (field.field === "founding_story" &&
-        !/\b(?:because|began|started|journey|mission|story|to solve)\b|\bsince\s+\d{4}[^.!?]{0,80}\b(?:my|our) (?:own )?(?:accounting )?practice\b/i.test(quotes))
+        !/\b(?:because|began|started|journey|mission|story|to solve)\b|\bsince\s+\d{4}[^.!?]{0,80}\b(?:my|our) (?:own )?(?:[\p{L}-]+\s+){0,3}practice\b/iu.test(quotes))
         throw new Error("story_not_supported");
       if (field.field === "legal_entity_type") {
         const identity = [quotes, ...selected.filter((o) => o.property === "page-title" || /jsonld:.*\/(?:name|legalName)$/.test(o.property ?? "")).map((o) => o.value ?? "")].join(" ");
