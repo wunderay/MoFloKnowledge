@@ -77,6 +77,13 @@ describe("extractive company and person passages", () => {
       .toBe(experience + "\n\n" + qualification);
     expect(candidates.find((c) => c.field === "/key_people/@id/title")?.value).toBe("Founder and Medical Director");
     expect(candidates.find((c) => c.field.endsWith("/business_model"))?.value).toBe(practice);
+    const contactDescription = "You can count on us for reliable medical services.";
+    const company = extract(`<h2>Contact Us</h2><p>${contactDescription}</p>`,
+      [{ heading: "Contact Us", level: 2, paragraphs: [contactDescription] }], "/contact");
+    const industries = [...candidates, ...company.candidates].filter((c) => c.field.endsWith("/industry")) as
+      (typeof candidates[number] & { priority: number })[];
+    expect(industries.map((c) => c.value)).toContain("part-time medical services");
+    expect(industries.sort((a, b) => b.priority - a.priority)[0].value).toBe("medical services");
     expect(candidates.some((c) => c.field.endsWith("/gender"))).toBe(false);
     expect(new Set(candidates.filter((c) => c.field.startsWith("/key_people")).map((c) => c.entity_key)).size).toBe(1);
   });
