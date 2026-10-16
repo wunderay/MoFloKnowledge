@@ -16,6 +16,14 @@ it("preserves source wording and non-executable observations without following c
   expect(capture.author).toBe("Ada");
   expect(capture.contentHash).toMatch(/^[a-f0-9]{64}$/);
   expect(capture.segments[0]?.id).toBe("s1");
+  const malformed = captureHtml({
+    requestedUrl: "https://example.com", finalUrl: "https://example.com/",
+    body: '<main><p>Published content.</p></main><script type="application/ld+json">{"private_token":"untrusted-secret", invalid}</script>',
+  });
+  expect(malformed.observations.jsonLd).toEqual([]);
+  expect(malformed.observations.limitations).toEqual(["Some structured metadata could not be parsed."]);
+  expect(JSON.stringify(malformed)).not.toContain("untrusted-secret");
+
 });
 
 it("renders an unfinished client FAQ alongside substantial static content without rendering every scripted page", () => {

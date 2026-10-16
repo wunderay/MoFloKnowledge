@@ -44,7 +44,8 @@ export function visibleCandidates(
           min: validRange ? min : null, max: validRange ? max : null, as_of: null,
         }, [segment.id]);
       }
-      const founding = /^(?:Founded|Established)\s*(?::|in)?\s*(\d{4})(?:\b|$)/i.exec(line);
+      const founding = /^(?:Founded|Established)\s*(?::|in)?\s*(\d{4})(?:\b|$)/i.exec(line) ??
+        /^Since\s+(\d{4})\.?$/i.exec(line);
       if (founding) {
         const year = Number(founding[1]);
         if (year >= 1000 && year <= new Date().getUTCFullYear())
@@ -83,20 +84,29 @@ export function visibleCandidates(
     }
   }
   // A named profile page must independently agree in its title and visible heading.
-  // Only an explicit role at the end of the published page title is copied.
+  // Copy only a role explicitly in that title, or a separate exact role heading.
   const profileTitle = page.capture.title &&
     /^(.+?)\s+[-—–|]\s+.+?\s+(Co-Founder|Founder|CEO|Chief Executive Officer|Owner|President|Director)$/i.exec(page.capture.title);
-  if (profileTitle && /\/(?:team|people|staff|about-us|about)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname) &&
+  const profileName = profileTitle?.[1].trim() ?? page.capture.title;
+  const roleHeadings = observations.filter((o) => o.property === "heading" &&
+    /^(?:Co-Founder|Founder|CEO|Chief Executive Officer|Owner|President|Director)$/i.test(o.value ?? ""));
+  const roleHeading = roleHeadings.length === 1 ? roleHeadings[0] : undefined;
+  const profileRole = profileTitle?.[2] ?? roleHeading?.value;
+  const nameSlug = profileName ? encodeURIComponent(profileName.toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")) : null;
+  const pageSlug = new URL(page.capture.finalUrl).pathname.replace(/\/$/, "").split("/").at(-1);
+  if (profileName && profileRole && (profileTitle || pageSlug?.toLowerCase() === nameSlug?.toLowerCase()) && /\/(?:team|people|staff|about-us|about)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname) &&
       !observations.some((o) => /\/@type(?:\/\d+)?$/.test(o.property ?? "") && /^(?:https?:\/\/schema\.org\/)?Person$/.test(o.value ?? ""))) {
-    const name = profileTitle[1].trim();
+    const name = profileName;
     const heading = observations.find((o) => o.property === "heading" &&
       (o.value === name || o.value?.startsWith(name + ",")));
     const source = page.capture.segments.find((s) => s.text.includes(name));
     const title = observations.find((o) => o.property === "page-title" && o.value === page.capture.title);
-    if (heading && source && title && !name.includes("|")) {
+    if (heading && source && title && !name.includes("|") && (profileTitle || roleHeading?.id !== heading.id)) {
       const entity = `${page.capture.finalUrl}|${name}|${source.id}`;
-      add("/key_people/@id/name", name, [source.id], [title.id, heading.id], entity);
-      add("/key_people/@id/title", profileTitle[2], [source.id], [title.id, heading.id], entity);
+      const cited = [title.id, heading.id, ...(!profileTitle && roleHeading ? [roleHeading.id] : [])];
+      add("/key_people/@id/name", name, [source.id], cited, entity);
+      add("/key_people/@id/title", profileRole, [source.id], cited, entity);
       const description = observations.find((o) => o.property === "meta-description" && o.value?.includes(name));
       if (description) add("/key_people/@id/background_or_relevance", description.value,
         [source.id], [description.id], entity);

@@ -69,25 +69,29 @@ export function captureHtml(
         : $("title").first().text(),
     ) || null;
   const jsonLd: unknown[] = [];
-  if (rendered?.metadata)
-    for (const text of rendered.metadata.jsonLd) {
-      try {
-        jsonLd.push(JSON.parse(text));
-      } catch {
-        /* Invalid structured metadata is not evidence. */
-      }
+  const metadataLimitations = new Set<string>();
+  const parseJsonLd = (text: string) => {
+    if (text.length > 50000) {
+      metadataLimitations.add("Structured metadata exceeded the capture limit.");
+      return;
     }
-  else
-    $('script[type="application/ld+json"]')
-      .slice(0, 30)
-      .each((_i, node) => {
-        try {
-          const text = $(node).text();
-          if (text.length <= 50000) jsonLd.push(JSON.parse(text));
-        } catch {
-          /* Invalid structured metadata is not evidence. */
-        }
-      });
+    try {
+      jsonLd.push(JSON.parse(text));
+    } catch {
+      // Keep a fixed limitation, never source payloads or parser error excerpts.
+      metadataLimitations.add("Some structured metadata could not be parsed.");
+    }
+  };
+  if (rendered?.metadata) {
+    if (rendered.metadata.jsonLd.length > 30)
+      metadataLimitations.add("Structured metadata exceeded the capture limit.");
+    rendered.metadata.jsonLd.slice(0, 30).forEach(parseJsonLd);
+  } else {
+    const scripts = $('script[type="application/ld+json"]');
+    if (scripts.length > 30)
+      metadataLimitations.add("Structured metadata exceeded the capture limit.");
+    scripts.slice(0, 30).each((_i, node) => parseJsonLd($(node).text()));
+  }
   const effectiveUrl = normalizeUrl(rendered?.finalUrl ?? input.finalUrl);
   const safeLink = (raw: string | undefined | null): string | null => {
     try {
@@ -279,7 +283,7 @@ export function captureHtml(
   const parsed = makeSegments(
     [...new Set([...mainParts, ...observedParts])].map((text) => ({ text })),
   );
-  const limitations = [...(rendered?.limitations ?? [])];
+  const limitations = [...new Set([...(rendered?.limitations ?? []), ...metadataLimitations])];
   if (
     parsed.truncated &&
     !limitations.includes("Captured text exceeded the source segment limit.")
