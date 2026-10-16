@@ -294,7 +294,8 @@ small {
   padding: 11px;
   border-radius: 8px;
 }
-.company-dashboard__grid {
+.company-dashboard__grid,
+.version-viewer__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
@@ -551,7 +552,8 @@ small {
   align-items: center;
   flex-wrap: wrap;
 }
-.knowledge-editor__group {
+.knowledge-editor__group,
+.version-viewer__entry {
   border: 1px solid var(--line);
   padding: 18px;
   border-radius: 6px;
@@ -966,7 +968,8 @@ small {
   .proposal__comparison {
     grid-template-columns: 1fr;
   }
-  .company-dashboard__grid {
+  .company-dashboard__grid,
+  .version-viewer__grid {
     grid-template-columns: 1fr;
   }
   .data-table {
