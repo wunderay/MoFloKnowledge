@@ -23,6 +23,22 @@ function extract(body: string, sections: { heading: string; level: number; parag
 }
 
 describe("extractive company and person passages", () => {
+  it("uses a catalog's published introduction and offering range ahead of a generic promise", () => {
+    const intro = "From bridge surveys to site inspections, Cedar Studio has the expertise to help local councils.";
+    const { candidates } = extract(`<h2>What We Offer</h2><p>${intro}</p>
+      <a href="/services/surveys">Engineering Services</a><a href="/services/surveys">Bridge Surveys</a>
+      <a href="/services/inspections">Site Inspections</a>`, [
+      { heading: "What We Offer", level: 2, paragraphs: [intro] },
+    ], "/services");
+    expect(candidates.find((c) => c.field.endsWith("/overview") &&
+      (c as typeof c & { priority: number }).priority === 96)?.value)
+      .toBe(intro + "\n\nBridge Surveys\n\nSite Inspections");
+    const promise = "We're committed to delivering timely and reliable solutions for your needs.";
+    const homepage = extract(`<h2>Welcome</h2><p>${promise}</p>`,
+      [{ heading: "Welcome", level: 2, paragraphs: [promise] }]);
+    expect(homepage.candidates.some((c) => c.field.endsWith("/business_model"))).toBe(false);
+  });
+
   it("extracts a design firm's actual business description, identity, promise, history, and geographic scope", () => {
     const intro = "Cedar Engineering LLC is an engineering consultancy. We design bridges for local authorities.";
     const history = "We started our own engineering practice in 2012 because rural communities needed safer crossings.";
@@ -49,7 +65,7 @@ describe("extractive company and person passages", () => {
   it("enriches a different firm's founder with exact biography paragraphs and current-practice founding evidence", () => {
     const experience = "My experience includes hospital work and, since 2011, my own medical practice in North Bay.";
     const qualification = "I am a board-certified physician with 18 years of clinical experience.";
-    const practice = "I opened this clinic to provide care close to home.";
+    const practice = "I provide part-time medical services, with appointments available on weekends.";
     const { candidates } = extract(`<title>Maya Patel — Blue Harbor Clinic Founder</title>` +
       `<main><h1>Maya Patel, MD</h1><h2>Founder and Medical Director</h2><p>${experience}</p><p>${practice}</p><p>${qualification}</p></main>`, [
       { heading: "Maya Patel, MD", level: 1, paragraphs: [] },
@@ -60,6 +76,7 @@ describe("extractive company and person passages", () => {
     expect(candidates.find((c) => c.field.endsWith("/background_or_relevance"))?.value)
       .toBe(experience + "\n\n" + qualification);
     expect(candidates.find((c) => c.field === "/key_people/@id/title")?.value).toBe("Founder and Medical Director");
+    expect(candidates.find((c) => c.field.endsWith("/business_model"))?.value).toBe(practice);
     expect(candidates.some((c) => c.field.endsWith("/gender"))).toBe(false);
     expect(new Set(candidates.filter((c) => c.field.startsWith("/key_people")).map((c) => c.entity_key)).size).toBe(1);
   });
