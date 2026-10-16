@@ -30,9 +30,10 @@ function equivalentItem(value: unknown): unknown {
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, equivalentItem(v)]));
   return value;
 }
+const categoricalFields = new Set(["name", "title", "role", "category", "industry"]);
+const sourceQuality = (c: ValidatedCandidate) => c.segment_ids.length ? 2 :
+  c.observations.some((o) => o.property?.startsWith("jsonld:")) ? 1 : 0;
 function rankCandidates(a: ValidatedCandidate, b: ValidatedCandidate): number {
-  const sourceQuality = (c: ValidatedCandidate) => c.segment_ids.length ? 2 :
-    c.observations.some((o) => o.property?.startsWith("jsonld:")) ? 1 : 0;
   return (b.priority ?? 0) - (a.priority ?? 0) || sourceQuality(b) - sourceQuality(a) ||
     String(b.value).length - String(a.value).length || a.id.localeCompare(b.id);
 }
@@ -110,7 +111,14 @@ export function reduceCandidates(
         } else unique.set(key, { ...c, evidenceIds: [...c.evidenceIds] });
       }
       let values = [...unique.values()];
-      if (!collection && narrativeFields.has(field.field)) values = values.slice(0, 1);
+      if (!collection && narrativeFields.has(field.field) && values.length) {
+        // Labels can disagree factually even at equal quality. Only lower-quality
+        // labels are superseded; free prose can select one exact best passage.
+        const best = values[0];
+        values = categoricalFields.has(field.field)
+          ? values.filter((c) => (c.priority ?? 0) === (best.priority ?? 0) && sourceQuality(c) === sourceQuality(best))
+          : values.slice(0, 1);
+      }
       const target = field.path.replace("@id", `@${entryId}`);
       const itemValues = new Map<string, string>();
       let collectionConflict = false;
