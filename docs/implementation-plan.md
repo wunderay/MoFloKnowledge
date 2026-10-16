@@ -1,5 +1,7 @@
 # MoFloKnowledge Implementation Plan
 
+> **Current product scope (supersedes this historical plan where they differ):** MoFloKnowledge must not use AI. Extraction is deterministic and evidence based. No model, AI SDK, API key, model-generated content, or generation call is part of the product. The detailed plan below records the earlier AI-enabled design and remains useful only for compatible architecture and historical context; its AI extraction, generated-field, provider/model qualification, and related release requirements are superseded by [the no-AI redesign](no-ai-redesign.md). Existing records with generated origins remain readable and displayable as historical data; new extraction must not create them. This product decision is separate from development-agent model selection documented in [model-selection.md](model-selection.md).
+
 MoFloKnowledge turns a public company website into a source-backed knowledge base that people review, revise, version, and export. Build one Next.js application, one durable Node.js worker, and a Supabase database. Use explicit human approval and immutable snapshots as the boundary between extracted drafts and saved knowledge.
 
 # Product scope and assumptions

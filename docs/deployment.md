@@ -4,7 +4,7 @@ The deployment provider and project have not been selected. This runbook defines
 
 ## Services and process behavior
 
-Run the web process (`npm run web` after `npm run build`) and the Node worker (`npm run worker`) as separate persistent services under the selected host's native process supervisor. Keep at least one worker running while any queue can contain work. The renderer and outbound proxy run as separate secret-free services with private authenticated task transport. The renderer receives no web, database, model, or session credentials and has no host filesystem mount. Its only outbound route is the enforcing proxy. These are required target properties, not verified capabilities of the current host.
+Run the web process (`npm run web` after `npm run build`) and the Node worker (`npm run worker`) as separate persistent services under the selected host's native process supervisor. Keep at least one worker running while any queue can contain work. The renderer and outbound proxy run as separate secret-free services with private authenticated task transport. The renderer receives no web, database, or session credentials and has no host filesystem mount. Its only outbound route is the enforcing proxy. These are required target properties, not verified capabilities of the current host.
 
 Set resource ceilings, startup ordering, health checks, graceful stop windows, restart backoff, log retention, and deployment rollback in the provider's service manager. The host and exact values are unresolved. Do not scale the worker or renderer to zero while work is pending.
 
@@ -16,12 +16,12 @@ Set resource ceilings, startup ordering, health checks, graceful stop windows, r
 4. Configure web, worker, renderer, and proxy as distinct long-running services using their exact service IDs. Keep the worker enabled whenever queued work can exist.
 5. Configure Supabase Auth redirect origins and TLS-verified database endpoints from owner-supplied values. Separate the least-privilege worker login from migration and application access.
 6. Complete the renderer host and egress probes in [renderer-host-qualification.md](renderer-host-qualification.md) before enabling arbitrary user URLs.
-7. Verify service health, queue visibility, TLS, database connection limits, restart behavior, and the currently selected model's strict-output support. Capture exact provider/runtime versions and retained evidence.
+7. Verify service health, queue visibility, TLS, database connection limits, restart behavior, and the deterministic extractor's controlled-fixture behavior. Capture exact runtime versions and retained evidence.
 8. Stop, restart, roll back, and redeploy by the host's exact named service IDs. Record the actual provider commands in the service contract after selection; no provider-specific command is guessed here.
 
 ## Secrets and recovery
 
-Use server-only secret injection for `DATABASE_URL`, `WORKER_DATABASE_URL`, `OPENAI_API_KEY`, renderer task authentication, and proxy credentials. Set `OPENAI_EXTRACTION_MODEL` for the worker; the optional model-qualification and runtime-probe scripts use `OPENAI_MODEL`. The browser may receive only the Supabase URL and publishable key. The renderer gets no application credentials. Do not put secrets in logs, process arguments, deployment manifests, or build artifacts.
+Use server-only secret injection for `DATABASE_URL`, `WORKER_DATABASE_URL`, renderer task authentication, and proxy credentials. The browser may receive only the Supabase URL and publishable key. The renderer gets no application credentials. Do not put secrets in logs, process arguments, deployment manifests, or build artifacts.
 
 The owner must enable managed database backups, document retention and point-in-time recovery, identify the restore operator, and record a successful restore rehearsal. No provider backup configuration or restore has been verified.
 
