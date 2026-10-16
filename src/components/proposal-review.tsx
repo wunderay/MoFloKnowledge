@@ -22,7 +22,7 @@ function isHistoricalAiProposal(proposal: ProposalItem): boolean {
   return Boolean(
     (proposal.model && proposal.model !== "deterministic-only") ||
       proposal.provenance.claims.some((claim) => historicalOrigin(claim.origin)) ||
-      proposal.conflicts.some((conflict) =>
+      [...proposal.conflicts, ...proposal.provenance.conflicts].some((conflict) =>
         conflict.candidates.some((candidate) => historicalOrigin(candidate.origin)),
       ),
   );
