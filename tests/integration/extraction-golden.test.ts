@@ -1,11 +1,5 @@
 import { expect, it, vi } from "vitest";
-import {
-  page,
-  companyId,
-  jobId,
-  recordedCandidates,
-  candidate,
-} from "../worker/extraction-fixture";
+import { page, companyId, jobId, candidate } from "../worker/extraction-fixture";
 import { technicalObservations } from "../../src/worker/extract/observations";
 import { deterministicCandidates } from "../../src/worker/extract/deterministic";
 import { validateCandidates } from "../../src/worker/extract/validate-candidates";
@@ -17,7 +11,7 @@ import type { Job, JobRepository } from "../../src/worker/job-repository";
 const observations = technicalObservations(page);
 it("validates all41 required assessments, stable IDs, exact evidence and explicit address conflicts", () => {
   const candidates = validateCandidates(
-    [...deterministicCandidates(page, observations), ...recordedCandidates()],
+    deterministicCandidates(page, observations),
     page,
     observations,
     companyId,
@@ -27,8 +21,6 @@ it("validates all41 required assessments, stable IDs, exact evidence and explici
       companyId,
       jobId,
       partial: false,
-      model: "recorded-fixture",
-      promptVersion: "1.0.0",
     });
   const proposals = reduce();
   expect(proposals).toHaveLength(7);
@@ -64,8 +56,8 @@ it("validates all41 required assessments, stable IDs, exact evidence and explici
   expect(
     proposals.find((p) => p.kind === "positioning")?.provenance.claims[0],
   ).toMatchObject({
-    origin: "generated",
-    based_on_claim_ids: [expect.any(String)],
+    origin: "source_backed",
+    based_on_claim_ids: [],
   });
   const branding = proposals.find((p) => p.kind === "branding_and_style")!
     .content as {
@@ -88,7 +80,12 @@ it("rejects forged segment IDs, inferred gender, invented exact employee counts 
   const validate = (c: ReturnType<typeof candidate>) => () =>
     validateCandidates([c], page, observations, companyId);
   expect(
-    validate({ ...recordedCandidates()[0], segment_ids: ["invented"] }),
+    validate({
+      ...deterministicCandidates(page, observations).find(
+        (c) => c.segment_ids.length > 0,
+      )!,
+      segment_ids: ["invented"],
+    }),
   ).toThrow("invalid_segment");
   expect(
     validate(
@@ -106,7 +103,9 @@ it("rejects forged segment IDs, inferred gender, invented exact employee counts 
       ),
     ),
   ).toThrow("employee_count_not_supported");
-  const price = recordedCandidates().find((c) => c.field.endsWith("/pricing"))!;
+  const price = deterministicCandidates(page, observations).find(
+    (c) => c.field.endsWith("/pricing"),
+  )!;
   expect(
     validate({
       ...price,
@@ -122,7 +121,7 @@ it("rejects forged segment IDs, inferred gender, invented exact employee counts 
     alpha: 0.5,
   });
 });
-it("checkpoints completed extraction without source bodies and resumes without repeating provider work", async () => {
+it("checkpoints completed extraction without source bodies and resumes without repeating extraction", async () => {
   const repository = {
     checkpoint: vi.fn().mockResolvedValue({}),
     finish: vi.fn().mockResolvedValue({}),
@@ -144,18 +143,11 @@ it("checkpoints completed extraction without source bodies and resumes without r
       limits_reached: [],
     },
   };
-  const extractor = {
-    model: "recorded-fixture",
-    extract: vi
-      .fn()
-      .mockResolvedValue({ candidates: recordedCandidates(), limitations: [] }),
-  };
   const first = await extractAndFinish(
     job,
     repository,
     crawl,
     new AbortController().signal,
-    extractor,
   );
   const checkpoint = vi.mocked(repository.checkpoint).mock.calls.at(-1)![1];
   expect(JSON.stringify(checkpoint)).not.toContain("cleaned_content");
@@ -163,14 +155,14 @@ it("checkpoints completed extraction without source bodies and resumes without r
   expect((checkpoint.validated_candidates as object[])[0]).not.toHaveProperty(
     "page",
   );
+  const completedCheckpoints = vi.mocked(repository.checkpoint).mock.calls.length;
   const second = await extractAndFinish(
     job,
     repository,
     { ...crawl, checkpoint },
     new AbortController().signal,
-    extractor,
   );
-  expect(extractor.extract).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(repository.checkpoint).mock.calls).toHaveLength(completedCheckpoints);
   expect(second).toEqual(first);
   expect(repository.finish).toHaveBeenCalledTimes(2);
 });
@@ -198,8 +190,6 @@ it("deduplicates overlapping collection items without changing their stable iden
     companyId,
     jobId,
     partial: false,
-    model: "recorded-fixture",
-    promptVersion: "1.0.0",
   };
   const proposals = reduceCandidates(values, options);
   expect(
@@ -218,41 +208,6 @@ it("deduplicates overlapping collection items without changing their stable iden
       companyId,
     ),
   ).toThrow("value_not_in_evidence");
-});
-it("never initializes entries from an entirely refused or invalid model run", async () => {
-  const repository = {
-    checkpoint: vi.fn().mockResolvedValue({}),
-    finish: vi.fn().mockResolvedValue({}),
-  } as unknown as JobRepository;
-  const crawl = {
-    captures: [page],
-    errors: [],
-    checkpoint: {},
-    progress: {
-      stage: "crawling" as const,
-      discovered: 1,
-      selected: 1,
-      captured: 1,
-      failed: 0,
-      blocked: 0,
-      extracted: 0,
-      document_limit: 10,
-      limits_reached: [],
-    },
-  };
-  const refused = {
-    model: "recorded-refusal",
-    extract: vi.fn().mockRejectedValue(new Error("model_refusal")),
-  };
-  const proposals = await extractAndFinish(
-    { id: jobId, company_id: companyId } as Job,
-    repository,
-    crawl,
-    new AbortController().signal,
-    refused,
-  );
-  expect(proposals).toEqual([]);
-  expect(repository.finish).toHaveBeenCalledWith(expect.anything(), [], []);
 });
 it("keeps explicit free, contact, range and unknown pricing distinct", () => {
   const variants = [
@@ -329,7 +284,9 @@ it("keeps explicit free, contact, range and unknown pricing distinct", () => {
     validateCandidates(
       [
         {
-          ...recordedCandidates().find((c) => c.field.endsWith("/pricing"))!,
+          ...deterministicCandidates(page, observations).find(
+            (c) => c.field.endsWith("/pricing"),
+          )!,
           value: null,
         },
       ],

@@ -10,8 +10,6 @@ import {
   createPinnedFetcher,
   type FetchResult,
 } from "../../src/worker/network/pinned-transport";
-import type { FieldCandidate } from "../../src/worker/model/schema";
-import type { PageExtractor } from "../../src/worker/model/responses";
 import type { RenderResult } from "../../src/contracts/render-task";
 async function main() {
   if (process.env.NODE_ENV !== "test")
@@ -129,206 +127,12 @@ async function main() {
       resourceBytes: Buffer.byteLength(stylesheet),
     };
   };
-  const extractor: PageExtractor = {
-    model: "recorded-controlled-fixture-1",
-    async extract(page, observations) {
-      const result: FieldCandidate[] = [];
-      const path = new URL(page.capture.finalUrl).pathname;
-      function add(
-        field: string,
-        value: unknown,
-        needles: string[],
-        extra: Partial<FieldCandidate> = {},
-      ) {
-        const segments = needles.map((needle) => {
-          const segment = page.capture.segments.find((s) =>
-            s.text.includes(needle),
-          );
-          if (!segment)
-            throw new Error("Recorded fixture evidence changed: " + needle);
-          return segment.id;
-        });
-        result.push({
-          field,
-          value,
-          entity_key: null,
-          origin: "source_backed",
-          segment_ids: [...new Set(segments)],
-          observation_ids: [],
-          supporting_fields: [],
-          note: null,
-          ...extra,
-        });
-      }
-      if (path === "/") {
-        const overview = page.capture.segments.find((s) =>
-          s.text.includes("Northstar Fieldworks designs and builds"),
-        )!.text;
-        add("/company_foundation/overview", overview, [
-          "Northstar Fieldworks designs and builds",
-        ]);
-        add(
-          "/company_foundation/business_model",
-          "designs and builds field monitoring tools",
-          ["Northstar Fieldworks designs and builds"],
-        );
-        add(
-          "/company_foundation/employee_count",
-          { raw: "25–50 people", exact: null, min: 25, max: 50, as_of: null },
-          ["25–50 people"],
-        );
-        add(
-          "/company_foundation/service_locations",
-          [{ text: "Pacific Northwest" }, { text: "Great Lakes region" }],
-          ["Pacific Northwest"],
-        );
-        add(
-          "/market_and_customers/target_buyers",
-          [
-            { text: "community water teams" },
-            { text: "watershed groups" },
-            { text: "small utilities" },
-          ],
-          ["Northstar Fieldworks designs and builds"],
-        );
-        add(
-          "/positioning/company_pitch",
-          "Practical water data tools for community teams.",
-          ["Northstar Fieldworks designs and builds"],
-          {
-            origin: "generated",
-            supporting_fields: [
-              "/company_foundation/business_model",
-              "/market_and_customers/target_buyers",
-            ],
-            note: "Recorded fixture suggestion grounded in the company overview.",
-          },
-        );
-        add(
-          "/branding_and_style/writing_style_description",
-          "Concise and practical technical language.",
-          ["Northstar Fieldworks designs and builds"],
-          {
-            origin: "inferred",
-            note: "Recorded fixture interpretation of the visible wording.",
-          },
-        );
-        add(
-          "/company_foundation/main_address",
-          {
-            label: null,
-            raw: "400 River Street, Portland, OR 97204, USA",
-            line1: "400 River Street",
-            line2: null,
-            city: "Portland",
-            region: "OR",
-            postal_code: "97204",
-            country: "USA",
-          },
-          ["400 River Street"],
-        );
-        const social = page.capture.links.find(
-          (link) =>
-            link.url === "https://linkedin.com/company/northstarfieldworks",
-        );
-        if (social) {
-          const observation = observations.find(
-            (o) => o.property === "href" && o.value === social.url,
-          )!;
-          add(
-            "/online_presence/social_media_links",
-            [{ platform: "linkedin", profile_url: social.url }],
-            [],
-            { observation_ids: [observation.id] },
-          );
-        }
-      }
-      if (path === "/contact.html")
-        add(
-          "/company_foundation/main_address",
-          {
-            label: null,
-            raw: "20 Bridge Avenue",
-            line1: "20 Bridge Avenue",
-            line2: null,
-            city: "Portland",
-            region: "OR",
-            postal_code: "97205",
-            country: "United States",
-          },
-          ["20 Bridge Avenue", "Portland, OR 97205", "United States"],
-        );
-      if (path === "/about.html") {
-        const name = page.capture.segments.find((s) =>
-          s.text.includes("Riley Chen"),
-        )!;
-        const entity_key = page.capture.finalUrl + "|Riley Chen|" + name.id;
-        add("/key_people/@id/name", "Riley Chen", ["Riley Chen"], {
-          entity_key,
-        });
-        add(
-          "/key_people/@id/title",
-          "Director of Field Programs",
-          ["Director of Field Programs"],
-          { entity_key },
-        );
-      }
-      if (path === "/pricing.html") {
-        const name = page.capture.segments.find((s) =>
-          s.text.includes("CreekWatch Kit"),
-        )!;
-        const entity_key = page.capture.finalUrl + "|CreekWatch Kit|" + name.id;
-        add("/offerings/@id/name", "CreekWatch Kit", ["CreekWatch Kit"], {
-          entity_key,
-        });
-        add(
-          "/offerings/@id/description",
-          "A portable sensor kit for teams sampling streams and ponds.",
-          ["A portable sensor kit"],
-          { entity_key },
-        );
-        add(
-          "/offerings/@id/features",
-          [
-            { text: "Temperature and conductivity probes" },
-            { text: "Weather-resistant carrying case" },
-          ],
-          [
-            "Temperature and conductivity probes",
-            "Weather-resistant carrying case",
-          ],
-          { entity_key },
-        );
-        add(
-          "/offerings/@id/pricing",
-          {
-            kind: "paid",
-            raw: "Starting at $1,200 per kit. Annual dashboard access is $240.",
-            amount: "1200",
-            min_amount: null,
-            max_amount: null,
-            currency: null,
-            billing_interval: null,
-            pricing_model: "per kit",
-            qualifications: [],
-            as_of: null,
-          },
-          ["Starting at $1,200"],
-          { entity_key },
-        );
-        add("/offerings/@id/url", page.capture.finalUrl, ["CreekWatch Kit"], {
-          entity_key,
-        });
-      }
-      return { candidates: result, limitations: [], tokensUsed: 1000 };
-    },
-  };
   const repository = new PostgresJobRepository({ connectionString });
   const stop = new AbortController();
   for (const signal of ["SIGINT", "SIGTERM"])
     process.once(signal, () => stop.abort("shutdown"));
   console.log(
-    "Controlled recorded worker ready; production network/model/renderer qualification is not implied.",
+    "Controlled recorded worker ready; production network/renderer qualification is not implied.",
   );
   try {
     await runWorker(
@@ -341,7 +145,7 @@ async function main() {
           renderer,
           fetcher,
         );
-        await extractAndFinish(job, repository, crawl, signal, extractor);
+        await extractAndFinish(job, repository, crawl, signal);
       },
       {
         workerId: "recorded-local-fixture",

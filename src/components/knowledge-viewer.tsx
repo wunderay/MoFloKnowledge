@@ -426,6 +426,9 @@ export function KnowledgeViewer({
             {["source_backed", "inferred", "generated", "user_provided"].map(
               (v) => (
                 <option key={v} value={v}>
+                  {["generated", "inferred"].includes(v)
+                    ? "Historical "
+                    : ""}
                   {labelOf(v)}
                 </option>
               ),
