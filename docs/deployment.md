@@ -11,7 +11,7 @@ Set resource ceilings, startup ordering, health checks, graceful stop windows, r
 ## Release sequence
 
 1. Build using the pinned Node 22 runtime: `npm ci && npm run typecheck && npm run build`.
-2. Apply reviewed database migrations with `npm run db:migrate` under the migration owner. This command is a planned entry point and remains pending until the migration runner lands.
+2. Apply reviewed database migrations with `npm run db:migrate` under the migration owner. The runner defaults to database names ending in `_test`; it refuses other targets unless an operator explicitly passes `--allow-production` to the script. Keep production migrations deferred until the host and release procedure are qualified.
 3. Inject only the secret references named in `deploy/service-contract.json` from the selected host's secret manager. Never copy `.env.example` placeholder values into a live service.
 4. Configure web, worker, renderer, and proxy as distinct long-running services using their exact service IDs. Keep the worker enabled whenever queued work can exist.
 5. Configure Supabase Auth redirect origins and TLS-verified database endpoints from owner-supplied values. Separate the least-privilege worker login from migration and application access.
@@ -21,7 +21,7 @@ Set resource ceilings, startup ordering, health checks, graceful stop windows, r
 
 ## Secrets and recovery
 
-Use server-only secret injection for `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, renderer task authentication, and proxy configuration. The browser may receive only the Supabase URL and publishable key. The renderer gets no application credentials. Do not put secrets in logs, process arguments, deployment manifests, or build artifacts.
+Use server-only secret injection for `DATABASE_URL`, `WORKER_DATABASE_URL`, `OPENAI_API_KEY`, renderer task authentication, and proxy credentials. Set `OPENAI_EXTRACTION_MODEL` for the worker; the optional model-qualification and runtime-probe scripts use `OPENAI_MODEL`. The browser may receive only the Supabase URL and publishable key. The renderer gets no application credentials. Do not put secrets in logs, process arguments, deployment manifests, or build artifacts.
 
 The owner must enable managed database backups, document retention and point-in-time recovery, identify the restore operator, and record a successful restore rehearsal. No provider backup configuration or restore has been verified.
 
