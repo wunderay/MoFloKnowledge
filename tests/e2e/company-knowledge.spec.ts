@@ -280,7 +280,16 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     snapshot.provenance.claims.some(
       (claim) =>
         claim.targets.includes("/positioning/company_pitch") &&
-        claim.origin === "generated",
+        claim.origin === "source_backed",
+    ),
+  ).toBe(true);
+  expect(snapshot.positioning.company_pitch).toBe(
+    "Practical water data tools for community teams.",
+  );
+  expect(
+    snapshot.provenance.claims.every(
+      (claim) =>
+        claim.origin === "source_backed" || claim.origin === "user_provided",
     ),
   ).toBe(true);
   expect(

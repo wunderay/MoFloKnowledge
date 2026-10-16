@@ -186,8 +186,9 @@ export function ScrapeProgress({
         </div>
       </details>
       <p className="field__hint" style={{ margin: "10px 0 0" }}>
-        Capture up to {documentLimit} public pages. Review the results before
-        saving a knowledge version.
+        Capture up to {documentLimit} public pages using source extraction rules,
+        without AI. Unsupported or missing fields stay unknown. Review and
+        complete the results before saving a knowledge version.
       </p>
       {job && (
         <>

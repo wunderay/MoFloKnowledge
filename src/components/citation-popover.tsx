@@ -58,9 +58,9 @@ export function CitationPopover({
   const label = origins.includes("user_provided")
     ? "User correction"
     : origins.includes("generated")
-      ? `Generated${approved ? " · approved" : ""}`
+      ? `Historical generated${approved ? " · approved" : ""}`
       : origins.includes("inferred")
-        ? "Inferred"
+        ? "Historical inferred"
         : evidence.length
           ? "Sources"
           : (coverage?.status.replaceAll("_", " ") ?? "Not checked");
@@ -139,9 +139,13 @@ export function CitationPopover({
           )}
           {candidate && (
             <span style={{ display: "block" }}>
-              Candidate origin: {candidate.origin.replaceAll("_", " ")}
+              Candidate origin:{" "}
+              {["generated", "inferred"].includes(candidate.origin)
+                ? "historical "
+                : ""}
+              {candidate.origin.replaceAll("_", " ")}
               {candidate.origin === "generated" &&
-                ". This is suggested wording, not a source quote."}
+                ". This historical wording was generated, not quoted from the source."}
             </span>
           )}
           {claims.map((c) => (
@@ -150,14 +154,14 @@ export function CitationPopover({
                 {c.origin === "user_provided"
                   ? "User-provided correction"
                   : c.origin === "generated"
-                    ? `Generated suggestion${approved ? " — approved" : ""}`
+                    ? `Historical generated suggestion${approved ? " — approved" : ""}`
                     : c.origin === "inferred"
-                      ? "Source-based inference"
+                      ? "Historical source-based inference"
                       : "Website evidence"}
               </strong>
               {c.origin === "generated" && (
                 <span style={{ display: "block" }}>
-                  This wording is a suggestion, not a source quote.
+                  This historical wording was generated, not quoted from the source.
                 </span>
               )}
               {c.origin === "user_provided" && (
