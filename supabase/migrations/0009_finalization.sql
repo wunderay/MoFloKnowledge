@@ -10,6 +10,7 @@ BEGIN
   IF candidate->>'schema_version' IS DISTINCT FROM '1.0.0' THEN RAISE EXCEPTION 'unsupported_schema'; END IF;
   IF candidate->>'target_entry_id' IS NOT NULL AND NOT EXISTS(SELECT FROM public.knowledge_entries WHERE company_id=p_company AND id=(candidate->>'target_entry_id')::uuid) THEN RAISE EXCEPTION 'unavailable_entry'; END IF;
   r.company_id:=p_company; r.author_id:=p_author; r.content:=candidate->'content'; r.provenance:=(candidate->'provenance')||jsonb_build_object('conflicts',coalesce(candidate->'conflicts','[]')); r.entry_id:=coalesce((candidate->>'target_entry_id')::uuid,(r.provenance->'claims'->0->>'entry_id')::uuid,(r.content->>'id')::uuid,gen_random_uuid());
+  IF candidate->>'kind' IN ('key_person','offering') AND NOT EXISTS(SELECT FROM private.business_leaves(r.content,'/'||private.kind_root(candidate->>'kind'))) THEN RAISE EXCEPTION 'empty_repeatable_entry'; END IF;
   PERFORM private.assert_revision(r,candidate->>'kind',(SELECT coalesce(jsonb_agg(claim),'[]') FROM jsonb_array_elements(p_proposals->'candidates') sibling,jsonb_array_elements(sibling->'provenance'->'claims') claim));
  END LOOP;
 END $$;
@@ -24,7 +25,7 @@ BEGIN
 END $$;
 CREATE TRIGGER finalized_proposals BEFORE UPDATE ON public.scrape_jobs FOR EACH ROW EXECUTE FUNCTION private.validate_finalized_proposals();
 CREATE FUNCTION private.finish_job(p_job uuid,p_company uuid,p_lease_token uuid,p_proposals jsonb,p_coverage jsonb) RETURNS public.scrape_jobs LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE j public.scrape_jobs; candidate jsonb; e uuid; r public.knowledge_entry_versions; v_proposals jsonb; v_status text; first_import boolean; initialized_ids jsonb:='[]'; c public.companies; h text:=private.operation_hash(jsonb_build_array(p_proposals,p_coverage));
+DECLARE j public.scrape_jobs; candidate jsonb; e uuid; r public.knowledge_entry_versions; v_proposals jsonb; v_status text; first_import boolean; initialized_ids jsonb:='[]'; usable boolean; c public.companies; h text:=private.operation_hash(jsonb_build_array(p_proposals,p_coverage));
 BEGIN
  SELECT * INTO c FROM public.companies WHERE id=p_company FOR UPDATE;
  SELECT * INTO j FROM public.scrape_jobs WHERE company_id=p_company AND id=p_job FOR UPDATE;
@@ -42,8 +43,10 @@ BEGIN
  v_proposals:=jsonb_set(p_proposals,'{coverage}',p_coverage);
  IF jsonb_typeof(p_coverage)<>'array' THEN RAISE EXCEPTION 'invalid_coverage'; END IF;
  PERFORM private.assert_proposals(p_company,j.requested_by,v_proposals);
+ usable:=EXISTS(SELECT FROM jsonb_array_elements(v_proposals->'candidates') proposed, LATERAL private.business_leaves(proposed->'content','/'||private.kind_root(proposed->>'kind')) leaf);
  first_import:=NOT EXISTS(SELECT FROM public.knowledge_entries WHERE company_id=p_company);
- IF first_import THEN
+ IF first_import AND usable THEN
+  IF EXISTS(SELECT FROM unnest(ARRAY['company_foundation','positioning','market_and_customers','branding_and_style','online_presence']) required_kind WHERE NOT EXISTS(SELECT FROM jsonb_array_elements(v_proposals->'candidates') proposed WHERE proposed->>'kind'=required_kind)) THEN RAISE EXCEPTION 'invalid_first_import:five_singletons_required'; END IF;
   FOR candidate IN SELECT value FROM jsonb_array_elements(v_proposals->'candidates') LOOP
    e:=coalesce((candidate->'provenance'->'claims'->0->>'entry_id')::uuid,(candidate->'content'->>'id')::uuid,gen_random_uuid());
    initialized_ids:=initialized_ids||jsonb_build_array(e);
@@ -53,7 +56,7 @@ BEGIN
   IF jsonb_array_length(v_proposals->'candidates')>0 THEN UPDATE public.companies SET draft_generation=draft_generation+1 WHERE id=p_company; END IF;
  END IF;
  v_proposals:=jsonb_set(v_proposals,'{initialized_entry_ids}',initialized_ids);
- v_status:=CASE WHEN jsonb_array_length(v_proposals->'candidates')=0 THEN 'failed' WHEN jsonb_array_length(j.errors)>0 OR EXISTS(SELECT FROM jsonb_array_elements(p_coverage) assessment WHERE assessment->>'status' IN ('partial','conflict','not_checked')) THEN 'partial' ELSE 'succeeded' END;
+ v_status:=CASE WHEN NOT usable THEN 'failed' WHEN jsonb_array_length(j.errors)>0 OR EXISTS(SELECT FROM jsonb_array_elements(p_coverage) assessment WHERE assessment->>'status' IN ('partial','conflict','not_checked')) THEN 'partial' ELSE 'succeeded' END;
  UPDATE public.scrape_jobs SET status=v_status,proposals=v_proposals,checkpoint=checkpoint||jsonb_build_object('finalization_lease',p_lease_token,'finalization_hash',h),finished_at=now(),lease_token=NULL,lease_expires_at=NULL,updated_at=now() WHERE id=p_job RETURNING * INTO j; RETURN j;
 END $$;
 CREATE FUNCTION private.fail_job(p_job uuid,p_company uuid,p_lease_token uuid,p_error jsonb) RETURNS public.scrape_jobs LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
@@ -128,8 +131,44 @@ BEGIN
  provenance:=provenance||jsonb_build_object('claims',claims,'conflicts',conflicts,'decisions',decisions);
  RETURN candidate||jsonb_build_object('content',content,'provenance',provenance,'conflicts',conflicts);
 END $$;
+CREATE FUNCTION private.fill_unknown(p_current jsonb,p_candidate jsonb) RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path='' AS $$
+DECLARE k text; x jsonb; result jsonb:='{}';
+BEGIN
+ IF p_current='null'::jsonb OR p_current='""'::jsonb OR p_current='[]'::jsonb THEN RETURN p_candidate; END IF;
+ IF jsonb_typeof(p_current)='object' AND jsonb_typeof(p_candidate)='object' THEN
+  FOR k,x IN SELECT * FROM jsonb_each(p_current) LOOP result:=result||jsonb_build_object(k,private.fill_unknown(x,coalesce(p_candidate->k,x))); END LOOP; RETURN result;
+ END IF; RETURN p_current;
+END $$;
+CREATE FUNCTION private.unique_json(p_values jsonb) RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $$
+ SELECT coalesce(jsonb_agg(value ORDER BY first_ord),'[]') FROM (SELECT value,min(ord) first_ord FROM jsonb_array_elements(p_values) WITH ORDINALITY q(value,ord) GROUP BY value) values_by_order
+$$;
+CREATE FUNCTION private.merge_saved_proposal(p_candidate jsonb,p_old public.knowledge_entry_versions,p_kind text) RETURNS jsonb LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE candidate jsonb:=p_candidate; provenance jsonb:=p_candidate->'provenance'; old_business jsonb:=private.entry_business(p_kind,p_old.content); candidate_business jsonb:=private.entry_business(p_kind,p_candidate->'content'); merged_business jsonb; root text:='/'||private.kind_root(p_kind); claim jsonb; target text; chosen text[]:='{}'; candidate_targets text[]:='{}'; old_value jsonb; new_value jsonb; merged_claims jsonb:='[]'; keep_targets jsonb; decision jsonb;
+BEGIN
+ IF p_kind IN ('key_person','offering') THEN root:=root||'/@'||p_old.entry_id::text; END IF;
+ merged_business:=private.entry_business(p_kind,private.fill_unknown(p_old.content,p_candidate->'content'));
+ FOR decision IN SELECT value FROM jsonb_array_elements(coalesce(provenance->'decisions','[]')) LOOP
+  target:=decision->>'target'; chosen:=array_append(chosen,target);
+  merged_business:=private.set_pointer(merged_business,string_to_array(substr(target,2),'/'),private.resolve_pointer(candidate_business,target));
+ END LOOP;
+ FOR target IN SELECT * FROM private.business_leaves(private.resolve_pointer(merged_business,root),root) LOOP
+  BEGIN old_value:=private.resolve_pointer(old_business,target); EXCEPTION WHEN raise_exception THEN old_value:=NULL; END;
+  new_value:=private.resolve_pointer(merged_business,target);
+  IF old_value IS DISTINCT FROM new_value OR EXISTS(SELECT FROM unnest(chosen) selected_target WHERE target=selected_target OR left(target,length(selected_target)+1)=selected_target||'/') THEN candidate_targets:=array_append(candidate_targets,target); END IF;
+ END LOOP;
+ FOR claim IN SELECT value FROM jsonb_array_elements(p_old.provenance->'claims') LOOP
+  SELECT coalesce(jsonb_agg(t),'[]') INTO keep_targets FROM jsonb_array_elements_text(claim->'targets') t WHERE NOT t=ANY(candidate_targets) AND EXISTS(SELECT FROM private.business_leaves(private.resolve_pointer(merged_business,root),root) leaf WHERE leaf=t);
+  IF jsonb_array_length(keep_targets)>0 THEN merged_claims:=merged_claims||jsonb_build_array(jsonb_set(claim,'{targets}',keep_targets)); END IF;
+ END LOOP;
+ FOR claim IN SELECT value FROM jsonb_array_elements(provenance->'claims') LOOP
+  SELECT coalesce(jsonb_agg(t),'[]') INTO keep_targets FROM jsonb_array_elements_text(claim->'targets') t WHERE t=ANY(candidate_targets);
+  IF jsonb_array_length(keep_targets)>0 THEN merged_claims:=merged_claims||jsonb_build_array(jsonb_set(claim,'{targets}',keep_targets)); END IF;
+ END LOOP;
+ provenance:=provenance||jsonb_build_object('claims',merged_claims,'sources',private.unique_json((p_old.provenance->'sources')||(provenance->'sources')),'evidence',private.unique_json((p_old.provenance->'evidence')||(provenance->'evidence')),'operations',private.unique_json((p_old.provenance->'operations')||(provenance->'operations')));
+ RETURN candidate||jsonb_build_object('content',private.resolve_pointer(merged_business,root),'provenance',provenance);
+END $$;
 CREATE FUNCTION public.apply_proposal(p_company uuid,p_job uuid,p_proposal uuid,p_entry uuid,p_expected_revision integer,p_selected_candidate_ids jsonb,p_request uuid) RETURNS public.knowledge_entry_versions LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE c public.companies:=private.lock_company(p_company); j public.scrape_jobs; candidate jsonb; r public.knowledge_entry_versions; e public.knowledge_entries; h text:=private.operation_hash(jsonb_build_array('apply',p_job,p_proposal,p_entry,p_expected_revision,p_selected_candidate_ids));
+DECLARE c public.companies:=private.lock_company(p_company); j public.scrape_jobs; candidate jsonb; r public.knowledge_entry_versions; previous public.knowledge_entry_versions; e public.knowledge_entries; h text:=private.operation_hash(jsonb_build_array('apply',p_job,p_proposal,p_entry,p_expected_revision,p_selected_candidate_ids));
 BEGIN
  IF p_request IS NULL THEN RAISE EXCEPTION 'request_required'; END IF;
  r:=private.prior_operation(p_company,p_request,h); IF r.id IS NOT NULL THEN RETURN r; END IF;
@@ -147,6 +186,10 @@ BEGIN
   IF e.kind<>candidate->>'kind' OR candidate->>'target_entry_id' IS NOT NULL AND candidate->>'target_entry_id'<>e.id::text THEN RAISE EXCEPTION 'proposal_target_mismatch'; END IF;
  END IF;
  candidate:=private.prepare_proposal(candidate,e.id,p_selected_candidate_ids,auth.uid());
+ IF e.current_revision>0 THEN
+  SELECT * INTO previous FROM public.knowledge_entry_versions WHERE company_id=p_company AND entry_id=e.id AND revision=e.current_revision;
+  candidate:=private.merge_saved_proposal(candidate,previous,e.kind);
+ END IF;
  INSERT INTO public.knowledge_entry_versions(company_id,entry_id,revision,content,provenance,author_id) VALUES(p_company,e.id,e.current_revision+1,candidate->'content',private.operation_provenance(candidate->'provenance',p_request,e.id,'apply_proposal',h),auth.uid()) RETURNING * INTO r;
  UPDATE public.knowledge_entries SET current_revision=r.revision WHERE company_id=p_company AND id=e.id;
  UPDATE public.companies SET draft_generation=draft_generation+1 WHERE id=p_company;

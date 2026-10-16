@@ -64,10 +64,27 @@ BEGIN
   IF jsonb_typeof(e)<>'object' OR e-ARRAY['code','url','retryable','message']<>'{}' OR NOT e ?& ARRAY['code','url','retryable','message'] OR length(coalesce(e->>'code','')) NOT BETWEEN 1 AND 100 OR length(coalesce(e->>'message','')) NOT BETWEEN 1 AND 1000 OR jsonb_typeof(e->'retryable')<>'boolean' OR e->'url'<>'null'::jsonb AND NOT private.valid_url(e->>'url') THEN RAISE EXCEPTION 'invalid_safe_error'; END IF;
  END LOOP;
 END $$;
+CREATE FUNCTION private.validate_checkpoint(p_job uuid,p_company uuid,p_checkpoint jsonb,p_stage text) RETURNS void LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE k text; source_id text; candidate jsonb;
+BEGIN
+ PERFORM private.validate_json(p_checkpoint,private.contract_schema('worker_checkpoint'));
+ IF p_checkpoint ? 'stage' AND p_checkpoint->>'stage'<>p_stage THEN RAISE EXCEPTION 'checkpoint_stage_mismatch'; END IF;
+ FOREACH k IN ARRAY ARRAY['captured_source_ids','extracted_source_ids'] LOOP
+  FOR source_id IN SELECT jsonb_array_elements_text(coalesce(p_checkpoint->k,'[]')) LOOP
+   IF NOT EXISTS(SELECT FROM public.source_pages WHERE id=source_id::uuid AND company_id=p_company AND scrape_job_id=p_job AND capture_status='captured') THEN RAISE EXCEPTION 'unavailable_checkpoint_source'; END IF;
+  END LOOP;
+ END LOOP;
+ FOR candidate IN SELECT value FROM jsonb_array_elements(coalesce(p_checkpoint->'validated_candidates','[]')) LOOP
+  IF NOT EXISTS(SELECT FROM public.source_pages WHERE id=(candidate->>'sourceId')::uuid AND company_id=p_company AND scrape_job_id=p_job AND capture_status='captured') THEN RAISE EXCEPTION 'unavailable_checkpoint_source'; END IF;
+  IF NOT EXISTS(SELECT FROM jsonb_array_elements(private.field_registry()) f WHERE f->>'path'=candidate->>'field' AND f->>'kind'=candidate->>'kind' AND f->>'field'=candidate->>'fieldName') THEN RAISE EXCEPTION 'invalid_checkpoint_field'; END IF;
+ END LOOP;
+END $$;
 CREATE FUNCTION private.checkpoint_job(p_job uuid,p_company uuid,p_lease_token uuid,p_checkpoint jsonb,p_progress jsonb) RETURNS public.scrape_jobs LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE j public.scrape_jobs:=private.worker_job(p_job,p_company,p_lease_token); stage text:=p_progress->>'stage';
 BEGIN
  PERFORM private.validate_progress(p_progress);
+ PERFORM private.validate_json(p_progress,private.contract_schema('worker_progress'));
+ PERFORM private.validate_checkpoint(p_job,p_company,p_checkpoint,p_progress->>'stage');
  IF p_checkpoint ? 'errors' THEN PERFORM private.validate_errors(p_checkpoint->'errors'); END IF;
  IF jsonb_typeof(p_checkpoint)<>'object' OR octet_length(p_checkpoint::text)>1048576 THEN RAISE EXCEPTION 'invalid_checkpoint'; END IF;
  IF stage NOT IN ('validating','crawling','extracting') OR array_position(ARRAY['validating','crawling','extracting'],stage)<array_position(ARRAY['validating','crawling','extracting'],j.status) THEN RAISE EXCEPTION 'invalid_transition'; END IF;
