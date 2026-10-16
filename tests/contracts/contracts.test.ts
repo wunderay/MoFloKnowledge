@@ -23,6 +23,7 @@ import {
   ProposalSchema,
   ModelOutputSchema,
   ProgressSchema,
+  CheckpointSchema,
   EntryProvenanceSchema,
 } from "../../src/contracts";
 const clone = () => structuredClone(fixture);
@@ -391,5 +392,52 @@ describe("cross-entry generated support", () => {
         entryIds: [generated.entry_id],
       }),
     ).toEqual([]);
+  });
+});
+
+describe("durable worker checkpoint wire", () => {
+  it("accepts initial and crawl/extraction snapshots with strict nested bounds", () => {
+    const checkpoint = {
+      effectiveRoot: "https://example.com/",
+      frontier: {
+        root: "https://example.com/",
+        pending: [{ url: "https://example.com/about", depth: 1, score: 20 }],
+        seen: ["https://example.com/", "https://example.com/about"],
+        aliases: [],
+        selected: 1,
+        limitsReached: [],
+      },
+      budgets: {
+        documents: 1,
+        htmlBytes: 600,
+        designBytes: 400,
+        startedAt: Date.now(),
+        limitsReached: [],
+      },
+      captured_source_ids: [fixture.provenance.sources[0].id],
+      errors: [],
+    };
+    expect(CheckpointSchema.parse({})).toEqual({});
+    expect(CheckpointSchema.parse(checkpoint)).toEqual(checkpoint);
+    expect(
+      CheckpointSchema.safeParse({
+        ...checkpoint,
+        stage: "extracting",
+        extracted_source_ids: [fixture.provenance.sources[0].id],
+        model_tokens: 100,
+        model_successes: 1,
+        model_failures: 0,
+        validated_candidates: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      CheckpointSchema.safeParse({
+        ...checkpoint,
+        budgets: { ...checkpoint.budgets, designBytes: 16 * 1024 * 1024 },
+      }).success,
+    ).toBe(false);
+    expect(
+      CheckpointSchema.safeParse({ ...checkpoint, secret: "leaked" }).success,
+    ).toBe(false);
   });
 });
