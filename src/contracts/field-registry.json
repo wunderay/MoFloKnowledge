@@ -3,7 +3,7 @@
     "path": "/company_foundation/overview",
     "kind": "company_foundation",
     "field": "overview",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -16,7 +16,7 @@
     "path": "/company_foundation/website",
     "kind": "company_foundation",
     "field": "website",
-    "type": "scalar",
+    "type": "URL | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -28,7 +28,7 @@
     "path": "/company_foundation/industry",
     "kind": "company_foundation",
     "field": "industry",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -41,7 +41,7 @@
     "path": "/company_foundation/business_model",
     "kind": "company_foundation",
     "field": "business_model",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -54,7 +54,7 @@
     "path": "/company_foundation/year_founded",
     "kind": "company_foundation",
     "field": "year_founded",
-    "type": "scalar",
+    "type": "integer | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -66,7 +66,7 @@
     "path": "/company_foundation/legal_entity_type",
     "kind": "company_foundation",
     "field": "legal_entity_type",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -78,7 +78,7 @@
     "path": "/company_foundation/employee_count",
     "kind": "company_foundation",
     "field": "employee_count",
-    "type": "scalar",
+    "type": "EmployeeCount | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -90,7 +90,7 @@
     "path": "/company_foundation/main_address",
     "kind": "company_foundation",
     "field": "main_address",
-    "type": "scalar",
+    "type": "Address | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -102,7 +102,7 @@
     "path": "/company_foundation/company_role",
     "kind": "company_foundation",
     "field": "company_role",
-    "type": "collection",
+    "type": "IdentifiedText[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -115,7 +115,7 @@
     "path": "/company_foundation/other_locations",
     "kind": "company_foundation",
     "field": "other_locations",
-    "type": "collection",
+    "type": "Address[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -127,7 +127,7 @@
     "path": "/company_foundation/service_locations",
     "kind": "company_foundation",
     "field": "service_locations",
-    "type": "collection",
+    "type": "IdentifiedText[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -139,7 +139,7 @@
     "path": "/company_foundation/alternative_company_names",
     "kind": "company_foundation",
     "field": "alternative_company_names",
-    "type": "collection",
+    "type": "IdentifiedText[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -151,7 +151,7 @@
     "path": "/positioning/company_pitch",
     "kind": "positioning",
     "field": "company_pitch",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -164,7 +164,7 @@
     "path": "/positioning/founding_story",
     "kind": "positioning",
     "field": "founding_story",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -176,7 +176,7 @@
     "path": "/market_and_customers/target_buyers",
     "kind": "market_and_customers",
     "field": "target_buyers",
-    "type": "collection",
+    "type": "IdentifiedText[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -189,7 +189,7 @@
     "path": "/market_and_customers/customer_needs",
     "kind": "market_and_customers",
     "field": "customer_needs",
-    "type": "collection",
+    "type": "IdentifiedText[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -202,7 +202,7 @@
     "path": "/market_and_customers/ideal_customer_personas",
     "kind": "market_and_customers",
     "field": "ideal_customer_personas",
-    "type": "collection",
+    "type": "Persona[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -215,7 +215,7 @@
     "path": "/market_and_customers/industry_groupings",
     "kind": "market_and_customers",
     "field": "industry_groupings",
-    "type": "collection",
+    "type": "IdentifiedText[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -228,7 +228,7 @@
     "path": "/market_and_customers/industry_outlook",
     "kind": "market_and_customers",
     "field": "industry_outlook",
-    "type": "collection",
+    "type": "Commentary[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -240,7 +240,7 @@
     "path": "/market_and_customers/channels",
     "kind": "market_and_customers",
     "field": "channels",
-    "type": "collection",
+    "type": "Channel[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -253,7 +253,7 @@
     "path": "/market_and_customers/funnels",
     "kind": "market_and_customers",
     "field": "funnels",
-    "type": "collection",
+    "type": "Funnel[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -266,7 +266,7 @@
     "path": "/market_and_customers/ctas",
     "kind": "market_and_customers",
     "field": "ctas",
-    "type": "collection",
+    "type": "CTA[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -279,7 +279,7 @@
     "path": "/market_and_customers/suppliers_and_partners",
     "kind": "market_and_customers",
     "field": "suppliers_and_partners",
-    "type": "collection",
+    "type": "Partner[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -291,7 +291,7 @@
     "path": "/branding_and_style/writing_style_description",
     "kind": "branding_and_style",
     "field": "writing_style_description",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "inferred",
@@ -303,7 +303,7 @@
     "path": "/branding_and_style/art_style_description",
     "kind": "branding_and_style",
     "field": "art_style_description",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "inferred",
@@ -315,7 +315,7 @@
     "path": "/branding_and_style/fonts",
     "kind": "branding_and_style",
     "field": "fonts",
-    "type": "collection",
+    "type": "Font[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -328,7 +328,7 @@
     "path": "/branding_and_style/brand_colors",
     "kind": "branding_and_style",
     "field": "brand_colors",
-    "type": "collection",
+    "type": "Color[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -341,7 +341,7 @@
     "path": "/branding_and_style/logos",
     "kind": "branding_and_style",
     "field": "logos",
-    "type": "collection",
+    "type": "Logo[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -354,7 +354,7 @@
     "path": "/online_presence/social_media_links",
     "kind": "online_presence",
     "field": "social_media_links",
-    "type": "collection",
+    "type": "SocialLink[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -366,7 +366,7 @@
     "path": "/key_people/@id/name",
     "kind": "key_person",
     "field": "name",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -378,7 +378,7 @@
     "path": "/key_people/@id/title",
     "kind": "key_person",
     "field": "title",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -390,7 +390,7 @@
     "path": "/key_people/@id/role",
     "kind": "key_person",
     "field": "role",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -402,7 +402,7 @@
     "path": "/key_people/@id/gender",
     "kind": "key_person",
     "field": "gender",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -414,7 +414,7 @@
     "path": "/key_people/@id/background_or_relevance",
     "kind": "key_person",
     "field": "background_or_relevance",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -427,7 +427,7 @@
     "path": "/offerings/@id/name",
     "kind": "offering",
     "field": "name",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -439,7 +439,7 @@
     "path": "/offerings/@id/description",
     "kind": "offering",
     "field": "description",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -452,7 +452,7 @@
     "path": "/offerings/@id/offering_type",
     "kind": "offering",
     "field": "offering_type",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -465,7 +465,7 @@
     "path": "/offerings/@id/category",
     "kind": "offering",
     "field": "category",
-    "type": "scalar",
+    "type": "string | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -478,7 +478,7 @@
     "path": "/offerings/@id/features",
     "kind": "offering",
     "field": "features",
-    "type": "collection",
+    "type": "IdentifiedText[]",
     "default": [],
     "allowedOrigins": [
       "source_backed",
@@ -490,7 +490,7 @@
     "path": "/offerings/@id/pricing",
     "kind": "offering",
     "field": "pricing",
-    "type": "scalar",
+    "type": "Pricing | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
@@ -502,7 +502,7 @@
     "path": "/offerings/@id/url",
     "kind": "offering",
     "field": "url",
-    "type": "scalar",
+    "type": "URL | null",
     "default": null,
     "allowedOrigins": [
       "source_backed",
