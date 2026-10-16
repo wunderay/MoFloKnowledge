@@ -28,7 +28,7 @@ export class Renderer {
             this.browser ??= await chromium.launch({ executablePath: this.config.executablePath, chromiumSandbox: true, headless: true, timeout: task.timeoutMs, env: { PATH: process.env.PATH ?? '/usr/bin:/bin', LANG: 'C.UTF-8' }, proxy: { server: this.config.proxyUrl, username: 'moflo', password: this.config.proxyToken, bypass: '<-loopback>' }, args: ['--disable-quic', '--disable-features=WebRtcHideLocalIpsWithMdns', '--force-webrtc-ip-handling-policy=disable_non_proxied_udp', '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE ' + new URL(this.config.proxyUrl).hostname] });
             context = await this.browser.newContext({ serviceWorkers: 'block', acceptDownloads: false, javaScriptEnabled: true, ignoreHTTPSErrors: false, userAgent: 'MoFloKnowledgeBot/1.0', permissions: [], viewport: { width: 1280, height: 900 } });
             combined.throwIfAborted();
-            const policy = await installResourcePolicy(context, task, combined);
+            const policy = await installResourcePolicy(context, task, combined, this.config);
             const page = await context.newPage();
             await page.goto(task.url, { waitUntil: 'networkidle', timeout: task.timeoutMs });
             combined.throwIfAborted();
