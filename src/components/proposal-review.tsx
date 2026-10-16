@@ -90,7 +90,7 @@ export function ProposalReview({
       .catch((error) => setError(error.message));
   }, [companyId, entries]);
   async function act(proposal: ProposalItem, dismiss = false) {
-    if (isHistoricalAiProposal(proposal)) {
+    if (!dismiss && isHistoricalAiProposal(proposal)) {
       setError("This historical AI proposal is read-only. Start a fresh scrape to extract current source facts without AI.");
       return;
     }
@@ -318,7 +318,7 @@ export function ProposalReview({
               </button>
               <button
                 className="button"
-                disabled={!canEdit || busy || historicalAi}
+                disabled={!canEdit || busy}
                 onClick={() => act(proposal, true)}
               >
                 Dismiss proposal
