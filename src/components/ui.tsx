@@ -1,0 +1,5 @@
+'use client';
+export function StatusBadge({value}: {value: string}) { return <span className={`status-badge status-badge--${value}`}>{value.replaceAll('_', ' ')}</span>; }
+export function Notice({children, error=false}: {children: React.ReactNode;error?: boolean}) { return <div className={`notice${error ? ' notice--error' : ''}`} role={error?'alert':'status'}>{children}</div>; }
+export function EmptyState({title,children}: {title:string;children:React.ReactNode}) { return <div className="empty-state"><span className="empty-state__icon" aria-hidden>◇</span><h3>{title}</h3>{children}</div>; }
+export function Dialog({title,children,onClose}: {title:string;children:React.ReactNode;onClose:()=>void}) { return <div className="dialog-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section role="dialog" aria-modal="true" aria-label={title} className="dialog" onKeyDown={e=>{if(e.key==='Escape')onClose();}}><div className="section-heading"><h2>{title}</h2><button className="button button--quiet" onClick={onClose} aria-label="Close dialog">✕</button></div>{children}</section></div>; }
