@@ -111,5 +111,13 @@ describe("literal market and conversion extraction", () => {
     const generic = extract("<p>We serve growing businesses.</p><p>We can help you with the following problems:</p><p>The agency will not be looking to save you money.</p><p>We have deep understanding and improve efficiency for numerous businesses.</p><p>Our employees train to improve your experience.</p>");
     expect(generic.values("ideal_customer_personas")).toEqual([]);
     expect(generic.values("customer_needs")).toEqual([]);
+    const educational = "Settlement options - Qualifying for a settlement can save you money on penalties and interest.";
+    const problem = "Preparing your own filings can be extremely difficult with complex rules.";
+    const declaredNeed = "You need clear guidance to reduce your filing mistakes.";
+    const scoped = extract(`<h2>Services</h2><p>${problem}</p><ul><li>${educational}</li></ul>
+      <h2>Customer needs</h2><ul><li>${declaredNeed}</li></ul>`);
+    expect(scoped.values("customer_needs")).toEqual(expect.arrayContaining([{ text: problem }, { text: declaredNeed }]));
+    expect(scoped.values("customer_needs")).not.toContainEqual({ text: educational });
+    expect(scoped.page.capture.segments.some((segment) => segment.text.includes(educational))).toBe(true);
   });
 });
