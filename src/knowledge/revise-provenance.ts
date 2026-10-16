@@ -84,7 +84,12 @@ export function reviseProvenance(input: ReviseInput): EntryProvenance {
     });
   }
   result.claims = claims;
-  const refs = new Set([...claims.flatMap((c) => c.evidence_ids), ...result.conflicts.flatMap(c => c.candidates.flatMap(candidate => candidate.evidence_ids))]);
+  const refs = new Set([
+    ...claims.flatMap((c) => c.evidence_ids),
+    ...result.conflicts.flatMap((c) =>
+      c.candidates.flatMap((candidate) => candidate.evidence_ids),
+    ),
+  ]);
   result.evidence = result.evidence.filter((e) => refs.has(e.id));
   const sources = new Set(result.evidence.map((e) => e.source_page_id));
   result.sources = result.sources.filter((s) => sources.has(s.id));
