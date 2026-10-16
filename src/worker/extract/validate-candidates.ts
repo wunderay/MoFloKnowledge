@@ -268,7 +268,12 @@ export function validateCandidates(
       if (
         c.entity_key &&
         !page.capture.links.some((link) =>
-          link.url === c.entity_key && link.url !== page.capture.finalUrl,
+          link.url === c.entity_key && (
+            link.url !== page.capture.finalUrl || (
+              selected.some((o) => o.property === "href" && o.value === link.url) &&
+              selected.some((o) => o.property === "anchor-label" && o.asset_url === link.url && Boolean(o.value))
+            )
+          ),
         ) &&
         !(
           c.entity_key.startsWith(structuredPrefix) &&
