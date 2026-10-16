@@ -56,7 +56,7 @@ describe("source-only deterministic parsing", () => {
     const { candidates } = extract(`<meta name="description" content="A local repair company.">
       <main><p>Industry: Equipment repair</p><p>Business model: Repairs by appointment</p>
       <p>Company pitch: Tools working again.</p><p>Target buyers: Local workshops</p>
-      <p>Established in 2018.</p><p>Since 2024, our team has worked in a new office.</p>
+      <p>Since 2018</p><p>Since 2024, our team has worked in a new office.</p>
       <p>Our team looks young and includes about 25 people.</p><p>We care about customers.</p></main>`);
     expect(candidates.find((c) => c.field.endsWith("/industry"))?.value).toBe("Equipment repair");
     expect(candidates.find((c) => c.field.endsWith("/company_pitch"))?.value).toBe("Tools working again.");
@@ -111,6 +111,13 @@ describe("source-only deterministic parsing", () => {
     const { candidates } = extract(title + '<main><h1>Alex Rowan, CPA</h1><p>Alex repairs tools.</p></main>', "/about-us/alex-rowan");
     expect(candidates.filter((c) => c.field.startsWith("/key_people")).map((c) => c.value))
       .toEqual(["Alex Rowan", "Founder"]);
+    const separateRole = extract('<title>Alex Rowan</title><h1>Alex Rowan</h1><h2>Founder</h2>', "/team/alex-rowan");
+    expect(separateRole.candidates.filter((c) => c.field.startsWith("/key_people")).map((c) => c.value))
+      .toEqual(["Alex Rowan", "Founder"]);
+    expect(extract('<title>Alex Rowan</title><h1>Alex Rowan</h1><p>Founder</p>', "/team/alex-rowan").candidates
+      .some((c) => c.field.startsWith("/key_people"))).toBe(false);
+    expect(extract('<title>Our Team</title><h1>Our Team</h1><h2>Founder</h2>', "/team/alex-rowan").candidates
+      .some((c) => c.field.startsWith("/key_people"))).toBe(false);
     expect(extract(title + '<h1>Our company</h1>', "/about-us/alex-rowan").candidates
       .some((c) => c.field.startsWith("/key_people"))).toBe(false);
     expect(extract(title + '<h1>Alex Rowan</h1>', "/articles/alex-rowan").candidates
