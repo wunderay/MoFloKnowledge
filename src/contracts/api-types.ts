@@ -6,8 +6,17 @@ export type CompanySummary = {
   draft_generation: number;
   archived_at: string | null;
   role: "owner" | "editor" | "viewer";
-  latestJob: Record<string, unknown> | null;
-  latestVersion: Record<string, unknown> | null;
+  latestJob: {
+    id: string;
+    status: string;
+    progress: Record<string, unknown>;
+    created_at: string;
+  } | null;
+  latestVersion: {
+    id: string;
+    version_number: number;
+    created_at: string;
+  } | null;
 };
 export type DraftEntry = {
   id: string;
