@@ -25,47 +25,60 @@ export async function readCompany(client: Client, id: string, userId: string) {
 }
 export async function readDraft(client: Client, id: string, userId: string) {
   const company = await readCompany(client, id, userId);
-  const [entries, revisions, sources] = await Promise.all([
-    checked(
-      client
-        .from("knowledge_entries")
-        .select("*")
-        .eq("company_id", id)
-        .order("created_at")
-        .order("id"),
-    ),
-    checked(
-      client.from("knowledge_entry_versions").select("*").eq("company_id", id),
-    ),
-    checked(
-      client
-        .from("source_pages")
-        .select(
-          "id,company_id,scrape_job_id,normalized_url,final_url,title,author,site_name,published_on,retrieved_at,capture_status",
-        )
-        .eq("company_id", id),
-    ),
-  ]);
-  const current = (entries ?? []).map((entry) => {
-    const rev = (revisions ?? []).find(
-      (r) => r.entry_id === entry.id && r.revision === entry.current_revision,
-    );
-    if (!rev)
-      throw new HttpError(
-        503,
-        "invalid_state",
-        "Draft is temporarily unavailable.",
+  const entries = await checked(
+    client
+      .from("knowledge_entries")
+      .select("*")
+      .eq("company_id", id)
+      .order("created_at")
+      .order("id"),
+  );
+  const current = await Promise.all(
+    (entries ?? []).map(async (entry) => {
+      const rev = await checked(
+        client
+          .from("knowledge_entry_versions")
+          .select("*")
+          .eq("company_id", id)
+          .eq("entry_id", entry.id)
+          .eq("revision", entry.current_revision)
+          .maybeSingle(),
       );
-    return {
-      ...entry,
-      ...rev,
-      id: entry.id,
-      created_at: entry.created_at,
-      saved_at: rev.created_at,
-      content: parseBusinessEntry(entry.kind, rev.content),
-      provenance: EntryProvenanceSchema.parse(rev.provenance),
-    };
-  });
+      if (!rev)
+        throw new HttpError(
+          503,
+          "invalid_state",
+          "Draft is temporarily unavailable.",
+        );
+      return {
+        ...entry,
+        ...rev,
+        id: entry.id,
+        created_at: entry.created_at,
+        saved_at: rev.created_at,
+        content: parseBusinessEntry(entry.kind, rev.content),
+        provenance: EntryProvenanceSchema.parse(rev.provenance),
+      };
+    }),
+  );
+  const sourceIds = [
+    ...new Set(
+      current.flatMap((entry) =>
+        entry.provenance.sources.map((source: { id: string }) => source.id),
+      ),
+    ),
+  ];
+  const sources = sourceIds.length
+    ? await checked(
+        client
+          .from("source_pages")
+          .select(
+            "id,company_id,scrape_job_id,normalized_url,final_url,title,author,site_name,published_on,retrieved_at,capture_status",
+          )
+          .eq("company_id", id)
+          .in("id", sourceIds),
+      )
+    : [];
   return {
     actorId: userId,
     company,

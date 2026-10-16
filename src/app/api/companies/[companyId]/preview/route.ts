@@ -17,5 +17,11 @@ export const GET = route(async (_r, c, { client, user }) => {
       saved_at: e.saved_at ?? e.created_at,
     })),
   );
-  return { draftGeneration: draft.draftGeneration, ...preview };
+  return {
+    draftGeneration: draft.draftGeneration,
+    ...preview,
+    rejectedCount: draft.entries.filter((e) => e.review_status === "rejected")
+      .length,
+    unresolvedCount: preview.blockingEntries.length,
+  };
 });
