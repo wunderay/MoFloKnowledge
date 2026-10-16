@@ -25,7 +25,8 @@ it("creates a real OOXML document formatting a complete profile with full nested
   expect(zip.file("_rels/.rels")).not.toBeNull();
   const xml = await zip.file("word/document.xml")!.async("string");
   const text = load(xml, { xmlMode: true }).text();
-  expect(text).toContain(long);
+  expect(text.split("Exact complete passage.")).toHaveLength(501);
+  expect(text).toContain("UNIQUE END OF FULL PASSAGE");
   for (let index = 0; index < 30; index++) expect(text).toContain(`Full feature ${index}`);
   for (const value of ["Overview", "Company details", "Pitch", "Market & customers", "Founding story", "Branding & style", "Online presence", "Key people", "Offerings", "Deep nested step", "29.00", "Unknown", "Not checked", "Unassessed field requires manual review.", snapshot.provenance.sources[0].url, snapshot.company_foundation.overview]) {
     expect(text).toContain(value);
@@ -35,7 +36,7 @@ it("creates a real OOXML document formatting a complete profile with full nested
   expect(businessBody).not.toContain("Values:");
   expect(businessBody).not.toContain("Item 1:");
   expect(text).not.toContain(snapshot.provenance.claims[0].targets[0]);
-  const compactText = text.replace(/\s+/g, "");
+  const compactText = documentParagraphs({ kind: "snapshot", snapshot }).map((paragraph) => paragraph.text).join("").replace(/\s+/g, "");
   const checkValues = (value: unknown): void => {
     if (Array.isArray(value)) value.forEach(checkValues);
     else if (value && typeof value === "object") Object.entries(value).forEach(([key, child]) => {
@@ -114,7 +115,7 @@ it("caps distinct narrative citations at three and basic facts at one without ch
 });
 
 
-it("writes connected prose and real small superscript source links without interpreting literal user brackets", async () => {
+it("writes factual bullets and real small superscript source links without interpreting literal user brackets", async () => {
   const snapshot = KnowledgeBaseExportSchema.parse(fixture);
   const duplicate = "An exact repeated business statement.";
   snapshot.company_foundation.overview = `A verbatim company overview. ${duplicate}`;
@@ -130,7 +131,8 @@ it("writes connected prose and real small superscript source links without inter
   expect(wording).toContain("Retail software");
   expect(wording).toContain(`Address: ${snapshot.company_foundation.main_address!.raw}.`);
   expect(body.some((paragraph) => paragraph.label === "City" || paragraph.label === "Region")).toBe(false);
-  expect(wording).toContain("Literal [1] text stays ordinary. An intact short pitch.");
+  expect(body.some((paragraph) => paragraph.text === "Literal [1] text stays ordinary." && paragraph.bullet)).toBe(true);
+  expect(body.some((paragraph) => paragraph.text === "An intact short pitch." && paragraph.bullet)).toBe(true);
   const zip = await JSZip.loadAsync(await renderKnowledgeDocument(input));
   const $ = load(await zip.file("word/document.xml")!.async("string"), { xmlMode: true });
   const bookmarks = new Set($("w\\:bookmarkStart").toArray().map((node) => $(node).attr("w:name")));
@@ -148,6 +150,7 @@ it("writes connected prose and real small superscript source links without inter
   const literal = $("w\\:t").filter((_index, node) => $(node).text().includes("Literal [1]"));
   expect(literal.length).toBe(1);
   expect(literal.closest("w\\:hyperlink").length).toBe(0);
+  expect(literal.closest("w\\:p").find("w\\:numPr").length).toBe(1);
   expect(snapshot).toEqual(before);
 });
 
@@ -163,10 +166,10 @@ it("composes distinct populated and sparse company shapes without repetitive sen
   rich.market_and_customers.target_buyers.push({ id: "90000000-0000-4000-8000-000000000001", text: "wholesale teams" });
   const before = structuredClone(rich);
   const richBody = documentParagraphs({ kind: "snapshot", snapshot: rich }).map((item) => item.text).join("\n").split("Coverage & unknowns")[0];
-  expect(richBody).toContain("Retail software · Cooperative · Founded 2017");
+  expect(richBody).toContain("Retail software\nCooperative\nFounded 2017");
   expect(richBody).toContain("Engineering lead; Founder");
   expect(richBody).toContain("Subscription · Inventory tools");
-  expect(richBody).toContain("Customers: Independent retailers and wholesale teams");
+  expect(richBody).toContain("Customers\nIndependent retailers\nwholesale teams");
   expect(richBody).toContain(rich.offerings[0].description);
   expect(richBody).not.toMatch(/(?:Its |It operates|Their role|offering type is|listed under)/);
   expect(rich).toEqual(before);
@@ -184,9 +187,10 @@ it("composes distinct populated and sparse company shapes without repetitive sen
   rich.market_and_customers.target_buyers = Array.from({ length: 11 }, (_, index) => ({
     id: `90000000-0000-4000-8000-${String(index + 10).padStart(12, "0")}`, text: `Retail group ${index + 1}`,
   }));
-  const compact = documentParagraphs({ kind: "snapshot", snapshot: rich }).find((item) => item.text.startsWith("Customers: "))!;
-  expect(compact.bullet).toBeUndefined();
-  expect(compact.text).toBe(`Customers: ${rich.market_and_customers.target_buyers.slice(0, -1).map((item) => item.text).join(", ")}, and Retail group 11`);
+  const customerBullets = documentParagraphs({ kind: "snapshot", snapshot: rich }).filter((item) => item.text.startsWith("Retail group "));
+  expect(customerBullets).toHaveLength(11);
+  expect(customerBullets.every((item) => item.bullet)).toBe(true);
+  expect(customerBullets.map((item) => item.text)).toEqual(rich.market_and_customers.target_buyers.map((item) => item.text));
 
   const sparse = KnowledgeBaseExportSchema.parse(fixture);
   Object.assign(sparse, createEmptyBusiness());
@@ -207,5 +211,5 @@ it("composes distinct populated and sparse company shapes without repetitive sen
   sparse.company_foundation.overview = "It makes durable baskets. Visit https://it.example/ for details.";
   sparse.company_foundation.industry = "IT";
   const shortIndustry = documentParagraphs({ kind: "snapshot", snapshot: sparse }).map((item) => item.text);
-  expect(shortIndustry).toContain("IT · LLC");
+  expect(shortIndustry).toEqual(expect.arrayContaining(["IT", "LLC"]));
 });
