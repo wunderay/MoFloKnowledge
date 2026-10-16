@@ -99,3 +99,19 @@ it("bounds section evidence and splits long paragraphs without inventing company
   expect(capture.text.length).toBeLessThanOrEqual(100000);
   expect(capture.observations.declaredLogos).toEqual([{ selector: "jsonld:Organization/logo", alt: "Example", url: "https://example.com/official.svg" }]);
 });
+
+it("retains exact CMS form context and scoped nested lists without blending sibling features", () => {
+  const capture = captureHtml({ requestedUrl: "https://example.com/", finalUrl: "https://example.com/", body: `
+    <main><h1>Business services</h1><p>We offer these services:</p>
+    <ul><li>Records support<ul><li>Monthly reports</li></ul></li><li>Payroll support</li></ul></main>
+    <div><div><h2>Latest Articles</h2><div><p>Receive weekly articles in your inbox.</p><form><label>Email</label><button>Notify me</button></form></div></div></div>
+    <div><h2>Contact our team</h2><div><div><form><label>Message</label><button>Submit</button></form></div></div></div>` });
+  expect(capture.observations.forms).toContainEqual(expect.objectContaining({ heading: "Latest Articles", context: "Receive weekly articles in your inbox." }));
+  expect(capture.observations.forms).toContainEqual(expect.objectContaining({ heading: "Contact our team", context: null }));
+  expect(capture.observations.contentLists).toEqual([
+    { heading: "Business services", intro: "We offer these services:", items: ["Records support", "Payroll support"] },
+    { heading: "Business services", intro: "Records support", items: ["Monthly reports"] },
+  ]);
+  for (const text of ["Receive weekly articles in your inbox.", "Records support", "Monthly reports", "Payroll support"])
+    expect(capture.segments.some((segment) => segment.text === text)).toBe(true);
+});

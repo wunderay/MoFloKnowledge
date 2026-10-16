@@ -15,6 +15,22 @@ export type FrontierSnapshot = {
     selected: number;
     limitsReached: string[];
 };
+function relevance(url: string, label: string): number {
+    const path = new URL(url).pathname.toLowerCase();
+    const words = `${path.replace(/[^a-z]+/g, ' ')} ${label.toLowerCase()}`;
+    // Specific destinations take precedence over an inherited parent-path keyword.
+    if (/\b(?:privacy|terms|legal|login|sign in|client hub)\b/.test(words)) return 5;
+    if (/^\/(?:blog|news|articles?|learning-center)(?:\/|$)/.test(path)) return 10;
+    if (/\b(?:referrals?|newsletter|subscribe)\b/.test(words)) return 45;
+    if (/\b(?:appointment|schedule|booking|book a)\b/.test(words)) return 55;
+    if (/\b(?:contact|locations?)\b/.test(words)) return 90;
+    if (/\b(?:about|company|firm|background|team|leadership|founder)\b/.test(words))
+        return path.split('/').filter(Boolean).length <= 1 ? 100 : 85;
+    if (/\b(?:services?|products?|offerings?|solutions?|pricing)\b/.test(words))
+        return path.split('/').filter(Boolean).length <= 1 ? 95 : 80;
+    if (/\b(?:faq|brand)\b/.test(words)) return 65;
+    return 0;
+}
 export class Frontier {
     readonly scope: string[];
     readonly limitsReached = new Set<string>();
@@ -62,8 +78,7 @@ export class Frontier {
             return false;
         }
         this.seen.add(url);
-        const words = (new URL(url).pathname + ' ' + label).toLowerCase();
-        const score = ['about', 'product', 'service', 'pricing', 'contact', 'faq', 'team', 'location', 'brand'].reduce((n, word, index) => n + (words.includes(word) ? 20 - index : 0), 0);
+        const score = relevance(url, label);
         this.pending.push({ url, depth, score });
         return true;
     }
