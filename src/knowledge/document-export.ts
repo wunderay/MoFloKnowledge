@@ -15,6 +15,7 @@ export type DocumentParagraph = {
   label?: string;
   bullet?: boolean;
   muted?: boolean;
+  swatch?: string;
 };
 const LABELS: Record<string, string> = {
   company_foundation: "Company details", positioning: "Pitch & story",
@@ -111,7 +112,10 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
         } else if (item && typeof item === "object") {
           const fields = Object.entries(item).filter(([key]) => key !== "id");
           const primary = ["name", "label", "family", "hex", "platform", "raw"].map((key) => fields.find(([field, child]) => field === key && populated(child))).find(Boolean);
-          if (primary) add(String(primary[1]) + citations(`${itemPath}/${primary[0]}`), { heading: "entry", depth });
+          if (primary) add(String(primary[1]) + citations(`${itemPath}/${primary[0]}`), {
+            heading: "entry", depth,
+            ...(primary[0] === "hex" && /^#[0-9a-f]{6}$/i.test(String(primary[1])) ? { swatch: String(primary[1]) } : {}),
+          });
           for (const [key, child] of fields) if (key !== primary?.[0]) renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
         } else add(String(item) + citations(itemPath), { bullet: true, depth });
       }
@@ -216,6 +220,10 @@ export async function renderKnowledgeDocument(input: DocumentInput): Promise<Buf
       keepNext: isHeading,
       spacing: { before: isSection ? 280 : isTitle ? 0 : isHeading ? 140 : 0, after: isTitle ? 220 : isHeading ? 100 : 120, line: 280 },
       children: [
+        ...(paragraph.swatch ? [new TextRun({ text: "\u00a0\u00a0", size: 20,
+          shading: { fill: paragraph.swatch.slice(1) },
+          border: { color: "88929B", style: BorderStyle.SINGLE, size: 4 },
+        }), new TextRun({ text: "  " })] : []),
         ...(paragraph.label ? [new TextRun({ text: `${paragraph.label}: `, bold: true })] : []),
         ...printable.split(/\r\n|\r|\n/).map((line, index) => new TextRun({ text: line,
           bold: isHeading, color: isTitle ? NAVY : isSection ? BLUE : paragraph.muted ? "606A74" : "202A34",

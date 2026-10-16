@@ -8,6 +8,7 @@ import { renderKnowledgePdf, wrapPdfText } from "../../src/knowledge/pdf-export"
 
 it("paginates a complete PDF with an embedded Unicode font and lossless original JSON attachment", async () => {
   const snapshot = KnowledgeBaseExportSchema.parse(fixture);
+  snapshot.branding_and_style.brand_colors[0].hex = "#FF8000";
   snapshot.company_foundation.overview = "Curly ‘quotes’, company’s costs — €12–€20. ".repeat(150) + "FINAL EXACT PASSAGE 😀";
   snapshot.offerings[0].features = Array.from({ length: 35 }, (_, index) => ({
     id: `80000000-0000-4000-8000-${String(index).padStart(12, "0")}`, text: `Unabridged item ${index}`,
@@ -31,6 +32,10 @@ it("paginates a complete PDF with an embedded Unicode font and lossless original
   expect(projection).toContain(snapshot.provenance.sources[0].url);
   expect(projection).not.toContain(snapshot.provenance.claims[0].targets[0]);
   expect(pdf.getPage(0).getSize()).toEqual({ width: 612, height: 792 });
+  const drawing = pdf.context.enumerateIndirectObjects().filter(([, object]) => object instanceof PDFRawStream)
+    .map(([, stream]) => Buffer.from(decodePDFRawStream(stream as PDFRawStream).decode()).toString("utf8")).join("\n");
+  expect(drawing).toContain("1 0.5019607843137255 0 rg");
+  expect(drawing).toContain("0 0 m\n0 9 l\n9 9 l\n9 0 l\nh\nB");
   expect(canonicalStringify(snapshot)).toBe(before);
 });
 
