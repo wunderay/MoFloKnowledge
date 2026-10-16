@@ -64,3 +64,21 @@ describe("safe HTTP boundaries", () => {
     expect(mapDatabaseError({ message: "stale_revision" }).status).toBe(409);
   });
 });
+it("returns safe stale state details and business-validation422", async () => {
+  const error = mapDatabaseError({
+    message: "stale_revision",
+    details: JSON.stringify({ currentRevision: 3, secret: "hidden" }),
+  });
+  expect(error.details).toEqual({ currentRevision: 3 });
+  const request = new Request("https://app.example", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: '{"content":{"amount":-1}}',
+  });
+  await expect(
+    readJson(
+      request,
+      z.object({ content: z.object({ amount: z.number().nonnegative() }) }),
+    ),
+  ).rejects.toMatchObject({ status: 422 });
+});

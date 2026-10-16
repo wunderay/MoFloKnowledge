@@ -142,6 +142,7 @@ export async function prepareRevision(
       stored,
       entryId,
       input.requestId,
+      actorId,
     ),
   };
 }
@@ -153,6 +154,7 @@ export function preserveSelectedCandidates(
   stored: EntryProvenance,
   entryId: string,
   requestId: string,
+  actorId?: string,
 ): EntryProvenance {
   const business = entryBusiness(kind, content);
   for (const decision of provenance.decisions.filter(
@@ -180,6 +182,7 @@ export function preserveSelectedCandidates(
           ...decision,
           id: stableId(requestId, conflict.id, "correct"),
           action: "correct",
+          actor_id: actorId ?? decision.actor_id,
           candidate_id: null,
           decided_at: new Date().toISOString(),
           note: "User corrected a previously selected candidate.",

@@ -69,7 +69,7 @@ it("preserves selected candidate origin/evidence and rejects changing its value"
       candidate_id: entry,
       actor_id: id,
       decided_at: "2026-10-16T00:00:00Z",
-      note: null,
+      note: "Reviewer selected this candidate.",
     },
   ];
   p.evidence = [
@@ -163,7 +163,7 @@ it("preserves selected claim IDs on approval-only saves and permits later correc
       candidate_id: entry,
       actor_id: entry,
       decided_at: "2026-10-16T00:00:00Z",
-      note: null,
+      note: "Reviewer selected this candidate.",
     },
   ];
   const content = {
