@@ -100,6 +100,7 @@ export function KnowledgeViewer({
     initialData?.snapshot ?? null,
   );
   const [mode, setMode] = useState("profile");
+  const [exportFormat, setExportFormat] = useState("docx");
   const [query, setQuery] = useState("");
   const [section, setSection] = useState("");
   const [origin, setOrigin] = useState("");
@@ -326,6 +327,29 @@ export function KnowledgeViewer({
           <Link className="button" href={`/knowledge?companyId=${companyId}`}>
             Open current draft
           </Link>
+          <form className="actions version-viewer__export" action={companyPath(companyId, "/document")} method="GET">
+            <input type="hidden" name="versionId" value={versionId} />
+            <select
+              className="company-switcher version-viewer__export-format"
+              name="format"
+              aria-label="Export format"
+              value={exportFormat}
+              onChange={(event) => setExportFormat(event.target.value)}
+              disabled={loading || !versionId}
+            >
+              <option value="json">JSON (.json)</option>
+              <option value="docx">Word (.docx)</option>
+              <option value="pdf">PDF (.pdf)</option>
+            </select>
+            <button
+              className="button button--primary version-viewer__document-export"
+              type="submit"
+              disabled={loading || !versionId || (versionId !== "draft" && !payload)}
+              title="Export all saved values and supporting evidence, regardless of filters"
+            >
+              Export {exportFormat.toUpperCase()} ↓
+            </button>
+          </form>
           {payload && (
             <a
               className="button button--primary"
