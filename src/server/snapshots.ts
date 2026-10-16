@@ -22,3 +22,27 @@ export async function readSnapshot(
   if (!saved) throw new HttpError(404, "unavailable", "Resource unavailable.");
   return { ...saved, payload: KnowledgeBaseExportSchema.parse(saved.payload) };
 }
+
+export async function readVersionSummaries(
+  client: Awaited<ReturnType<typeof verifiedSession>>["client"],
+  companyId: string,
+  userId: string,
+) {
+  await authorizeCompany(client, companyId, userId);
+  const pages = [];
+  for (let offset = 0; ; offset += 1000) {
+    const page = await checked(
+      client
+        .from("knowledge_base_versions")
+        .select(
+          "id,version_number,schema_version,author_id,created_at,payload_sha256",
+        )
+        .eq("company_id", companyId)
+        .order("version_number", { ascending: false })
+        .range(offset, offset + 999),
+    );
+    pages.push(...(page ?? []));
+    if ((page ?? []).length < 1000) break;
+  }
+  return pages;
+}

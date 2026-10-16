@@ -20,6 +20,22 @@ export function mapDatabaseError(error: {
   details?: string;
 }): HttpError {
   const value = error.message || "";
+  let details: Record<string, unknown> | undefined;
+  try {
+    const parsed = JSON.parse(error.details ?? "{}");
+    const safe = z
+      .object({
+        currentRevision: z.number().int().positive().optional(),
+        currentGeneration: z.number().int().nonnegative().optional(),
+        activeJobId: z.string().uuid().optional(),
+      })
+      .strip()
+      .parse(parsed);
+    if (Object.keys(safe).length) details = safe;
+  } catch {
+    /* Provider details are never forwarded. */
+  }
+
   if (/not_authenticated/.test(value))
     return new HttpError(401, "signed_out", "Sign in to continue.");
   if (/not_found|unavailable|not_member/.test(value))
@@ -35,6 +51,7 @@ export function mapDatabaseError(error: {
       409,
       "conflict",
       "The saved state changed. Refresh and compare your changes.",
+      details,
     );
   if (/rate_limit/.test(value))
     return new HttpError(429, "rate_limited", "Please wait before retrying.");
@@ -93,8 +110,19 @@ export async function readJson<S extends z.ZodTypeAny>(
     }
   try {
     return schema.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
-  } catch {
-    throw new HttpError(400, "invalid_input", "Check the request fields.");
+  } catch (error) {
+    const business =
+      error instanceof z.ZodError &&
+      error.issues.some((issue) =>
+        ["content", "provenance"].includes(String(issue.path[0])),
+      );
+    throw new HttpError(
+      business ? 422 : 400,
+      business ? "validation" : "invalid_input",
+      business
+        ? "Review the business values and evidence."
+        : "Check the request fields.",
+    );
   }
 }
 export function json(data: unknown, requestId: string, status = 200) {
