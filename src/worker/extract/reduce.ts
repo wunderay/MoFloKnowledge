@@ -234,7 +234,9 @@ export function reduceCandidates(
           .map((field) => field.path.replace("@id", `@${entryId}`))
           .filter(
             (target) =>
-              !provenance.conflicts.some((conflict) => conflict.target === target) &&
+              !provenance.conflicts.some(
+                (conflict) => conflict.target === target,
+              ) &&
               provenance.claims.some((claim) =>
                 claim.targets.some(
                   (path) => path === target || path.startsWith(target + "/"),

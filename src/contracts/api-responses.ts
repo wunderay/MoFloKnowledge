@@ -12,6 +12,7 @@ import {
   ProposalSchema,
   ReviewStatusSchema,
   CoverageAssessmentSchema,
+  CitationContextSchema,
 } from "./index";
 const role = z.enum(["owner", "editor", "viewer"]);
 export const CompanyRowSchema = z
@@ -69,6 +70,9 @@ export const RevisionResponseSchema = z
     created_at: InstantSchema,
   })
   .strict();
+export const HistoryRevisionResponseSchema = RevisionResponseSchema.extend({
+  citationContext: CitationContextSchema,
+}).strict();
 export const DraftEntryResponseSchema = RevisionResponseSchema.extend({
   kind: EntryKindSchema,
   current_revision: z.number().int().positive(),
@@ -97,6 +101,7 @@ export const DraftResponseSchema = z
     draftGeneration: GenerationSchema,
     entries: z.array(DraftEntryResponseSchema),
     sources: z.array(SourceSummarySchema),
+    citationContext: CitationContextSchema,
   })
   .strict();
 const proposalDecision = z
