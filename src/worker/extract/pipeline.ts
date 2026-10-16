@@ -1,57 +1,73 @@
 import type { Job, JobRepository } from "../job-repository";
 import type { CrawlResult } from "../crawl/run-crawl";
-import type { PageExtractor } from "../model/responses";
 import type { ValidatedCandidate } from "./validate-candidates";
 import { validateCandidates } from "./validate-candidates";
 import { deterministicCandidates } from "./deterministic";
 import { technicalObservations } from "./observations";
 import { reduceCandidates } from "./reduce";
-import { PROMPT_VERSION } from "../model/prompt";
+// Change this version when deterministic rules or checkpoint candidate formats change.
+export const EXTRACTOR_VERSION = "deterministic-v1";
 export async function extractAndFinish(
   job: Job,
   repository: JobRepository,
   crawl: CrawlResult,
   signal: AbortSignal,
-  extractor?: PageExtractor,
 ) {
   const checkpoint = { ...crawl.checkpoint };
+  // Model-era checkpoints are deliberately reparsed from immutable captures. Their
+  // completed IDs and validated candidates must never enter this source-only run.
+  const compatible = checkpoint.extractor_version === EXTRACTOR_VERSION;
   const completed = new Set(
-    (checkpoint.extracted_source_ids as string[] | undefined) ?? [],
+    compatible
+      ? (checkpoint.extracted_source_ids as string[] | undefined) ?? []
+      : [],
   );
   const capturesById = new Map(crawl.captures.map((p) => [p.id, p]));
   const candidates: ValidatedCandidate[] = (
-    (checkpoint.validated_candidates as
-      | (Omit<ValidatedCandidate, "page" | "observations"> & {
-          sourceId: string;
-        })[]
-      | undefined) ?? []
+    compatible
+      ? (checkpoint.validated_candidates as
+          | (Omit<ValidatedCandidate, "page" | "observations"> & {
+              sourceId: string;
+            })[]
+          | undefined) ?? []
+      : []
   )
+    .filter((c) => c.origin === "source_backed" && capturesById.has(c.sourceId))
     .map((c) => {
       const page = capturesById.get(c.sourceId)!;
       return {
         ...c,
         page,
-        observations: page
-          ? technicalObservations(page).filter((o) =>
-              c.observation_ids.includes(o.id),
-            )
-          : [],
+        observations: technicalObservations(page).filter((o) =>
+          c.observation_ids.includes(o.id),
+        ),
       };
-    })
-    .filter((c) => Boolean(c.page));
-  let tokens = Number(checkpoint.model_tokens ?? 0);
-  let modelSuccesses = Number(checkpoint.model_successes ?? 0);
-  let modelFailures = Number(checkpoint.model_failures ?? 0);
-  const startedAt = Number(
-    (checkpoint.budgets as { startedAt?: number } | undefined)?.startedAt ??
-      Date.now(),
+    });
+  // Legacy counters and model failures are never active configuration or errors.
+  delete checkpoint.model_tokens;
+  delete checkpoint.model_successes;
+  delete checkpoint.model_failures;
+  const errors = crawl.errors.filter(
+    (error) => compatible ||
+      !["model_not_configured", "page_extraction_failed"].includes(error.code),
   );
-  const errors = [...crawl.errors];
   let partial = errors.length > 0 || crawl.progress.limits_reached.length > 0;
   crawl.progress.stage = "extracting";
+  crawl.progress.extracted = completed.size;
   await repository.checkpoint(
     job,
-    { ...checkpoint, stage: "extracting" },
+    {
+      ...checkpoint,
+      extractor_version: EXTRACTOR_VERSION,
+      stage: "extracting",
+      extracted_source_ids: [...completed],
+      validated_candidates: candidates.map(
+        ({ page, observations: _observations, ...candidate }) => ({
+          ...candidate, sourceId: page.id,
+        }),
+      ),
+      errors,
+    },
     crawl.progress,
   );
   for (const page of crawl.captures) {
@@ -78,66 +94,23 @@ export async function extractAndFinish(
       proposed = proposed.filter(
         (c) => c.field !== "/company_foundation/website",
       );
-    try {
-      candidates.push(
-        ...validateCandidates(proposed, page, observations, job.company_id),
-      );
-    } catch {
+    let invalid = false;
+    for (const candidate of proposed) {
+      try {
+        candidates.push(
+          ...validateCandidates([candidate], page, observations, job.company_id),
+        );
+      } catch {
+        invalid = true;
+      }
+    }
+    if (invalid) {
       partial = true;
       errors.push({
         code: "deterministic_validation_failed",
         url: page.capture.finalUrl,
         retryable: false,
         message: "Some captured observations could not be validated.",
-      });
-    }
-    if (extractor) {
-      try {
-        const remaining = startedAt + 300000 - Date.now();
-        const estimate =
-          2 *
-          (Buffer.byteLength(
-            JSON.stringify({ segments: page.capture.segments, observations }),
-          ) +
-            20000);
-        if (remaining <= 0 || tokens + estimate > 120000)
-          throw new Error("model_budget");
-        tokens += estimate;
-        const output = await extractor.extract(
-          page,
-          observations,
-          AbortSignal.any([signal, AbortSignal.timeout(remaining)]),
-        );
-        if (output.tokensUsed !== undefined)
-          tokens += output.tokensUsed - estimate;
-        const validated = validateCandidates(
-          output.candidates,
-          page,
-          observations,
-          job.company_id,
-        );
-        candidates.push(...validated);
-        modelSuccesses++;
-        if (output.limitations.length) partial = true;
-      } catch {
-        if (signal.aborted) throw signal.reason;
-        partial = true;
-        modelFailures++;
-        errors.push({
-          code: "page_extraction_failed",
-          url: page.capture.finalUrl,
-          retryable: false,
-          message: "Page extraction failed or returned invalid evidence.",
-        });
-      }
-    } else {
-      partial = true;
-      errors.push({
-        code: "model_not_configured",
-        url: page.capture.finalUrl,
-        retryable: false,
-        message:
-          "Model extraction is not configured; only deterministic observations are available.",
       });
     }
     if (
@@ -162,9 +135,7 @@ export async function extractAndFinish(
     completed.add(page.id);
     crawl.progress.extracted = completed.size;
     Object.assign(checkpoint, {
-      model_tokens: tokens,
-      model_successes: modelSuccesses,
-      model_failures: modelFailures,
+      extractor_version: EXTRACTOR_VERSION,
       stage: "extracting",
       extracted_source_ids: [...completed],
       validated_candidates: candidates.map(
@@ -178,17 +149,13 @@ export async function extractAndFinish(
     await repository.checkpoint(job, checkpoint, crawl.progress);
   }
   signal.throwIfAborted();
-  const proposals =
-    crawl.captures.length &&
-    !(extractor && modelFailures > 0 && modelSuccesses === 0)
-      ? reduceCandidates(candidates, {
-          companyId: job.company_id,
-          jobId: job.id,
-          partial,
-          model: extractor?.model ?? "deterministic-only",
-          promptVersion: PROMPT_VERSION,
-        })
-      : [];
+  const proposals = crawl.captures.length
+    ? reduceCandidates(candidates, {
+        companyId: job.company_id,
+        jobId: job.id,
+        partial,
+      })
+    : [];
   for (const proposal of proposals) {
     const existing = job.current_entries?.find(
       (entry) =>

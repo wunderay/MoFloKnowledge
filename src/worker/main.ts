@@ -3,7 +3,6 @@ import { PostgresJobRepository } from "./job-repository";
 import { runWorker } from "./run-loop";
 import { runCrawl } from "./crawl/run-crawl";
 import { extractAndFinish } from "./extract/pipeline";
-import { ResponsesPageExtractor } from "./model/responses";
 import { createRendererClient } from "../renderer/client";
 async function main() {
   const connectionString = process.env.WORKER_DATABASE_URL;
@@ -16,13 +15,6 @@ async function main() {
   const shutdown = () => stop.abort("shutdown");
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);
-  const extractor =
-    process.env.OPENAI_API_KEY && process.env.OPENAI_EXTRACTION_MODEL
-      ? new ResponsesPageExtractor(
-          process.env.OPENAI_EXTRACTION_MODEL,
-          process.env.OPENAI_API_KEY,
-        )
-      : undefined;
   const render =
     process.env.RENDERER_URL && process.env.RENDERER_TOKEN
       ? createRendererClient({
@@ -35,7 +27,7 @@ async function main() {
       repository,
       async (job, signal) => {
         const crawl = await runCrawl(job, repository, signal, render);
-        await extractAndFinish(job, repository, crawl, signal, extractor);
+        await extractAndFinish(job, repository, crawl, signal);
       },
       {
         workerId: process.env.WORKER_ID ?? randomUUID(),

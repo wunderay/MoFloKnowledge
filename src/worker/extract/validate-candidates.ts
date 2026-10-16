@@ -5,8 +5,8 @@ import {
   compareDecimal,
 } from "../../contracts";
 import type { StoredCapture } from "../crawl/run-crawl";
-import type { TechnicalObservation } from "../model/responses";
-import { fieldCandidateSchemas, type FieldCandidate } from "../model/schema";
+import type { TechnicalObservation, FieldCandidate } from "./types";
+import { fieldCandidateSchemas } from "./candidate-schema";
 import { stableId } from "./identity";
 import { normalizeColor } from "./colors";
 import { documentScope } from "../network/url-scope";
@@ -87,10 +87,6 @@ export function validateCandidates(
         throw new Error("invalid_origin");
       if (["key_person", "offering"].includes(field.kind) && !c.entity_key)
         throw new Error("missing_entity_key");
-      if (c.origin !== "source_backed" && !c.note)
-        throw new Error("interpretation_note_required");
-      if (c.origin === "generated" && !c.supporting_fields.length)
-        throw new Error("generated_support_required");
       const segments = c.segment_ids.map((id) => {
         const s = page.capture.segments.find((s) => s.id === id);
         if (!s) throw new Error("invalid_segment");
@@ -172,7 +168,14 @@ export function validateCandidates(
           max_amount: string | null;
         };
         if (
-          !quotes.includes(v.raw) ||
+          !(
+            quotes.includes(v.raw) ||
+            selected.some((o) =>
+              o.property?.startsWith("jsonld:") &&
+              /\/(?:price|lowPrice|highPrice)$/.test(o.property) &&
+              o.value === v.raw,
+            )
+          ) ||
           (v.kind === "free" && !/\bfree\b|no (?:charge|cost)/i.test(v.raw)) ||
           (v.kind === "contact_for_pricing" &&
             !/contact|quote|call|inquir/i.test(v.raw)) ||
@@ -198,7 +201,10 @@ export function validateCandidates(
         const url = String(c.value);
         if (
           url !== page.capture.finalUrl &&
-          !page.capture.links.some((l) => l.url === url)
+          !page.capture.links.some((l) => l.url === url) &&
+          !selected.some((o) =>
+            o.property?.startsWith("jsonld:") && o.value === url,
+          )
         )
           throw new Error("url_not_observed");
       }
@@ -243,21 +249,42 @@ export function validateCandidates(
             )
           )
             throw new Error("company_logo_not_observed");
+      // Structured entities need a cited name and an explicit supported type at
+      // the same JSON-LD object path, so unrelated metadata cannot name an entity.
+      const structuredEntity = (path: string) => {
+        const prefix = "jsonld:" + path;
+        const supportedType = field.kind === "key_person"
+          ? /^(?:https?:\/\/schema\.org\/)?Person$/
+          : /^(?:https?:\/\/schema\.org\/)?(?:Product|Service|Offer)$/;
+        return selected.some((o) =>
+          o.property === prefix + "/name" && Boolean(o.value),
+        ) && selected.some((o) =>
+          (o.property === prefix + "/@type" ||
+            o.property?.startsWith(prefix + "/@type/")) &&
+          supportedType.test(o.value ?? ""),
+        );
+      };
+      const structuredPrefix = page.capture.finalUrl + "|jsonld:";
       if (
         c.entity_key &&
-        !page.capture.links.some(
-          (link) =>
-            link.url === c.entity_key && link.url !== page.capture.finalUrl,
+        !page.capture.links.some((link) =>
+          link.url === c.entity_key && link.url !== page.capture.finalUrl,
+        ) &&
+        !(
+          c.entity_key.startsWith(structuredPrefix) &&
+          structuredEntity(c.entity_key.slice(structuredPrefix.length))
+        ) &&
+        !selected.some((o) =>
+          o.property?.startsWith("jsonld:") && o.property.endsWith("/url") &&
+          o.value === c.entity_key &&
+          structuredEntity(o.property.slice("jsonld:".length, -"/url".length)),
         ) &&
         !(
           c.entity_key.startsWith(page.capture.finalUrl + "|") &&
           (() => {
             const parts = c.entity_key!.split("|");
-            return (
-              parts.length === 3 &&
-              page.capture.segments.some(
-                (s) => s.id === parts[2] && s.text.includes(parts[1]),
-              )
+            return parts.length === 3 && page.capture.segments.some((s) =>
+              s.id === parts[2] && s.text.includes(parts[1]),
             );
           })()
         )
@@ -298,7 +325,12 @@ export function validateCandidates(
           const url = new URL(social.profile_url);
           if (
             /\/(?:share|intent|sharer|dialog)(?:\/|$)/i.test(url.pathname) ||
-            !page.capture.links.some((l) => l.url === social.profile_url) ||
+            !(
+              page.capture.links.some((l) => l.url === social.profile_url) ||
+              selected.some((o) =>
+                o.property?.startsWith("jsonld:") && o.value === social.profile_url,
+              )
+            ) ||
             !url.hostname
               .replace(/^www\./, "")
               .startsWith(social.platform.toLowerCase() + ".")
