@@ -15,6 +15,7 @@ import {
 import { api, companyPath, write } from "./api-client";
 import { CATEGORY_SPECS, labelOf } from "./business-fields";
 import { ValueView } from "./entry-value";
+import { CompanyProfile } from "./company-profile";
 import { EmptyState, Notice, StatusBadge } from "./ui";
 import { EntryHistory } from "./entry-history";
 import { filterView } from "@/knowledge/filter-view";
@@ -97,7 +98,7 @@ export function KnowledgeViewer({
   const [payload, setPayload] = useState<KnowledgeBaseExport | null>(
     initialData?.snapshot ?? null,
   );
-  const [mode, setMode] = useState("cards");
+  const [mode, setMode] = useState("profile");
   const [query, setQuery] = useState("");
   const [section, setSection] = useState("");
   const [origin, setOrigin] = useState("");
@@ -377,7 +378,7 @@ export function KnowledgeViewer({
             </select>
           </div>
           <div className="actions" aria-label="Display mode">
-            {["cards", "table", "detail", "json"].map((item) => (
+            {["profile", "cards", "table", "detail", "json"].map((item) => (
               <button
                 className={`button${mode === item ? " button--primary" : ""}`}
                 key={item}
@@ -486,6 +487,12 @@ export function KnowledgeViewer({
           <EmptyState title="No matching knowledge">
             <p>Adjust the filters or review the current draft.</p>
           </EmptyState>
+        ) : mode === "profile" ? (
+          <CompanyProfile
+            entries={filtered}
+            citationContext={citationContext}
+            actions={draftActions}
+          />
         ) : mode === "table" ? (
           <table className="data-table">
             <thead>
