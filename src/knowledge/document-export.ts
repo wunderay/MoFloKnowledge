@@ -4,6 +4,7 @@ import type { KnowledgeBaseExport, EntryProvenance, Claim } from "../contracts";
 import type { DraftResponseSchema } from "../contracts/api-responses";
 import { createEmptyBusiness } from "../contracts/defaults";
 import { downloadFilename } from "./download-name";
+import { varyCompanyNarrative } from "./narrative-prose";
 
 export type DocumentInput =
   | { kind: "draft"; draft: z.infer<typeof DraftResponseSchema> }
@@ -143,6 +144,8 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     return Boolean(exact) && (exact === overview || (index >= 0 && /[.!?]$/.test(exact) && (!before || /[.!?]$/.test(before))));
   };
   const withoutOverviewDuplicates = (text: string) => text.split(/\n+/).filter((part) => normalized(part) && !repeatedNarrative(part)).join("\n\n");
+  const narrative = (text: string, path: string) => /^\/(?:company_foundation\/(?:overview|business_model)|positioning\/company_pitch|offerings\/@[^/]+\/(?:description|(?:features|qualifications)\/@[^/]+\/text)|market_and_customers\/customer_needs\/@[^/]+\/text)$/.test(path)
+    ? varyCompanyNarrative(text, name) : text;
   const covered = (value: string | null | undefined, context: string) => {
     if (!value) return false;
     const needle = normalized(value).toLowerCase();
@@ -267,7 +270,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       for (const [index, item] of (value as unknown[]).entries()) {
         const itemPath = `${path}/${item && typeof item === "object" && "id" in item ? `@${item.id}` : index}`;
         if (item && typeof item === "object" && "text" in item) {
-          add(String(item.text), { citations: citations(`${itemPath}/text`), bullet: true, depth });
+          add(narrative(String(item.text), `${itemPath}/text`), { citations: citations(`${itemPath}/text`), bullet: true, depth });
           for (const [key, child] of Object.entries(item)) if (!["id", "text"].includes(key)) renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
         } else if (item && typeof item === "object") {
           const fields = Object.entries(item).filter(([key]) => key !== "id");
@@ -304,7 +307,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const section = (title: string, content: unknown, path: string) => {
     if (!populated(content)) return;
     heading(title);
-    if (typeof content === "string") add(content, { citations: citations(path) });
+    if (typeof content === "string") add(narrative(content, path), { citations: citations(path) });
     else if (content && typeof content === "object" && !Array.isArray(content)) for (const [key, value] of Object.entries(content)) if (key !== "id") renderValue(value, label(key), `${path}/${key}`);
   };
   const name = input.kind === "draft" ? input.draft.company.name : input.snapshot.provenance.company.name;
@@ -332,7 +335,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   if (details.length || model || extraFields.length) {
     heading("Company details");
     if (details.length) prose(joined(details));
-    if (model) add(model, { citations: citations("/company_foundation/business_model") });
+    if (model) add(narrative(model, "/company_foundation/business_model"), { citations: citations("/company_foundation/business_model") });
     for (const [key, value] of extraFields) renderValue(value, label(key), `/company_foundation/${key}`);
   }
   const pitch = business.positioning.company_pitch ? withoutOverviewDuplicates(business.positioning.company_pitch) : "";
@@ -363,7 +366,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       if (key === "key_people" && fields.gender) add(String(fields.gender), { label: "Stated gender", citations: citations(`${path}/gender`) });
       for (const [field, value] of Object.entries(item)) {
         if (["id", "name", ...(key === "key_people" ? ["title", "role", "gender"] : ["offering_type", "category"])].includes(field)) continue;
-        if (["description", "background_or_relevance"].includes(field) && typeof value === "string" && populated(value)) add(value, { citations: citations(`${path}/${field}`) });
+        if (["description", "background_or_relevance"].includes(field) && typeof value === "string" && populated(value)) add(narrative(value, `${path}/${field}`), { citations: citations(`${path}/${field}`) });
         else renderValue(value, label(field), `${path}/${field}`);
       }
     }
