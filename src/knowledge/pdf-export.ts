@@ -76,7 +76,7 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
     const prefix = paragraph.label ? `${paragraph.label}: ` : "";
     // Measure fact rows using bold metrics, which also safely fit the regular value text.
     const measureFont = prefix ? bold : font;
-    const x = margin + Math.min(paragraph.depth, 4) * 8 + (paragraph.bullet ? 12 : 0);
+    const x = margin + Math.min(paragraph.depth, 4) * 8 + (paragraph.bullet ? 12 : 0) + (paragraph.swatch ? 16 : 0);
     const width = page.getWidth() - x - margin;
     const lines = wrapPdfText(displayText(prefix + paragraph.text), measureFont, size, width);
     // Keep consecutive section/item/field headings together with the first content line.
@@ -93,7 +93,7 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
           break;
         }
         const nextBefore = next.heading === "section" ? 15 : 7;
-        const nextX = margin + Math.min(next.depth, 4) * 8;
+        const nextX = margin + Math.min(next.depth, 4) * 8 + (next.swatch ? 16 : 0);
         const nextLines = wrapPdfText(displayText(next.text), bold, nextSize, page.getWidth() - nextX - margin);
         required += nextBefore + nextLines.length * nextSize * 1.42 + 6;
       }
@@ -105,6 +105,11 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
     for (const [index, line] of lines.entries()) {
       if (y - lineHeight < margin) newPage();
       const lineX = isTitle ? (page.getWidth() - font.widthOfTextAtSize(line, size)) / 2 : x;
+      if (paragraph.swatch && index === 0) {
+        const components = [1, 3, 5].map((offset) => Number.parseInt(paragraph.swatch!.slice(offset, offset + 2), 16) / 255);
+        page.drawRectangle({ x: x - 16, y: y - size + 1, width: 9, height: 9,
+          color: rgb(components[0], components[1], components[2]), borderColor: rgb(0.53, 0.57, 0.61), borderWidth: 0.5 });
+      }
       if (paragraph.bullet && index === 0) page.drawText("•", { x: x - 12, y: y - size, font: regular, size, color });
       if (prefix && index === 0 && line.startsWith(prefix)) {
         page.drawText(prefix, { x: lineX, y: y - size, size, font: bold, color });

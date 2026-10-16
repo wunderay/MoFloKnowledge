@@ -53,6 +53,7 @@ it("creates a real OOXML document formatting a complete profile with full nested
   expect(xml).toContain('w:w="12240"');
   expect(xml).toContain('w:h="15840"');
   expect(xml).toContain('w:bottom');
+  expect(xml).toContain(`w:fill="${snapshot.branding_and_style.brand_colors[0].hex.slice(1)}"`);
   expect(xml).toContain("&lt;script&gt;");
   expect(xml).not.toContain("<script>");
   expect(Object.keys(zip.files).some((path) => /vba|embeddings|media\//.test(path))).toBe(false);
