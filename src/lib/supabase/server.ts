@@ -29,5 +29,12 @@ export async function createClient() {
 export async function verifiedSession() {
   const client = await createClient();
   const { data, error } = await client.auth.getUser();
+  if (
+    error &&
+    (!error.status ||
+      error.status >= 500 ||
+      error.name === "AuthRetryableFetchError")
+  )
+    throw new Error("Authentication service is temporarily unavailable.");
   return { client, user: error ? null : data.user };
 }

@@ -1,6 +1,9 @@
 import { expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 vi.mock("server-only", () => ({}));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ getAll: () => [], set: vi.fn() }),
+}));
 const state = vi.hoisted(() => ({
   getUser: vi.fn(),
   create: vi.fn(),
@@ -72,3 +75,24 @@ it.each([
     );
   },
 );
+
+it("preserves genuine signed-out state while treating verification provider failures as unavailable", async () => {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://auth.example.com";
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "test-publishable-only";
+  const { verifiedSession } = await vi.importActual<
+    typeof import("../../src/lib/supabase/server")
+  >("../../src/lib/supabase/server");
+  state.create.mockReturnValue({ auth: { getUser: state.getUser } });
+  state.getUser.mockResolvedValue({
+    data: { user: null },
+    error: { status: 401, name: "AuthApiError" },
+  });
+  expect((await verifiedSession()).user).toBeNull();
+  for (const error of [
+    { status: 0, name: "AuthRetryableFetchError" },
+    { status: 503, name: "AuthApiError" },
+  ]) {
+    state.getUser.mockResolvedValue({ data: { user: null }, error });
+    await expect(verifiedSession()).rejects.toThrow("temporarily unavailable");
+  }
+});
