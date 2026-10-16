@@ -28,6 +28,8 @@ export type CapturedSource = {
 };
 export type ProvenanceOptions = {
   entryIds?: string[];
+  /** Authoritative immutable same-company claims used only to resolve cross-entry support. */
+  supportingClaims?: Claim[];
   entryKinds?: Record<string, EntryKind>;
   historicalClaimIds?: string[];
   requireCoverage?: boolean;
@@ -64,7 +66,12 @@ export function validateProvenance(
     add("business_ids", "", (e as Error).message);
     return issues;
   }
-  const claims = new Map(provenance.claims.map((c) => [c.id, c]));
+  const claims = new Map(
+    [...(options.supportingClaims ?? []), ...provenance.claims].map((c) => [
+      c.id,
+      c,
+    ]),
+  );
   const evidence = new Map(provenance.evidence.map((e) => [e.id, e]));
   const sources = new Map(provenance.sources.map((s) => [s.id, s]));
   const currentTargets = new Map<string, Claim[]>();
@@ -284,7 +291,7 @@ export function validateProvenance(
     visiting.delete(id);
     visited.add(id);
   }
-  for (const id of claims.keys()) visit(id);
+  for (const claim of provenance.claims) visit(claim.id);
   if (options.requireCoverage !== false) {
     const required = new Set(requiredCoverageTargets(business));
     const counts = new Map<string, number>();

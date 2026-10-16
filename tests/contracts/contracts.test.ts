@@ -355,3 +355,41 @@ describe("worker proposal trust boundary", () => {
     ).toBe(false);
   });
 });
+
+describe("cross-entry generated support", () => {
+  it("resolves supporting immutable claims without importing foreign active targets", () => {
+    const generated = fixture.provenance.claims.find(
+      (c) => c.origin === "generated",
+    )!;
+    const support = fixture.provenance.claims.find(
+      (c) => c.id === generated.based_on_claim_ids[0],
+    )!;
+    const evidenceIds = new Set(generated.evidence_ids);
+    const evidence = fixture.provenance.evidence.filter((e) =>
+      evidenceIds.has(e.id),
+    );
+    const sourceIds = new Set(evidence.map((e) => e.source_page_id));
+    const provenance = EntryProvenanceSchema.parse({
+      claims: [generated],
+      evidence,
+      sources: fixture.provenance.sources.filter((s) => sourceIds.has(s.id)),
+      coverage: fixture.provenance.coverage.flatMap((c) => {
+        const targets = c.targets.filter((t) => t.startsWith("/positioning/"));
+        return targets.length ? [{ ...c, targets }] : [];
+      }),
+      operations: [],
+    });
+    const current = { positioning: fixture.positioning };
+    expect(
+      validateProvenance(current, provenance).some(
+        (i) => i.code === "claim_missing",
+      ),
+    ).toBe(true);
+    expect(
+      validateProvenance(current, provenance, {
+        supportingClaims: [support as never],
+        entryIds: [generated.entry_id],
+      }),
+    ).toEqual([]);
+  });
+});
