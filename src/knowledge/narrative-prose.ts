@@ -1,56 +1,45 @@
-// Display-only company voice. Unsupported grammar falls back to the complete saved wording.
-const present: Record<string, string> = {
-  provide: "provides", offer: "offers", specialize: "specializes", perform: "performs", use: "uses",
-  help: "helps", assist: "assists", handle: "handles", support: "supports", serve: "serves",
-  adhere: "adheres", make: "makes", work: "works", deliver: "delivers", focus: "focuses",
-  have: "has", do: "does",
-};
-const modals = new Set(["can", "could", "will", "would", "may", "might", "must", "should"]);
+/** Display-only sentence bullets. Original values and evidence remain untouched. */
+export type FactualBullet = { text: string; label?: string };
 const sentences = new Intl.Segmenter("en", { granularity: "sentence" });
+const quoted = (text: string) => /["“”«»‘’]/u.test(text)
+  || /(?:^|\s)'[^'\n]+'(?:\s|[.,!?]|$)/u.test(text);
 
-function seed(text: string) {
-  let value = 0;
-  for (const character of text) value = (Math.imul(value, 31) + character.codePointAt(0)!) >>> 0;
-  return value;
-}
-
-export function varyCompanyNarrative(text: string, company: string): string {
-  // Quotes and personal voice have a different speaker; never reinterpret them as company claims.
-  if (/["“”«»‘’]/u.test(text) || /(?:^|\s)'[^'\n]+'(?:\s|[.,!?]|$)/u.test(text)
-    || /\b(?:I|I'm|I’m|my|me)\b/iu.test(text)) return text;
+export function factualBullets(text: string, company: string, verbatim = false): FactualBullet[] {
+  if (quoted(text)) return [{ text }];
+  const personal = /\b(?:I|my|me)\b/iu.test(text);
   return [...sentences.segment(text)].map(({ segment }) => {
-    const match = segment.match(/^(\s*)(We\s+(?:also\s+)?)([\s\S]*?)(\s*)$/u);
-    if (!match) return segment;
-    const [, before, opening, predicate, after] = match;
-    // Nested first-person clauses, contractions and reflexives require more parsing than this renderer does.
-    if (/\b(?:we|us|ourselves|ours)\b|[‘’';]/iu.test(predicate)) return segment;
-    // Example lists can continue into another predicate; retain their full saved wording.
-    if (/\bsuch as\b/u.test(predicate)) return segment;
-    const choice = seed(`${company}\0${segment.trim()}`);
-
-    // Front an existing range without changing its capability modal, agent or endpoints.
-    const range = predicate.match(/^(can|could|will|would|may|might|must|should) ([^,;:]+), from ([^,;:.!?]+ to [^,;:.!?]+)([.!?]?)$/u);
-    if (!opening.includes("also") && range && !/\b(?:but|although|unless|except|when|while|because|if|until|provided|providing|assuming|once|whenever|where|wherever|as long as|so long as|on condition that|subject to)\b/u.test(range[3])) {
-      return `${before}From ${range[3]}, we ${range[1]} ${range[2]}${range[4]}${after}`;
+    const statement = segment.trim();
+    if (verbatim || personal) return { text: statement };
+    const welcome = `Welcome to ${company}, a trusted partner for `;
+    if (statement.startsWith(welcome)) {
+      const detail = statement.slice(welcome.length);
+      return { text: detail.charAt(0).toUpperCase() + detail.slice(1) };
     }
-    if (/,\s+from\b/u.test(predicate)) return segment;
-    // Keep omitted-subject clauses intact; only the existing additive transition can move safely.
-    if (predicate.includes(",")) return opening.includes("also") ? `${before}In addition, we ${predicate}${after}` : segment;
-    const verb = predicate.match(/^(\w+)\b([\s\S]*)$/u);
-    if (!verb || (!present[verb[1]] && !modals.has(verb[1]))) return segment;
-    // Avoid ambiguous coordinated predicates and perfect aspect, including omitted auxiliary subjects.
-    if (verb[1] === "have" || /\b(?:and|or|but|nor|yet)\s+(?!(?:also\s+)?(?:can|could|will|would|may|might|must|should)\b)/u.test(verb[2])) return segment;
-    const subjects = ["We", "The company", company, "The company", "It"];
-    const subject = subjects[choice % subjects.length];
-    const thirdPerson = subject !== "We";
-    const body = `${thirdPerson && present[verb[1]] ? present[verb[1]] : verb[1]}${verb[2]}`;
-    // A single recognized subject owns every possessive in this sentence; other first-person clauses were excluded.
-    const agreed = thirdPerson ? body.replace(/\bour\b/gu, "its") : body;
-
-    if (opening.includes("also")) {
-      const continuation = subject === "The company" ? "the company" : subject === "We" ? "we" : subject === "It" ? "it" : subject;
-      return `${before}In addition, ${continuation} ${agreed}${after}`;
+    const voice = statement.match(/^We (also )?(specialize in|provide|offer|perform|use|adhere to|can|will|may|must|should) (.+)$/su);
+    if (!voice) return { text: statement };
+    const [, additional, verb, predicate] = voice;
+    // Do not reinterpret omitted-subject clauses, coordination or another speaker.
+    const nominalAnd = [...predicate.matchAll(/\band\s+([\p{L}-]+)/gu)].every((match) => {
+      const head = match[1];
+      return /ing$|s$/u.test(head) && head.length > 3 && !/(?:ss|us|is)$|^(?:does|this|thus)$/u.test(head);
+    });
+    if (/[;:]|\b(?:or|but|nor|yet|we|us|ourselves|ours)\b/iu.test(predicate) || !nominalAnd) {
+      return { text: statement, label: "Company statement" };
     }
-    return `${before}${subject} ${agreed}${after}`;
-  }).join("");
+    // A trailing assistance clause can be a separate factual bullet without changing its agent.
+    const assistance = predicate.match(/^([^,]+), assisting (.+)$/su);
+    const body = assistance?.[1] ?? predicate;
+    const specialtyResult = verb === "specialize in" && /^[^,]+, ensuring [^,]+$/su.test(body);
+    if ((body.includes(",") && !specialtyResult) || /^(?:no|not|never)\b/u.test(body)) return { text: statement, label: "Company statement" };
+    const neutral = (value: string) => value.replace(/\bour\b/gu, "its");
+    const labels: Record<string, string> = { "specialize in": "Specialty", provide: "Services provided", offer: "Services offered",
+      perform: "Activities performed", use: "Tools used", "adhere to": "Adherence" };
+    const label = labels[verb];
+    if (assistance && !label) return { text: statement, label: "Company statement" };
+    return { text: neutral(label ? body : `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${body}`),
+      ...(label ? { label: `${additional ? "Additional " : ""}${label.charAt(0).toLowerCase()}${label.slice(1)}`.replace(/^./, (letter) => letter.toUpperCase()) } : {}),
+      ...(assistance ? { assistance: neutral(assistance[2]) } : {}),
+    };
+  }).flatMap((bullet) => "assistance" in bullet && typeof bullet.assistance === "string"
+    ? [{ text: bullet.text, label: bullet.label }, { text: `Assisting ${bullet.assistance}` }] : [bullet]);
 }
