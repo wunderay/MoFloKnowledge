@@ -1,5 +1,5 @@
 import type { StoredCapture } from "../crawl/run-crawl";
-import type { TechnicalObservation } from "../model/responses";
+import type { TechnicalObservation } from "./types";
 import type { RenderResult } from "../../contracts/render-task";
 import { stableId } from "./identity";
 /** Bounded plain observations, never executable metadata or provider instructions. */

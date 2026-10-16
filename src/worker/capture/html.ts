@@ -227,6 +227,32 @@ export function captureHtml(
       .slice(0, 40)
       .map((_i, node) => normalizeText($(node).text()).slice(0, 2000))
       .get();
+  // Named cards beneath an explicit services/products heading are declarations, not a prose classifier.
+  // Capture only direct card headings and their own paragraph; unrelated links remain ordinary links.
+  const offeringBlocks: { name: string; description: string | null; url: string | null }[] = [];
+  if (!rendered)
+    $("h1,h2").slice(0, 100).each((_i, heading) => {
+      if (!/^(?:our\s+)?(?:services|products|offerings)(?:\s+(?:and|&)\s+(?:services|products))?$/i.test(normalizeText($(heading).text()))) return;
+      const container = $(heading).closest("section,article");
+      const region = container.length ? container : $(heading).parent();
+      region.find("h3,h4").slice(0, 30).each((_j, node) => {
+        const name = normalizeText($(node).text());
+        if (!name || name.length > 200) return;
+        const card = $(node).closest("article,li").length
+          ? $(node).closest("article,li") : $(node).parent();
+        // Several headings in one wrapper do not establish which paragraph belongs to this name.
+        const paragraph = card.find("h3,h4").length === 1
+          ? card.find("p").first() : $(node).next("p");
+        const description = normalizeText(paragraph.text()).slice(0, 4000) || null;
+        const anchor = $(node).find("a[href]").first().length
+          ? $(node).find("a[href]").first()
+          : card.find("h3,h4").length === 1 ? card.find("a[href]").first() : $(node).next("a[href]");
+        const url = safeLink(anchor.attr("href"));
+        if (url && new URL(url).hostname !== new URL(effectiveUrl).hostname) return;
+        if (!offeringBlocks.some((item) => item.name === name && item.url === url))
+          offeringBlocks.push({ name, description, url });
+      });
+    });
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
   const root = $("main").first().length
@@ -261,6 +287,7 @@ export function captureHtml(
     limitations.push("Captured text exceeded the source segment limit.");
   const observations: Record<string, unknown> = {
     headings,
+    offeringBlocks,
     clientSectionDetected: requiresClientSection,
     jsonLd,
     metaDescription: meta("description") ?? meta("og:description"),
