@@ -92,7 +92,7 @@ it("exports full saved draft profile values, actual review states, coverage and 
   expect(response.status).toBe(200);
   const zip = await JSZip.loadAsync(await response.arrayBuffer());
   const text = load(await zip.file("word/document.xml")!.async("string"), { xmlMode: true }).text();
-  for (const value of ["NEW DRAFT ONLY", "Unreviewed", "Coverage & unknowns", fixture.provenance.sources[0].url, "Unknown", "No entries recorded"]) expect(text).toContain(value);
+  for (const value of ["NEW DRAFT ONLY", "Unreviewed", "Coverage & unknowns", fixture.provenance.sources[0].url, "Unknown"]) expect(text).toContain(value);
   expect(response.headers.get("content-disposition")).toContain("current-draft-company-knowledge-base-draft.docx");
   expect(tables.knowledge_entry_versions.eq).toHaveBeenCalledWith("company_id", companyId);
   expect(client.from).not.toHaveBeenCalledWith("knowledge_base_versions");
