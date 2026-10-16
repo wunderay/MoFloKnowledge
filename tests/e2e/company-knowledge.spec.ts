@@ -40,7 +40,9 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   });
   const secondary = await secondaryContext.newPage();
   await signIn(secondary, secondEmail!, secondPassword!);
+  const mutationHeaders = { Origin: new URL(secondary.url()).origin };
   const secondCreate = await secondary.request.post("/api/companies", {
+    headers: mutationHeaders,
     data: {
       name: "Other tenant E2E",
       website: fixtureUrl,
@@ -249,9 +251,22 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   expect(
     canonicalStringify(await (await page.request.get(downloadUrl!)).json()),
   ).toBe(frozen);
+  const previousJobId = new URL(page.url()).searchParams.get("jobId");
   await page
     .getByRole("button", { name: "Start fresh scrape", exact: true })
     .click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("jobId"))
+    .not.toBe(previousJobId);
+  const nextJobId = new URL(page.url()).searchParams.get("jobId");
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get(`${base}/scrapes/${nextJobId}`)).json())
+          .data.status,
+      { timeout: 100_000 },
+    )
+    .toMatch(/^(partial|succeeded)$/);
   await expect(
     page.getByText(/results are ready for review|Partial results are ready/),
   ).toBeVisible({ timeout: 100_000 });
@@ -266,6 +281,7 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   expect((await secondary.request.get(`${base}/draft`)).status()).toBe(404);
   expect((await secondary.request.get(downloadUrl!)).status()).toBe(404);
   const membership = await page.request.put(`${base}/members/${secondActor}`, {
+    headers: mutationHeaders,
     data: { role: "viewer" },
   });
   expect(membership.ok()).toBe(true);
@@ -273,6 +289,7 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   expect(
     (
       await secondary.request.post(`${base}/versions`, {
+        headers: mutationHeaders,
         data: {
           expectedGeneration: afterEdit.draftGeneration,
           requestId: crypto.randomUUID(),
