@@ -67,9 +67,9 @@ describe("source-only deterministic parsing", () => {
   });
 
   it("preserves labeled employee ranges and approximation without inventing exact counts", () => {
-    const { candidates } = extract('<p>Employee count: 25–50 people</p><p>Employee count: about 30 employees</p>');
+    const { candidates } = extract('<p>Employee count: 25–50 people.</p><p>Employee count: about 30 employees</p>');
     expect(candidates.filter((c) => c.field.endsWith("/employee_count")).map((c) => c.value))
-      .toEqual([{ raw: "25–50 people", exact: null, min: 25, max: 50, as_of: null },
+      .toEqual([{ raw: "25–50 people.", exact: null, min: 25, max: 50, as_of: null },
         { raw: "about 30 employees", exact: null, min: null, max: null, as_of: null }]);
   });
 
@@ -85,6 +85,25 @@ describe("source-only deterministic parsing", () => {
     const detail = extract('<meta name="description" content="Equipment repair by appointment."><a href="/services/equipment-repair">Equipment Repair</a>', "/services/equipment-repair");
     expect(detail.candidates.find((c) => c.field === "/offerings/@id/description")?.value)
       .toBe("Equipment repair by appointment.");
+  });
+
+  it("aligns one declared service with its corroborated visible self-link without merging a service catalog", () => {
+    const detail = '<h2>Equipment Repair</h2><a href="/services/equipment-repair">Equipment Repair</a>';
+    const schema = { "@type": "Service", name: "Equipment Repair Services", url: "https://example.com/old-repair-page",
+      description: "Repairs for workshop machines." };
+    const { candidates, validated } = extract(metadata(schema) + detail, "/services/equipment-repair");
+    const offerings = validated.filter((c) => c.field.startsWith("/offerings"));
+    expect(new Set(offerings.map((c) => c.entryId)).size).toBe(1);
+    expect(candidates.filter((c) => c.field === "/offerings/@id/name").map((c) => c.value))
+      .toEqual(["Equipment Repair Services", "Equipment Repair"]);
+    expect(candidates.filter((c) => c.field === "/offerings/@id/url").map((c) => c.value))
+      .toEqual(["https://example.com/services/equipment-repair", "https://example.com/services/equipment-repair"]);
+    const catalog = extract(metadata([schema, { "@type": "Service", name: "Calibration" }]) + detail,
+      "/services/equipment-repair");
+    const structured = catalog.candidates.filter((c) => c.field === "/offerings/@id/name" && c.observation_ids
+      .some((id) => catalog.observations.find((o) => o.id === id)?.property?.startsWith("jsonld:")));
+    expect(structured.every((c) => c.entity_key?.includes("|jsonld:"))).toBe(true);
+    expect(new Set(structured.map((c) => c.entity_key)).size).toBe(2);
   });
 
   it("requires agreement between a named profile title and visible heading before copying a person's explicit role", () => {

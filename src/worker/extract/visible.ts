@@ -31,8 +31,9 @@ export function visibleCandidates(
       if (employee && employee.length <= 4000) {
         const integer = "(?:0|[1-9]\\d*|[1-9]\\d{0,2}(?:,\\d{3})+)";
         const units = "(?:\\s*(?:employees|people|staff(?: members)?))?";
-        const exact = new RegExp("^(" + integer + ")" + units + "$", "i").exec(employee);
-        const range = new RegExp("^(" + integer + ")\\s*(?:[-–—]|to)\\s*(" + integer + ")" + units + "$", "i").exec(employee);
+        const numericText = employee.replace(/\.$/, "");
+        const exact = new RegExp("^(" + integer + ")" + units + "$", "i").exec(numericText);
+        const range = new RegExp("^(" + integer + ")\\s*(?:[-–—]|to)\\s*(" + integer + ")" + units + "$", "i").exec(numericText);
         const number = (raw: string) => Number(raw.replace(/,/g, ""));
         const exactNumber = exact ? number(exact[1]) : null;
         const min = range ? number(range[1]) : null, max = range ? number(range[2]) : null;
