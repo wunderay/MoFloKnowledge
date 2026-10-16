@@ -1,13 +1,9 @@
 import { describe, it, expect } from "vitest";
 import fixture from "../contracts/illustrative-export.json";
 import {
-  createEmptyProvenance,
   createEntryDefault,
   createEmptyBusiness,
-  entryBusiness,
-  requiredCoverageTargets,
   EntryProvenanceSchema,
-  type EntryProvenance,
   type EntryKind,
   type BusinessEntry,
   type CandidateConflict,
@@ -160,6 +156,68 @@ describe("immutable snapshot assembly", () => {
   });
 });
 describe("revision transformation and conflicts", () => {
+  it("keeps rejected candidate evidence internal while exporting a bounded choice", () => {
+    const rows = entries();
+    const foundation = rows[0];
+    const existing = foundation.provenance.claims.find((c) =>
+      c.targets.includes("/company_foundation/industry"),
+    )!;
+    const source = {
+      ...foundation.provenance.sources[0],
+      id: uuid(90),
+      title: "Sensitive candidate source",
+    };
+    foundation.provenance.sources.push(source);
+    foundation.provenance.evidence.push({
+      id: uuid(91),
+      source_page_id: source.id,
+      kind: "text",
+      excerpt: "Sensitive rejected candidate",
+      technical: null,
+    });
+    foundation.provenance.conflicts.push({
+      id: uuid(92),
+      target: "/company_foundation/industry",
+      material: true,
+      candidates: [
+        {
+          id: uuid(93),
+          value: fixture.company_foundation.industry,
+          origin: "source_backed",
+          evidence_ids: existing.evidence_ids,
+          based_on_claim_ids: [],
+        },
+        {
+          id: uuid(94),
+          value: "Sensitive rejected candidate",
+          origin: "source_backed",
+          evidence_ids: [uuid(91)],
+          based_on_claim_ids: [],
+        },
+      ],
+    });
+    foundation.provenance.decisions.push({
+      id: uuid(95),
+      conflict_id: uuid(92),
+      target: "/company_foundation/industry",
+      action: "select",
+      candidate_id: uuid(93),
+      actor_id: foundation.author_id,
+      decided_at: time,
+      note: "Selected the explicit industry statement.",
+    });
+    const snapshot = assemble(rows);
+    expect(JSON.stringify(snapshot)).not.toContain(
+      "Sensitive rejected candidate",
+    );
+    expect(snapshot.provenance.sources.some((s) => s.id === source.id)).toBe(
+      false,
+    );
+    expect(
+      snapshot.provenance.operations.some((o) => o.kind === "conflict_select"),
+    ).toBe(true);
+  });
+
   it("preserves generated origin on approval, and edits only changed leaves", () => {
     const rows = entries();
     const positioning = rows.find((e) => e.kind === "positioning")!;

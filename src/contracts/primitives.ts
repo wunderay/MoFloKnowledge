@@ -1,6 +1,10 @@
 import { z } from "zod";
 export const UUIDSchema = z.string().uuid();
-export const TextSchema = z.string().min(1).max(20000);
+export const TextSchema = z
+  .string()
+  .min(1)
+  .max(20000)
+  .regex(/\S/, "Text must contain non-whitespace");
 export const NullableTextSchema = TextSchema.nullable();
 export const URLSchema = z
   .string()
