@@ -1,6 +1,12 @@
 # MoFloKnowledge Implementation Plan
 
+> **Current product scope (supersedes this historical plan where they differ):** MoFloKnowledge must not use AI. Extraction is deterministic and evidence based. No model, AI SDK, API key, model-generated content, or generation call is part of the product. The detailed plan below records the earlier AI-enabled design and remains useful only for compatible architecture and historical context; its AI extraction, generated-field, provider/model qualification, and related release requirements are superseded by [the no-AI redesign](no-ai-redesign.md). Current completeness, source selection, baseline traceability, and readable-profile acceptance are defined in [readable profile quality](readable-profile-quality.md); the old 45-item and six-passage benchmark is a historical diagnostic, not a release gate. Existing records with generated origins remain readable and displayable as historical data; new extraction must not create them. This product decision is separate from development-agent model selection documented in [model-selection.md](model-selection.md).
+
 MoFloKnowledge turns a public company website into a source-backed knowledge base that people review, revise, version, and export. Build one Next.js application, one durable Node.js worker, and a Supabase database. Use explicit human approval and immutable snapshots as the boundary between extracted drafts and saved knowledge.
+
+# Readable-profile quality milestone
+
+The current product milestone improves deterministic extraction and the read-only company profile so a reviewer can find the company overview, explicit audience, named services, observed contact paths, and unresolved requested facts. It must preserve original source passages, exact URLs, source/page identity, and human-review state. Descriptions may select and order exact source sentences; they may not rewrite, infer, or generate copy. Page coverage must distinguish captured, selected, failed/blocked, linked but not selected, and undiscovered pages. The full baseline mapping and task-based acceptance checks are in [readable profile quality](readable-profile-quality.md). Do not use a selected-fact count or prose length as the quality gate.
 
 # Product scope and assumptions
 
@@ -112,7 +118,7 @@ Scalar default is `null`; collection default is `[]`. Composite scalars such as 
 | `industry` | string/null | Preserve company's explicit description and quote. | S, labeled I classification, U; null. |
 | `business_model` | string/null | Claims about B2B/B2C, revenue and operating model; quote each assertion. | S, labeled I, U; null. |
 | `company_role` | IdentifiedText[] | Manufacturer/distributor/reseller/provider/marketplace statements. | S, labeled I, U; []. |
-| `year_founded` | integer/null | Explicit founding statement, not copyright year. | S/U; null. |
+| `year_founded` | integer/null | Explicit statement that this company/business was founded or established in the year; a founder's personal-practice start is insufficient. Copyright year is not evidence. | S/U; null. |
 | `legal_entity_type` | string/null | Legal/about/footer statement. Never derive from domain or country. | S/U; null. |
 | `employee_count` | EmployeeCount/null | Exact/range/raw wording and explicit as-of date. | S/U; null; never manufacture exact count. |
 | `main_address` | Address/null | Contact/location primary-address statement and quote. | S/U; null; do not assume first address is headquarters. |

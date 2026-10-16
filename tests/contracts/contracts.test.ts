@@ -1,0 +1,559 @@
+import { describe, it, expect } from "vitest";
+import fixture from "./illustrative-export.json";
+import {
+  UUIDSchema,
+  URLSchema,
+  DateOnlySchema,
+  EmployeeCountSchema,
+  PricingSchema,
+  FontSchema,
+  SocialLinkSchema,
+  KnowledgeBaseExportSchema,
+  BusinessSchema,
+  PersonSchema,
+  OfferingSchema,
+  FIELD_REGISTRY,
+  createEmptyBusiness,
+  createEntryDefault,
+  requiredCoverageTargets,
+  resolveStablePointer,
+  enumerateFactualLeaves,
+  validateProvenance,
+  type Business,
+  ProposalSchema,
+  ExtractionOutputSchema,
+  ExtractionCandidateSchema,
+  ProgressSchema,
+  CheckpointSchema,
+  EntryProvenanceSchema,
+} from "../../src/contracts";
+const clone = () => structuredClone(fixture);
+const business = (): Business => {
+  const x = clone();
+  return BusinessSchema.parse({
+    company_foundation: x.company_foundation,
+    positioning: x.positioning,
+    market_and_customers: x.market_and_customers,
+    branding_and_style: x.branding_and_style,
+    online_presence: x.online_presence,
+    key_people: x.key_people,
+    offerings: x.offerings,
+  });
+};
+describe("canonical business contracts", () => {
+  it("validates real calendar dates, UUIDs and absolute HTTP URLs", () => {
+    expect(DateOnlySchema.safeParse("2025-02-29").success).toBe(false);
+    expect(DateOnlySchema.parse("2024-02-29")).toBe("2024-02-29");
+    expect(UUIDSchema.safeParse("some-id").success).toBe(false);
+    for (const url of [
+      "javascript:alert(1)",
+      "data:image/svg+xml,hi",
+      "https://u:p@example.com",
+    ])
+      expect(URLSchema.safeParse(url).success).toBe(false);
+  });
+  it("preserves all 41 exact field defaults and rejects missing or unknown nested keys", () => {
+    const empty = createEmptyBusiness();
+    expect(FIELD_REGISTRY).toHaveLength(41);
+    expect(BusinessSchema.parse(empty)).toEqual(empty);
+    expect(requiredCoverageTargets(empty)).toHaveLength(31);
+    const missing = clone();
+    delete (
+      missing.company_foundation as Partial<typeof missing.company_foundation>
+    ).overview;
+    expect(KnowledgeBaseExportSchema.safeParse(missing).success).toBe(false);
+    const extra = clone();
+    Object.assign(extra.offerings[0].pricing!, { discount: 3 });
+    expect(KnowledgeBaseExportSchema.safeParse(extra).success).toBe(false);
+  });
+  it("accepts the full plan illustrative export and all null/default business fields", () => {
+    expect(KnowledgeBaseExportSchema.safeParse(fixture).success).toBe(true);
+    expect(
+      BusinessSchema.parse(createEmptyBusiness()).company_foundation
+        .employee_count,
+    ).toBe(null);
+    expect(
+      PersonSchema.safeParse(createEntryDefault("key_person")).success,
+    ).toBe(false);
+    expect(
+      OfferingSchema.safeParse(createEntryDefault("offering")).success,
+    ).toBe(false);
+  });
+  it("keeps exact employee counts distinct from ranges and approximations", () => {
+    const range = {
+      raw: "We employ 50–100 people",
+      exact: null,
+      min: 50,
+      max: 100,
+      as_of: null,
+    };
+    expect(EmployeeCountSchema.parse(range)).toEqual(range);
+    expect(
+      EmployeeCountSchema.safeParse({
+        ...range,
+        exact: 75,
+        min: null,
+        max: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      EmployeeCountSchema.safeParse({ ...range, min: 100, max: 50 }).success,
+    ).toBe(false);
+  });
+  it("keeps monetary decimals lossless and rejects contradictory free/contact prices", () => {
+    const pricing = fixture.offerings[0].pricing;
+    expect(PricingSchema.parse(pricing).amount).toBe("29.00");
+    expect(
+      PricingSchema.safeParse({ ...pricing, min_amount: "2.00" }).success,
+    ).toBe(false);
+    for (const kind of ["free", "contact_for_pricing"]) {
+      expect(
+        PricingSchema.safeParse({ ...pricing, kind, amount: "0" }).success,
+      ).toBe(false);
+      expect(
+        PricingSchema.safeParse({ ...pricing, kind, amount: null }).success,
+      ).toBe(true);
+    }
+    expect(
+      PricingSchema.safeParse({
+        ...pricing,
+        amount: null,
+        min_amount: "999999999999999999.12",
+        max_amount: "999999999999999999.11",
+      }).success,
+    ).toBe(false);
+  });
+  it("keeps font observation metadata sorted and rejects share links", () => {
+    const font = fixture.branding_and_style.fonts[0];
+    expect(
+      FontSchema.safeParse({
+        ...font,
+        observations: ["resource_loaded", "css_declared"],
+      }).success,
+    ).toBe(false);
+    expect(
+      SocialLinkSchema.safeParse({
+        id: font.id,
+        platform: "X",
+        profile_url: "https://x.com/intent/tweet",
+      }).success,
+    ).toBe(false);
+  });
+});
+describe("stable pointer and field-level provenance", () => {
+  it("resolves escaped keys and ID pointers independently of array order", () => {
+    const item = fixture.key_people[0];
+    const value = { "a/b": { "~key": [item] } };
+    expect(resolveStablePointer(value, `/a~1b/~0key/@${item.id}/name`)).toBe(
+      item.name,
+    );
+    expect(() => resolveStablePointer(value, "/a~1b/~0key/0/name")).toThrow();
+    expect(() =>
+      resolveStablePointer({ items: [item, item] }, `/items/@${item.id}/name`),
+    ).toThrow();
+    expect(
+      enumerateFactualLeaves({ key_people: [item] }).some((x) =>
+        x.path.endsWith("/id"),
+      ),
+    ).toBe(false);
+  });
+  it("proves complete sample provenance including honest generated and user origins", () => {
+    expect(validateProvenance(business(), fixture.provenance as never)).toEqual(
+      [],
+    );
+  });
+  it("rejects missing leaf claims, duplicated coverage and unsupported inference", () => {
+    const p = clone().provenance;
+    p.claims = p.claims.filter(
+      (c) => !c.targets.includes("/company_foundation/website"),
+    );
+    p.coverage.push(p.coverage[0]);
+    expect(
+      validateProvenance(business(), p as never).map((x) => x.code),
+    ).toEqual(expect.arrayContaining(["leaf_unclaimed", "coverage_count"]));
+    const q = clone().provenance;
+    q.claims.find((c) => c.origin === "inferred")!.evidence_ids = [];
+    expect(
+      validateProvenance(business(), q as never).some(
+        (x) => x.code === "support_missing",
+      ),
+    ).toBe(true);
+  });
+  it("requires current support graph resolution, permitted origins and user attestation", () => {
+    const p = clone().provenance;
+    const generated = p.claims.find((c) => c.origin === "generated")!;
+    generated.based_on_claim_ids = [generated.id];
+    const user = p.claims.find((c) => c.origin === "user_provided")!;
+    user.actor_id = null;
+    expect(
+      validateProvenance(business(), p as never).map((x) => x.code),
+    ).toEqual(expect.arrayContaining(["claim_cycle", "user_attribution"]));
+    const b = business();
+    b.key_people[0].gender = "woman";
+    const person = p.claims.find((c) =>
+      c.targets.some((t) => t.endsWith("/name") && t.startsWith("/key_people")),
+    )!;
+    person.targets.push(`/key_people/@${b.key_people[0].id}/gender`);
+    expect(
+      validateProvenance(b, p as never).some(
+        (x) => x.code === "gender_attestation",
+      ),
+    ).toBe(true);
+  });
+  it("verifies exact source text and technical observations against stored capture", () => {
+    const p = clone().provenance;
+    const captured = p.sources.map((s) => ({
+      ...s,
+      segments: p.evidence
+        .filter((e) => e.source_page_id === s.id && e.excerpt)
+        .map((e) => ({ text: e.excerpt! })),
+      observations: p.evidence
+        .filter((e) => e.source_page_id === s.id && e.technical)
+        .map((e) => e.technical!),
+    }));
+    expect(
+      validateProvenance(business(), p as never, { capturedSources: captured }),
+    ).toEqual([]);
+    captured[0].segments = [];
+    expect(
+      validateProvenance(business(), p as never, {
+        capturedSources: captured,
+      }).some((x) => x.code === "quote_mismatch"),
+    ).toBe(true);
+  });
+  it("treats supersedes as historical but rejects unresolved current dependencies", () => {
+    const p = clone().provenance;
+    expect(
+      validateProvenance(business(), p as never, {
+        historicalClaimIds: [],
+      }).some((x) => x.code === "historical_claim_missing"),
+    ).toBe(true);
+    p.claims.find((c) => c.origin === "generated")!.based_on_claim_ids = [
+      p.operations[0].supersedes_claim_id!,
+    ];
+    expect(
+      validateProvenance(business(), p as never).some(
+        (x) => x.code === "claim_missing",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("selected value boundaries", () => {
+  it("rejects assigning one entry claim to another person or section", () => {
+    const p = clone().provenance;
+    const claim = p.claims.find((c) =>
+      c.targets.some((t) => t.startsWith("/key_people/")),
+    )!;
+    claim.entry_id = p.entries[0].entry_id;
+    expect(
+      validateProvenance(business(), p as never).some(
+        (i) => i.code === "entry_target",
+      ),
+    ).toBe(true);
+  });
+  it("requires candidate evidence, human resolution and selected-origin preservation", () => {
+    const p = clone().provenance;
+    const claim = p.claims.find((c) => c.origin === "generated")!;
+    const id = "00000000-0000-4000-8000-000000000001";
+    const other = "00000000-0000-4000-8000-000000000002";
+    const provenance = {
+      sources: p.sources,
+      evidence: p.evidence,
+      claims: p.claims,
+      coverage: p.coverage,
+      operations: p.operations,
+      conflicts: [
+        {
+          id,
+          target: "/positioning/company_pitch",
+          material: true,
+          candidates: [
+            {
+              id: other,
+              value: fixture.positioning.company_pitch,
+              origin: "source_backed",
+              evidence_ids: claim.evidence_ids,
+              based_on_claim_ids: [],
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000003",
+              value: "Another pitch",
+              origin: "source_backed",
+              evidence_ids: [],
+              based_on_claim_ids: [],
+            },
+          ],
+        },
+      ],
+      decisions: [],
+    };
+    const unresolved = validateProvenance(business(), provenance as never, {
+      approved: true,
+    });
+    expect(unresolved.map((i) => i.code)).toEqual(
+      expect.arrayContaining(["candidate_support", "unresolved_conflict"]),
+    );
+    Object.assign(provenance, {
+      decisions: [
+        {
+          id: "00000000-0000-4000-8000-000000000004",
+          conflict_id: id,
+          target: "/positioning/company_pitch",
+          action: "select",
+          candidate_id: other,
+          actor_id: p.company.snapshot_author_id,
+          decided_at: fixture.saved_at,
+          note: "Selected exact statement",
+        },
+      ],
+    });
+    expect(
+      validateProvenance(business(), provenance as never, {
+        approved: true,
+      }).some((i) => i.code === "conflict_claim"),
+    ).toBe(true);
+  });
+});
+
+describe("worker proposal trust boundary", () => {
+  it("rejects wrong entry shapes, unsafe extraction metadata and negative progress", () => {
+    const proposal = {
+      id: fixture.provenance.entries[0].entry_id,
+      kind: "company_foundation",
+      target_entry_id: null,
+      base_revision: null,
+      schema_version: "1.0.0",
+      content: fixture.positioning,
+      provenance: EntryProvenanceSchema.parse({
+        sources: [],
+        evidence: [],
+        claims: [],
+        coverage: [],
+        operations: [],
+      }),
+      conflicts: [],
+    };
+    expect(ProposalSchema.safeParse(proposal).success).toBe(false);
+    expect(
+      ExtractionOutputSchema.safeParse({
+        candidates: [],
+        limitations: [],
+        actor_id: fixture.provenance.company.snapshot_author_id,
+      }).success,
+    ).toBe(false);
+    const candidate = {
+      target: "/company_foundation/overview",
+      value: "Captured text",
+      origin: "source_backed",
+      segment_ids: ["segment-1"],
+      observation_ids: [],
+      note: null,
+    };
+    expect(ExtractionCandidateSchema.safeParse(candidate).success).toBe(true);
+    for (const origin of ["inferred", "generated", "user_provided"])
+      expect(ExtractionCandidateSchema.safeParse({ ...candidate, origin }).success).toBe(false);
+    expect(
+      ProgressSchema.safeParse({
+        stage: "crawling",
+        discovered: 2,
+        selected: 2,
+        captured: -1,
+        failed: 0,
+        blocked: 0,
+        extracted: 0,
+        document_limit: 10,
+        limits_reached: [],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("cross-entry generated support", () => {
+  it("resolves supporting immutable claims without importing foreign active targets", () => {
+    const generated = fixture.provenance.claims.find(
+      (c) => c.origin === "generated",
+    )!;
+    const support = fixture.provenance.claims.find(
+      (c) => c.id === generated.based_on_claim_ids[0],
+    )!;
+    const evidenceIds = new Set(generated.evidence_ids);
+    const evidence = fixture.provenance.evidence.filter((e) =>
+      evidenceIds.has(e.id),
+    );
+    const sourceIds = new Set(evidence.map((e) => e.source_page_id));
+    const provenance = EntryProvenanceSchema.parse({
+      claims: [generated],
+      evidence,
+      sources: fixture.provenance.sources.filter((s) => sourceIds.has(s.id)),
+      coverage: fixture.provenance.coverage.flatMap((c) => {
+        const targets = c.targets.filter((t) => t.startsWith("/positioning/"));
+        return targets.length ? [{ ...c, targets }] : [];
+      }),
+      operations: [],
+    });
+    const current = { positioning: fixture.positioning };
+    expect(
+      validateProvenance(current, provenance).some(
+        (i) => i.code === "claim_missing",
+      ),
+    ).toBe(true);
+    expect(
+      validateProvenance(current, provenance, {
+        supportingClaims: [support as never],
+        entryIds: [generated.entry_id],
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe("durable worker checkpoint wire", () => {
+  it("accepts initial and crawl/extraction snapshots with strict nested bounds", () => {
+    const checkpoint = {
+      effectiveRoot: "https://example.com/",
+      frontier: {
+        root: "https://example.com/",
+        pending: [{ url: "https://example.com/about", depth: 1, score: 20 }],
+        seen: ["https://example.com/", "https://example.com/about"],
+        aliases: [],
+        selected: 1,
+        limitsReached: [],
+      },
+      budgets: {
+        documents: 1,
+        htmlBytes: 600,
+        designBytes: 400,
+        startedAt: Date.now(),
+        limitsReached: [],
+      },
+      captured_source_ids: [fixture.provenance.sources[0].id],
+      errors: [],
+    };
+    expect(CheckpointSchema.parse({})).toEqual({});
+    expect(CheckpointSchema.parse(checkpoint)).toEqual(checkpoint);
+    expect(
+      CheckpointSchema.safeParse({
+        ...checkpoint,
+        stage: "extracting",
+        extracted_source_ids: [fixture.provenance.sources[0].id],
+        extractor_version: "deterministic-v1",
+        model_tokens: 100,
+        model_successes: 1,
+        model_failures: 0,
+        validated_candidates: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      CheckpointSchema.safeParse({
+        ...checkpoint,
+        budgets: { ...checkpoint.budgets, designBytes: 16 * 1024 * 1024 },
+      }).success,
+    ).toBe(false);
+    expect(
+      CheckpointSchema.safeParse({ ...checkpoint, secret: "leaked" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("explicit original gender wording", () => {
+  it("accepts an observed first-person self-description and rejects a note-only source attestation", () => {
+    const b = business();
+    b.key_people[0].gender = "woman";
+    const p = clone().provenance;
+    const evidenceId = "00000000-0000-4000-8000-000000000041";
+    p.evidence.push({
+      id: evidenceId,
+      source_page_id: p.sources[1].id,
+      kind: "text",
+      excerpt: "I identify as a woman.",
+      technical: null,
+    });
+    p.claims.push({
+      id: "00000000-0000-4000-8000-000000000042",
+      entry_id: b.key_people[0].id,
+      targets: [`/key_people/@${b.key_people[0].id}/gender`],
+      origin: "source_backed",
+      evidence_ids: [evidenceId],
+      based_on_claim_ids: [],
+      actor_id: null,
+      authored_at: null,
+      note: null,
+    });
+    expect(validateProvenance(b, p as never)).toEqual([]);
+    p.evidence[p.evidence.length - 1].excerpt =
+      "An unrelated professional biography.";
+    p.claims[p.claims.length - 1].note = "Explicit public self-description";
+    expect(
+      validateProvenance(b, p as never).some(
+        (issue) => issue.code === "gender_attestation",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("ordinary proposal field selections", () => {
+  it("accepts metadata for populated nonconflicting fields and rejects ambiguous/unknown selections", () => {
+    const base = {
+      id: "00000000-0000-4000-8000-000000000051",
+      kind: "positioning",
+      target_entry_id: null,
+      base_revision: null,
+      schema_version: "1.0.0",
+      content: { company_pitch: "Observed pitch.", founding_story: null },
+      provenance: EntryProvenanceSchema.parse({
+        sources: [],
+        evidence: [],
+        claims: [],
+        coverage: [],
+        operations: [],
+      }),
+      conflicts: [],
+    };
+    const change = {
+      id: "00000000-0000-4000-8000-000000000052",
+      target: "/positioning/company_pitch",
+    };
+    expect(ProposalSchema.parse(base).changes).toEqual([]);
+    expect(
+      ProposalSchema.parse({ ...base, changes: [change] }).changes,
+    ).toEqual([change]);
+    for (const changes of [
+      [change, change],
+      [{ ...change, target: "/positioning/founding_story" }],
+      [{ ...change, target: "/company_foundation/overview" }],
+      [{ ...change, target: "/positioning/company_pitch/nested" }],
+      [{ ...change, value: "Another authority" }],
+    ])
+      expect(ProposalSchema.safeParse({ ...base, changes }).success).toBe(
+        false,
+      );
+    const conflict = {
+      id: "00000000-0000-4000-8000-000000000053",
+      target: change.target,
+      material: true,
+      candidates: [
+        {
+          id: "00000000-0000-4000-8000-000000000054",
+          value: "First",
+          origin: "source_backed",
+          evidence_ids: [],
+          based_on_claim_ids: [],
+        },
+        {
+          id: "00000000-0000-4000-8000-000000000055",
+          value: "Second",
+          origin: "source_backed",
+          evidence_ids: [],
+          based_on_claim_ids: [],
+        },
+      ],
+    };
+    expect(
+      ProposalSchema.safeParse({
+        ...base,
+        conflicts: [conflict],
+        changes: [change],
+      }).success,
+    ).toBe(false);
+  });
+});

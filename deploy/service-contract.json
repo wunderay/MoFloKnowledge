@@ -1,0 +1,54 @@
+{
+  "contractVersion": 1,
+  "status": "provider_unselected",
+  "provider": null,
+  "region": null,
+  "runtime": { "node": "22.23.3", "persistent": true, "processSupervisor": null },
+  "services": [
+    {
+      "id": "web",
+      "command": "npm run web",
+      "minimumInstances": 1,
+      "scaleToZero": false,
+      "secretNames": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "DATABASE_URL"],
+      "network": ["Supabase Auth", "PostgreSQL"]
+    },
+    {
+      "id": "worker",
+      "command": "npm run worker",
+      "minimumInstances": 1,
+      "scaleToZero": false,
+      "independentOfWeb": true,
+      "secretNames": ["WORKER_DATABASE_URL"],
+      "network": ["PostgreSQL", "validated public HTTP/HTTPS destinations", "private renderer task channel"]
+    },
+    {
+      "id": "renderer",
+      "command": null,
+      "minimumInstances": 1,
+      "scaleToZero": false,
+      "independentOfWeb": true,
+      "secretNames": [],
+      "network": ["private authenticated task channel", "outbound proxy only"]
+    },
+    {
+      "id": "outbound-proxy",
+      "command": null,
+      "minimumInstances": 1,
+      "scaleToZero": false,
+      "secretNames": [],
+      "network": ["validated public HTTP/HTTPS destinations"]
+    }
+  ],
+  "database": {
+    "providerProject": null,
+    "tlsRequired": true,
+    "connectionPoolMode": null,
+    "workerRole": "owner must configure a non-login function owner and restricted worker login",
+    "migrationsCommand": "npm run db:migrate"
+  },
+  "auth": { "providerProject": null, "allowedRedirectOrigins": [], "status": "owner_configuration_required" },
+  "restartAndResourceLimits": { "providerValues": null, "status": "owner_configuration_required" },
+  "rendererBoundaryReport": "deploy/renderer-boundary-report.example.json",
+  "qualification": "NOT_PROVEN"
+}

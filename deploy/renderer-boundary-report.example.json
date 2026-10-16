@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "qualified": false,
+  "checkedAt": null,
+  "expiresAt": null,
+  "host": null,
+  "rendererUid": null,
+  "proxyOnlyEgress": false,
+  "directTcpBlocked": false,
+  "directUdpBlocked": false,
+  "directDnsBlocked": false,
+  "sandbox": false,
+  "secretless": false,
+  "mountIsolation": false,
+  "evidence": [],
+  "status": "NOT_PROVEN"
+}

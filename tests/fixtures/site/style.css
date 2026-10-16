@@ -1,0 +1,11 @@
+@font-face {
+  font-family: "Field Sans";
+  src: local("Arial");
+  font-style: normal;
+  font-weight: 400;
+}
+:root { --field-green: #245C4B; --field-sand: #E9E1D2; --ink: #17231F; }
+body { color: var(--ink); background: #fff; font-family: "Field Sans", Arial, sans-serif; }
+h1, h2 { color: #245C4B; }
+.button { color: #fff; background-color: #245C4B; padding: .7rem 1rem; }
+.site-header { background: #E9E1D2; }

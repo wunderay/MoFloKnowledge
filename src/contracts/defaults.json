@@ -1,0 +1,43 @@
+{
+  "company_foundation": {
+    "overview": null,
+    "website": null,
+    "industry": null,
+    "business_model": null,
+    "year_founded": null,
+    "legal_entity_type": null,
+    "employee_count": null,
+    "main_address": null,
+    "company_role": [],
+    "other_locations": [],
+    "service_locations": [],
+    "alternative_company_names": []
+  },
+  "positioning": {
+    "company_pitch": null,
+    "founding_story": null
+  },
+  "market_and_customers": {
+    "target_buyers": [],
+    "customer_needs": [],
+    "ideal_customer_personas": [],
+    "industry_groupings": [],
+    "industry_outlook": [],
+    "channels": [],
+    "funnels": [],
+    "ctas": [],
+    "suppliers_and_partners": []
+  },
+  "branding_and_style": {
+    "writing_style_description": null,
+    "art_style_description": null,
+    "fonts": [],
+    "brand_colors": [],
+    "logos": []
+  },
+  "online_presence": {
+    "social_media_links": []
+  },
+  "key_people": [],
+  "offerings": []
+}
