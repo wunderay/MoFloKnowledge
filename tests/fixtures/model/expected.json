@@ -1,0 +1,101 @@
+{
+  "fixtureOnly": true,
+  "requiredCategories": [
+    "company_foundation",
+    "positioning",
+    "market_and_customers",
+    "branding_and_style",
+    "online_presence",
+    "key_people",
+    "offerings"
+  ],
+  "fieldCount": 41,
+  "fieldPaths": [
+    "/company_foundation/overview",
+    "/company_foundation/website",
+    "/company_foundation/industry",
+    "/company_foundation/business_model",
+    "/company_foundation/year_founded",
+    "/company_foundation/legal_entity_type",
+    "/company_foundation/employee_count",
+    "/company_foundation/main_address",
+    "/company_foundation/company_role",
+    "/company_foundation/other_locations",
+    "/company_foundation/service_locations",
+    "/company_foundation/alternative_company_names",
+    "/positioning/company_pitch",
+    "/positioning/founding_story",
+    "/market_and_customers/target_buyers",
+    "/market_and_customers/customer_needs",
+    "/market_and_customers/ideal_customer_personas",
+    "/market_and_customers/industry_groupings",
+    "/market_and_customers/industry_outlook",
+    "/market_and_customers/channels",
+    "/market_and_customers/funnels",
+    "/market_and_customers/ctas",
+    "/market_and_customers/suppliers_and_partners",
+    "/branding_and_style/writing_style_description",
+    "/branding_and_style/art_style_description",
+    "/branding_and_style/fonts",
+    "/branding_and_style/brand_colors",
+    "/branding_and_style/logos",
+    "/online_presence/social_media_links",
+    "/key_people/@id/name",
+    "/key_people/@id/title",
+    "/key_people/@id/role",
+    "/key_people/@id/gender",
+    "/key_people/@id/background_or_relevance",
+    "/offerings/@id/name",
+    "/offerings/@id/description",
+    "/offerings/@id/offering_type",
+    "/offerings/@id/category",
+    "/offerings/@id/features",
+    "/offerings/@id/pricing",
+    "/offerings/@id/url"
+  ],
+  "coverageStatuses": {
+    "found": "usable source evidence",
+    "not_found": "absent from successful bounded pages",
+    "not_checked": "relevant material not processed",
+    "partial": "a relevant route failed or was truncated",
+    "conflict": "two addresses must remain unresolved"
+  },
+  "specialCases": {
+    "generatedPitch": {
+      "path": "/positioning/company_pitch",
+      "origin": "generated",
+      "supportingFacts": [
+        "/company_foundation/overview",
+        "/company_foundation/service_locations"
+      ]
+    },
+    "inferredWritingStyle": {
+      "path": "/branding_and_style/writing_style_description",
+      "origin": "inferred"
+    },
+    "userCorrection": {
+      "path": "/key_people/@00000000-0000-4000-8000-000000000015/gender",
+      "origin": "user_provided",
+      "value": null
+    },
+    "addressConflict": {
+      "path": "/company_foundation/main_address",
+      "candidateEvidenceIds": [
+        "00000000-0000-4000-8000-000000000008",
+        "00000000-0000-4000-8000-000000000009"
+      ],
+      "resolution": "unresolved"
+    },
+    "technicalEvidence": [
+      "font CSS declaration",
+      "computed color",
+      "header logo asset URL"
+    ],
+    "pricing": {
+      "kind": "paid",
+      "amount": "1200",
+      "currency": "USD",
+      "monthlyDashboardPrice": "240"
+    }
+  }
+}
