@@ -157,7 +157,7 @@ it("composes distinct populated and sparse company shapes without repetitive sen
   rich.company_foundation.overview = null;
   rich.company_foundation.legal_entity_type = "Cooperative";
   rich.company_foundation.year_founded = 2017;
-  rich.key_people[0].title = "Engineering lead";
+  rich.key_people[0].title = "Engineering lead.";
   rich.key_people[0].role = "Founder";
   rich.offerings[0].category = "Inventory tools";
   rich.market_and_customers.target_buyers.push({ id: "90000000-0000-4000-8000-000000000001", text: "wholesale teams" });
@@ -170,6 +170,8 @@ it("composes distinct populated and sparse company shapes without repetitive sen
   expect(richBody).toContain(rich.offerings[0].description);
   expect(richBody).not.toMatch(/(?:Its |It operates|Their role|offering type is|listed under)/);
   expect(rich).toEqual(before);
+  rich.key_people[0].title = "Independent C.P.A.";
+  expect(documentParagraphs({ kind: "snapshot", snapshot: rich }).map((item) => item.text)).toContain("Independent C.P.A.; Founder");
   const fontRuns = () => documentRuns(documentParagraphs({ kind: "snapshot", snapshot: rich })
     .find((item) => item.text.startsWith("Inter ·"))!);
   expect(fontRuns().filter((run) => run.citations?.length)).toHaveLength(1);
