@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { page, companyId, jobId, candidate } from "../worker/extraction-fixture";
 import { technicalObservations } from "../../src/worker/extract/observations";
 import { deterministicCandidates } from "../../src/worker/extract/deterministic";
+import * as sourceExtractor from "../../src/worker/extract/deterministic";
 import { validateCandidates } from "../../src/worker/extract/validate-candidates";
 import { reduceCandidates } from "../../src/worker/extract/reduce";
 import { validateProvenance, entryBusiness } from "../../src/contracts";
@@ -143,6 +144,7 @@ it("checkpoints completed extraction without source bodies and resumes without r
       limits_reached: [],
     },
   };
+  const parser = vi.spyOn(sourceExtractor, "deterministicCandidates");
   const first = await extractAndFinish(
     job,
     repository,
@@ -155,14 +157,20 @@ it("checkpoints completed extraction without source bodies and resumes without r
   expect((checkpoint.validated_candidates as object[])[0]).not.toHaveProperty(
     "page",
   );
-  const completedCheckpoints = vi.mocked(repository.checkpoint).mock.calls.length;
+  expect(parser).toHaveBeenCalledTimes(1);
+  expect(checkpoint.extracted_source_ids).toEqual([page.id]);
+  const retainedCandidates = structuredClone(checkpoint.validated_candidates);
   const second = await extractAndFinish(
     job,
     repository,
     { ...crawl, checkpoint },
     new AbortController().signal,
   );
-  expect(vi.mocked(repository.checkpoint).mock.calls).toHaveLength(completedCheckpoints);
+  expect(parser).toHaveBeenCalledTimes(1);
+  parser.mockRestore();
+  const resumedCheckpoint = vi.mocked(repository.checkpoint).mock.calls.at(-1)![1];
+  expect(resumedCheckpoint.extracted_source_ids).toEqual([page.id]);
+  expect(resumedCheckpoint.validated_candidates).toEqual(retainedCandidates);
   expect(second).toEqual(first);
   expect(repository.finish).toHaveBeenCalledTimes(2);
 });
