@@ -989,3 +989,15 @@ small {
   margin-top: 3px;
   font-weight: 400;
 }
+.knowledge-editor__candidate {
+  white-space: normal;
+  text-align: left;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.entry-value__text {
+  overflow-wrap: anywhere;
+}
+.proposal__comparison > div {
+  min-width: 0;
+}

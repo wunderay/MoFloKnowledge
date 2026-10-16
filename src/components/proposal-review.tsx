@@ -10,6 +10,7 @@ import {
   type FieldCandidate,
 } from "@/contracts";
 import { ValueView } from "./entry-value";
+import { labelOf, summarizeValue } from "./business-fields";
 type ProposalItem = {
   id: string;
   kind: string;
@@ -148,7 +149,9 @@ export function ProposalReview({
             </div>
             {proposal.conflicts?.map((conflict) => (
               <fieldset className="knowledge-editor__group" key={conflict.id}>
-                <legend>{conflict.target}</legend>
+                <legend>
+                  {labelOf(conflict.target.split("/").at(-1) ?? "Field")}
+                </legend>
                 {conflict.candidates.map((candidate) => (
                   <div key={candidate.id}>
                     <label className="field">
@@ -175,9 +178,7 @@ export function ProposalReview({
                             })
                           }
                         />{" "}
-                        {typeof candidate.value === "string"
-                          ? candidate.value
-                          : JSON.stringify(candidate.value)}
+                        {summarizeValue(candidate.value)}
                       </span>
                     </label>
                     <CitationPopover

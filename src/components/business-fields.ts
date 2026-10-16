@@ -245,3 +245,36 @@ export function newValue(spec: FieldSpec, identified = false): unknown {
     ]);
   return null;
 }
+
+/** A readable choice label; stable IDs remain in the underlying candidate. */
+export function summarizeValue(value: unknown): string {
+  if (value === null || value === undefined) return "Unknown";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value))
+    return value.length ? value.map(summarizeValue).join("; ") : "No values";
+  if (typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    for (const field of [
+      "raw",
+      "text",
+      "name",
+      "label",
+      "family",
+      "hex",
+      "url",
+      "profile_url",
+    ]) {
+      if (typeof object[field] === "string" && object[field])
+        return object[field];
+    }
+    const fields = Object.entries(object).filter(
+      ([key, item]) => key !== "id" && item !== null,
+    );
+    return fields.length
+      ? fields
+          .map(([key, item]) => `${labelOf(key)}: ${summarizeValue(item)}`)
+          .join("; ")
+      : "Unknown";
+  }
+  return String(value);
+}
