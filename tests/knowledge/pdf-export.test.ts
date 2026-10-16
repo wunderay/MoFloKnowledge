@@ -35,7 +35,7 @@ it("paginates a complete PDF with an embedded Unicode font and lossless original
   const drawing = pdf.context.enumerateIndirectObjects().filter(([, object]) => object instanceof PDFRawStream)
     .map(([, stream]) => Buffer.from(decodePDFRawStream(stream as PDFRawStream).decode()).toString("utf8")).join("\n");
   expect(drawing).toContain("1 0.5019607843137255 0 rg");
-  expect(drawing).toContain("0 0 m\n0 9 l\n9 9 l\n9 0 l\nh\nB");
+  expect(drawing).toContain("0 0 m\n0 24 l\n24 24 l\n24 0 l\nh\nB");
   expect(canonicalStringify(snapshot)).toBe(before);
 });
 
@@ -45,7 +45,9 @@ it("wraps real styled text and links each small citation to its actual end-refer
   snapshot.company_foundation.overview = "Literal [1] input stays body text. " + "An intact source paragraph. ".repeat(180) + token + " FINAL COMPLETE CONDITION.";
   const input = { kind: "snapshot" as const, snapshot };
   const drawText = vi.spyOn(PDFPage.prototype, "drawText");
+  const rectangles = vi.spyOn(PDFPage.prototype, "drawRectangle");
   const pdf = await PDFDocument.load(await renderKnowledgePdf(input));
+  expect(rectangles.mock.calls.some(([options]) => options?.width === 24 && options.height === 24)).toBe(true);
   const draws = drawText.mock.calls.map(([text, options], index) => ({ text, options: options!, page: drawText.mock.contexts[index] as PDFPage }));
   const bodyText = draws.filter((draw) => draw.options.size !== 7).map((draw) => draw.text).join("");
   expect(bodyText).toContain(token);

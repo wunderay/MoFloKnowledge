@@ -84,9 +84,36 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
   const newPage = () => { page = pdf.addPage(PageSizes.Letter); y = page.getHeight() - margin; };
   const anchors = new Map<string, { page: PDFPage; y: number }>();
   const links: { page: PDFPage; rect: number[]; source?: number; href?: string }[] = [];
+  const paintLine = (line: Line, x: number, top: number, size: number, color = rgb(0.13, 0.16, 0.2)) => {
+    for (const span of line.spans) {
+      const baseline = top - size + span.raise;
+      page.drawText(span.text, { x: x + span.x, y: baseline, size: span.size, font: span.font,
+        color: span.source || span.raise || span.href ? rgb(0.13, 0.41, 0.61) : color });
+      if (span.source || span.href) links.push({ page, source: span.source, href: span.href,
+        rect: [x + span.x, baseline - 1, x + span.x + span.width, baseline + span.size + 1] });
+    }
+  };
   const paragraphSize = (paragraph: DocumentParagraph) => paragraph.heading === "title" ? 22 : paragraph.heading === "section" ? 16
     : paragraph.heading ? 11.5 : paragraph.muted ? 9 : 10.5;
   for (const [paragraphIndex, paragraph] of paragraphs.entries()) {
+    if (paragraph.palette) {
+      const cellWidth = (page.getWidth() - margin * 2) / 4;
+      for (let offset = 0; offset < paragraph.palette.length; offset += 4) {
+        if (y - 36 < margin) newPage();
+        for (const [column, color] of paragraph.palette.slice(offset, offset + 4).entries()) {
+          const x = margin + column * cellWidth;
+          const components = [1, 3, 5].map((start) => Number.parseInt(color.hex.slice(start, start + 2), 16) / 255);
+          page.drawRectangle({ x, y: y - 24, width: 24, height: 24,
+            color: rgb(components[0], components[1], components[2]), borderColor: rgb(0.53, 0.57, 0.61), borderWidth: 0.5 });
+          const label = { text: color.hex, citations: color.citations, depth: 0 };
+          const lines = layout(label, regular, 10.5, cellWidth - 39);
+          for (const [index, line] of lines.entries()) paintLine(line, x + 31, y - 5 - index * 14.91, 10.5);
+        }
+        y -= 36;
+      }
+      y -= 6;
+      continue;
+    }
     const isTitle = paragraph.heading === "title";
     const isSection = paragraph.heading === "section";
     const isHeading = Boolean(paragraph.heading);
@@ -94,15 +121,16 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
     const font = isHeading ? bold : regular;
     const lineHeight = size * 1.42;
     const before = isSection ? 15 : isHeading && !isTitle ? 7 : 0;
-    const x = margin + Math.min(paragraph.depth, 4) * 8 + (paragraph.bullet ? 12 : 0) + (paragraph.swatch ? 16 : 0);
+    const x = margin + Math.min(paragraph.depth, 4) * 8 + (paragraph.bullet ? 12 : 0);
     const lines = layout(paragraph, font, size, page.getWidth() - x - margin);
     let required = before + lineHeight;
     if (isHeading) {
       required = before + lines.length * lineHeight + 6;
       for (const next of paragraphs.slice(paragraphIndex + 1)) {
         const nextSize = paragraphSize(next);
+        if (next.palette) { required += 36; break; }
         if (!next.heading) { required += nextSize * 1.42; break; }
-        const nextX = margin + Math.min(next.depth, 4) * 8 + (next.swatch ? 16 : 0);
+        const nextX = margin + Math.min(next.depth, 4) * 8;
         required += (next.heading === "section" ? 15 : 7) + layout(next, bold, nextSize, page.getWidth() - nextX - margin).length * nextSize * 1.42 + 6;
       }
     }
@@ -114,19 +142,8 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
       if (y - lineHeight < margin) newPage();
       if (index === 0 && paragraph.anchor) anchors.set(paragraph.anchor, { page, y });
       const lineX = isTitle ? (page.getWidth() - line.width) / 2 : x;
-      if (paragraph.swatch && index === 0) {
-        const components = [1, 3, 5].map((offset) => Number.parseInt(paragraph.swatch!.slice(offset, offset + 2), 16) / 255);
-        page.drawRectangle({ x: x - 16, y: y - size + 1, width: 9, height: 9,
-          color: rgb(components[0], components[1], components[2]), borderColor: rgb(0.53, 0.57, 0.61), borderWidth: 0.5 });
-      }
       if (paragraph.bullet && index === 0) page.drawText("•", { x: x - 12, y: y - size, font: regular, size, color });
-      for (const span of line.spans) {
-        const baseline = y - size + span.raise;
-        page.drawText(span.text, { x: lineX + span.x, y: baseline, size: span.size, font: span.font,
-          color: span.source || span.raise || span.href ? rgb(0.13, 0.41, 0.61) : color });
-        if (span.source || span.href) links.push({ page, source: span.source, href: span.href,
-          rect: [lineX + span.x, baseline - 1, lineX + span.x + span.width, baseline + span.size + 1] });
-      }
+      paintLine(line, lineX, y, size, color);
       y -= lineHeight;
     }
     if (isTitle) {
