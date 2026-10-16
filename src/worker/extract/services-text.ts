@@ -187,12 +187,9 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
     for (const list of primary ? [] : contentLists) {
       if (!list.intro || !/\b(?:our\s+)?services?\b[^.!?]{0,100}\b(?:include|following|offer)|\bwe\s+(?:offer|provide)\b/i.test(list.intro)) continue;
       const context = [list.intro, ...(list.heading ? [list.heading] : [])];
-      const taxParent = page.capture.links.find((link) => sameSite(link.url) && servicePath(link.url) && /\btax\b.*\b(?:preparation|planning)\b/i.test(link.label));
       for (const name of list.items) {
         if (!name || name.length > 200 || promotional.test(name)) continue;
         const linked = page.capture.links.find((link) => sameSite(link.url) && servicePath(link.url) && normalizeName(link.label) === normalizeName(name));
-        if (taxParent && /\b(?:returns?|tax planning|e-file)\b/i.test(name))
-          features(taxParent.url, [name], context);
         if (linked || /\b(?:estate|gift|trust)\b/i.test(name) && /\breturns?\b/i.test(name)) {
           const entity = linked?.url ?? serviceEntityKey(finalUrl, name);
           add("name", name, entity, [...context, name], [], 96);

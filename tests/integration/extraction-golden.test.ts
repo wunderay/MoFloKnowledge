@@ -442,7 +442,7 @@ it("deduplicates literal buyer plurals while retaining source wording and distin
   expect((market.content as { target_buyers: { text: string }[] }).target_buyers.every((value) => buyerPage.capture.segments[0].text.includes(value.text))).toBe(true);
 });
 
-it("merges an explicit broader return catalog scope without borrowing unrelated services", () => {
+it("preserves distinct return catalog identities without an explicit published relationship", () => {
   const entries = [
     { name: "Gift & Estate Tax Return Preparation", key: "narrow" },
     { name: "Estate, Gift & Trust Returns", key: "broad" },
@@ -457,9 +457,10 @@ it("merges an explicit broader return catalog scope without borrowing unrelated 
     segment_ids: ["intro", entry.key] }));
   const validated = validateCandidates(input, catalogPage, [], companyId);
   const offerings = reduceCandidates(validated, { companyId, jobId, partial: false }).filter((proposal) => proposal.kind === "offering");
-  expect(offerings.map((proposal) => (proposal.content as { name: string }).name).sort()).toEqual(["Business Tax Returns", "Estate, Gift & Trust Returns"]);
+  expect(offerings.map((proposal) => (proposal.content as { name: string }).name).sort()).toEqual(["Business Tax Returns", "Estate, Gift & Trust Returns", "Gift & Estate Tax Return Preparation"]);
   const broad = offerings.find((proposal) => (proposal.content as { name: string }).name === "Estate, Gift & Trust Returns")!;
-  expect(broad.provenance.evidence.map((evidence) => evidence.excerpt)).toEqual(expect.arrayContaining(entries.slice(0, 2).map((entry) => entry.name)));
+  expect(broad.provenance.evidence.map((evidence) => evidence.excerpt)).toContain("Estate, Gift & Trust Returns");
+  expect(broad.provenance.evidence.map((evidence) => evidence.excerpt)).not.toContain("Gift & Estate Tax Return Preparation");
   expect(broad.provenance.claims.every((claim) => claim.evidence_ids.some((id) => broad.provenance.evidence.find((evidence) => evidence.id === id)?.excerpt === "Estate, Gift & Trust Returns"))).toBe(true);
   expect(reduceCandidates([...validated].reverse(), { companyId, jobId, partial: false })).toEqual(reduceCandidates(validated, { companyId, jobId, partial: false }));
   const linked = validateCandidates([{ ...input[1], field: "/offerings/@id/url", value: "https://example.com/kit" }], catalogPage, [], companyId);

@@ -83,6 +83,7 @@ it("keeps a company catalog's child scope separate from a linked service restric
     <a href="/services/payroll">Payroll</a></nav><main><h2>Our firm</h2>
     <p>Our services include the following:</p><ul><li>Estate, Gift &amp; Trust Returns</li><li>Personal Tax Returns</li></ul>
     <p>Payroll services are available only to existing tax clients.</p></main>`, "/firm-background");
+  expect(values(candidates, "features").filter((candidate) => candidate.entity_key === "https://example.com/services/tax-preparation-planning")).toEqual([]);
   const trust = values(candidates, "name").find((candidate) => candidate.value === "Estate, Gift & Trust Returns")!;
   expect(values(candidates, "description").filter((candidate) => candidate.entity_key === trust.entity_key)).toEqual([]);
   expect(values(candidates, "features").filter((candidate) => candidate.entity_key === trust.entity_key)).toEqual([]);

@@ -52,38 +52,6 @@ function mergeFontItems(items: { id: string }[]): { id: string }[] {
   }
   return [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
-/** Reconcile only explicit unlinked compound tax-return scopes within this run. */
-function reconcileReturnFamilies(candidates: ValidatedCandidate[]): ValidatedCandidate[] {
-  const groups = new Map<string, ValidatedCandidate[]>();
-  for (const candidate of candidates) if (candidate.kind === "offering") {
-    const members = groups.get(candidate.entryId) ?? [];
-    members.push(candidate); groups.set(candidate.entryId, members);
-  }
-  const families = [...groups].flatMap(([id, members]) => {
-    if (members.some((c) => c.fieldName === "url" || c.fieldName === "pricing") ||
-      members.some((c) => !c.entity_key?.includes("|service:"))) return [];
-    const name = members.find((c) => c.fieldName === "name" && typeof c.value === "string");
-    if (!name || !/\breturns?\b/i.test(String(name.value))) return [];
-    const words = normalizedWording(name.value).split(" ");
-    if (words.some((word) => !/^(?:estate|gift|trust|tax|return|returns|preparation|and)$/.test(word))) return [];
-    const scope = [...new Set(words.filter((word) => /^(?:estate|gift|trust)$/.test(word)))].sort();
-    return scope.length >= 2 ? [{ id, members, scope }] : [];
-  });
-  const remap = new Map<string, string>();
-  const broadNames = new Set<string>();
-  for (const broad of families) {
-    const narrower = families.filter((narrow) => narrow.scope.length < broad.scope.length && narrow.scope.every((word) => broad.scope.includes(word)));
-    // Multiple possible sibling families are ambiguous, so leave them for review.
-    if (narrower.length !== 1) continue;
-    remap.set(broad.id, narrower[0].id);
-    broad.members.filter((candidate) => candidate.fieldName === "name").forEach((candidate) => broadNames.add(candidate.id));
-  }
-  return candidates.map((candidate) => ({ ...candidate,
-    entryId: remap.get(candidate.entryId) ?? candidate.entryId,
-    priority: broadNames.has(candidate.id) ? 100 : candidate.fieldName === "name" && [...remap.values()].includes(candidate.entryId)
-      ? Math.min(candidate.priority ?? 0, 99) : candidate.priority,
-  }));
-}
 export function reduceCandidates(
   candidates: ValidatedCandidate[],
   options: {
@@ -94,7 +62,7 @@ export function reduceCandidates(
 ): Proposal[] {
   if (candidates.some((candidate) => candidate.origin !== "source_backed"))
     throw new Error("invalid_origin");
-  candidates = reconcileReturnFamilies(candidates).sort(
+  candidates = [...candidates].sort(
     (a, b) =>
       a.entryId.localeCompare(b.entryId) ||
       a.field.localeCompare(b.field) ||

@@ -107,16 +107,16 @@ it("reparses a source whose cached evidence no longer resolves in its capture", 
   expect(JSON.stringify(repaired)).not.toContain("missing-captured-observation");
 });
 
-it("invalidates v3 rule caches even when their source IDs and origin still resolve", async () => {
+it("invalidates v4 rule caches even when their source IDs and origin still resolve", async () => {
   const repo = repository();
   const first = await extractAndFinish(job, repo, crawl(), new AbortController().signal);
   const checkpoint = structuredClone(vi.mocked(repo.checkpoint).mock.calls.at(-1)![1]);
-  checkpoint.extractor_version = "deterministic-v3";
+  checkpoint.extractor_version = "deterministic-v4";
   const cached = checkpoint.validated_candidates as { field: string; value: unknown }[];
-  cached[0].value = "Stale v3 wording";
+  cached[0].value = "Stale v4 wording";
   const second = await extractAndFinish(job, repo, crawl(checkpoint), new AbortController().signal);
   expect(second).toEqual(first);
-  expect(JSON.stringify(vi.mocked(repo.checkpoint).mock.calls.at(-1)![1])).not.toContain("Stale v3 wording");
+  expect(JSON.stringify(vi.mocked(repo.checkpoint).mock.calls.at(-1)![1])).not.toContain("Stale v4 wording");
 });
 
 it("preserves ranked validated candidates through durable schema parsing and extraction resume", async () => {
