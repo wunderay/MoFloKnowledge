@@ -1068,11 +1068,11 @@ small {
 .company-profile__disclosure { font-size: 13px; line-height: 1.7; }
 .company-profile__disclosure summary { cursor: pointer; color: var(--green); padding: 7px 0; }
 .company-profile__disclosure[open] > summary { margin-bottom: 8px; }
-.company-profile__coverage { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 10px; }
-.company-profile__coverage p { color: var(--muted); }
-.company-profile__coverage dl > div { margin-bottom: 14px; }
-.company-profile__coverage dt { font-weight: 600; }
-.company-profile__coverage dd { margin: 3px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+.company-profile__disclosure--coverage { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 10px; }
+.company-profile__disclosure--coverage p { color: var(--muted); }
+.company-profile__disclosure--coverage dl > div { margin-bottom: 14px; }
+.company-profile__disclosure--coverage dt { font-weight: 600; }
+.company-profile__disclosure--coverage dd { margin: 3px 0 0; color: var(--muted); overflow-wrap: anywhere; }
 .company-profile__actions { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 16px; }
 @media (max-width: 900px) {
   .company-profile { grid-template-columns: minmax(0, 1fr); gap: 20px; }
