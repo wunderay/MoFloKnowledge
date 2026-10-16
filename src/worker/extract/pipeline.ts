@@ -58,6 +58,21 @@ export async function extractAndFinish(
     if (completed.has(page.id)) continue;
     signal.throwIfAborted();
     const observations = technicalObservations(page);
+    const captureLimitations =
+      (page.capture.observations.limitations as unknown[] | undefined) ?? [];
+    if (
+      captureLimitations.length ||
+      observations.some((o) => o.property === "capture-limitation")
+    ) {
+      partial = true;
+      errors.push({
+        code: "capture_partial",
+        url: page.capture.finalUrl,
+        retryable: false,
+        message:
+          "Some captured text or design observations were unavailable or truncated.",
+      });
+    }
     let proposed = deterministicCandidates(page, observations);
     if (page.id !== crawl.captures[0]?.id)
       proposed = proposed.filter(

@@ -1,5 +1,6 @@
 /** Explicit controlled integration harness. Production entry points never import this file. */
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { load } from "cheerio";
 import { PostgresJobRepository } from "../../src/worker/job-repository";
 import { runWorker } from "../../src/worker/run-loop";
@@ -55,11 +56,11 @@ async function main() {
     return result;
   };
   const stylesheet = await readFile(
-    new URL("../fixtures/site/style.css", import.meta.url),
+    resolve("tests/fixtures/site/style.css"),
     "utf8",
   );
   const faqScript = await readFile(
-    new URL("../fixtures/site/faq.js", import.meta.url),
+    resolve("tests/fixtures/site/faq.js"),
     "utf8",
   );
   const renderer = async (task: { url: string }): Promise<RenderResult> => {
@@ -227,7 +228,8 @@ async function main() {
           ["400 River Street"],
         );
         const social = page.capture.links.find(
-          (link) => link.url === "https://social.example/northstarfieldworks",
+          (link) =>
+            link.url === "https://linkedin.com/company/northstarfieldworks",
         );
         if (social) {
           const observation = observations.find(
@@ -235,7 +237,7 @@ async function main() {
           )!;
           add(
             "/online_presence/social_media_links",
-            [{ platform: "social", profile_url: social.url }],
+            [{ platform: "linkedin", profile_url: social.url }],
             [],
             { observation_ids: [observation.id] },
           );
