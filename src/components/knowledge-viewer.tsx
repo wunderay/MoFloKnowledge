@@ -460,7 +460,19 @@ export function KnowledgeViewer({
             )}
           </select>
         </div>
-        {error && <Notice error>{error}</Notice>}
+        {error && (
+          <Notice error>
+            {error}
+            {canEdit && versionId === "draft" && (
+              <button
+                className="button"
+                onClick={() => setReload((value) => value + 1)}
+              >
+                Reload latest draft
+              </button>
+            )}
+          </Notice>
+        )}
         {loading ? (
           <Notice>Loading knowledge…</Notice>
         ) : mode === "json" ? (
@@ -587,6 +599,12 @@ export function KnowledgeViewer({
           canEdit={canEdit && versionId === "draft"}
           onClose={() => setHistory(null)}
           onRestore={() => setReload((value) => value + 1)}
+          onStale={() => {
+            setHistory(null);
+            setError(
+              "This entry changed before it could be restored. Reload the latest draft, then reopen history to compare before trying again.",
+            );
+          }}
         />
       )}
     </div>

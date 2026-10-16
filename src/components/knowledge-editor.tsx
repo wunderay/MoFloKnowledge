@@ -735,6 +735,13 @@ function KnowledgeEditorContent({
           canEdit={canEdit}
           onClose={() => setHistory(null)}
           onRestore={refresh}
+          onStale={() => {
+            setHistory(null);
+            setStale(true);
+            setError(
+              "This entry changed before it could be restored. Compare the latest revision before trying again.",
+            );
+          }}
         />
       )}
       {publish && (

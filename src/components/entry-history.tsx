@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, companyPath, write } from "./api-client";
+import { api, ApiError, companyPath, write } from "./api-client";
 import { Dialog, Notice, StatusBadge } from "./ui";
 import { readCitationContext } from "./citation-context";
 import { ValueView } from "./entry-value";
@@ -13,6 +13,7 @@ export function EntryHistory({
   canEdit,
   onClose,
   onRestore,
+  onStale,
 }: {
   companyId: string;
   kind: EntryKind;
@@ -21,6 +22,7 @@ export function EntryHistory({
   canEdit: boolean;
   onClose: () => void;
   onRestore: () => void;
+  onStale: () => void;
 }) {
   const [history, setHistory] = useState<Record<string, unknown>[]>([]);
   const [error, setError] = useState("");
@@ -46,7 +48,8 @@ export function EntryHistory({
       onRestore();
       onClose();
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 409) onStale();
+      else setError((e as Error).message);
     } finally {
       setBusy(false);
     }
