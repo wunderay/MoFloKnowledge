@@ -194,24 +194,40 @@ export function BusinessField({
     return (
       <fieldset className="knowledge-editor__group">
         <legend>{label}</legend>
+        <div className="section-heading">
+          <span className="field__hint">
+            Keep each observed method distinct.
+          </span>
+          {evidence}
+        </div>
         {spec.options?.map((option) => (
-          <label className="field" key={option}>
-            <span>
-              <input
-                type="checkbox"
-                disabled={disabled}
-                checked={selected.includes(option)}
-                onChange={(e) =>
-                  onChange(
-                    e.target.checked
-                      ? [...selected, option]
-                      : selected.filter((v) => v !== option),
-                  )
-                }
-              />{" "}
-              {labelOf(option)}
-            </span>
-          </label>
+          <div className="field" key={option}>
+            <div className="field__label">
+              <label htmlFor={`${id}-${option}`}>
+                <input
+                  id={`${id}-${option}`}
+                  type="checkbox"
+                  disabled={disabled}
+                  checked={selected.includes(option)}
+                  onChange={(event) =>
+                    onChange(
+                      event.target.checked
+                        ? [...selected, option]
+                        : selected.filter((value) => value !== option),
+                    )
+                  }
+                />{" "}
+                {labelOf(option)}
+              </label>
+              {selected.includes(option) && (
+                <CitationPopover
+                  path={`${path}/${selected.indexOf(option)}`}
+                  provenance={provenance}
+                  approved={approved}
+                />
+              )}
+            </div>
+          </div>
         ))}
       </fieldset>
     );
