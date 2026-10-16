@@ -96,7 +96,7 @@ export const DraftResponseSchema = z
     company: CompanyReadSchema,
     draftGeneration: GenerationSchema,
     entries: z.array(DraftEntryResponseSchema),
-    sources: z.array(SourceSummarySchema).nullable(),
+    sources: z.array(SourceSummarySchema),
   })
   .strict();
 const proposalDecision = z
