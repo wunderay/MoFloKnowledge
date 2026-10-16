@@ -112,6 +112,7 @@ const proposalDecision = z
     at: InstantSchema,
     reason: z.string().max(2000).nullable().optional(),
     revision_id: IdSchema.optional(),
+    selected_candidate_ids: z.array(IdSchema).max(1000).optional(),
   })
   .strict();
 export const JobResponseSchema = z
