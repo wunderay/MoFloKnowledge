@@ -23,7 +23,6 @@ export const GET = route(async (_r, c, { client, user }) => {
         "id,version_number,schema_version,author_id,created_at,payload_sha256",
       )
       .eq("company_id", company)
-      .order("version_number", { ascending: false })
-      .limit(100),
+      .order("version_number", { ascending: false }),
   );
 });

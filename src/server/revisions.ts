@@ -5,6 +5,8 @@ import {
   parseBusinessEntry,
   entryBusiness,
   requiredCoverageTargets,
+  enumerateFactualLeaves,
+  resolveStablePointer,
   type EntryKind,
   type EntryProvenance,
   type BusinessEntry,
@@ -111,21 +113,95 @@ export async function prepareRevision(
   let sequence = 0;
   const changed =
     canonicalStringify(previous.content) !== canonicalStringify(content);
+  const revised = changed
+    ? reviseProvenance({
+        newId: () => stableId(input.requestId, String(sequence++)),
+        kind,
+        entryId,
+        before: parseBusinessEntry(kind, previous.content),
+        after: content,
+        provenance,
+        actorId,
+        savedAt: new Date().toISOString(),
+        requestId: input.requestId,
+        note: input.reason ?? "User-provided correction.",
+      })
+    : provenance;
   return {
     content,
-    provenance: changed
-      ? reviseProvenance({
-          newId: () => stableId(input.requestId, String(sequence++)),
-          kind,
-          entryId,
-          before: parseBusinessEntry(kind, previous.content),
-          after: content,
-          provenance,
-          actorId,
-          savedAt: new Date().toISOString(),
-          requestId: input.requestId,
-          note: input.reason ?? "User-provided correction.",
-        })
-      : provenance,
+    provenance: preserveSelectedCandidates(
+      kind,
+      content,
+      revised,
+      stored,
+      entryId,
+      input.requestId,
+    ),
   };
+}
+
+export function preserveSelectedCandidates(
+  kind: EntryKind,
+  content: BusinessEntry,
+  provenance: EntryProvenance,
+  stored: EntryProvenance,
+  entryId: string,
+  requestId: string,
+): EntryProvenance {
+  const business = entryBusiness(kind, content);
+  for (const decision of provenance.decisions.filter(
+    (d) => d.action === "select",
+  )) {
+    const conflict = stored.conflicts.find(
+      (c) => c.id === decision.conflict_id,
+    );
+    const candidate = conflict?.candidates.find(
+      (c) => c.id === decision.candidate_id,
+    );
+    if (
+      !conflict ||
+      !candidate ||
+      canonicalStringify(resolveStablePointer(business, conflict.target)) !==
+        canonicalStringify(candidate.value)
+    )
+      throw new HttpError(
+        422,
+        "invalid_decision",
+        "Selected value does not match the saved candidate.",
+      );
+    const under = (target: string) =>
+      target === conflict.target || target.startsWith(conflict.target + "/");
+    provenance.claims = provenance.claims
+      .map((claim) => ({
+        ...claim,
+        targets: claim.targets.filter((target) => !under(target)),
+      }))
+      .filter((claim) => claim.targets.length > 0);
+    for (const leaf of enumerateFactualLeaves(business).filter((leaf) =>
+      under(leaf.path),
+    ))
+      provenance.claims.push({
+        id: stableId(requestId, leaf.path, "selected"),
+        entry_id: entryId,
+        targets: [leaf.path],
+        origin: candidate.origin,
+        evidence_ids: candidate.evidence_ids,
+        based_on_claim_ids: candidate.based_on_claim_ids,
+        actor_id:
+          candidate.origin === "user_provided" ? decision.actor_id : null,
+        authored_at:
+          candidate.origin === "user_provided" ? decision.decided_at : null,
+        note: decision.note ?? "Reviewer selected the supported candidate.",
+      });
+  }
+  const referenced = new Set([
+    ...provenance.claims.flatMap((c) => c.evidence_ids),
+    ...provenance.conflicts.flatMap((c) =>
+      c.candidates.flatMap((v) => v.evidence_ids),
+    ),
+  ]);
+  provenance.evidence = stored.evidence.filter((e) => referenced.has(e.id));
+  const sourceIds = new Set(provenance.evidence.map((e) => e.source_page_id));
+  provenance.sources = stored.sources.filter((s) => sourceIds.has(s.id));
+  return provenance;
 }
