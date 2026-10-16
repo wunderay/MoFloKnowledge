@@ -4,7 +4,7 @@ import type { KnowledgeBaseExport, EntryProvenance, Claim } from "../contracts";
 import type { DraftResponseSchema } from "../contracts/api-responses";
 import { createEmptyBusiness } from "../contracts/defaults";
 import { downloadFilename } from "./download-name";
-import { varyCompanyNarrative } from "./narrative-prose";
+import { factualBullets } from "./narrative-prose";
 
 export type DocumentInput =
   | { kind: "draft"; draft: z.infer<typeof DraftResponseSchema> }
@@ -61,7 +61,9 @@ export function documentData(input: DocumentInput) {
 /** A company profile, using complete stored wording rather than a technical serialization. */
 export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const paragraphs: DocumentParagraph[] = [];
-  const add = (text: string, options: Partial<DocumentParagraph> = {}) => paragraphs.push({ text, depth: 0, ...options });
+  let businessBody = false;
+  const add = (text: string, options: Partial<DocumentParagraph> = {}) => paragraphs.push({ text, depth: 0,
+    ...(businessBody && !options.heading && !options.palette ? { bullet: true } : {}), ...options });
   const heading = (text: string, level: DocumentParagraph["heading"] = "section") => add(text, { heading: level });
   const prose = (runs: DocumentTextRun[], options: Partial<DocumentParagraph> = {}) => {
     const facts = runs.filter((run) => run.citations !== undefined);
@@ -144,8 +146,10 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     return Boolean(exact) && (exact === overview || (index >= 0 && /[.!?]$/.test(exact) && (!before || /[.!?]$/.test(before))));
   };
   const withoutOverviewDuplicates = (text: string) => text.split(/\n+/).filter((part) => normalized(part) && !repeatedNarrative(part)).join("\n\n");
-  const narrative = (text: string, path: string) => /^\/(?:company_foundation\/(?:overview|business_model)|positioning\/company_pitch|offerings\/@[^/]+\/(?:description|(?:features|qualifications)\/@[^/]+\/text)|market_and_customers\/customer_needs\/@[^/]+\/text)$/.test(path)
-    ? varyCompanyNarrative(text, name) : text;
+  const narrative = (text: string, path: string, options: Partial<DocumentParagraph> = {}) => {
+    const eligible = /^\/(?:company_foundation\/(?:overview|business_model)|positioning\/company_pitch|offerings\/@[^/]+\/(?:description|(?:features|qualifications)\/@[^/]+\/text)|market_and_customers\/customer_needs\/@[^/]+\/text)$/.test(path);
+    for (const bullet of factualBullets(text, name, !eligible)) add(bullet.text, { ...options, ...bullet, citations: citations(path) });
+  };
   const covered = (value: string | null | undefined, context: string) => {
     if (!value) return false;
     const needle = normalized(value).toLowerCase();
@@ -162,6 +166,11 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     // Complete sentences remain authored passages; short noun groups can share one line.
     const distinct = items.filter((item, index) => items.findIndex((other) => normalized(other.text) === normalized(item.text)) === index);
     if (!distinct.length) return;
+    if (title === "Customers" || title === "Customer industries") {
+      heading(title, "field");
+      distinct.forEach((item) => narrative(item.text, item.path, { bullet: true }));
+      return;
+    }
     if (distinct.reduce((length, item) => length + item.text.length, 0) > 420
       || distinct.some((item) => /[.!?]$/.test(item.text.trim()) || item.text.length > 100)) {
       heading(title, "field");
@@ -270,7 +279,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       for (const [index, item] of (value as unknown[]).entries()) {
         const itemPath = `${path}/${item && typeof item === "object" && "id" in item ? `@${item.id}` : index}`;
         if (item && typeof item === "object" && "text" in item) {
-          add(narrative(String(item.text), `${itemPath}/text`), { citations: citations(`${itemPath}/text`), bullet: true, depth });
+          narrative(String(item.text), `${itemPath}/text`, { bullet: true, depth });
           for (const [key, child] of Object.entries(item)) if (!["id", "text"].includes(key)) renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
         } else if (item && typeof item === "object") {
           const fields = Object.entries(item).filter(([key]) => key !== "id");
@@ -307,7 +316,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const section = (title: string, content: unknown, path: string) => {
     if (!populated(content)) return;
     heading(title);
-    if (typeof content === "string") add(narrative(content, path), { citations: citations(path) });
+    if (typeof content === "string") narrative(content, path);
     else if (content && typeof content === "object" && !Array.isArray(content)) for (const [key, value] of Object.entries(content)) if (key !== "id") renderValue(value, label(key), `${path}/${key}`);
   };
   const name = input.kind === "draft" ? input.draft.company.name : input.snapshot.provenance.company.name;
@@ -319,6 +328,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     add(`Current saved draft · ${states.join(", ") || "No saved entries"}. Exporting does not approve or publish these values.`, { muted: true });
   } else add(`Saved version ${input.snapshot.version} · ${input.snapshot.saved_at.slice(0, 10)} · immutable reviewed snapshot`, { muted: true });
   if ([...claims.values()].some((claim) => claim.origin === "generated" || claim.origin === "inferred")) add("Includes historical generated or inferred material; consult the JSON provenance for each field’s origin.", { muted: true });
+  businessBody = true;
   section("Overview", business.company_foundation.overview, "/company_foundation/overview");
   const foundation = business.company_foundation;
   const details: DocumentTextRun[] = [];
@@ -334,8 +344,8 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     && populated(value));
   if (details.length || model || extraFields.length) {
     heading("Company details");
-    if (details.length) prose(joined(details));
-    if (model) add(narrative(model, "/company_foundation/business_model"), { citations: citations("/company_foundation/business_model") });
+    for (const detail of details) prose([detail]);
+    if (model) narrative(model, "/company_foundation/business_model");
     for (const [key, value] of extraFields) renderValue(value, label(key), `/company_foundation/${key}`);
   }
   const pitch = business.positioning.company_pitch ? withoutOverviewDuplicates(business.positioning.company_pitch) : "";
@@ -366,11 +376,12 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       if (key === "key_people" && fields.gender) add(String(fields.gender), { label: "Stated gender", citations: citations(`${path}/gender`) });
       for (const [field, value] of Object.entries(item)) {
         if (["id", "name", ...(key === "key_people" ? ["title", "role", "gender"] : ["offering_type", "category"])].includes(field)) continue;
-        if (["description", "background_or_relevance"].includes(field) && typeof value === "string" && populated(value)) add(narrative(value, `${path}/${field}`), { citations: citations(`${path}/${field}`) });
+        if (["description", "background_or_relevance"].includes(field) && typeof value === "string" && populated(value)) narrative(value, `${path}/${field}`);
         else renderValue(value, label(field), `${path}/${field}`);
       }
     }
   }
+  businessBody = false;
   heading("Coverage & unknowns");
   add("Unknown means the saved evidence does not establish a value. It is not proof of absence. Partial or conflicting observations require review.", { muted: true });
   const coverage = input.kind === "snapshot" ? input.snapshot.provenance.coverage : roots.flatMap((item) => item.coverage);
