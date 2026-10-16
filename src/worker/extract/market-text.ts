@@ -18,6 +18,15 @@ const benefit = /\b(?:save|saving|reduce|reducing|minimi[sz]e|maximi[sz]e|simpli
 const customer = /\b(?:you|your|clients?|customers?|business(?:es)?|companies|individuals|start-ups)\b/i;
 const actionable = /^(?:get started|schedule\b|book\b|make an appointment\b|contact\b|request\b|sign up\b|subscribe\b|notify me\b|submit\b|send\b|start (?:a|your)\b|join\b|buy\b|shop\b|order\b|try\b|download\b|refer\b|referrals\b|call\b)/i;
 const buyerNoun = /\b(?:(?:(?:brand[- ]new|small and (?:mid|medium)[- ]sized|small(?:er)?|mid[- ]sized|medium[- ]sized|large|growing|established|start[- ]up|mature|local)\s+){0,3}(?:businesses|business owners|business|companies|corporations|corporation|individuals|entrepreneurs|start-ups|families|homeowners|nonprofits|retirees))(?:\s+(?:with\s+\d+\s*(?:to|[-–—])\s*\d+\s+employees|nearing retirement))?\b/gi;
+const buyerKey = (text: string) => clean(text).toLowerCase().replace(/start[- ]?ups?/g, "startup")
+  .replace(/\bsmaller\b/g, "small").replace(/\bbusinesses\b/g, "business")
+  .replace(/\bcompanies\b/g, "company").replace(/\bcorporations\b/g, "corporation")
+  .replace(/\bcompany\b/g, "business").replace(/\bstartup business\b/g, "startup").replace(/[^\p{L}\p{N}]+/gu, "");
+const needText = (text: string) => text.length >= 35 && text.length <= 900 &&
+  /\b(?:you|your|clients?|customers?)\b/i.test(text) && (problem.test(text) || benefit.test(text)) &&
+  !/:$|^(?:copyright|terms|privacy)|\b(?:cookie|advertis(?:ing|ement)|third[- ]party|our (?:staff|employees|team))\b/i.test(text) &&
+  !/\b(?:not|never)\s+(?:be\s+)?(?:looking\s+to\s+)?(?:save|improve|reduce|simplify|secure)\b/i.test(text);
+const sentences = (text: string) => (text.match(/[^.!?]+(?:[.!?]+|$)/g) ?? []).map((sentence) => sentence.trim());
 
 /** Literal passages and observed controls only. These rules never invent a buyer or a conversion step. */
 export function marketTextCandidates(
@@ -26,6 +35,8 @@ export function marketTextCandidates(
 ): FieldCandidate[] {
   const result: FieldCandidate[] = [];
   const seen = new Set<string>();
+  const buyerKeys = new Set<string>();
+  const personas = new Map<string, { buyer: string; goals: Set<string>; pains: Set<string>; passages: Set<string> }>();
   const segmentsFor = (text: string) => page.capture.segments
     .filter((segment) => clean(segment.text).includes(clean(text)))
     .slice(0, 3).map((segment) => segment.id);
@@ -40,6 +51,11 @@ export function marketTextCandidates(
       supporting_fields: [], note: null });
   };
   const textItem = (field: string, text: string, context = text) => {
+    if (field === "target_buyers") {
+      const key = buyerKey(text);
+      if (key === "business" || buyerKeys.has(key)) return;
+      buyerKeys.add(key);
+    }
     if (text && text.length <= 1000) add(field, [{ text }], [context]);
   };
   const raw = page.capture.observations;
@@ -64,8 +80,6 @@ export function marketTextCandidates(
       if (/^(?:(?:our|ideal|target)\s+)?(?:customers|clients|buyers|audience)(?:\s+we\s+(?:serve|help))?\s*:?$|^who we (?:serve|help|work with)\s*:?$/i.test(heading))
         for (const item of section.listItems) {
           textItem("target_buyers", item);
-          add("ideal_customer_personas", [{ name: null, role: null, organization_type: item,
-            goals: [], pain_points: [] }], [item]);
         }
       if (/^(?:customer|client) (?:needs|goals|pain points)\s*:?$/i.test(heading))
         for (const item of [...section.paragraphs, ...section.listItems]) textItem("customer_needs", item);
@@ -93,23 +107,26 @@ export function marketTextCandidates(
           const before = paragraph.slice(Math.max(0, match.index! - 100), match.index);
           if (!/\b(?:for|serve|help|assist|clients|customers|whether you are|as well as|or a|a growing)\b[^.!?]*$/i.test(before)) continue;
           textItem("target_buyers", buyer, paragraph);
-          // The persona remains an unnamed source segment; attributes are quoted from that same declaration.
-          const short = paragraph.length <= 900;
-          add("ideal_customer_personas", [{ name: null, role: null, organization_type: buyer,
-            goals: short && benefit.test(paragraph) ? [{ text: paragraph }] : [],
-            pain_points: short && problem.test(paragraph) ? [{ text: paragraph }] : [] }], [paragraph]);
+          // An audience label alone is not a persona. Require a concrete same-passage goal or pain point.
+          const key = buyerKey(buyer);
+          const attributes = sentences(paragraph).filter(needText);
+          if (key === "business" || !attributes.length) continue;
+          const persona = personas.get(key) ?? { buyer, goals: new Set<string>(), pains: new Set<string>(), passages: new Set<string>() };
+          for (const text of attributes) {
+            if (benefit.test(text)) persona.goals.add(text);
+            if (problem.test(text)) persona.pains.add(text);
+          }
+          persona.passages.add(paragraph);
+          personas.set(key, persona);
         }
       // Copy a complete source sentence, retaining the benefit/problem wording and its qualifications.
-      for (const sentence of paragraph.match(/[^.!?]+(?:[.!?]+|$)/g) ?? []) {
-        const text = sentence.trim();
-        if (text.length >= 35 && text.length <= 900 && customer.test(text) &&
-          (problem.test(text) || benefit.test(text)) &&
-          /\b(?:you|your|we|our|clients?|customers?)\b/i.test(text) &&
-          !/^(?:copyright|terms|privacy)|\b(?:cookie|advertis(?:ing|ement)|third[- ]party)\b/i.test(text))
-          textItem("customer_needs", text);
-      }
+      for (const text of sentences(paragraph))
+        if (customer.test(text) && needText(text)) textItem("customer_needs", text);
     }
   }
+  for (const persona of personas.values())
+    add("ideal_customer_personas", [{ name: null, role: null, organization_type: persona.buyer,
+      goals: [...persona.goals].map((text) => ({ text })), pain_points: [...persona.pains].map((text) => ({ text })) }], [...persona.passages]);
   const labelEvidence = (label: string, url: string | null) => observations.filter((item) =>
     ["cta-label", "anchor-label"].includes(item.property ?? "") && item.value === label &&
     (!url || item.asset_url === url)).map((item) => item.id);

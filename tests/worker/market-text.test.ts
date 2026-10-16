@@ -31,6 +31,13 @@ describe("literal market and conversion extraction", () => {
     expect(candidates.every((candidate) => candidate.segment_ids.length > 0 && candidate.origin === "source_backed")).toBe(true);
     expect(candidates.some((candidate) => candidate.field.endsWith("/employee_count"))).toBe(false);
     expect(validated).toHaveLength(candidates.length);
+    const merged = extract("<p>For small businesses, we provide planning to reduce your costs.</p><p>For smaller companies, we provide support to save your time.</p>");
+    expect(merged.values("ideal_customer_personas")).toEqual([{ name: null, role: null,
+      organization_type: "small businesses", goals: [
+        { text: "For small businesses, we provide planning to reduce your costs." },
+        { text: "For smaller companies, we provide support to save your time." },
+      ], pain_points: [] }]);
+    expect(merged.candidates.find((candidate) => candidate.field.endsWith("/ideal_customer_personas"))?.segment_ids).toHaveLength(2);
   });
 
   it("copies observed CTAs and channels without treating links or form inputs as funnel stages", () => {
@@ -74,5 +81,8 @@ describe("literal market and conversion extraction", () => {
     expect(unrelated.values("target_buyers")).toEqual([]);
     expect(unrelated.values("customer_needs")).toEqual([]);
     expect(unrelated.values("suppliers_and_partners")).toEqual([]);
+    const generic = extract("<p>We serve growing businesses.</p><p>We can help you with the following problems:</p><p>The agency will not be looking to save you money.</p><p>We have deep understanding and improve efficiency for numerous businesses.</p><p>Our employees train to improve your experience.</p>");
+    expect(generic.values("ideal_customer_personas")).toEqual([]);
+    expect(generic.values("customer_needs")).toEqual([]);
   });
 });
