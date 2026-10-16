@@ -3,8 +3,9 @@ import Link from "next/link";
 import { ZodError } from "zod";
 import { ValueView } from "./entry-value";
 import { CitationPopover } from "./citation-popover";
+import { CompanyDraftProvider, useCompanyDraft } from "./company-draft-context";
 import { applyConflictDecision } from "@/knowledge/conflict-decisions";
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { DraftEntry, DraftResponse } from "@/contracts/api-types";
 import {
   createEntryDefault,
@@ -14,7 +15,6 @@ import {
   parseBusinessEntry,
   type BusinessEntry,
   type EntryKind,
-  type EntryProvenance,
 } from "@/contracts";
 import { api, ApiError, companyPath, write } from "./api-client";
 import { CATEGORY_SPECS } from "./business-fields";
@@ -35,45 +35,17 @@ type Entry = Pick<
   | "review_status"
 >;
 type Draft = Omit<DraftResponse, "entries"> & { entries: Entry[] };
-type EditorState = {
-  category: EntryKind;
-  values: Record<string, BusinessEntry>;
-  provenance: Record<string, EntryProvenance>;
-  dirty: string[];
-};
-type Action =
-  | { type: "category"; category: EntryKind }
-  | { type: "edit"; id: string; content: BusinessEntry }
-  | { type: "provenance"; id: string; provenance: EntryProvenance }
-  | { type: "saved"; id: string };
-function reducer(state: EditorState, action: Action): EditorState {
-  if (action.type === "category")
-    return { ...state, category: action.category };
-  if (action.type === "saved") {
-    const values = { ...state.values };
-    const provenance = { ...state.provenance };
-    delete values[action.id];
-    delete provenance[action.id];
-    return {
-      ...state,
-      values,
-      provenance,
-      dirty: state.dirty.filter((id) => id !== action.id),
-    };
-  }
-  if (action.type === "edit")
-    return {
-      ...state,
-      values: { ...state.values, [action.id]: action.content },
-      dirty: [...new Set([...state.dirty, action.id])],
-    };
-  return {
-    ...state,
-    provenance: { ...state.provenance, [action.id]: action.provenance },
-    dirty: [...new Set([...state.dirty, action.id])],
-  };
+export function KnowledgeEditor(props: {
+  companyId: string;
+  initialDraft?: DraftResponse;
+}) {
+  return (
+    <CompanyDraftProvider key={props.companyId} companyId={props.companyId}>
+      <KnowledgeEditorContent {...props} />
+    </CompanyDraftProvider>
+  );
 }
-export function KnowledgeEditor({
+function KnowledgeEditorContent({
   companyId,
   initialDraft,
 }: {
@@ -81,12 +53,7 @@ export function KnowledgeEditor({
   initialDraft?: DraftResponse;
 }) {
   const [draft, setDraft] = useState<Draft | null>(initialDraft ?? null);
-  const [state, dispatch] = useReducer(reducer, {
-    category: "company_foundation",
-    values: {},
-    provenance: {},
-    dirty: [],
-  });
+  const { state, dispatch } = useCompanyDraft();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
