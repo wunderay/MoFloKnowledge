@@ -21,7 +21,7 @@ type ViewEntry = {
   current_revision: number;
 };
 type Version = { id: string; version_number: number; created_at: string };
-function ValueView({
+export function ValueView({
   value,
   path,
   provenance,
@@ -207,9 +207,24 @@ export function KnowledgeViewer({
         (e) =>
           (!section || e.kind === section) &&
           (!review || e.review_status === review) &&
-          (!origin || e.provenance.claims.some((c) => c.origin === origin)) &&
+          (!origin ||
+            e.provenance.claims.some(
+              (c) => c.origin === origin && c.entry_id === e.id,
+            )) &&
           (!coverage ||
-            e.provenance.coverage.some((c) => c.status === coverage)) &&
+            e.provenance.coverage.some(
+              (c) =>
+                c.status === coverage &&
+                c.targets.some((target) =>
+                  target.startsWith(
+                    e.kind === "key_person"
+                      ? `/key_people/@${(e.content as { id: string }).id}/`
+                      : e.kind === "offering"
+                        ? `/offerings/@${(e.content as { id: string }).id}/`
+                        : `/${e.kind}/`,
+                  ),
+                ),
+            )) &&
           JSON.stringify(e.content).toLowerCase().includes(query.toLowerCase()),
       ),
     [entries, section, review, origin, coverage, query],

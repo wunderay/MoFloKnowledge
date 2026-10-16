@@ -83,7 +83,7 @@ export function CitationPopover({
         aria-expanded={open}
         aria-controls={id}
         aria-label={`Evidence for ${path.split("/").at(-1)?.replaceAll("_", " ")}`}
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen(true)}
       >
         {label} ⓘ
       </button>

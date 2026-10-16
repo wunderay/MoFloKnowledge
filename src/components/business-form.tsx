@@ -25,6 +25,17 @@ export function BusinessField({
 }: Props) {
   const id = useId();
   const label = spec.label ?? labelOf(name);
+  const assessment = provenance.coverage.find((item) =>
+    item.targets.some(
+      (target) => target === path || path.startsWith(`${target}/`),
+    ),
+  );
+  const missingLabel =
+    assessment?.status === "not_found"
+      ? "Not found in checked pages"
+      : assessment?.status === "partial"
+        ? "Partially checked — review coverage"
+        : "Could not check";
   const evidence = (
     <CitationPopover path={path} provenance={provenance} approved={approved} />
   );
@@ -40,7 +51,7 @@ export function BusinessField({
           <span className="field__hint">
             {list.length
               ? `${list.length} item${list.length === 1 ? "" : "s"}`
-              : "No items recorded"}
+              : missingLabel}
           </span>
           {evidence}
         </div>
@@ -126,7 +137,7 @@ export function BusinessField({
             {label}
             {evidence}
           </span>
-          <span className="field__hint">No value recorded</span>
+          <span className="field__hint">{missingLabel}</span>
           <button
             type="button"
             className="button"
@@ -241,7 +252,7 @@ export function BusinessField({
           id={id}
           disabled={disabled}
           value={String(value ?? "")}
-          placeholder="Not recorded"
+          placeholder={missingLabel}
           onChange={(e) => onChange(e.target.value || null)}
         />
       ) : (
@@ -258,7 +269,7 @@ export function BusinessField({
                   : "text"
           }
           value={String(value ?? "")}
-          placeholder="Not recorded"
+          placeholder={missingLabel}
           step={name === "alpha" ? ".01" : undefined}
           min={name === "alpha" ? 0 : undefined}
           max={name === "alpha" ? 1 : undefined}

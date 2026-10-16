@@ -1,14 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, write } from "./api-client";
 import { Dialog, EmptyState, Notice, StatusBadge } from "./ui";
-type Company = {
-  id: string;
-  name: string;
-  website_url: string;
-  role?: string;
-  archived_at?: string | null;
+import type { CompanySummary } from "@/contracts/api-types";
+type Company = Pick<
+  CompanySummary,
+  "id" | "name" | "website_url" | "role" | "archived_at"
+> & {
   latestJob?: { status: string } | null;
   latestVersion?: { version_number: number; created_at: string } | null;
 };
@@ -20,24 +19,59 @@ export function CompanyDashboard() {
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [archived, setArchived] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const requestIds = useRef(new Map<string, string>());
   useEffect(() => {
-    api<Company[] | { companies: Company[] }>("/api/companies")
-      .then((data) => setCompanies(Array.isArray(data) ? data : data.companies))
-      .catch((e) => setError(e.message))
+    setLoading(true);
+    setError("");
+    api<{ companies: Company[]; nextCursor: string | null }>(
+      `/api/companies${archived ? "?archived=true" : ""}`,
+    )
+      .then((data) => {
+        setCompanies((previous) => [
+          ...previous.filter(
+            (company) => Boolean(company.archived_at) !== archived,
+          ),
+          ...data.companies,
+        ]);
+        setNextCursor(data.nextCursor);
+      })
+      .catch((error) => setError(error.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [archived]);
+  async function loadMore() {
+    if (!nextCursor) return;
+    setLoading(true);
+    try {
+      const data = await api<{
+        companies: Company[];
+        nextCursor: string | null;
+      }>(
+        `/api/companies?cursor=${nextCursor}${archived ? "&archived=true" : ""}`,
+      );
+      setCompanies((previous) => [...previous, ...data.companies]);
+      setNextCursor(data.nextCursor);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
     const form = new FormData(event.currentTarget);
+    const key = JSON.stringify([form.get("name"), form.get("website")]);
+    if (!requestIds.current.has(key))
+      requestIds.current.set(key, crypto.randomUUID());
     try {
       const data = await api<{ companyId: string }>(
         "/api/companies",
         write("POST", {
           name: form.get("name"),
           website: form.get("website"),
-          requestId: crypto.randomUUID(),
+          requestId: requestIds.current.get(key),
         }),
       );
       window.location.assign(`/knowledge?companyId=${data.companyId}`);
@@ -79,7 +113,7 @@ export function CompanyDashboard() {
         </div>
         <div className="summary-card">
           <div>
-            <p>Saved versions</p>
+            <p>Companies with versions</p>
             <strong>{companies.filter((c) => c.latestVersion).length}</strong>
           </div>
           <span className="summary-card__icon">▤</span>
@@ -190,6 +224,11 @@ export function CompanyDashboard() {
             </article>
           ))}
         </div>
+      )}
+      {nextCursor && (
+        <button className="button" disabled={loading} onClick={loadMore}>
+          Load more companies
+        </button>
       )}
       {adding && (
         <Dialog title="Add a company" onClose={() => setAdding(false)}>

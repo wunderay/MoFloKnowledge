@@ -1,6 +1,9 @@
 "use client";
 import Link from "next/link";
+import { ZodError } from "zod";
+import { ValueView } from "./knowledge-viewer";
 import { useCallback, useEffect, useReducer, useState } from "react";
+import type { DraftEntry, DraftResponse } from "@/contracts/api-types";
 import {
   createEntryDefault,
   createEmptyProvenance,
@@ -18,26 +21,16 @@ import { EntryHistory } from "./entry-history";
 import { PublicationDialog } from "./publication-dialog";
 import { CompanySettings } from "./company-settings";
 import { ProposalReview } from "./proposal-review";
-type Entry = {
-  id: string;
-  kind: EntryKind;
-  current_revision: number;
-  content: BusinessEntry;
-  provenance: EntryProvenance;
-  review_status: "unreviewed" | "approved" | "rejected";
-};
-type Draft = {
-  company: {
-    id: string;
-    name: string;
-    website_url: string;
-    role: string;
-    archived_at: string | null;
-  };
-  draftGeneration: number;
-  actorId: string;
-  entries: Entry[];
-};
+type Entry = Pick<
+  DraftEntry,
+  | "id"
+  | "kind"
+  | "current_revision"
+  | "content"
+  | "provenance"
+  | "review_status"
+>;
+type Draft = Omit<DraftResponse, "entries"> & { entries: Entry[] };
 type EditorState = {
   category: EntryKind;
   values: Record<string, BusinessEntry>;
@@ -175,7 +168,7 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
       }
       const isNew = entry.current_revision === 0;
       const requestId = crypto.randomUUID();
-      const result = await api<Entry>(
+      const result = await api<Entry & { entry_id?: string }>(
         companyPath(
           companyId,
           isNew ? "/entries" : `/entries/${entry.id}/revisions`,
@@ -198,7 +191,10 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
       );
       if (isNew && status !== "unreviewed") {
         await api(
-          companyPath(companyId, `/entries/${result.id}/revisions`),
+          companyPath(
+            companyId,
+            `/entries/${result.entry_id ?? result.id}/revisions`,
+          ),
           write("POST", {
             expectedRevision: 1,
             content: result.content ?? content,
@@ -219,7 +215,16 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
       );
       refresh();
     } catch (e) {
-      setError((e as Error).message);
+      setError(
+        e instanceof ZodError
+          ? e.issues
+              .map(
+                (issue) =>
+                  `${issue.path.join(" › ").replaceAll("_", " ")}: ${issue.message}`,
+              )
+              .join("; ")
+          : (e as Error).message,
+      );
       if (e instanceof ApiError && e.status === 409) setStale(true);
     } finally {
       setBusy(null);
@@ -382,6 +387,38 @@ export function KnowledgeEditor({ companyId }: { companyId: string }) {
               >
                 Load latest revisions
               </button>
+              {draft.entries
+                .filter((entry) => state.dirty.includes(entry.id))
+                .map((entry) => (
+                  <details key={entry.id}>
+                    <summary>
+                      Compare {CATEGORY_SPECS[entry.kind]!.label} with the
+                      latest saved revision
+                    </summary>
+                    <div className="proposal__comparison">
+                      <div>
+                        <h3>Latest saved revision {entry.current_revision}</h3>
+                        <ValueView
+                          value={entry.content}
+                          path={`/${entry.kind}`}
+                          provenance={entry.provenance}
+                          approved={entry.review_status === "approved"}
+                        />
+                      </div>
+                      <div>
+                        <h3>Your unsaved values</h3>
+                        <ValueView
+                          value={state.values[entry.id]}
+                          path={`/${entry.kind}`}
+                          provenance={
+                            state.provenance[entry.id] ?? entry.provenance
+                          }
+                          approved={false}
+                        />
+                      </div>
+                    </div>
+                  </details>
+                ))}
             </>
           )}
         </Notice>
