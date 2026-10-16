@@ -17,3 +17,4 @@ export * from "./field-registry";
 export * from "./stable-pointer";
 export * from "./knowledge-base";
 export * from "./validate-provenance";
+export * from "./citation-context";
