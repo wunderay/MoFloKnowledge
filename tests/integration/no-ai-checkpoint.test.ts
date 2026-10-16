@@ -7,6 +7,7 @@ import { stableId } from "../../src/worker/extract/identity";
 import type { Job, JobRepository } from "../../src/worker/job-repository";
 import type { CrawlResult } from "../../src/worker/crawl/run-crawl";
 import type { FieldCandidate } from "../../src/worker/extract/types";
+import { CheckpointSchema } from "../../src/contracts";
 
 const companyId = stableId("checkpoint-company");
 const job = { id: stableId("checkpoint-job"), company_id: companyId } as Job;
@@ -17,12 +18,29 @@ const page = {
 };
 function crawl(checkpoint: Record<string, unknown> = {}): CrawlResult {
   return {
-    captures: [page], errors: [], checkpoint,
+    captures: [page], errors: [],
+    checkpoint: {
+      effectiveRoot: page.capture.finalUrl,
+      frontier: {
+        root: page.capture.finalUrl, pending: [], seen: [page.capture.finalUrl],
+        aliases: [], selected: 1, limitsReached: [],
+      },
+      budgets: { documents: 1, htmlBytes: 200, designBytes: 0, startedAt: Date.parse(page.retrievedAt), limitsReached: [] },
+      captured_source_ids: [page.id], errors: [],
+      ...checkpoint,
+    },
     progress: { stage: "crawling", discovered: 1, selected: 1, captured: 1, failed: 0, blocked: 0, extracted: 0, document_limit: 10, limits_reached: [] },
   };
 }
 function repository() {
-  return { checkpoint: vi.fn().mockResolvedValue({}), finish: vi.fn().mockResolvedValue({}) } as unknown as JobRepository;
+  return {
+    checkpoint: vi.fn().mockImplementation(async (_job, checkpoint) => {
+      // Enforce the same strict durable contract as PostgresJobRepository.
+      CheckpointSchema.parse(checkpoint);
+      return {};
+    }),
+    finish: vi.fn().mockResolvedValue({}),
+  } as unknown as JobRepository;
 }
 
 it("reparses legacy model checkpoints and resumes deterministic checkpoints without changing results", async () => {

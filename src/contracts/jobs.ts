@@ -92,6 +92,7 @@ export const CrawlCheckpointSchema = z
     budgets: CrawlBudgetSnapshotSchema,
     captured_source_ids: z.array(UUIDSchema).max(25),
     extracted_source_ids: z.array(UUIDSchema).max(25).optional(),
+    extractor_version: z.string().min(1).max(100).optional(),
     errors: z.array(SafeJobErrorSchema).max(200),
     model_tokens: count.max(120000).optional(),
     model_successes: count.max(25).optional(),
