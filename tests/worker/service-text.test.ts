@@ -30,7 +30,7 @@ describe("authored service content", () => {
     expect(names.find((candidate) => candidate.value === "Pump & Valve Repair")).toMatchObject({ priority: 95 });
     expect(names.find((candidate) => candidate.value === "Industrial Services")).toMatchObject({ priority: 30 });
     expect(values(candidates, "description").find((candidate) => (candidate as { priority?: number }).priority === 95)?.value)
-      .toBe("We repair pumps and valves for local factories.\n\nOur technicians inspect seals before returning equipment.\n\nWe provide an inspection report with every repair.");
+      .toBe("We repair pumps and valves for local factories.\n\nOur technicians inspect seals before returning equipment.");
     expect(values(candidates, "features").map((candidate) => candidate.value)).toEqual(expect.arrayContaining([
       [{ text: "Seal replacement" }], [{ text: "Pressure testing" }], [{ text: "We provide an inspection report with every repair." }],
     ]));
@@ -75,4 +75,33 @@ describe("authored service content", () => {
     expect(values(bio.candidates, "pricing")).toEqual([]);
     expect(extract(`<main><h2>Consulting trends</h2><p>We offer part-time financial services.</p></main>`, "/blog/consulting").candidates).toEqual([]);
   });
+});
+
+it("keeps a company catalog's child scope separate from a linked service restriction", async () => {
+  const { page, observations, candidates } = extract(`<nav>
+    <a href="/services/tax-preparation-planning">Tax Preparation &amp; Planning</a>
+    <a href="/services/payroll">Payroll</a></nav><main><h2>Our firm</h2>
+    <p>Our services include the following:</p><ul><li>Estate, Gift &amp; Trust Returns</li><li>Personal Tax Returns</li></ul>
+    <p>Payroll services are available only to existing tax clients.</p></main>`, "/firm-background");
+  const trust = values(candidates, "name").find((candidate) => candidate.value === "Estate, Gift & Trust Returns")!;
+  expect(values(candidates, "description").filter((candidate) => candidate.entity_key === trust.entity_key)).toEqual([]);
+  expect(values(candidates, "features").filter((candidate) => candidate.entity_key === trust.entity_key)).toEqual([]);
+  expect(values(candidates, "features").filter((candidate) => candidate.entity_key === "https://example.com/services/payroll").map((candidate) => candidate.value))
+    .toEqual([[{ text: "Payroll services are available only to existing tax clients." }]]);
+  const { validateCandidates } = await import("../../src/worker/extract/validate-candidates");
+  expect(validateCandidates(candidates, page, observations, "11111111-1111-4111-8111-111111111111")).toHaveLength(candidates.length);
+});
+
+it("selects concise exact capability sentences while retaining the full original source passage", async () => {
+  const original = "Pressure testing detects leaks. Results include measured pressure. Contact us for more information.";
+  const { page, observations, candidates } = extract(`<main><h1>Pump Repair</h1>
+    <p>We repair pumps for local factories. Our technicians inspect seals.</p><h2>Included support</h2><ul><li>${original}</li></ul></main>`, "/services/pump-repair");
+  const feature = values(candidates, "features").find((candidate) => JSON.stringify(candidate.value).includes("Pressure testing"))!;
+  expect(feature.value).toEqual([{ text: "Pressure testing detects leaks. Results include measured pressure." }]);
+  const { validateCandidates } = await import("../../src/worker/extract/validate-candidates");
+  const { reduceCandidates } = await import("../../src/worker/extract/reduce");
+  const companyId = "11111111-1111-4111-8111-111111111111";
+  const validated = validateCandidates(candidates, page, observations, companyId);
+  const offering = reduceCandidates(validated, { companyId, jobId: "22222222-2222-4222-8222-222222222222", partial: false }).find((proposal) => proposal.kind === "offering")!;
+  expect(offering.provenance.evidence.some((evidence) => evidence.excerpt === original)).toBe(true);
 });

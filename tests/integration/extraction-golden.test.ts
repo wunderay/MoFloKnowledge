@@ -416,3 +416,52 @@ it("grounds a named subservice in its cited containing service list", () => {
   } };
   expect(() => validateCandidates([service], separated, [], companyId)).toThrow("entity_key_not_observed");
 });
+
+it("normalizes explicit company service roles without accepting competitor or hypothetical claims", () => {
+  const rolePage = { ...page, capture: { ...page.capture, segments: [
+    { id: "own", text: "We also provide equipment repair services for local workshops." },
+    { id: "other", text: "Other firms provide equipment repair services for local workshops." },
+  ] } };
+  const role = { ...candidate("/company_foundation/overview", "Northstar builds", "Northstar builds"),
+    field: "/company_foundation/company_role", value: [{ text: "Service provider" }], segment_ids: ["own"],
+    note: "Normalized company role from an explicit current-company service statement." };
+  expect(validateCandidates([role], rolePage, [], companyId)).toHaveLength(1);
+  expect(() => validateCandidates([{ ...role, segment_ids: ["other"] }], rolePage, [], companyId)).toThrow("value_not_in_evidence");
+});
+
+it("deduplicates literal buyer plurals while retaining source wording and distinct audience scope", () => {
+  const buyerPage = { ...page, capture: { ...page.capture, segments: [
+    { id: "buyers", text: "We serve small business, small businesses, and growing businesses." },
+  ] } };
+  const buyer = (text: string) => ({ ...candidate("/market_and_customers/target_buyers", [{ text: "water teams" }], "water teams"),
+    value: [{ text }], segment_ids: ["buyers"] });
+  const validated = validateCandidates([buyer("small business"), buyer("small businesses"), buyer("growing businesses")], buyerPage, [], companyId);
+  const market = reduceCandidates(validated, { companyId, jobId, partial: false }).find((proposal) => proposal.kind === "market_and_customers")!;
+  expect((market.content as { target_buyers: { text: string }[] }).target_buyers).toHaveLength(2);
+  expect(market.conflicts).toEqual([]);
+  expect((market.content as { target_buyers: { text: string }[] }).target_buyers.every((value) => buyerPage.capture.segments[0].text.includes(value.text))).toBe(true);
+});
+
+it("merges an explicit broader return catalog scope without borrowing unrelated services", () => {
+  const entries = [
+    { name: "Gift & Estate Tax Return Preparation", key: "narrow" },
+    { name: "Estate, Gift & Trust Returns", key: "broad" },
+    { name: "Business Tax Returns", key: "business" },
+  ];
+  const catalogPage = { ...page, capture: { ...page.capture,
+    segments: [{ id: "intro", text: "Our services include:" }, ...entries.map((entry) => ({ id: entry.key, text: entry.name }))],
+    observations: { ...page.capture.observations, contentLists: [{ heading: null, intro: "Our services include:", items: entries.map((entry) => entry.name) }] },
+  } };
+  const input = entries.map((entry) => ({ ...candidate("/offerings/@id/name", "Field Kit", "Field Kit.", "https://example.com/kit"),
+    value: entry.name, entity_key: page.capture.finalUrl + "|service:" + entry.name.toLowerCase().replace(/&/g, " and ").replace(/[^a-z]+/g, " ").trim(),
+    segment_ids: ["intro", entry.key] }));
+  const validated = validateCandidates(input, catalogPage, [], companyId);
+  const offerings = reduceCandidates(validated, { companyId, jobId, partial: false }).filter((proposal) => proposal.kind === "offering");
+  expect(offerings.map((proposal) => (proposal.content as { name: string }).name).sort()).toEqual(["Business Tax Returns", "Estate, Gift & Trust Returns"]);
+  const broad = offerings.find((proposal) => (proposal.content as { name: string }).name === "Estate, Gift & Trust Returns")!;
+  expect(broad.provenance.evidence.map((evidence) => evidence.excerpt)).toEqual(expect.arrayContaining(entries.slice(0, 2).map((entry) => entry.name)));
+  expect(broad.provenance.claims.every((claim) => claim.evidence_ids.some((id) => broad.provenance.evidence.find((evidence) => evidence.id === id)?.excerpt === "Estate, Gift & Trust Returns"))).toBe(true);
+  expect(reduceCandidates([...validated].reverse(), { companyId, jobId, partial: false })).toEqual(reduceCandidates(validated, { companyId, jobId, partial: false }));
+  const linked = validateCandidates([{ ...input[1], field: "/offerings/@id/url", value: "https://example.com/kit" }], catalogPage, [], companyId);
+  expect(reduceCandidates([...validated, ...linked], { companyId, jobId, partial: false }).filter((proposal) => proposal.kind === "offering")).toHaveLength(3);
+});
