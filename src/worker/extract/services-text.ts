@@ -133,8 +133,6 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
       add("description", childDescription || name, entity, [...childContext, ...(startup ? paragraphs.filter((p) => /\bstart[- ]?ups?\b/i.test(p)) : [])], [], 85);
       add("category", primary.heading, entity, childContext, [], 85);
       features(entity, paragraphs.filter((p) => startup && /\bstart[- ]?ups?\b/i.test(p)), childContext);
-      if (specializedReturn) features(entity, detail.flatMap((s) => s.listItems ?? [])
-        .filter((text) => text !== name && /\b(?:estate|gifts?|trusts?)\b/i.test(text) && /\b(?:taxes|returns|preparation|planning)\b/i.test(text)), childContext);
     }
   }
 
