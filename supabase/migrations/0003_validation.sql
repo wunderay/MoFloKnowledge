@@ -10,7 +10,7 @@ BEGIN
  WHEN 'number' THEN
   IF (v::text)::numeric=0 THEN r:='0';
   ELSIF abs((v::text)::numeric)>=1e21 OR abs((v::text)::numeric)<0.000001 THEN
-   r:=to_jsonb((v::text)::double precision)::text; r:=regexp_replace(r,'e([+-])0+([0-9]+)$','e\1\2');
+   r:=((v::text)::double precision)::text; r:=regexp_replace(r,'e([+-])0+([0-9]+)$','e\1\2');
   ELSE r:=trim_scale((v::text)::numeric)::text; END IF;
  ELSE r:=v::text; END CASE; RETURN r;
 END $$;
