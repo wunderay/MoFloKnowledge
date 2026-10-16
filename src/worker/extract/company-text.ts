@@ -22,7 +22,7 @@ type RankedCandidate = FieldCandidate & { priority?: number };
 const normalized = (text: string) => text.replace(/\s+/g, " ").trim();
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const excluded = /\b(?:articles?|news|blog|testimonials?|reviews?|privacy|terms|cookies?|accessibility)\b/i;
-const companyRoute = /^\/(?:$|(?:about(?:-us)?|company|firm(?:-background)?|our-story|contact|team|people|staff)(?:\/|$))/i;
+const companyRoute = /^\/(?:$|(?:services|products|offerings)\/?$|(?:about(?:-us)?|company|firm(?:-background)?|our-story|contact|team|people|staff)(?:\/|$))/i;
 const legalSuffix = /\b(?:L\.?L\.?C\.?|L\.?L\.?P\.?|Ltd\.?|Limited|Inc\.?|Incorporated|Corporation|Corp\.?|P\.?L\.?L\.?C\.?)\b\.?/i;
 
 /** Extract published passages. Rules select source text; they never rewrite a firm's claims. */
@@ -105,15 +105,27 @@ export function companyTextCandidates(
   const names = orgNames.map((o) => o.text);
   const companySubject = (text: string) => /^(?:we\b|our\s+(?:firm|company|business|team|practice)\b)/i.test(text) ||
     names.some((name) => text.toLowerCase().includes(name.toLowerCase()));
+  const existing = [...structuredCandidates(page, observations), ...visibleCandidates(page, observations)];
+  const people = existing.filter((c) => c.field === "/key_people/@id/name" && typeof c.value === "string");
+  const profilePeople = people.filter((person) => primary.some((s) => s.heading &&
+    (s.heading === person.value || s.heading.startsWith(String(person.value) + ","))));
+  const person = profilePeople.length === 1 ? profilePeople[0] : undefined;
+  const profile = Boolean(person && /\/(?:about(?:-us)?|team|people|staff)\/[^/]+\/?$/i.test(url.pathname));
+  const currentPractice = profile && existing.some((c) => c.entity_key === person?.entity_key &&
+    c.field === "/key_people/@id/title" && /\b(?:founder|owner)\b/i.test(String(c.value))) &&
+    paragraphs.some(({ text }) => /\b(?:my|our) own\s+(?:[\p{L}-]+\s+){0,3}(?:practice|firm|company|business)\b/iu.test(text) &&
+      !/\b(?:former|previous|prior|old|sold|closed|before joining)\b/i.test(text));
   const action = /\b(?:provid(?:e|es|ing)|offer(?:s|ing)?|specializ(?:e|es|ing)|help(?:s|ing)?|deliver(?:s|ing)?|design(?:s|ing)?|manufactur(?:e|es|ing)|build(?:s|ing)?|develop(?:s|ing)?|sell(?:s|ing)?|serv(?:e|es|ing)|support(?:s|ing)?|count on us for)\b/i;
   const business = paragraphs.filter(({ text, section }) =>
-    action.test(text) && (companySubject(text) || /\b(?:about|welcome|firm background|who we are|what we do|our company|our story|contact|get in touch)\b/i.test(section.heading ?? "") ||
-      /\b(?:you can count on us|our (?:services|products)|we['’]re|we are)\b/i.test(text)));
+    action.test(text) && (companySubject(text) || /\b(?:about|welcome|firm background|who we are|what we do|what we offer|our company|our story|contact|get in touch)\b/i.test(section.heading ?? "") ||
+      /\b(?:you can count on us|our (?:services|products)|we['’]re|we are)\b/i.test(text) ||
+      (currentPractice && /\bI(?:['’]m| am)? (?:can |am able to |able to )?(?:provide|offer)\b/i.test(text))));
   const descriptions = business.slice(0, 3).map(({ text: paragraph }) => {
     // Drop a following form instruction while preserving the complete published description.
     const text = paragraph.split(/(?<=[.!?])\s+(?=(?:If you|Simply|Please|Just)\b[^.!?]*(?:form|fill out|contact us))/i)[0];
-    const priority = /\b(?:services|products|solutions|software|consultancy|manufacturer)\b/i.test(text) ? 88 : url.pathname === "/" ? 80 : 75;
-    return { text, priority };
+    const operating = /\b(?:provid(?:e|es|ing)|offer(?:s|ing)?|design(?:s|ing)?|manufactur(?:e|es|ing)|build(?:s|ing)?|develop(?:s|ing)?|sell(?:s|ing)?|count on us for)\b/i.test(text);
+    const priority = operating ? (currentPractice ? 93 : 88) : url.pathname === "/" ? 80 : 75;
+    return { text, priority, operating };
   });
   if (descriptions.length) {
     const best = Math.max(...descriptions.map((d) => d.priority));
@@ -122,7 +134,31 @@ export function companyTextCandidates(
       if (priority === best && !passages.includes(text) &&
         [...passages, text].join("\n\n").length <= 4000) passages.push(text);
     add("/company_foundation/overview", passages.join("\n\n"), passages, best);
-    add("/company_foundation/business_model", passages.join("\n\n"), passages, best);
+    const operations = descriptions.filter((d) => d.operating).map((d) => d.text);
+    if (operations.length && operations.join("\n\n").length <= 4000)
+      add("/company_foundation/business_model", operations.join("\n\n"), operations, best);
+  }
+  // The catalog root explicitly groups these linked names as the company's offering range.
+  if (/^\/(?:services|products|offerings)\/?$/i.test(url.pathname)) {
+    const intro = paragraphs.find(({ text, section }) => action.test(text) &&
+      /\b(?:services|products|offerings|what we offer|our solutions)\b/i.test(section.heading ?? ""));
+    if (intro) {
+      const linked = new Map<string, string>();
+      for (const link of capture.links) {
+        let destination: URL;
+        try { destination = new URL(link.url); } catch { continue; }
+        if (destination.hostname === url.hostname &&
+          /^\/(?:services|products|offerings)\/[^/]+\/?$/i.test(destination.pathname) &&
+          link.label.length >= 3 && link.label.length <= 200 && evidence(link.label).length &&
+          !/^(?:learn more|read more|details|contact|get started|book now)$/i.test(link.label))
+          linked.set(link.url, link.label);
+      }
+      const passages = [intro.text, ...new Set(linked.values())].slice(0, 13);
+      if (passages.length >= 2 && passages.join("\n\n").length <= 4000) {
+        add("/company_foundation/overview", passages.join("\n\n"), passages, 96);
+        add("/company_foundation/business_model", intro.text, [intro.text], 90);
+      }
+    }
   }
   for (const [index, { text }] of descriptions.entries()) {
     // An explicit description of what the firm is, not a guessed standardized label.
@@ -135,7 +171,7 @@ export function companyTextCandidates(
     const category = /\b(?:specializ(?:e|es|ing) in|provid(?:e|es|ing)|offer(?:s|ing)?|reliable)\s+([^.!?;]{3,90}?\b(?:services|solutions|software|products))\b/i.exec(text)?.[1];
     if (category && !/\b(?:you|your|our|other|these|this|the best)\b/i.test(category))
       add("/company_foundation/industry", category, [text], 70 - index);
-    const role = /\b(?:service provider|manufacturer|retailer|wholesaler|distributor|consultancy)\b/i.exec(text)?.[0];
+    const role = /\b(?:professional service|service provider|manufacturer|retailer|wholesaler|distributor|consultancy)\b/i.exec(text)?.[0];
     if (role) add("/company_foundation/company_role", [{ text: role }], [text], 80);
   }
 
@@ -157,12 +193,6 @@ export function companyTextCandidates(
     if (/\b(?:you can count on us|our mission|we help|committed to|our goal|we believe)\b/i.test(text))
       add("/positioning/company_pitch", text, [text], 78);
 
-  const existing = [...structuredCandidates(page, observations), ...visibleCandidates(page, observations)];
-  const people = existing.filter((c) => c.field === "/key_people/@id/name" && typeof c.value === "string");
-  const profilePeople = people.filter((person) => primary.some((s) => s.heading &&
-    (s.heading === person.value || s.heading.startsWith(String(person.value) + ","))));
-  const person = profilePeople.length === 1 ? profilePeople[0] : undefined;
-  const profile = Boolean(person && /\/(?:about(?:-us)?|team|people|staff)\/[^/]+\/?$/i.test(url.pathname));
   if (person && profile) {
     const identityEvidence = person.observation_ids.map((id) => observations.find((o) => o.id === id))
       .filter((o): o is TechnicalObservation => Boolean(o));
