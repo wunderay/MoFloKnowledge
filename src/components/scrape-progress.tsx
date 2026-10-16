@@ -1,12 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
-import { api, companyPath, write } from "./api-client";
+import { useEffect, useRef, useState } from "react";
+import { api, ApiError, companyPath, write } from "./api-client";
 import { Notice, StatusBadge } from "./ui";
+import type { Progress, SafeJobError } from "@/contracts";
 type Job = {
   id: string;
   status: string;
-  progress: Record<string, number | string>;
-  errors?: { code: string; message: string; url?: string }[];
+  progress: Partial<Progress>;
+  errors?: SafeJobError[];
 };
 const active = ["queued", "validating", "crawling", "extracting"];
 export function ScrapeProgress({
@@ -21,6 +22,9 @@ export function ScrapeProgress({
   onComplete: () => void;
 }) {
   const [url, setUrl] = useState(website);
+  const [documentLimit, setDocumentLimit] = useState(10);
+  const [depthLimit, setDepthLimit] = useState(2);
+  const pendingRequest = useRef<{ key: string; id: string } | null>(null);
   const [jobId, setJobId] = useState(() =>
     typeof window === "undefined"
       ? null
@@ -61,19 +65,49 @@ export function ScrapeProgress({
   }, [companyId, jobId, onComplete]);
   async function start(e: React.FormEvent) {
     e.preventDefault();
+    if (
+      !Number.isInteger(documentLimit) ||
+      documentLimit < 1 ||
+      documentLimit > 25 ||
+      !Number.isInteger(depthLimit) ||
+      depthLimit < 0 ||
+      depthLimit > 3
+    ) {
+      setError(
+        "Choose a document limit from 1 to 25 and a depth limit from 0 to 3.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
+    const key = JSON.stringify([url, documentLimit, depthLimit]);
+    if (pendingRequest.current?.key !== key)
+      pendingRequest.current = { key, id: crypto.randomUUID() };
     try {
       const result = await api<{ jobId: string; status: string }>(
         companyPath(companyId, "/scrapes"),
         write("POST", { url, requestId: crypto.randomUUID() }),
       );
+      pendingRequest.current = null;
       setJob({ id: result.jobId, status: result.status, progress: {} });
       setJobId(result.jobId);
       const next = new URL(window.location.href);
       next.searchParams.set("jobId", result.jobId);
       window.history.replaceState(null, "", next);
     } catch (e) {
+      if (
+        e instanceof ApiError &&
+        e.status === 409 &&
+        e.details &&
+        typeof e.details === "object" &&
+        "activeJobId" in e.details &&
+        typeof e.details.activeJobId === "string"
+      ) {
+        setJobId(e.details.activeJobId);
+        const next = new URL(window.location.href);
+        next.searchParams.set("jobId", e.details.activeJobId);
+        window.history.replaceState(null, "", next);
+      }
       setError((e as Error).message);
     } finally {
       setBusy(false);
@@ -115,9 +149,40 @@ export function ScrapeProgress({
           <span aria-hidden>↗</span>
         </button>
       </form>
+      <details style={{ marginTop: 12 }}>
+        <summary className="field__hint">Capture limits</summary>
+        <div className="field-grid" style={{ marginTop: 15 }}>
+          <label className="field">
+            <span className="field__label">Document limit</span>
+            <input
+              type="number"
+              min={1}
+              max={25}
+              value={documentLimit}
+              disabled={
+                !canEdit || busy || Boolean(job && active.includes(job.status))
+              }
+              onChange={(event) => setDocumentLimit(Number(event.target.value))}
+            />
+          </label>
+          <label className="field">
+            <span className="field__label">Depth limit</span>
+            <input
+              type="number"
+              min={0}
+              max={3}
+              value={depthLimit}
+              disabled={
+                !canEdit || busy || Boolean(job && active.includes(job.status))
+              }
+              onChange={(event) => setDepthLimit(Number(event.target.value))}
+            />
+          </label>
+        </div>
+      </details>
       <p className="field__hint" style={{ margin: "10px 0 0" }}>
-        Capture up to 10 public pages. Review the results before saving a
-        knowledge version.
+        Capture up to {documentLimit} public pages. Review the results before
+        saving a knowledge version.
       </p>
       {job && (
         <>
@@ -152,6 +217,18 @@ export function ScrapeProgress({
                 </span>
               ))}
           </div>
+          {job.status === "extracting" && (
+            <p className="field__hint">
+              Extracting: {job.progress.extracted ?? 0} of{" "}
+              {job.progress.captured ?? 0} captured pages processed.
+            </p>
+          )}
+          {job.progress.limits_reached?.length ? (
+            <Notice>
+              Capture limits reached: {job.progress.limits_reached.join(", ")}.
+              Coverage may be partial.
+            </Notice>
+          ) : null}
           {job.errors?.length ? (
             <details>
               <summary className="field__hint">

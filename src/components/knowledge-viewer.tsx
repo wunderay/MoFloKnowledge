@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createEmptyProvenance,
   type BusinessEntry,
@@ -10,7 +10,7 @@ import {
 } from "@/contracts";
 import { api, companyPath, write } from "./api-client";
 import { CATEGORY_SPECS, labelOf } from "./business-fields";
-import { CitationPopover, safeHref } from "./citation-popover";
+import { ValueView } from "./entry-value";
 import { EmptyState, Notice, StatusBadge } from "./ui";
 import { EntryHistory } from "./entry-history";
 type ViewEntry = {
@@ -22,100 +22,6 @@ type ViewEntry = {
   current_revision: number;
 };
 type Version = { id: string; version_number: number; created_at: string };
-export function ValueView({
-  value,
-  path,
-  provenance,
-  approved,
-  label,
-}: {
-  value: unknown;
-  path: string;
-  provenance: EntryProvenance;
-  approved: boolean;
-  label?: string;
-}) {
-  if (Array.isArray(value))
-    return (
-      <div className="entry-value">
-        <div className="entry-value__label">
-          {label}
-          <CitationPopover
-            path={path}
-            provenance={provenance}
-            approved={approved}
-          />
-        </div>
-        {value.length ? (
-          value.map((item, i) => (
-            <div
-              className="entry-value__children"
-              key={
-                item && typeof item === "object" && "id" in item
-                  ? String(item.id)
-                  : i
-              }
-            >
-              <ValueView
-                value={item}
-                path={`${path}/${item && typeof item === "object" && "id" in item ? `@${item.id}` : i}`}
-                provenance={provenance}
-                approved={approved}
-              />
-            </div>
-          ))
-        ) : (
-          <span className="muted">No values recorded</span>
-        )}
-      </div>
-    );
-  if (value && typeof value === "object")
-    return (
-      <div>
-        {Object.entries(value)
-          .filter(([key]) => key !== "id")
-          .map(([key, child]) => (
-            <ValueView
-              key={key}
-              value={child}
-              path={`${path}/${key}`}
-              provenance={provenance}
-              approved={approved}
-              label={labelOf(key)}
-            />
-          ))}
-      </div>
-    );
-  return (
-    <div className="entry-value">
-      <span className="entry-value__label">
-        {label}
-        <CitationPopover
-          path={path}
-          provenance={provenance}
-          approved={approved}
-        />
-      </span>
-      <span className="entry-value__text">
-        {value === null ? (
-          <span className="muted">Unknown</span>
-        ) : typeof value === "string" && /^https?:\/\//.test(value) ? (
-          <a href={safeHref(value)} target="_blank" rel="noopener noreferrer">
-            {value} ↗
-          </a>
-        ) : typeof value === "boolean" ? (
-          value ? (
-            "Yes"
-          ) : (
-            "No"
-          )
-        ) : (
-          String(value)
-        )}
-      </span>
-    </div>
-  );
-}
 function snapshotEntries(payload: KnowledgeBaseExport): ViewEntry[] {
   const provenance = { ...createEmptyProvenance(), ...payload.provenance };
   return Object.keys(CATEGORY_SPECS).flatMap((kind) => {
@@ -148,18 +54,38 @@ function snapshotEntries(payload: KnowledgeBaseExport): ViewEntry[] {
 export function KnowledgeViewer({
   companyId,
   initialVersionId,
+  initialData,
 }: {
   companyId: string;
   initialVersionId?: string;
+  initialData?: {
+    companyName: string;
+    versions: Version[];
+    snapshot?: KnowledgeBaseExport;
+    draft?: {
+      company: { role: string; archived_at: string | null };
+      entries: ViewEntry[];
+    };
+  };
 }) {
-  const [name, setName] = useState("Company knowledge");
+  const [name, setName] = useState(
+    initialData?.companyName ?? "Company knowledge",
+  );
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>(
     [],
   );
-  const [versions, setVersions] = useState<Version[]>([]);
+  const [versions, setVersions] = useState<Version[]>(
+    initialData?.versions ?? [],
+  );
   const [versionId, setVersionId] = useState(initialVersionId ?? "");
-  const [entries, setEntries] = useState<ViewEntry[]>([]);
-  const [payload, setPayload] = useState<KnowledgeBaseExport | null>(null);
+  const [entries, setEntries] = useState<ViewEntry[]>(
+    initialData?.snapshot
+      ? snapshotEntries(initialData.snapshot)
+      : (initialData?.draft?.entries ?? []),
+  );
+  const [payload, setPayload] = useState<KnowledgeBaseExport | null>(
+    initialData?.snapshot ?? null,
+  );
   const [mode, setMode] = useState("cards");
   const [query, setQuery] = useState("");
   const [section, setSection] = useState("");
@@ -167,8 +93,16 @@ export function KnowledgeViewer({
   const [review, setReview] = useState("");
   const [coverage, setCoverage] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [canEdit, setCanEdit] = useState(false);
+  const [loading, setLoading] = useState(!initialData);
+  const initializedList = useRef(false);
+  const initializedView = useRef(false);
+  const [canEdit, setCanEdit] = useState(
+    Boolean(
+      initialData?.draft &&
+      initialData.draft.company.role !== "viewer" &&
+      !initialData.draft.company.archived_at,
+    ),
+  );
   const [history, setHistory] = useState<ViewEntry | null>(null);
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -178,6 +112,11 @@ export function KnowledgeViewer({
       .catch(() => {});
   }, []);
   useEffect(() => {
+    if (initialData && !initializedList.current) {
+      initializedList.current = true;
+      return;
+    }
+    initializedList.current = true;
     setVersionId(initialVersionId ?? "");
     setVersions([]);
     setHistory(null);
@@ -206,6 +145,11 @@ export function KnowledgeViewer({
     setCoverage("");
   }, [companyId, versionId]);
   useEffect(() => {
+    if (initialData && !initializedView.current) {
+      initializedView.current = true;
+      return;
+    }
+    initializedView.current = true;
     if (!versionId || !companyId) return;
     const abort = new AbortController();
     setLoading(true);
@@ -608,6 +552,7 @@ export function KnowledgeViewer({
       {history && (
         <EntryHistory
           companyId={companyId}
+          kind={history.kind}
           entryId={history.id}
           revision={history.current_revision}
           canEdit={canEdit && versionId === "draft"}
