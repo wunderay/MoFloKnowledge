@@ -7,18 +7,23 @@ import {
   type EntryKind,
   type EntryProvenance,
   type KnowledgeBaseExport,
+  type Origin,
+  type ReviewStatus,
+  type Assessment,
 } from "@/contracts";
 import { api, companyPath, write } from "./api-client";
 import { CATEGORY_SPECS, labelOf } from "./business-fields";
 import { ValueView } from "./entry-value";
 import { EmptyState, Notice, StatusBadge } from "./ui";
 import { EntryHistory } from "./entry-history";
+import { filterView } from "@/knowledge/filter-view";
 type ViewEntry = {
   id: string;
+  company_id: string;
   kind: EntryKind;
   content: BusinessEntry;
   provenance: EntryProvenance;
-  review_status: string;
+  review_status: ReviewStatus;
   current_revision: number;
 };
 type Version = { id: string; version_number: number; created_at: string };
@@ -42,6 +47,7 @@ function snapshotEntries(payload: KnowledgeBaseExport): ViewEntry[] {
       );
       return {
         id: state?.entry_id ?? kind,
+        company_id: payload.company_id,
         kind: kind as EntryKind,
         content,
         provenance,
@@ -241,31 +247,44 @@ export function KnowledgeViewer({
   }
   const filtered = useMemo(
     () =>
-      entries.filter(
-        (e) =>
-          (!section || e.kind === section) &&
-          (!review || e.review_status === review) &&
-          (!origin ||
-            e.provenance.claims.some(
-              (c) => c.origin === origin && c.entry_id === e.id,
-            )) &&
-          (!coverage ||
-            e.provenance.coverage.some(
-              (c) =>
-                c.status === coverage &&
-                c.targets.some((target) =>
-                  target.startsWith(
-                    e.kind === "key_person"
-                      ? `/key_people/@${(e.content as { id: string }).id}/`
-                      : e.kind === "offering"
-                        ? `/offerings/@${(e.content as { id: string }).id}/`
-                        : `/${e.kind}/`,
-                  ),
+      filterView(
+        entries.map((entry) => {
+          const root =
+            entry.kind === "key_person"
+              ? `/key_people/@${(entry.content as { id: string }).id}`
+              : entry.kind === "offering"
+                ? `/offerings/@${(entry.content as { id: string }).id}`
+                : `/${entry.kind}`;
+          return {
+            ...entry,
+            entry_id: entry.id,
+            provenance: {
+              ...entry.provenance,
+              claims: entry.provenance.claims.filter(
+                (claim) => claim.entry_id === entry.id,
+              ),
+              coverage: entry.provenance.coverage.filter((item) =>
+                item.targets.some(
+                  (target) => target === root || target.startsWith(`${root}/`),
                 ),
-            )) &&
-          JSON.stringify(e.content).toLowerCase().includes(query.toLowerCase()),
-      ),
-    [entries, section, review, origin, coverage, query],
+              ),
+            },
+          };
+        }),
+        {
+          companyId,
+          query,
+          section: (section || undefined) as EntryKind | undefined,
+          origin: (origin || undefined) as Origin | undefined,
+          reviewStatus: (review || undefined) as ReviewStatus | undefined,
+          coverage: (coverage || undefined) as Assessment | undefined,
+        },
+      ).map((entry) => ({
+        ...entry,
+        provenance: entries.find((original) => original.id === entry.id)!
+          .provenance,
+      })),
+    [companyId, entries, section, review, origin, coverage, query],
   );
   if (!companyId)
     return (
