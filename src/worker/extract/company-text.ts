@@ -101,7 +101,6 @@ export function companyTextCandidates(
     const legal = legalSuffix.exec(identity.text)?.[0];
     if (legal)
       add("/company_foundation/legal_entity_type", legal, [], 90, null, identity.observed);
-    add("/company_foundation/alternative_company_names", [{ text: identity.text }], [], 85, null, identity.observed);
   }
   const names = orgNames.map((o) => o.text);
   const companySubject = (text: string) => /^(?:we\b|our\s+(?:firm|company|business|team|practice)\b)/i.test(text) ||
