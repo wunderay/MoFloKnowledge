@@ -56,13 +56,16 @@ describe("authored service content", () => {
     const { candidates } = extract(`<nav><a href="/services/tax-preparation-planning">Tax Services</a></nav><main>
       <h2>Tax Preparation &amp; Planning</h2><p>Preparing your own tax return can be extremely difficult with today's complex tax code and may often leave you with more questions than answers.</p>
       <h3>Tax Preparation in Florida</h3><p>Our tax preparation services include:</p><ul>
-      <li>Individual Tax Preparation</li><li>Gift &amp; Estate Tax Return Preparation</li><li>Business Start-Ups</li></ul>
+      <li>Individual Tax Preparation</li><li>Gift &amp; Estate Tax Return Preparation</li><li>Estate and Succession Planning</li><li>Business Start-Ups</li></ul>
       <h3>Tax Planning &amp; Education</h3><p>We offer tax and education planning to assist start-ups, as well as, established businesses. We will provide you with a complete list of the most commonly overlooked deductions so that you can limit your tax liability for the following year.</p>
       <h3>Tax Resources</h3><p>Here are some links to help you learn more about taxes:</p></main>`, "/services/tax-preparation-planning");
     expect(values(candidates, "name").map((candidate) => candidate.value)).toEqual([
       "Tax Services", "Tax Preparation & Planning", "Gift & Estate Tax Return Preparation", "Business Start-Ups",
     ]);
     expect(values(candidates, "description").some((candidate) => String(candidate.value).includes("Here are some links"))).toBe(false);
+    expect(values(candidates, "features").filter((candidate) => candidate.entity_key?.endsWith("|service:gift and estate tax return preparation"))).toEqual([]);
+    expect(values(candidates, "features").filter((candidate) => candidate.entity_key === "https://example.com/services/tax-preparation-planning")
+      .map((candidate) => candidate.value)).toContainEqual([{ text: "Estate and Succession Planning" }]);
     expect(candidates.some((candidate) => /Trust/.test(String(candidate.value)))).toBe(false);
     expect(values(candidates, "pricing")).toEqual([]);
     const bio = extract(`<main><h2>Independent CFO and Controller</h2><p>I provide part-time or interim financial and accounting services. You can receive the service and support of a highly qualified CFO and Controller only as you need it, without having to pay a full-time salary or benefits.</p>
