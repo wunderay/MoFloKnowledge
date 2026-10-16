@@ -7,6 +7,7 @@ import {
   parseBusinessEntry,
   ProposalSchema,
   validateProvenance,
+  resolveStablePointer,
   type Proposal,
   type EntryKind,
   type Claim,
@@ -15,6 +16,40 @@ import { canonicalStringify } from "../../knowledge/canonical-json";
 import { stableId } from "./identity";
 import type { ValidatedCandidate } from "./validate-candidates";
 import { SUPPORTED_FIELDS } from "./deterministic";
+// Narrative wording differs naturally across pages; factual scalar values still conflict.
+const narrativeFields = new Set([
+  "overview", "industry", "business_model", "company_pitch", "founding_story",
+  "name", "title", "role", "background_or_relevance", "description", "category",
+]);
+const normalizedWording = (value: unknown) => typeof value === "string"
+  ? value.normalize("NFKC").toLowerCase().replace(/&/g, "and").replace(/[^\p{L}\p{N}]+/gu, " ").trim()
+  : canonicalStringify(value);
+function equivalentItem(value: unknown): unknown {
+  if (typeof value === "string") return /^https?:/.test(value) ? value : normalizedWording(value);
+  if (Array.isArray(value)) return value.map(equivalentItem);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, equivalentItem(v)]));
+  return value;
+}
+function rankCandidates(a: ValidatedCandidate, b: ValidatedCandidate): number {
+  const sourceQuality = (c: ValidatedCandidate) => c.segment_ids.length ? 2 :
+    c.observations.some((o) => o.property?.startsWith("jsonld:")) ? 1 : 0;
+  return (b.priority ?? 0) - (a.priority ?? 0) || sourceQuality(b) - sourceQuality(a) ||
+    String(b.value).length - String(a.value).length || a.id.localeCompare(b.id);
+}
+function mergeFontItems(items: { id: string }[]): { id: string }[] {
+  const merged = new Map<string, { id: string }>();
+  for (const item of items) {
+    const previous = merged.get(item.id);
+    if (previous && "family" in item && "family" in previous) {
+      const oldFont = previous as typeof previous & { observations: string[] };
+      const font = item as typeof item & { observations: string[] };
+      merged.set(item.id, { ...previous,
+        observations: [...new Set([...oldFont.observations, ...font.observations])].sort(),
+      } as typeof previous);
+    } else if (!previous) merged.set(item.id, item);
+  }
+  return [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
 export function reduceCandidates(
   candidates: ValidatedCandidate[],
   options: {
@@ -61,10 +96,12 @@ export function reduceCandidates(
     const sourceMap = new Map<string, (typeof provenance.sources)[number]>();
     const evidenceMap = new Map<string, (typeof provenance.evidence)[number]>();
     for (const field of FIELD_REGISTRY.filter((f) => f.kind === group.kind)) {
-      const all = group.candidates.filter((c) => c.field === field.path);
+      const all = group.candidates.filter((c) => c.field === field.path).sort(rankCandidates);
+      const collection = Array.isArray(content[field.field]);
       const unique = new Map<string, ValidatedCandidate>();
       for (const c of all) {
-        const key = canonicalStringify(c.value) + "|" + c.origin;
+        const key = (narrativeFields.has(field.field) && !collection
+          ? normalizedWording(c.value) : canonicalStringify(c.value)) + "|" + c.origin;
         const old = unique.get(key);
         if (old) {
           old.evidenceIds = [
@@ -72,17 +109,17 @@ export function reduceCandidates(
           ];
         } else unique.set(key, { ...c, evidenceIds: [...c.evidenceIds] });
       }
-      const values = [...unique.values()];
+      let values = [...unique.values()];
+      if (!collection && narrativeFields.has(field.field)) values = values.slice(0, 1);
       const target = field.path.replace("@id", `@${entryId}`);
-      const collection = Array.isArray(content[field.field]);
       const itemValues = new Map<string, string>();
       let collectionConflict = false;
       if (collection)
         for (const c of values)
           for (const item of c.value as { id: string }[]) {
             const previous = itemValues.get(item.id),
-              next = canonicalStringify(item);
-            if (previous && previous !== next) collectionConflict = true;
+              next = canonicalStringify(equivalentItem(item));
+            if (previous && previous !== next && field.field !== "fonts") collectionConflict = true;
             itemValues.set(item.id, next);
           }
       const conflict = collection ? collectionConflict : values.length > 1;
@@ -101,13 +138,7 @@ export function reduceCandidates(
         });
       } else if (values.length) {
         content[field.field] = collection
-          ? [
-              ...new Map(
-                values.flatMap((c) =>
-                  (c.value as { id: string }[]).map((v) => [v.id, v] as const),
-                ),
-              ).values(),
-            ].sort((a, b) => a.id.localeCompare(b.id))
+          ? mergeFontItems(values.flatMap((c) => c.value as { id: string }[]))
           : values[0].value;
       }
       provenance.coverage.push({
@@ -177,8 +208,15 @@ export function reduceCandidates(
       for (const leaf of leaves) {
         const matching = values.filter((c) => {
           if (!collection) return true;
-          const item = c.value as { id: string }[];
-          return item.some((v) => leaf.path.includes("/@" + v.id + "/"));
+          // Attach only evidence that actually supports this selected leaf.
+          try {
+            if (field.field === "fonts" && /\/observations\/\d+$/.test(leaf.path)) {
+              const itemId = leaf.path.slice(target.length).split("/")[1]?.slice(1);
+              const font = (c.value as { id: string; observations: string[] }[]).find((v) => v.id === itemId);
+              return font?.observations.includes(String(leaf.value)) ?? false;
+            }
+            return resolveStablePointer(c.value, leaf.path.slice(target.length)) === leaf.value;
+          } catch { return false; }
         });
         if (!matching.length) continue;
         const c = matching[0];
