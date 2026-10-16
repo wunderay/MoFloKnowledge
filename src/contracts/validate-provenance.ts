@@ -218,12 +218,15 @@ export function validateProvenance(
         const original = claim.evidence_ids
           .map((id) => evidence.get(id)?.excerpt ?? "")
           .join(" ");
-        const statement = `${claim.note ?? ""} ${original}`;
-        if (
-          !/(?:self[- ]descri|self[- ]identif|explicit (?:public )?(?:gender|attestation))/i.test(
-            statement,
-          )
-        )
+        const attested =
+          claim.origin === "user_provided"
+            ? /(?:self[- ]descri|self[- ]identif|explicit (?:public )?(?:gender|attestation))/i.test(
+                claim.note ?? "",
+              )
+            : /(?:I (?:identify|describe myself) as|self[- ]descri|self[- ]identif|gender\s*:)/i.test(
+                original,
+              ) && original.includes(String(value));
+        if (!attested)
           add(
             "gender_attestation",
             target,
