@@ -16,6 +16,7 @@ import { api, companyPath, write } from "./api-client";
 import { CATEGORY_SPECS, labelOf } from "./business-fields";
 import { ValueView } from "./entry-value";
 import { CompanyProfile } from "./company-profile";
+import { SourceCoverage } from "./source-coverage";
 import { EmptyState, Notice, StatusBadge } from "./ui";
 import { EntryHistory } from "./entry-history";
 import { filterView } from "@/knowledge/filter-view";
@@ -477,6 +478,7 @@ export function KnowledgeViewer({
             )}
           </Notice>
         )}
+        <SourceCoverage key={companyId} companyId={companyId} viewingSnapshot={versionId !== "draft"} />
         {loading ? (
           <Notice>Loading knowledge…</Notice>
         ) : mode === "json" ? (
