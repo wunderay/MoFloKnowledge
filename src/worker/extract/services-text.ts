@@ -12,6 +12,7 @@ const normalizeName = (value: string) => value.toLowerCase().replace(/&/g, " and
   .replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
 const generic = /^(?:(?:(?:our|all|professional|business|tax)\s+)?(?:services|products|offerings)|what we offer)$/i;
 const utility = /^(?:learn more|read more|view|details|contact|click here|get started|book now)$/i;
+const categoryLabel = /^(?:[\p{L}\p{N}-]+\s+){0,2}(?:services|products|representation|consulting)$/iu;
 const servicePath = (url: string) => /\/(?:services|products|offerings)\/[^/]+\/?$/i.test(new URL(url).pathname);
 const topicPath = (url: string) => /\/(?:articles?|blog|news|resources?|learning-center)(?:\/|$)/i.test(new URL(url).pathname);
 export const serviceEntityKey = (url: string, name: string) => `${url}|service:${normalizeName(name)}`;
@@ -38,7 +39,7 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
     (o.property === "anchor-label" && o.value === label && o.asset_url === url)).map((o) => o.id);
   const features = (entity: string, texts: string[], context: string[], priority = 90) => {
     for (const text of [...new Set(texts)].slice(0, 80))
-      if (text && text.length <= 4000 && idsFor([text]).length)
+      if (text && text.length <= 4000 && !(text.length < 250 && /:\s*$/.test(text)) && idsFor([text]).length)
         add("features", [{ text }], entity, [...context, text], [], priority);
   };
 
@@ -58,12 +59,12 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
   for (const section of sections) {
     for (const link of section.links ?? []) {
       if (!sameSite(link.url) || !servicePath(link.url) ||
-          !/^(?:[\p{L}\p{N}-]+\s+){0,2}(?:services|representation|consulting)$/iu.test(link.label) ||
+          !categoryLabel.test(link.label) ||
           !(section.links ?? []).some((other) => other.url === link.url && normalizeName(other.label) !== normalizeName(link.label))) continue;
       const evidence = linkEvidence(link.url, link.label);
       if (evidence.length >= 2) add("category", link.label, link.url, [link.label], evidence, 85);
     }
-    if (!section.heading || !/\b(?:services|products|representation|consulting)\b/i.test(section.heading) ||
+    if (!section.heading || !categoryLabel.test(section.heading) ||
         /^(?:our\s+)?(?:services|products|offerings)$|^what we offer$/i.test(section.heading)) continue;
     for (const link of section.links ?? []) {
       if (!sameSite(link.url) || !servicePath(link.url) || utility.test(link.label) ||
@@ -132,6 +133,8 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
       add("description", childDescription || name, entity, [...childContext, ...(startup ? paragraphs.filter((p) => /\bstart[- ]?ups?\b/i.test(p)) : [])], [], 85);
       add("category", primary.heading, entity, childContext, [], 85);
       features(entity, paragraphs.filter((p) => startup && /\bstart[- ]?ups?\b/i.test(p)), childContext);
+      if (specializedReturn) features(entity, detail.flatMap((s) => s.listItems ?? [])
+        .filter((text) => text !== name && /\b(?:estate|gifts?|trusts?)\b/i.test(text) && /\b(?:taxes|returns|preparation|planning)\b/i.test(text)), childContext);
     }
   }
 
