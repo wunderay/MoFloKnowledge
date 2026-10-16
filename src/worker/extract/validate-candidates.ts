@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { FIELD_REGISTRY, businessEntrySchemas } from "../../contracts";
+import {
+  FIELD_REGISTRY,
+  businessEntrySchemas,
+  compareDecimal,
+} from "../../contracts";
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { TechnicalObservation } from "../model/responses";
 import { fieldCandidateSchemas, type FieldCandidate } from "../model/schema";
@@ -172,7 +176,11 @@ export function validateCandidates(
             !/contact|quote|call|inquir/i.test(v.raw)) ||
           (v.amount !== null && /\d\s*(?:[-–—]|to)\s*\d/.test(v.raw)) ||
           [v.amount, v.min_amount, v.max_amount].some(
-            (a) => a !== null && !v.raw.replace(/,/g, "").includes(a),
+            (a) =>
+              a !== null &&
+              !(v.raw.replace(/,/g, "").match(/\d+(?:\.\d+)?/g) ?? []).some(
+                (number) => compareDecimal(number, a) === 0,
+              ),
           )
         )
           throw new Error("price_not_supported");
@@ -235,11 +243,18 @@ export function validateCandidates(
             throw new Error("company_logo_not_observed");
       if (
         c.entity_key &&
-        c.entity_key !== page.capture.finalUrl &&
         !page.capture.links.some((link) => link.url === c.entity_key) &&
         !(
           c.entity_key.startsWith(page.capture.finalUrl + "|") &&
-          quotes.includes(c.entity_key.slice(page.capture.finalUrl.length + 1))
+          (() => {
+            const parts = c.entity_key!.split("|");
+            return (
+              parts.length === 3 &&
+              page.capture.segments.some(
+                (s) => s.id === parts[2] && s.text.includes(parts[1]),
+              )
+            );
+          })()
         )
       )
         throw new Error("entity_key_not_observed");
@@ -290,7 +305,14 @@ export function validateCandidates(
           .join(" ")
           .replace(/\s+/g, " ")
           .toLowerCase();
-        const skip = new Set(["kind", "classification", "observations"]);
+        const skip = new Set([
+          "kind",
+          "classification",
+          "observations",
+          "amount",
+          "min_amount",
+          "max_amount",
+        ]);
         const check = (value: unknown, key = "") => {
           if (skip.has(key)) return;
           if (typeof value === "string") {
