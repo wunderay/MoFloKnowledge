@@ -54,13 +54,14 @@ describe("literal market and conversion extraction", () => {
     expect(values("funnels")).toEqual([]);
     expect(MARKET_TEXT_SUPPORTED_FIELDS).not.toContain("/market_and_customers/funnels");
     // A capture can expose its own form submit without a separate page-level CTA observation.
-    page.capture.observations.forms = [{ action: "https://example.com/inquiries", submitLabels: ["Send request"] }];
+    page.capture.observations.forms = [{ action: "https://example.com/inquiries", submitLabels: ["Send request\n\nSending..."] }];
     observations.push({ id: "form-submit", selector: "form", property: "form-submit-label",
-      value: "Send request", asset_url: "https://example.com/inquiries" });
+      value: "Send request\n\nSending...", asset_url: "https://example.com/inquiries" });
     const explicitSubmit = marketTextCandidates(page, observations);
     expect(explicitSubmit.find((candidate) => candidate.observation_ids.includes("form-submit"))?.value)
       .toEqual([{ label: "Send request", url: "https://example.com/inquiries", purpose: null }]);
     expect(explicitSubmit.some((candidate) => candidate.field.endsWith("/funnels"))).toBe(false);
+    expect(explicitSubmit.some((candidate) => JSON.stringify(candidate.value).includes("Sending..."))).toBe(false);
   });
 
   it("requires an explicit supplier relationship rather than a resource host or software mention", () => {
