@@ -7,6 +7,11 @@ BEGIN
  CASE jsonb_typeof(v)
  WHEN 'object' THEN SELECT '{'||coalesce(string_agg(to_jsonb(key)::text||':'||private.canonical_json(value),',' ORDER BY key COLLATE "C"),'')||'}' INTO r FROM jsonb_each(v);
  WHEN 'array' THEN SELECT '['||coalesce(string_agg(private.canonical_json(value),',' ORDER BY ord),'')||']' INTO r FROM jsonb_array_elements(v) WITH ORDINALITY a(value,ord);
+ WHEN 'number' THEN
+  IF (v::text)::numeric=0 THEN r:='0';
+  ELSIF abs((v::text)::numeric)>=1e21 OR abs((v::text)::numeric)<0.000001 THEN
+   r:=to_jsonb((v::text)::double precision)::text; r:=regexp_replace(r,'e([+-])0+([0-9]+)$','e\1\2');
+  ELSE r:=trim_scale((v::text)::numeric)::text; END IF;
  ELSE r:=v::text; END CASE; RETURN r;
 END $$;
 CREATE FUNCTION private.validate_json(v jsonb,s jsonb,p text DEFAULT '') RETURNS void LANGUAGE plpgsql IMMUTABLE SET search_path='' AS $$
@@ -40,7 +45,7 @@ BEGIN
   IF s->>'format'='uuid' AND k !~ '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$' THEN RAISE EXCEPTION 'invalid_uuid:%',p; END IF;
   IF s->>'format' IN ('uri','url') AND NOT private.valid_url(k) THEN RAISE EXCEPTION 'invalid_url:%',p; END IF;
   IF s->>'format'='date-time' THEN PERFORM k::timestamptz; END IF;
-  IF s->>'format'='date' THEN PERFORM k::date; END IF;
+  IF s->>'format'='date' OR s->>'pattern'='^\d{4}-\d{2}-\d{2}$' THEN PERFORM k::date; END IF;
  ELSIF jsonb_typeof(v)='number' THEN
   IF s ? 'exclusiveMinimum' AND (v::text)::numeric<=(s->>'exclusiveMinimum')::numeric THEN RAISE EXCEPTION 'number_range:%',p; END IF;
   IF s ? 'minimum' AND (v::text)::numeric<(s->>'minimum')::numeric OR s ? 'maximum' AND (v::text)::numeric>(s->>'maximum')::numeric THEN RAISE EXCEPTION 'number_range:%',p; END IF;

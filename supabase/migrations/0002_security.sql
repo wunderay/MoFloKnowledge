@@ -30,6 +30,19 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
+-- RLS predicates may run before a row-lock wait. Recheck in a volatile trigger
+-- after the UPDATE acquires its row lock so committed revocations take effect.
+CREATE FUNCTION private.recheck_company_rename() RETURNS trigger LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path='' AS $$
+DECLARE r text;
+BEGIN
+ IF NEW.name IS DISTINCT FROM OLD.name THEN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'not_authenticated' USING ERRCODE='28000'; END IF;
+  SELECT role INTO r FROM public.company_members WHERE company_id=OLD.id AND user_id=auth.uid();
+  IF r IS NULL OR r NOT IN ('owner','editor') THEN RAISE EXCEPTION 'forbidden' USING ERRCODE='42501'; END IF;
+  IF OLD.archived_at IS NOT NULL THEN RAISE EXCEPTION 'company_archived'; END IF;
+ END IF; RETURN NEW;
+END $$;
+CREATE TRIGGER recheck_company_rename BEFORE UPDATE OF name ON public.companies FOR EACH ROW EXECUTE FUNCTION private.recheck_company_rename();
 DO $$ DECLARE t text; BEGIN
  FOREACH t IN ARRAY ARRAY['source_pages','knowledge_entry_versions','knowledge_base_versions'] LOOP
   EXECUTE format('CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION private.immutable_record()',t);
@@ -72,7 +85,7 @@ CREATE FUNCTION public.update_company(p_company uuid,p_expected_generation bigin
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE c public.companies:=private.lock_company(p_company);
 BEGIN
- IF c.draft_generation<>p_expected_generation THEN RAISE EXCEPTION 'stale_generation' USING DETAIL=jsonb_build_object('currentGeneration',c.draft_generation)::text; END IF;
+ IF c.draft_generation IS DISTINCT FROM p_expected_generation THEN RAISE EXCEPTION 'stale_generation' USING DETAIL=jsonb_build_object('currentGeneration',c.draft_generation)::text; END IF;
  IF p_website IS NOT NULL AND NOT private.valid_url(p_website) THEN RAISE EXCEPTION 'invalid_url'; END IF;
  UPDATE public.companies SET name=coalesce(p_name,name),website_url=coalesce(p_website,website_url) WHERE id=p_company RETURNING * INTO c; RETURN c;
 END $$;
@@ -80,7 +93,7 @@ CREATE FUNCTION public.archive_company(p_company uuid,p_expected_generation bigi
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE c public.companies:=private.lock_company(p_company,true);
 BEGIN
- IF c.draft_generation<>p_expected_generation THEN RAISE EXCEPTION 'stale_generation' USING DETAIL=jsonb_build_object('currentGeneration',c.draft_generation)::text; END IF;
+ IF c.draft_generation IS DISTINCT FROM p_expected_generation THEN RAISE EXCEPTION 'stale_generation' USING DETAIL=jsonb_build_object('currentGeneration',c.draft_generation)::text; END IF;
  UPDATE public.companies SET archived_at=now(),draft_generation=draft_generation+1 WHERE id=p_company RETURNING * INTO c;
  UPDATE public.scrape_jobs SET status='cancelled',cancel_requested_at=now(),finished_at=now(),lease_token=NULL,lease_expires_at=NULL,updated_at=now() WHERE company_id=p_company AND status IN ('queued','validating','crawling','extracting'); RETURN c;
 END $$;
