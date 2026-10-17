@@ -97,27 +97,27 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     page.getByText(/results are ready for review|Partial results are ready/),
   ).toBeVisible({ timeout: 100_000 });
   const categories = [
-    "Company foundation",
-    "Positioning",
-    "Market & customers",
-    "Branding & style",
-    "Online presence",
-    "Key people",
-    "Offerings",
+    { value: "company_foundation", heading: "Lumen Ledger E2E" },
+    { value: "positioning", heading: "Sales & Marketing" },
+    { value: "market_and_customers", heading: "Customers & Industry" },
+    { value: "branding_and_style", heading: "Branding & Style" },
+    { value: "key_person", heading: "Key People" },
+    { value: "offering", heading: "Business Offerings" },
   ];
+  const categorySelect = page.getByRole("combobox", { name: "Knowledge category", exact: true });
   for (const category of categories) {
-    await page
-      .getByRole("navigation", { name: "Knowledge categories" })
-      .getByRole("button", { name: new RegExp(category.replace("&", "\\&")) })
-      .click();
+    await categorySelect.selectOption(category.value);
+    await expect(categorySelect).toHaveValue(category.value);
     await expect(
-      page.getByRole("heading", { name: category, exact: true }).first(),
+      page.getByRole("heading", { name: category.heading, exact: true }).first(),
     ).toBeVisible();
+    if (category.value === "positioning") {
+      // Three canonical entries share this presentation, retaining separate reviews.
+      for (const section of ["Online presence", "Positioning", "Market & customers"])
+        await expect(page.getByRole("heading", { name: section, exact: true })).toBeVisible();
+    }
   }
-  await page
-    .getByRole("navigation", { name: "Knowledge categories" })
-    .getByRole("button", { name: /Company foundation/ })
-    .click();
+  await categorySelect.selectOption("company_foundation");
   const evidenceTrigger = page
     .getByRole("button", { name: "Evidence for overview", exact: true })
     .first();
@@ -168,7 +168,7 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     page.getByRole("status").filter({ hasText: "Draft saved." }),
   ).toBeVisible();
   const address = page.getByRole("group", {
-    name: "Main address",
+    name: "Headquarters",
     exact: true,
   });
   await address
@@ -202,25 +202,27 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     page.getByRole("status").filter({ hasText: "Entry saved and approved." }),
   ).toBeVisible();
   for (const category of categories.slice(1)) {
-    await page
-      .getByRole("navigation", { name: "Knowledge categories" })
-      .getByRole("button", { name: new RegExp(category.replace("&", "\\&")) })
-      .click();
-    for (const approve of await page
-      .getByRole("button", { name: "Approve unchanged", exact: true })
-      .all()) {
-      await approve.click();
-      await expect(
-        page
-          .getByRole("status")
-          .filter({ hasText: "Entry saved and approved." }),
-      ).toBeVisible();
+    await categorySelect.selectOption(category.value);
+    if (category.value === "offering") {
+      // Only the selected offering has an editor; review every existing item.
+      const offerings = page.getByRole("navigation", { name: "Business offerings", exact: true }).getByRole("button");
+      for (const offering of await offerings.all()) {
+        await offering.click();
+        await page.getByRole("button", { name: "Approve unchanged", exact: true }).click();
+        await expect(page.getByRole("status").filter({ hasText: "Entry saved and approved." })).toBeVisible();
+      }
+    } else {
+      for (const approve of await page
+        .getByRole("button", { name: "Approve unchanged", exact: true })
+        .all()) {
+        await approve.click();
+        await expect(
+          page.getByRole("status").filter({ hasText: "Entry saved and approved." }),
+        ).toBeVisible();
+      }
     }
   }
-  await page
-    .getByRole("navigation", { name: "Knowledge categories" })
-    .getByRole("button", { name: /Key people/ })
-    .click();
+  await categorySelect.selectOption("key_person");
   await page.getByRole("button", { name: "Add person", exact: false }).click();
   const excludedPerson = page.locator(".knowledge-editor__entry").last();
   await excludedPerson
@@ -309,10 +311,7 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
       expect(() => resolveStablePointer(snapshot, target)).not.toThrow();
   expect(frozen).not.toContain("cleaned_content");
   await saved.getByRole("button", { name: "Close dialog" }).click();
-  await page
-    .getByRole("navigation", { name: "Knowledge categories" })
-    .getByRole("button", { name: /Company foundation/ })
-    .click();
+  await categorySelect.selectOption("company_foundation");
   await page
     .getByLabel("Overview", { exact: true })
     .fill("A later draft edit that must not change version one.");
