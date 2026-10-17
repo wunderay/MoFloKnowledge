@@ -94,6 +94,13 @@ export function hasClaim(provenance: EntryProvenance, path: string): boolean {
   return provenance.claims.some((claim) => claim.targets.some((target) => under(target, path)));
 }
 
+/** True when an item's own claims include user corrections or historical generated/inferred wording. */
+export function hasMarkedOrigin(provenance: EntryProvenance, itemPath: string): boolean {
+  return provenance.claims.some(
+    (claim) => claim.origin !== "source_backed" && claim.targets.some((target) => under(target, itemPath)),
+  );
+}
+
 const COVERAGE_LABELS: Partial<Record<Assessment, string>> = {
   partial: "Partial",
   conflict: "Conflicting sources",

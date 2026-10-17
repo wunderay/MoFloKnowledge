@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon } from "../icons";
 import { addressText, employeeText, textOrNull, type ViewProfile } from "./data";
-import { addHref, Banner, Chips, CoverageNote, EmptyBox, KnowledgeCard, Source, StatAdd, Stats } from "./parts";
+import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, StatAdd, Stats } from "./parts";
 
 export function GeneralInfo({ companyId, name, profile }: { companyId: string; name: string; profile: ViewProfile }) {
   const { foundation, positioning } = profile;
@@ -16,7 +16,11 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
   const employees = employeeText(foundation.employee_count);
   const legal = textOrNull(foundation.legal_entity_type);
   const alternates = foundation.alternative_company_names
-    .map((item) => ({ id: item.id, label: item.text.trim() }))
+    .map((item) => ({
+      id: item.id,
+      label: item.text.trim(),
+      mark: <ItemSource evidence={ev} path={`/company_foundation/alternative_company_names/@${item.id}`} />,
+    }))
     .filter((item) => item.label);
   const mainPath = "/company_foundation/main_address";
   const othersPath = "/company_foundation/other_locations";
@@ -27,6 +31,7 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
     <>
       {value}
       <Source evidence={ev} path={path} filled={filled} />
+      <CoverageNote evidence={ev} path={path} empty={!filled} />
     </>
   );
   return (
@@ -68,7 +73,7 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
         <KnowledgeCard title="Headquarters" subtitle="Main address and other locations.">
           {main || others.length > 0 ? (
             <>
-              {main && (
+              {main ? (
                 <div className="knowledge-view__location">
                   <span className="knowledge-view__location-icon" aria-hidden="true"><Icon name="pin" size={16} /></span>
                   <div>
@@ -76,9 +81,11 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
                     <p>{main}</p>
                   </div>
                 </div>
+              ) : (
+                <CoverageNote evidence={ev} path={mainPath} empty label="Main address" />
               )}
-              <CoverageNote evidence={ev} path={mainPath} empty={false} />
-              {others.length > 0 && (
+              {main && <CoverageNote evidence={ev} path={mainPath} empty={false} />}
+              {others.length > 0 ? (
                 <>
                   <p className="knowledge-view__mini-label">Other locations <Source evidence={ev} path={othersPath} filled /></p>
                   <ul className="knowledge-view__list">
@@ -86,11 +93,14 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
                       <li key={address.id}>
                         {address.label && <strong>{address.label}</strong>}
                         <span>{address.text}</span>
+                        <ItemSource evidence={ev} path={`${othersPath}/@${address.id}`} />
                       </li>
                     ))}
                   </ul>
                   <CoverageNote evidence={ev} path={othersPath} empty={false} />
                 </>
+              ) : (
+                <CoverageNote evidence={ev} path={othersPath} empty label="Other locations" />
               )}
             </>
           ) : (
@@ -98,7 +108,12 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
               title="No headquarters yet"
               hint="Add the main address and any other locations."
               href={foundationHref}
-              note={<CoverageNote evidence={ev} path={mainPath} empty />}
+              note={
+                <>
+                  <CoverageNote evidence={ev} path={mainPath} empty label="Main address" />
+                  <CoverageNote evidence={ev} path={othersPath} empty label="Other locations" />
+                </>
+              }
             />
           )}
         </KnowledgeCard>

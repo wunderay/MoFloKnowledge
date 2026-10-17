@@ -55,15 +55,18 @@ export function CitationPopover({
   const origins = candidate
     ? [candidate.origin]
     : [...new Set(claims.map((c) => c.origin))];
-  const label = origins.includes("user_provided")
-    ? "User correction"
-    : origins.includes("generated")
-      ? `Historical generated${approved ? " · approved" : ""}`
-      : origins.includes("inferred")
-        ? "Historical inferred"
-        : evidence.length
-          ? "Sources"
-          : (coverage?.status.replaceAll("_", " ") ?? "Not checked");
+  // Every non-source origin present is named, so one origin never hides another.
+  const originLabels = [
+    origins.includes("user_provided") && "User correction",
+    origins.includes("generated") &&
+      `Historical generated${approved ? " · approved" : ""}`,
+    origins.includes("inferred") && "Historical inferred",
+  ].filter(Boolean);
+  const label = originLabels.length
+    ? originLabels.join(" · ")
+    : evidence.length
+      ? "Sources"
+      : (coverage?.status.replaceAll("_", " ") ?? "Not checked");
   useEffect(() => {
     if (!open) return;
     function outside(e: PointerEvent) {

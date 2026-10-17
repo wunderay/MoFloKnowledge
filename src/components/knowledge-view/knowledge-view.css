@@ -237,3 +237,8 @@
 .knowledge-view__banner + .knowledge-view__coverage { margin: -4px 4px 16px; }
 .knowledge-view .source-coverage { margin: 12px 0 0; border-radius: 14px; background: var(--white, #fff); font-size: 12px; }
 .knowledge-view .source-coverage__summary { padding: 12px 20px; color: var(--kv-muted); font-weight: 500; }
+
+.knowledge-view__banner > .knowledge-view__coverage { grid-column: 1 / -1; margin: 14px 0 0; }
+.knowledge-view__stat dd .knowledge-view__coverage { margin-top: 6px; font-size: 10px; font-weight: 400; line-height: 1.5; }
+.knowledge-view__chip .citation-popover { margin-top: 3px; }
+.knowledge-view__list > li > .citation-popover { display: inline-block; margin-top: 3px; }

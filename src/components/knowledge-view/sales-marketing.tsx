@@ -1,6 +1,6 @@
 import { safeHref } from "../citation-popover";
 import { socialHandle, textOrNull, type ViewProfile } from "./data";
-import { addHref, Banner, Chips, CoverageNote, EmptyBox, KnowledgeCard, Source, StatAdd, Stats } from "./parts";
+import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, StatAdd, Stats } from "./parts";
 
 export function SalesMarketing({ companyId, name, profile }: { companyId: string; name: string; profile: ViewProfile }) {
   const { positioning, market, presence } = profile;
@@ -8,40 +8,6 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
   const pev = profile.evidence.positioning;
   const oev = profile.evidence.presence;
   const marketHref = addHref(companyId, "market_and_customers");
-  const pitch = textOrNull(positioning.company_pitch);
-  // A persona counts as filled when any of its fields has content; name and role may both be null.
-  const personas = market.ideal_customer_personas
-    .map((persona, index) => {
-      const goals = persona.goals.map((g) => g.text.trim()).filter(Boolean);
-      const painPoints = persona.pain_points.map((g) => g.text.trim()).filter(Boolean);
-      const personaName = textOrNull(persona.name);
-      const role = textOrNull(persona.role);
-      const organization = textOrNull(persona.organization_type);
-      // Never invent a name: fall back to what the data says, then to a numbered label.
-      const heading = personaName ?? role ?? organization ?? `Persona ${index + 1}`;
-      return {
-        id: persona.id,
-        heading,
-        role: role !== heading ? role : null,
-        organization: organization !== heading ? organization : null,
-        goals,
-        painPoints,
-        filled: Boolean(personaName || role || organization || goals.length || painPoints.length),
-      };
-    })
-    .filter((persona) => persona.filled);
-  const needs = market.customer_needs.filter((item) => item.text.trim());
-  const channels = market.channels
-    .map((item) => ({
-      id: item.id,
-      label: textOrNull(item.label) ?? item.url ?? textOrNull(item.channel_type) ?? "",
-      detail: textOrNull(item.label) || item.url ? textOrNull(item.channel_type) : null,
-    }))
-    .filter((item) => item.label);
-  const ctas = market.ctas
-    .map((item) => ({ id: item.id, label: item.label.trim(), detail: textOrNull(item.purpose) }))
-    .filter((item) => item.label);
-  const funnels = market.funnels.filter((funnel) => textOrNull(funnel.name) || funnel.steps.length > 0);
   const p = {
     pitch: "/positioning/company_pitch",
     personas: "/market_and_customers/ideal_customer_personas",
@@ -51,9 +17,62 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
     funnels: "/market_and_customers/funnels",
     socials: "/online_presence/social_media_links",
   };
+  const pitch = textOrNull(positioning.company_pitch);
+  // A persona counts as filled when any of its fields has content; name and role may both be null.
+  const personas = market.ideal_customer_personas
+    .map((persona) => {
+      const goals = persona.goals.map((g) => g.text.trim()).filter(Boolean);
+      const painPoints = persona.pain_points.map((g) => g.text.trim()).filter(Boolean);
+      const personaName = textOrNull(persona.name);
+      const role = textOrNull(persona.role);
+      const organization = textOrNull(persona.organization_type);
+      // Never invent a name: fall back to what the data says, then to a numbered label.
+      return {
+        id: persona.id,
+        personaName,
+        role,
+        organization,
+        goals,
+        painPoints,
+        filled: Boolean(personaName || role || organization || goals.length || painPoints.length),
+      };
+    })
+    .filter((persona) => persona.filled)
+    // Number after dropping blanks, so labels read Persona 1, 2, 3 for what is shown.
+    .map((persona, index) => {
+      const heading = persona.personaName ?? persona.role ?? persona.organization ?? `Persona ${index + 1}`;
+      return {
+        ...persona,
+        heading,
+        role: persona.role !== heading ? persona.role : null,
+        organization: persona.organization !== heading ? persona.organization : null,
+      };
+    });
+  const needs = market.customer_needs.filter((item) => item.text.trim());
+  const channels = market.channels
+    .map((item) => ({
+      id: item.id,
+      label: textOrNull(item.label) ?? item.url ?? textOrNull(item.channel_type) ?? "",
+      detail: textOrNull(item.label) || item.url ? textOrNull(item.channel_type) : null,
+      mark: <ItemSource evidence={mev} path={`${p.channels}/@${item.id}`} />,
+    }))
+    .filter((item) => item.label);
+  const ctas = market.ctas
+    .map((item) => ({
+      id: item.id,
+      label: item.label.trim(),
+      detail: textOrNull(item.purpose),
+      mark: <ItemSource evidence={mev} path={`${p.ctas}/@${item.id}`} />,
+    }))
+    .filter((item) => item.label);
+  const funnels = market.funnels.filter((funnel) => textOrNull(funnel.name) || funnel.steps.length > 0);
   return (
     <>
-      <Banner label="Sales & Marketing" title={name}>
+      <Banner
+        label="Sales & Marketing"
+        title={name}
+        note={<CoverageNote evidence={oev} path={p.socials} empty={presence.social_media_links.length === 0} label="Social links" />}
+      >
         <Stats
           stats={
             presence.social_media_links.length > 0
@@ -121,6 +140,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
                     {persona.organization && <small>{persona.organization}</small>}
                     {persona.goals.length > 0 && <small>Goals: {persona.goals.join("; ")}</small>}
                     {persona.painPoints.length > 0 && <small>Pain points: {persona.painPoints.join("; ")}</small>}
+                    <ItemSource evidence={mev} path={`${p.personas}/@${persona.id}`} />
                   </li>
                 ))}
               </ul>
@@ -143,7 +163,12 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
           {needs.length > 0 ? (
             <>
               <ul className="knowledge-view__list">
-                {needs.map((need) => <li key={need.id}><span>{need.text}</span></li>)}
+                {needs.map((need) => (
+                  <li key={need.id}>
+                    <span>{need.text}</span>
+                    <ItemSource evidence={mev} path={`${p.needs}/@${need.id}`} />
+                  </li>
+                ))}
               </ul>
               <CoverageNote evidence={mev} path={p.needs} empty={false} />
             </>
@@ -189,6 +214,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
                       {funnel.steps.map((step) => <li key={step.id}>{step.label}</li>)}
                     </ol>
                   )}
+                  <ItemSource evidence={mev} path={`${p.funnels}/@${funnel.id}`} />
                 </li>
               ))}
             </ul>

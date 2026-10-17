@@ -11,11 +11,15 @@ import { describe, expect, it, vi } from "vitest";
 import { buildEmptyDraft } from "../helpers/knowledge-view-fixtures";
 import {
   EXCERPT,
+  INFERRED_EXCERPT,
+  ITEM_MARKS,
   OLD_EXCERPT,
   REASONS,
   SOURCE_URL,
   evidenceDraft,
   evidenceSnapshot,
+  markOf,
+  type EvidenceOptions,
 } from "../helpers/knowledge-view-evidence";
 
 vi.mock("react", async (original) => {
@@ -49,7 +53,9 @@ vi.doMock("next/link", () => ({
 const { SectionView } = await import("../../src/components/knowledge-view/section-view");
 const { snapshotEntries } = await import("../../src/components/knowledge-viewer");
 
-const draft = evidenceDraft();
+const channelMark = markOf(ITEM_MARKS.find((m) => m.card === "Channels")!, 0);
+const withInference: EvidenceOptions = { marks: [channelMark] };
+const draft = evidenceDraft(withInference);
 const views = {
   draft: (section: "general" | "customers" | "sales") =>
     renderToStaticMarkup(
@@ -62,7 +68,7 @@ const views = {
       />,
     ),
   snapshot: (section: "general" | "customers" | "sales") => {
-    const { payload } = evidenceSnapshot();
+    const { payload } = evidenceSnapshot(withInference);
     return renderToStaticMarkup(
       <SectionView section={section} companyId={payload.company_id} name={payload.provenance.company.name} entries={snapshotEntries(payload)} />,
     );
@@ -81,11 +87,12 @@ describe.each(["draft", "snapshot"] as const)("Sources popover content (%s)", (s
 
   // behavioural
   it("a historical generated value says it was generated, not quoted from the source", () => {
-    const html = text(views[source]("customers"));
+    const html = text(views[source]("sales"));
     expect(html).toContain("Historical generated suggestion");
     expect(html).toContain("This historical wording was generated, not quoted from the source.");
     expect(html).toContain(OLD_EXCERPT);
-    expect(text(views[source]("sales"))).toContain("Historical source-based inference");
+    expect(html).toContain("Historical source-based inference");
+    expect(html).toContain(INFERRED_EXCERPT);
   });
 
   // behavioural

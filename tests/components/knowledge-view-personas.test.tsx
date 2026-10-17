@@ -61,13 +61,13 @@ describe.each(["draft", "snapshot"] as const)("Ideal persona without a name or r
   });
 
   // behavioural
-  it("Edge case: a persona with nothing in it is skipped, and numbering follows the stored order", async () => {
+  it("Edge case: a persona with nothing in it is skipped, and the shown ones are numbered from 1", async () => {
     const text = await personaCard([
       { id: "00000000-0000-4000-8000-0000000f2004", name: null, role: null, organization_type: null, goals: [], pain_points: [] },
       { ...unnamed, organization_type: null, goals: [{ id: GOAL_ID, text: "Reduce appointment administration" }] },
     ]);
-    expect(norm(text)).toContain("Persona 2");
-    expect(text).not.toContain("Persona 1");
+    expect(norm(text)).toContain("Persona 1");
+    expect(text).not.toContain("Persona 2");
   });
 
   // behavioural

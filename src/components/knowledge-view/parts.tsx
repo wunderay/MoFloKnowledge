@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { EntryKind } from "@/contracts";
 import { CitationPopover } from "../citation-popover";
 import { Icon, type IconName } from "../icons";
-import { coverageFor, coverageLabel, fieldProvenance, hasClaim, type Evidence } from "./data";
+import { coverageFor, coverageLabel, fieldProvenance, hasClaim, hasMarkedOrigin, type Evidence } from "./data";
 
 /** Where "+ Add" leads: the editor, opened on the entry kind that holds the value. */
 export const addHref = (companyId: string, kind: EntryKind) =>
@@ -26,12 +26,33 @@ export function Source({ evidence, path, filled }: { evidence: Evidence; path: s
   );
 }
 
+/**
+ * A per-item marker for list fields: shown only on the items whose own claims are
+ * user corrections or historical generated/inferred wording, so the closed view
+ * says which item carries which origin. Items backed by sources rely on the field's control.
+ */
+export function ItemSource({ evidence, path }: { evidence: Evidence; path: string }) {
+  if (!hasMarkedOrigin(evidence.provenance, path)) return null;
+  return <Source evidence={evidence} path={path} filled />;
+}
+
 /** Why a field is unknown, partial or contested, in plain text. Shown for empty fields and for any field not fully found. */
-export function CoverageNote({ evidence, path, empty }: { evidence: Evidence; path: string; empty: boolean }) {
+export function CoverageNote({
+  evidence,
+  path,
+  empty,
+  label,
+}: {
+  evidence: Evidence;
+  path: string;
+  empty: boolean;
+  label?: string;
+}) {
   const assessment = coverageFor(evidence.provenance, path);
   if (!empty && (!assessment || assessment.status === "found")) return null;
   return (
     <p className="knowledge-view__coverage">
+      {label && <>{label}: </>}
       <strong>{coverageLabel(assessment?.status)}</strong>
       {" — "}
       {assessment?.reason ?? "No assessment is recorded for this field."}
@@ -73,7 +94,7 @@ export function EmptyBox({ title, hint, href, note }: { title: string; hint: str
   );
 }
 
-export type ChipItem = { id: string; label: string; detail?: string | null };
+export type ChipItem = { id: string; label: string; detail?: string | null; mark?: ReactNode };
 
 /** One outlined pill per item. An empty list is a single dashed "+ Add" pill; a filled list ends with a dashed "Add" pill. */
 export function Chips({ items, href, noun }: { items: ChipItem[]; href: string; noun: string }) {
@@ -89,6 +110,7 @@ export function Chips({ items, href, noun }: { items: ChipItem[]; href: string; 
         <li className="knowledge-view__chip" key={item.id}>
           {item.label}
           {item.detail && <small>{item.detail}</small>}
+          {item.mark}
         </li>
       ))}
       <li className="knowledge-view__chip-slot">
@@ -110,6 +132,7 @@ export function Banner({
   placeholder = false,
   icon,
   source,
+  note,
   children,
 }: {
   label: string;
@@ -117,6 +140,7 @@ export function Banner({
   placeholder?: boolean;
   icon?: IconName;
   source?: ReactNode;
+  note?: ReactNode;
   children: ReactNode;
 }) {
   // Label, heading and stats are siblings so the whole banner is one container.
@@ -131,6 +155,7 @@ export function Banner({
         {source}
       </h2>
       {children}
+      {note}
     </div>
   );
 }

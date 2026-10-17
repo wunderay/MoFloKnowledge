@@ -8,16 +8,20 @@ import { banner, card, cardText, norm, parse, textOf, type Page } from "../helpe
 import { openSection, titlesOf, type LockedSection } from "../helpers/knowledge-view-spec";
 import {
   EXCERPT,
+  ITEM_MARKS,
   REASONS,
   evidenceDraft,
   evidenceSnapshot,
+  markOf,
+  type EvidenceOptions,
 } from "../helpers/knowledge-view-evidence";
 import { renderViewPage } from "../helpers/knowledge-view-render";
 
 const open = {
-  draft: (section: LockedSection) => openSection(section, { draft: evidenceDraft() }),
-  snapshot: (section: LockedSection) => openSection(section, { snapshot: evidenceSnapshot() }),
+  draft: (section: LockedSection, opts?: EvidenceOptions) => openSection(section, { draft: evidenceDraft(opts) }),
+  snapshot: (section: LockedSection, opts?: EvidenceOptions) => openSection(section, { snapshot: evidenceSnapshot(opts) }),
 };
+const channelMark = markOf(ITEM_MARKS.find((m) => m.card === "Channels")!, 0);
 const inCard = (page: Page, section: LockedSection, title: string) => card(page, title, titlesOf(section))!;
 const triggers = (page: Page, el: Parameters<Page["$"]>[0]) =>
   page.$(el as never).find("button.citation-popover__trigger").toArray().map((b) => ({
@@ -36,12 +40,14 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
 
   // behavioural
   it("historical generated and inferred values carry their label", async () => {
-    const page = await open[source]("Customers & Industry");
-    const buyers = triggers(page, inCard(page, "Customers & Industry", "Buyers"));
-    expect(buyers).toHaveLength(1);
-    expect(buyers[0]!.label).toMatch(/^Historical generated/);
-    const sales = await open[source]("Sales & Marketing");
-    expect(triggers(sales, inCard(sales, "Sales & Marketing", "Channels"))[0]!.label).toBe("Historical inferred ⓘ");
+    const sales = await open[source]("Sales & Marketing", { marks: [channelMark] });
+    const pitch = triggers(sales, inCard(sales, "Sales & Marketing", "Pitch"));
+    expect(pitch).toHaveLength(1);
+    expect(pitch[0]!.label).toBe("Historical generated · approved ⓘ");
+    expect(triggers(sales, inCard(sales, "Sales & Marketing", "Channels")).map((t) => t.label)).toEqual([
+      "Historical inferred ⓘ",
+      "Historical inferred ⓘ",
+    ]);
   });
 
   // behavioural
@@ -71,9 +77,11 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
     const suppliers = cardText(customers, inCard(customers, "Customers & Industry", "Suppliers"));
     expect(suppliers).toContain("Unknown · Not assessed");
     expect(suppliers).toContain(REASONS.notChecked);
-    // Never assessed at all: still an explicit unknown, not silence.
+    // Customer needs is empty and was never assessed: still an explicit unknown, not silence.
     const sales = await open[source]("Sales & Marketing");
-    expect(cardText(sales, inCard(sales, "Sales & Marketing", "Funnels"))).not.toMatch(/Unknown/);
+    const needs = cardText(sales, inCard(sales, "Sales & Marketing", "Customer needs"));
+    expect(needs).toContain("Unknown · Not assessed");
+    expect(needs).toContain("No assessment is recorded for this field.");
   });
 
   // behavioural

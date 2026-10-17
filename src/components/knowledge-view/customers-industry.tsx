@@ -1,5 +1,6 @@
 import { textOrNull, type ViewProfile } from "./data";
-import { addHref, Banner, Chips, CoverageNote, EmptyBox, KnowledgeCard, Source, Stats } from "./parts";
+import type { Evidence } from "./data";
+import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, Stats } from "./parts";
 
 export function CustomersIndustry({ companyId, profile }: { companyId: string; profile: ViewProfile }) {
   const { foundation, market } = profile;
@@ -9,23 +10,6 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
   const marketHref = addHref(companyId, "market_and_customers");
   const industry = textOrNull(foundation.industry);
   const businessModel = textOrNull(foundation.business_model);
-  const texts = (items: { id: string; text: string }[]) =>
-    items.map((item) => ({ id: item.id, label: item.text.trim() })).filter((item) => item.label);
-  const roles = texts(foundation.company_role);
-  const groupings = texts(market.industry_groupings);
-  const locations = texts(foundation.service_locations);
-  const buyers = texts(market.target_buyers);
-  const outlook = market.industry_outlook.filter((item) => item.text.trim());
-  const suppliers = market.suppliers_and_partners
-    .map((partner) => {
-      const name = textOrNull(partner.name);
-      return {
-        id: partner.id,
-        label: name ?? textOrNull(partner.relationship_text) ?? textOrNull(partner.relationship_type) ?? partner.url ?? "",
-        detail: name ? textOrNull(partner.relationship_type) : null,
-      };
-    })
-    .filter((item) => item.label);
   const p = {
     industry: "/company_foundation/industry",
     model: "/company_foundation/business_model",
@@ -36,6 +20,30 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
     buyers: "/market_and_customers/target_buyers",
     suppliers: "/market_and_customers/suppliers_and_partners",
   };
+  const texts = (items: { id: string; text: string }[], evidence: Evidence, field: string) =>
+    items
+      .map((item) => ({
+        id: item.id,
+        label: item.text.trim(),
+        mark: <ItemSource evidence={evidence} path={`${field}/@${item.id}`} />,
+      }))
+      .filter((item) => item.label);
+  const roles = texts(foundation.company_role, fev, p.role);
+  const groupings = texts(market.industry_groupings, mev, p.groupings);
+  const locations = texts(foundation.service_locations, fev, p.locations);
+  const buyers = texts(market.target_buyers, mev, p.buyers);
+  const outlook = market.industry_outlook.filter((item) => item.text.trim());
+  const suppliers = market.suppliers_and_partners
+    .map((partner) => {
+      const name = textOrNull(partner.name);
+      return {
+        id: partner.id,
+        label: name ?? textOrNull(partner.relationship_text) ?? textOrNull(partner.relationship_type) ?? partner.url ?? "",
+        detail: name ? textOrNull(partner.relationship_type) : null,
+        mark: <ItemSource evidence={mev} path={`${p.suppliers}/@${partner.id}`} />,
+      };
+    })
+    .filter((item) => item.label);
   return (
     <>
       <Banner
@@ -109,6 +117,7 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
                     {(item.publisher || item.published_on) && (
                       <small>{[item.publisher, item.published_on].filter(Boolean).join(" · ")}</small>
                     )}
+                    <ItemSource evidence={mev} path={`${p.outlook}/@${item.id}`} />
                   </li>
                 ))}
               </ul>
