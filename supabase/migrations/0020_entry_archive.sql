@@ -2,7 +2,7 @@
 -- (the history is immutable and saved versions keep the person), and gets a tombstone: archived_at, archived_by and
 -- the request that archived it. 0001-0019 stay frozen; the tombstone is layered on top of them here.
 --  * Only repeatable kinds (key_person, offering) can be archived; the five singleton kinds are never deleted.
---  * An archived entry is invisible to members (row security), absent from drafts, the next snapshot, the publication
+--  * An archived entry is invisible to members (row security on the entry), absent from drafts, the next snapshot, the publication
 --    manifest and the worker's resume bundle, and takes no new revision.
 --  * public.archive_entry is the only way to set a tombstone: owner or editor of a live company, the revision the caller
 --    saw, and a request id so that a retry of the same request is answered once.
@@ -36,11 +36,19 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
--- Members no longer see an archived entry or its revisions; the history stays in the database.
+-- Members no longer see an archived entry. Its revisions stay readable by id: other entries' claims may be based on
+-- claims recorded in them, and the citation lookup must still find those. Drafts and history look the entry up first.
 DROP POLICY tenant_read ON public.knowledge_entries;
 CREATE POLICY tenant_read ON public.knowledge_entries FOR SELECT TO authenticated USING(private.company_role(company_id) IS NOT NULL AND archived_at IS NULL);
-DROP POLICY tenant_read ON public.knowledge_entry_versions;
-CREATE POLICY tenant_read ON public.knowledge_entry_versions FOR SELECT TO authenticated USING(private.company_role(company_id) IS NOT NULL AND EXISTS(SELECT FROM public.knowledge_entries e WHERE e.company_id=knowledge_entry_versions.company_id AND e.id=knowledge_entry_versions.entry_id));
+-- A request id names one operation: a save, create, revert or applied proposal cannot reuse the id of an archive.
+CREATE OR REPLACE FUNCTION private.prior_operation(p_company uuid,p_request uuid,p_hash text) RETURNS public.knowledge_entry_versions LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE r public.knowledge_entry_versions; op jsonb;
+BEGIN
+ SELECT v.* INTO r FROM public.knowledge_entry_versions v WHERE v.company_id=p_company AND EXISTS(SELECT FROM jsonb_array_elements(v.provenance->'operations') o WHERE o->>'request_id'=p_request::text AND o->>'note'=p_hash) ORDER BY v.created_at LIMIT 1;
+ IF r.id IS NULL AND (EXISTS(SELECT FROM public.knowledge_entry_versions v, jsonb_array_elements(v.provenance->'operations') o WHERE v.company_id=p_company AND o->>'request_id'=p_request::text)
+  OR EXISTS(SELECT FROM public.knowledge_entries e WHERE e.company_id=p_company AND e.archive_request_id=p_request)) THEN RAISE EXCEPTION 'idempotency_conflict'; END IF;
+ RETURN r;
+END $$;
 -- No revision of any kind (save, revert, applied proposal) is written to an archived entry.
 CREATE FUNCTION private.reject_archived_entry() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
@@ -158,6 +166,12 @@ BEGIN
  IF EXISTS(SELECT FROM public.knowledge_entries WHERE company_id=p_company AND archive_request_id=p_request)
   OR EXISTS(SELECT FROM public.knowledge_entry_versions v,jsonb_array_elements(v.provenance->'operations') o WHERE v.company_id=p_company AND o->>'request_id'=p_request::text) THEN RAISE EXCEPTION 'idempotency_conflict'; END IF;
  IF e.current_revision IS DISTINCT FROM p_expected_revision THEN RAISE EXCEPTION 'stale_revision' USING DETAIL=jsonb_build_object('currentRevision',e.current_revision)::text; END IF;
+ -- Another live entry whose claims are based on claims recorded by this one would lose its support (the draft could not
+ -- resolve its citations and publication would fail), and a tombstone cannot be undone: remove that citation first.
+ IF EXISTS(SELECT FROM public.knowledge_entries o JOIN public.knowledge_entry_versions r ON r.company_id=o.company_id AND r.entry_id=o.id AND r.revision=o.current_revision,
+   jsonb_array_elements(r.provenance->'claims') citing_claim, jsonb_array_elements_text(citing_claim->'based_on_claim_ids') b
+  WHERE o.company_id=p_company AND o.id<>p_entry AND o.archived_at IS NULL
+   AND b IN (SELECT cl->>'id' FROM public.knowledge_entry_versions v, jsonb_array_elements(v.provenance->'claims') cl WHERE v.company_id=p_company AND v.entry_id=p_entry)) THEN RAISE EXCEPTION 'entry_has_dependents'; END IF;
  UPDATE public.knowledge_entries SET archived_at=now(),archived_by=auth.uid(),archive_request_id=p_request WHERE company_id=p_company AND id=p_entry RETURNING * INTO e;
  UPDATE public.companies SET draft_generation=draft_generation+1 WHERE id=p_company;
  RETURN jsonb_build_object('id',e.id,'kind',e.kind,'revision',e.current_revision,'archived_at',to_char(e.archived_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'));

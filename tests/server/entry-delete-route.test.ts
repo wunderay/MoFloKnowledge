@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
 import { verifiedSession } from "../../src/lib/supabase/server";
 import { DELETE } from "../../src/app/api/companies/[companyId]/entries/[entryId]/route";
+import { GET as history } from "../../src/app/api/companies/[companyId]/entries/[entryId]/history/route";
 import { GET as draft } from "../../src/app/api/companies/[companyId]/draft/route";
 import { DeleteEntrySchema } from "../../src/contracts/api-entries";
 
@@ -133,6 +134,7 @@ describe("DELETE an entry", () => {
     ["stale_revision", { details: JSON.stringify({ currentRevision: 4, secret: "hidden" }) }, 409, "conflict", { currentRevision: 4 }],
     ["idempotency_conflict", {}, 409, "conflict", undefined],
     ["company_archived", {}, 422, "validation", undefined],
+    ["entry_has_dependents", {}, 422, "entry_has_dependents", undefined],
     ["invalid_entry_kind", {}, 422, "validation", undefined],
     ["unavailable", {}, 404, "unavailable", undefined],
     ["unavailable_archived_entry", {}, 404, "unavailable", undefined],
@@ -148,11 +150,35 @@ describe("DELETE an entry", () => {
     expect(JSON.stringify(body)).not.toMatch(/secret|password|hidden/);
   });
 
+  it("says why a cited entry cannot be deleted, in words", async () => {
+    session("owner", { data: null, error: { message: "entry_has_dependents" } });
+    const body = await (await DELETE(del(good), params())).json();
+    expect(body.error.message).toBe("Another entry cites this one's sources. Remove that citation first.");
+  });
+
   it("does not pass on an answer that is not the archived entry", async () => {
     session("owner", { data: { id: entry, extra: "x" }, error: null });
     const response = await DELETE(del(good), params());
     expect(response.status).toBe(503);
     expect((await response.json()).error.code).toBe("invalid_response");
+  });
+});
+
+describe("the history of a deleted entry", () => {
+  it("is empty: the entry is looked up first, and a deleted one is hidden from members", async () => {
+    const tables: string[] = [];
+    const client = {
+      from: vi.fn((table: string) => {
+        tables.push(table);
+        const query: any = { select: () => query, eq: () => query, order: () => query, maybeSingle: async () => ({ data: table === "company_members" ? { role: "viewer" } : null, error: null }) };
+        return query;
+      }),
+    };
+    vi.mocked(verifiedSession).mockResolvedValue({ client, user: { id: user } } as never);
+    const response = await history(new Request(`${ORIGIN}/api/companies/${company}/entries/${entry}/history`), params());
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual([]);
+    expect(tables).not.toContain("knowledge_entry_versions");
   });
 });
 

@@ -44,6 +44,12 @@ export function mapDatabaseError(error: {
 
   if (/not_authenticated/.test(value))
     return new HttpError(401, "signed_out", "Sign in to continue.");
+  if (/entry_has_dependents/.test(value))
+    return new HttpError(
+      422,
+      "entry_has_dependents",
+      "Another entry cites this one's sources. Remove that citation first.",
+    );
   if (/not_found|unavailable|not_member/.test(value))
     return new HttpError(404, "unavailable", "Resource unavailable.");
   if (/forbidden|insufficient_role|owner_required/.test(value))

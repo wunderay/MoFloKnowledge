@@ -564,7 +564,7 @@ Use `/api/companies/:companyId/...` so the company is explicit. User requests ca
 | `GET /api/companies/:c/draft` | → generation, current entries, provenance, coverage | Member; no-store. |
 | `POST /api/companies/:c/entries` | `{kind,content,provenance,requestId}` → revision 1 | Owner/editor; create person/offering or missing singleton only; validate IDs and origin. |
 | `POST /api/companies/:c/entries/:e/revisions` | `{expectedRevision,content,provenance,reviewStatus,reason?,requestId}` → immutable revision/current generation | Owner/editor; origin recomputed for edited leaves; stale edit 409. |
-| `DELETE /api/companies/:c/entries/:e` | `{expectedRevision,requestId}` → `{id,kind,revision,archived_at}` | Owner/editor; person or offering only (never a singleton); archives the entry (history and saved versions are kept), stale revision 409, retry of the same request answered once. |
+| `DELETE /api/companies/:c/entries/:e` | `{expectedRevision,requestId}` → `{id,kind,revision,archived_at}` | Owner/editor; person or offering only (never a singleton), none that another live entry cites (422); archives the entry (history and saved versions are kept), stale revision 409, retry of the same request answered once. |
 | `POST /api/companies/:c/entries/:e/revert` | `{fromRevision,expectedRevision,requestId}` → new unreviewed revision | Owner/editor; copy prior state, never mutate it. |
 | `POST /api/companies/:c/proposals/:p/apply` | `{jobId,entryId?,expectedRevision?,selectedCandidateIds,requestId}` → new unreviewed revision | Owner/editor; source/company and latest-revision validation. |
 | `POST /api/companies/:c/proposals/:p/dismiss` | `{jobId,reason?}` → recorded decision | Owner/editor; append decision, retain candidates. |

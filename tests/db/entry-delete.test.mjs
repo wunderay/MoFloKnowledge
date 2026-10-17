@@ -113,10 +113,11 @@ test('archiving: the entry leaves the draft but its history and tombstone stay',
   assert.equal(result.id,ids.alex);assert.equal(result.kind,'key_person');assert.equal(result.revision,revs.alex.revision);assert.match(result.archived_at,/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
   assert.equal(await generation(company),before+1,'the draft changed, so its generation moves');
  });
- await t.test('members see neither the entry nor its revisions any more; the other entries are untouched',async()=>{
+ await t.test('members no longer see the entry (the others are untouched); its revisions stay readable by id so citations into them still resolve',async()=>{
   for(const [name,session] of [['owner',owner],['editor',editor],['viewer',viewer]]){
    const ids_=await visible(session,company);assert.ok(!ids_.includes(ids.alex),`${name} must not see the archived person`);assert.equal(ids_.length,3,`${name} still sees the three others`);
-   assert.equal((await session.query('SELECT 1 FROM public.knowledge_entry_versions WHERE company_id=$1 AND entry_id=$2',[company,ids.alex])).rowCount,0,`${name} must not see its revisions`);
+   const claim=revs.alex.provenance.claims[0].id;
+   assert.equal((await session.query('SELECT 1 FROM public.knowledge_entry_versions WHERE company_id=$1 AND provenance @> $2::jsonb',[company,JSON.stringify({claims:[{id:claim}]})])).rowCount>0,true,`${name}: the citation lookup still finds the archived entry's claim`);
   }
  });
  await t.test('the tombstone and every revision remain in the database; revisions are still immutable',async()=>{
@@ -171,6 +172,62 @@ test('idempotency: the same request is answered once; another request finds noth
  await t.test('a request is required',async()=>{
   await rejected(call(owner,'public.archive_entry',[company,ids.blake,revs.blake.revision,null]),/request_required/);
  });
+});
+
+/** Saves a new revision of `entry` whose single claim is based on the claims `basedOn` (a citation into another entry). */
+async function citing(user,company,rev,basedOn,title){
+ const content={...rev.content,title};const provenance=provenanceFor('key_person',rev.entry_id,content,ownerId);
+ provenance.claims.forEach(c=>{c.based_on_claim_ids=basedOn;});
+ return call(user,'public.save_entry_revision',[company,rev.entry_id,rev.revision,content,provenance,'approved','Cites another entry',randomUUID()]);
+}
+test('an entry that another live entry cites cannot be deleted; one that cites others, or nobody cites, can',async t=>{
+ const {company,ids,revs}=await world('Dependents');
+ const alexClaim=revs.alex.provenance.claims[0].id;
+ const citingBlake=await citing(owner,company,revs.blake,[alexClaim],'CTO and partner');
+ const g=await generation(company);
+ await t.test('Alex is cited by Blake: refused, nothing changes',async()=>{
+  const error=await rejected(archive(owner,company,ids.alex,revs.alex.revision),/entry_has_dependents/);
+  assert.ok(error.message);assert.ok((await visible(owner,company)).includes(ids.alex));assert.equal(await generation(company),g);
+  assert.equal((await admin.query('SELECT archived_at FROM public.knowledge_entries WHERE id=$1',[ids.alex])).rows[0].archived_at,null);
+ });
+ await t.test('a replay of an earlier successful archive is not affected by the check (nothing to cite any more)',async()=>{
+  const lone=await world('Replay');const request=randomUUID();
+  const first=await archive(owner,lone.company,lone.ids.alex,lone.revs.alex.revision,request);
+  assert.deepEqual(await archive(owner,lone.company,lone.ids.alex,lone.revs.alex.revision,request),first);
+ });
+ await t.test('Blake cites Alex, so Blake can be deleted, and the draft still resolves every citation afterwards',async()=>{
+  const world2=await world('Citing');
+  const cited=await citing(owner,world2.company,world2.revs.blake,[world2.revs.alex.provenance.claims[0].id],'CTO and partner');
+  await archive(owner,world2.company,world2.ids.blake,cited.revision);
+  assert.deepEqual(await unresolved(owner,world2.company),[]);
+ });
+ await t.test('once the citation is removed, Alex can be deleted, and every remaining citation still resolves',async()=>{
+  await citing(owner,company,citingBlake,[],'CTO');
+  await archive(owner,company,ids.alex,revs.alex.revision);
+  assert.ok(!(await visible(owner,company)).includes(ids.alex));
+  assert.deepEqual(await unresolved(owner,company),[]);
+  await publish(owner,company);
+ });
+});
+
+/** Claim ids that a live entry's current revision is based on and that no revision visible to the caller holds (the draft read would fail on these). */
+async function unresolved(user,company){
+ const {rows}=await user.query(`SELECT DISTINCT b FROM public.knowledge_entries e JOIN public.knowledge_entry_versions r ON r.company_id=e.company_id AND r.entry_id=e.id AND r.revision=e.current_revision,
+   jsonb_array_elements(r.provenance->'claims') c, jsonb_array_elements_text(c->'based_on_claim_ids') b
+  WHERE e.company_id=$1 AND NOT EXISTS(SELECT FROM public.knowledge_entry_versions v WHERE v.company_id=$1 AND v.provenance @> jsonb_build_object('claims',jsonb_build_array(jsonb_build_object('id',b))))`,[company]);
+ return rows.map(r=>r.b);
+}
+
+test('a request id names one operation: an archive request cannot be reused by a create or a save',async()=>{
+ const {company,ids,revs}=await world('Symmetric');
+ const request=randomUUID();
+ await archive(owner,company,ids.alex,revs.alex.revision,request);
+ const content=person(randomUUID(),{name:'Dana Lee'});
+ await rejected(call(owner,'public.create_entry',[company,'key_person',content,provenanceFor('key_person',content.id,content,ownerId),request]),/idempotency_conflict/);
+ const edited={...revs.blake.content,title:'CTO and CEO'};
+ await rejected(call(owner,'public.save_entry_revision',[company,ids.blake,revs.blake.revision,edited,provenanceFor('key_person',ids.blake,edited,ownerId),'approved','Edit',request]),/idempotency_conflict/);
+ await rejected(call(owner,'public.revert_entry',[company,ids.blake,1,revs.blake.revision,request]),/idempotency_conflict/);
+ assert.equal((await visible(owner,company)).length,3);
 });
 
 test('a stale revision is refused with the current one, and nothing is archived',async()=>{
