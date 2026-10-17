@@ -30,7 +30,8 @@ export function factualBullets(text: string, company: string, verbatim = false):
     const body = assistance?.[1] ?? predicate;
     const specialtyResult = verb === "specialize in" && /^[^,]+, ensuring [^,]+$/su.test(body);
     if ((body.includes(",") && !specialtyResult) || /^(?:no|not|never)\b/u.test(body)) return { text: statement, label: "Company statement" };
-    const neutral = (value: string) => value.replace(/\bour\b/gu, "its");
+    const neutral = (value: string) => value.replace(/\S+/gu, (token) => (/[@/#.]/u.test(token.replace(/[.,;:!?)\]'"]+$/u, ""))
+      ? token : token.replace(/\bour\b/gu, "its")));
     const labels: Record<string, string> = { "specialize in": "Specialty", provide: "Services provided", offer: "Services offered",
       perform: "Activities performed", use: "Tools used", "adhere to": "Adherence" };
     const label = labels[verb];
