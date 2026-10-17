@@ -33,6 +33,13 @@ export type EditEnv = {
   onSaved: () => Promise<void>;
 };
 
+/**
+ * The kind to give an entry that is one of many (an offering): its own saves, queue and fields are kept apart from the other
+ * entries of the kind, and `EditEnv.entry` is asked for it by this name. Everything else sees the real kind (`realKind`).
+ */
+export const entryScope = (kind: EntryKind, entryId: string) => `${kind}@${entryId}` as EntryKind;
+const realKind = (kind: EntryKind) => kind.split("@")[0] as EntryKind;
+
 const MAX_ITEMS = 500;
 const SAVED_MS = 3000;
 const UNDO_MS = 10000;
@@ -62,15 +69,15 @@ function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: s
   return prepareEntrySave({
     companyId: env.companyId,
     actorId: env.actorId,
-    kind,
+    kind: realKind(kind),
     entry: env.entry(kind),
-    content: parseBusinessEntry(kind, content),
+    content: parseBusinessEntry(realKind(kind), content),
     note,
     restoreFrom,
   });
 }
 /** A copy of the stored content of `kind` (the defaults when the company has no such entry yet). */
-const baseOf = (env: EditEnv, kind: EntryKind): Content => structuredClone((env.entry(kind)?.content ?? createEntryDefault(kind)) as Content);
+const baseOf = (env: EditEnv, kind: EntryKind): Content => structuredClone((env.entry(kind)?.content ?? createEntryDefault(realKind(kind))) as Content);
 const messageOf = (error: unknown) =>
   error instanceof ZodError ? error.issues.map((issue) => issue.message).join("; ") : ((error as Error)?.message ?? "The change could not be saved.");
 
@@ -547,7 +554,7 @@ export function useTextField(spec: TextSpec, multiline = false) {
       return;
     }
     try {
-      parseBusinessEntry(spec.kind, built.content);
+      parseBusinessEntry(realKind(spec.kind), built.content);
     } catch (error) {
       host.patch(key, { problem: messageOf(error) });
       return;

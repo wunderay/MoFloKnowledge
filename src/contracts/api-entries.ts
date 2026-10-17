@@ -51,3 +51,5 @@ export const DeleteEntrySchema = z
     requestId: IdSchema,
   })
   .strict();
+/** Restoring a deleted entry (the Undo of a deletion) needs nothing but the entry's address. */
+export const RestoreEntrySchema = z.object({}).strict();

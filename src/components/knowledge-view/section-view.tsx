@@ -64,7 +64,9 @@ export function SectionView({
           blocked: importBlocked,
           onSaved: () => onSaved("changes"),
           entry: (kind) => {
-            const found = entries.find((item) => item.kind === kind);
+            // An offering (or any entry that is one of many) is asked for as "<kind>@<entry id>"; the others by their kind.
+            const [base, id] = kind.split("@");
+            const found = entries.find((item) => (id === undefined ? item.kind === kind : item.kind === base && item.id === id));
             return found && found.id !== undefined
               ? { id: found.id, revision: found.current_revision ?? 0, content: found.content, provenance: found.provenance }
               : null;

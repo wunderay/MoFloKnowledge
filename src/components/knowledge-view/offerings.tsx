@@ -1,21 +1,20 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { createEmptyProvenance, createEntryDefault, type BusinessEntry, type Offering } from "@/contracts";
+import { createEmptyProvenance, createEntryDefault, type Offering } from "@/contracts";
 import { api, companyPath, write } from "../api-client";
 import { Icon, type IconName } from "../icons";
 import { textOrNull, type ViewOffering } from "./data";
-import { EditProvider, InlineArea, InlineChips, InlineLine, plainText, useEdit, type EditEnv, type ListSpec, type TextSpec } from "./inline-edit";
+import { InlineArea, InlineChips, InlineLine, entryScope, plainText, useEdit, type ListSpec, type TextSpec } from "./inline-edit";
 import { addHref, CoverageNote, EmptyBox, Field, ItemSource, Source } from "./parts";
 
 const UNDO_MS = 10000;
 const COST_HELP = "Enter a number, for example 49.99.";
-const FEATURES: ListSpec = { noun: "key feature", kind: "offering", key: "features" };
 
 /** Cost is a plain decimal (49.99): it is saved as a paid price with that amount, and an empty text clears the price. */
-const costSpec: TextSpec = {
+const costSpec = (kind: TextSpec["kind"]): TextSpec => ({
   label: "Offering cost",
-  kind: "offering",
+  kind,
   read: (content) => (typeof content.pricing?.amount === "string" ? content.pricing.amount : ""),
   apply: (content, text) => {
     const value = text.trim();
@@ -41,13 +40,21 @@ const costSpec: TextSpec = {
     };
     return { content };
   },
-};
-const SPECS = {
-  name: plainText("Offering name", "offering", "name"),
-  type: plainText("Offering type", "offering", "offering_type"),
-  description: plainText("Offering description", "offering", "description"),
-  cost: costSpec,
-};
+});
+/**
+ * The editors of one offering. Each offering is its own scope of the editing environment (see `entryScope`), so what was typed,
+ * a save in progress and its outcome stay with that offering, whichever offering or section is shown.
+ */
+function editorsOf(entryId: string) {
+  const kind = entryScope("offering", entryId);
+  return {
+    name: plainText("Offering name", kind, "name"),
+    type: plainText("Offering type", kind, "offering_type"),
+    description: plainText("Offering description", kind, "description"),
+    cost: costSpec(kind),
+    features: { noun: "key feature", kind, key: "features" } as ListSpec,
+  };
+}
 
 /** What the Cost card shows, and the field that holds it: the price wording, else amount with currency and interval, else free/contact. */
 function costOf(pricing: Offering["pricing"]): { text: string; path: string } | null {
@@ -85,6 +92,7 @@ function OfferingDetail({
   deleting?: boolean;
 }) {
   const edit = useEdit();
+  const editors = editorsOf(item.entryId);
   const { offering, evidence } = item;
   // "+ Add" opens the editor on this offering; without entryId it would open the first one.
   const href = `${addHref(companyId, "offering")}&entryId=${encodeURIComponent(offering.id)}`;
@@ -161,8 +169,8 @@ function OfferingDetail({
           </button>
         </div>
       )}
-      {field("Offering", "name", text(name), { title: "No name yet", hint: "Name this offering." }, undefined, line(SPECS.name, "name", name, "+ Add name"))}
-      {field("Type", "type", text(type), { title: "No type yet", hint: "For example, a subscription or a service." }, undefined, line(SPECS.type, "type", type, "+ Add type"))}
+      {field("Offering", "name", text(name), { title: "No name yet", hint: "Name this offering." }, undefined, line(editors.name, "name", name, "+ Add name"))}
+      {field("Type", "type", text(type), { title: "No type yet", hint: "For example, a subscription or a service." }, undefined, line(editors.type, "type", type, "+ Add type"))}
       {field(
         "Description",
         "description",
@@ -171,7 +179,7 @@ function OfferingDetail({
         undefined,
         edit && (
           <InlineArea
-            spec={SPECS.description}
+            spec={editors.description}
             value={description}
             empty={{ title: "No description yet", hint: "Say what this offering is." }}
             note={note("description", description === null)}
@@ -196,7 +204,7 @@ function OfferingDetail({
         edit && (
           <>
             <InlineChips
-              list={FEATURES}
+              list={editors.features}
               items={features.map((feature) => ({
                 id: feature.id,
                 label: feature.text.trim(),
@@ -214,7 +222,7 @@ function OfferingDetail({
           text(cost?.text ?? null),
           { title: "No cost yet", hint: "Add the price or how it is quoted." },
           "dollar",
-          line(SPECS.cost, "cost", cost?.text ?? null, "+ Add cost"),
+          line(editors.cost, "cost", cost?.text ?? null, "+ Add cost"),
         )}
         {field(
           "Pricing model",
@@ -259,7 +267,7 @@ export function BusinessOfferings({
   const [working, setWorking] = useState(false);
   const busy = useRef(false);
   /** The offering just deleted, which Undo puts back. */
-  const [deleted, setDeleted] = useState<{ title: string; offering: Offering } | null>(null);
+  const [deleted, setDeleted] = useState<{ title: string; offeringId: string; entryId: string } | null>(null);
   const rows = useRef(new Map<string, HTMLButtonElement>());
   const [focusTo, setFocusTo] = useState<string | null>(null);
 
@@ -306,33 +314,27 @@ export function BusinessOfferings({
     run(async () => {
       setDeleted(null);
       await api(companyPath(companyId, `/entries/${item.entryId}`), write("DELETE", { expectedRevision: item.revision, requestId: crypto.randomUUID() }));
-      setDeleted({ title, offering: item.offering });
+      setDeleted({ title, offeringId: item.offering.id, entryId: item.entryId });
       await onSaved();
       onSelect("");
     }, "The offering could not be deleted.");
   const undo = () =>
     run(async () => {
       if (!deleted) return;
-      await create(deleted.offering);
+      // The deleted entry is archived, not erased: restoring it brings back the offering with its history and evidence.
+      await api(companyPath(companyId, `/entries/${deleted.entryId}/restore`), write("POST", {}));
+      setFocusTo(deleted.offeringId);
       setDeleted(null);
+      await onSaved();
+      onSelect(deleted.offeringId);
     }, "The offering could not be restored.");
 
-  const detail = (item: ViewOffering, title: string) => {
-    if (!editable) return <OfferingDetail companyId={companyId} item={item} title={title} />;
-    // One editing environment per offering: its fields save to this offering's own entry, and what was typed stays with it.
-    const env: EditEnv = {
-      ...outer!,
-      entry: (kind) =>
-        kind === "offering"
-          ? { id: item.entryId, revision: item.revision, content: item.offering as unknown as BusinessEntry, provenance: item.evidence.provenance }
-          : outer!.entry(kind),
-    };
-    return (
-      <EditProvider key={item.offering.id} env={env}>
-        <OfferingDetail companyId={companyId} item={item} title={title} onDelete={() => void remove(item, title)} deleting={working} />
-      </EditProvider>
+  const detail = (item: ViewOffering, title: string) =>
+    editable ? (
+      <OfferingDetail companyId={companyId} item={item} title={title} onDelete={() => void remove(item, title)} deleting={working} />
+    ) : (
+      <OfferingDetail companyId={companyId} item={item} title={title} />
     );
-  };
   return (
     <>
       <div className="knowledge-view__section-head">

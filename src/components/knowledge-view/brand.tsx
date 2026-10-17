@@ -249,7 +249,7 @@ export function BrandIdentity({
                   )}
                 </li>
               </ul>
-              <CoverageNote evidence={ev} path={p.colors} empty={false} />
+              <CoverageNote evidence={ev} path={p.colors} empty={colors.length === 0} />
             </>
           ) : (
             <EmptyBox
@@ -292,7 +292,7 @@ export function BrandIdentity({
               ) : (
                 <Link className="knowledge-view__tile-add knowledge-view__tile-add--row" href={href}>+ Add Font</Link>
               )}
-              <CoverageNote evidence={ev} path={p.fonts} empty={false} />
+              <CoverageNote evidence={ev} path={p.fonts} empty={fonts.length === 0} />
             </>
           ) : (
             <EmptyBox

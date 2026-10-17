@@ -3,11 +3,11 @@
 // Public contract (roles, names, requests; no class names, no structure):
 //  - "Add offering" in the section head creates one offering named "Untitled Offering" and selects it.
 //  - "Delete <title>" deletes the selected offering with no confirm dialog; a role=status toast says
-//    `Deleted “<name>”.` and has "Undo", which re-creates the offering (same content, same id). A failed delete shows role=alert.
+//    `Deleted “<name>”.` and has "Undo", which restores it (POST .../entries/:entryId/restore). A failed delete shows role=alert.
 //  - "Edit Offering name / type / description / cost", chips "Add key feature" / "Remove <feature>" save one revision.
 //  - Cost: a plain decimal; anything else is refused inline; empty clears the price.
 //  - A viewer or a snapshot has none of these controls; the read-only "+ Add Offering" link stays there.
-// DECISION: Undo re-creates the offering as a new entry; its old evidence is not restored.
+// DECISION (coordinator, round 2): Undo restores the archived entry with POST .../entries/:entryId/restore (it keeps its evidence).
 import { describe, expect, it, vi } from "vitest";
 import {
   UUID,
@@ -132,17 +132,17 @@ describe("A2 Delete offering", () => {
     mustButton(view, "Undo");
   });
 
-  it("Undo re-creates the offering with the same content and id, selects it, and the toast goes away", async () => {
-    const { view, server } = await open();
+  it("Undo restores the archived offering with one restore request, selects it, and the toast goes away", async () => {
+    const { view, server, api } = await open();
     const before = storedById(view, FIRST.id);
     await click(view, mustButton(view, `Delete ${TITLE}`));
     await view.settle(8);
     await click(view, mustButton(view, "Undo"));
     await view.settle(8);
-    const posts = server.writesTo("entries");
-    expect(posts, "exactly one re-creation").toHaveLength(1);
-    const { body } = creationWrite(view, "offering");
-    expect(body.content).toEqual(before.content);
+    expect(api.restores, "exactly one restore request").toHaveLength(1);
+    expect(api.restores[0]!.path).toBe(`/api/companies/${COMPANY_ID}/entries/${FIRST.id}/restore`);
+    expect(server.writesTo("entries"), "the offering is not created again").toHaveLength(0);
+    expect(storedById(view, FIRST.id).content).toEqual(before.content);
     expect(listTitles(view).some((t) => t.startsWith(TITLE))).toBe(true);
     expect(currentTitles(view).map((t) => t.startsWith(TITLE))).toEqual([true]);
     expect(buttonsNamed(view, "Undo"), "the toast is gone").toHaveLength(0);

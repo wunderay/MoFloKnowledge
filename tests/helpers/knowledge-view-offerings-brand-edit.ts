@@ -19,6 +19,9 @@ import {
 export type ObApi = {
   deletes: { path: string; body: any }[];
   patches: { path: string; body: any }[];
+  restores: { path: string; body: any }[];
+  /** Entries a DELETE archived: like the database, the row stays (and keeps its id) but the draft no longer lists it. */
+  archived: any[];
 };
 const reply = (status: number, data: unknown, error?: { code: string; message: string }) => {
   const body = { data: error ? null : data, error: error ?? null, requestId: "00000000-0000-4000-8000-0000000000aa" };
@@ -27,7 +30,7 @@ const reply = (status: number, data: unknown, error?: { code: string; message: s
 
 /** Teach the fake API entry deletion and the company rename; a configured write failure still answers first. */
 export function installObApi(server: FakeServer): ObApi {
-  const api: ObApi = { deletes: [], patches: [] };
+  const api: ObApi = { deletes: [], patches: [], restores: [], archived: [] };
   const base = server.fetch;
   server.fetch = async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.pathname + input.search : String((input as any)?.url ?? input);
@@ -36,6 +39,7 @@ export function installObApi(server: FakeServer): ObApi {
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
     const entry = /^\/api\/companies\/[^/]+\/entries\/([^/]+)$/.exec(path);
     const company = /^\/api\/companies\/([^/]+)$/.exec(path);
+    const restoring = /^\/api\/companies\/[^/]+\/entries\/([^/]+)\/restore$/.exec(path);
     if (method === "DELETE" && entry) {
       if (server.writeFailure) {
         api.deletes.push({ path, body });
@@ -47,9 +51,28 @@ export function installObApi(server: FakeServer): ObApi {
       const found = server.draft.entries.find((e: any) => e.id === decodeURIComponent(entry[1]!));
       if (!found) return reply(404, null, { code: "not_found", message: "Not found." });
       if (body?.expectedRevision !== found.current_revision) return reply(409, null, { code: "conflict", message: "The saved revision changed." });
+      // An archive, not an erase: the entry keeps its id (creating it again would collide with it).
       server.draft.entries = server.draft.entries.filter((e: any) => e !== found);
-      return reply(200, { id: found.id });
+      api.archived.push(found);
+      return reply(200, { id: found.id, kind: found.kind, revision: found.current_revision, archived_at: "2026-10-17T10:00:00.000Z" });
     }
+    if (method === "POST" && restoring) {
+      if (server.writeFailure) {
+        api.restores.push({ path, body });
+        return base(input, init);
+      }
+      server.requests.push({ method, path, body });
+      api.restores.push({ path, body });
+      if (server.gate) await server.gate.promise;
+      const found = api.archived.find((e: any) => e.id === decodeURIComponent(restoring[1]!));
+      if (!found) return reply(422, null, { code: "validation", message: "Review the supplied values and approval requirements." });
+      api.archived = api.archived.filter((e: any) => e !== found);
+      server.draft.entries.push(found);
+      return reply(200, { id: found.id, kind: found.kind, revision: found.current_revision });
+    }
+    // Creating an entry whose id belongs to an archived one collides with it, as the primary key does.
+    if (method === "POST" && /^\/api\/companies\/[^/]+\/entries$/.test(path) && body?.content?.id && api.archived.some((e: any) => e.id === body.content.id))
+      return reply(503, null, { code: "unavailable", message: "The service is temporarily unavailable. Please retry." });
     if (method === "PATCH" && company) {
       if (server.writeFailure) {
         api.patches.push({ path, body });
