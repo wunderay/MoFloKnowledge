@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { ArrowUpRight } from "./icons";
 import "./cloud-knowledge.css";
 import { ZodError } from "zod";
 import { useUnsavedNavigation } from "./unsaved-navigation";
@@ -468,7 +469,7 @@ function KnowledgeEditorContent({
       <nav className="cloud-knowledge__navigation" aria-label="Knowledge categories">
         <div className="cloud-knowledge__navigation-context"><span className="cloud-knowledge__tab" aria-current="page">Company</span><span className="cloud-knowledge__company-name">{draft.company.name}</span></div>
         <div className="cloud-knowledge__navigation-actions">
-          <Link href={`/knowledge/view?companyId=${companyId}`} className="cloud-knowledge__site-link">Site Knowledge ↗</Link>
+          <Link href={`/knowledge/view?companyId=${companyId}`} className="cloud-knowledge__site-link">Site Knowledge <ArrowUpRight /></Link>
           <select
             className="cloud-knowledge__category-select"
             aria-label="Knowledge category"
