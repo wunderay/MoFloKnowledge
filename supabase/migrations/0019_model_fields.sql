@@ -57,6 +57,71 @@ BEGIN
  p:=jsonb_build_object('company',jsonb_build_object('name',c.name,'website',c.website_url,'snapshot_author_id',p_author),'entries',entries,'sources',sources,'evidence',ev,'claims',cl,'coverage',cov,'operations',ops);
  RETURN b||jsonb_build_object('schema_version','1.0.0','company_id',p_company,'knowledge_base_version_id',p_id,'version',p_version,'saved_at',to_char(p_saved_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'provenance',p);
 END $$;
+-- A revision saved before a field existed has no coverage row for it. Reverting to one, or merging a proposal into one,
+-- adds a not-checked row for every registered field of the kind that has none.
+CREATE FUNCTION private.cover_new_fields(p_kind text,p_entry uuid,p_provenance jsonb) RETURNS jsonb LANGUAGE sql SET search_path='' AS $$
+ SELECT jsonb_set(p_provenance,'{coverage}',coalesce(p_provenance->'coverage','[]')||coalesce((SELECT jsonb_agg(jsonb_build_object('targets',jsonb_build_array(t),'status','not_checked','job_id',NULL,'reason','Entered manually; website extraction has not assessed this field.'))
+  FROM (SELECT replace(f->>'path','@id','@'||p_entry::text) AS t FROM jsonb_array_elements(private.field_registry()) f WHERE f->>'kind'=p_kind) q
+  WHERE NOT EXISTS(SELECT FROM jsonb_array_elements(coalesce(p_provenance->'coverage','[]')) c WHERE c->'targets' ? q.t)),'[]'))
+$$;
+CREATE OR REPLACE FUNCTION public.revert_entry(p_company uuid,p_entry uuid,p_from_revision integer,p_expected_revision integer,p_request uuid) RETURNS public.knowledge_entry_versions
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE c public.companies:=private.lock_company(p_company); old public.knowledge_entry_versions; r public.knowledge_entry_versions; e public.knowledge_entries; h text:=private.operation_hash(jsonb_build_array('revert',p_entry,p_from_revision,p_expected_revision));
+BEGIN
+ IF p_request IS NULL THEN RAISE EXCEPTION 'request_required'; END IF;
+ r:=private.prior_operation(p_company,p_request,h); IF r.id IS NOT NULL THEN RETURN r; END IF;
+ SELECT * INTO e FROM public.knowledge_entries WHERE company_id=p_company AND id=p_entry;
+ SELECT * INTO old FROM public.knowledge_entry_versions WHERE company_id=p_company AND entry_id=p_entry AND revision=p_from_revision;
+ IF old.id IS NULL OR e.id IS NULL THEN RAISE EXCEPTION 'unavailable'; END IF;
+ IF e.current_revision IS DISTINCT FROM p_expected_revision THEN RAISE EXCEPTION 'stale_revision' USING DETAIL=jsonb_build_object('currentRevision',e.current_revision)::text; END IF;
+ INSERT INTO public.knowledge_entry_versions(company_id,entry_id,revision,content,provenance,author_id,change_reason) VALUES(p_company,p_entry,e.current_revision+1,private.entry_defaults(e.kind,p_entry)||old.content,private.operation_provenance(private.cover_new_fields(e.kind,p_entry,old.provenance),p_request,p_entry,'revert_entry',h),auth.uid(),'reverted_from_revision:'||p_from_revision) RETURNING * INTO r;
+ UPDATE public.knowledge_entries SET current_revision=r.revision WHERE company_id=p_company AND id=p_entry;
+ UPDATE public.companies SET draft_generation=draft_generation+1 WHERE id=p_company; RETURN r;
+END $$;
+CREATE OR REPLACE FUNCTION private.merge_saved_proposal(p_candidate jsonb,p_old public.knowledge_entry_versions,p_kind text) RETURNS jsonb LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE candidate jsonb:=p_candidate; provenance jsonb:=p_candidate->'provenance'; candidate_business jsonb:=private.entry_business(p_kind,p_candidate->'content'); merged_business jsonb:=private.entry_business(p_kind,private.entry_defaults(p_kind,p_old.entry_id)||p_old.content); root text:='/'||private.kind_root(p_kind); selected_targets text[]; claim jsonb; target text; merged_claims jsonb:='[]'; keep_targets jsonb; conflicts jsonb; decisions jsonb; coverage jsonb:='[]'; field jsonb; assessment jsonb;
+BEGIN
+ IF p_kind IN ('key_person','offering') THEN root:=root||'/@'||p_old.entry_id::text; END IF;
+ SELECT array_agg(value) INTO selected_targets FROM jsonb_array_elements_text(p_candidate->'selection_targets');
+ FOREACH target IN ARRAY selected_targets LOOP merged_business:=private.set_pointer(merged_business,string_to_array(substr(target,2),'/'),private.resolve_pointer(candidate_business,target)); END LOOP;
+ FOR claim IN SELECT value FROM jsonb_array_elements(p_old.provenance->'claims') LOOP
+  SELECT coalesce(jsonb_agg(t),'[]') INTO keep_targets FROM jsonb_array_elements_text(claim->'targets') t WHERE NOT EXISTS(SELECT FROM unnest(selected_targets) selected_target WHERE t=selected_target OR left(t,length(selected_target)+1)=selected_target||'/');
+  IF jsonb_array_length(keep_targets)>0 THEN merged_claims:=merged_claims||jsonb_build_array(jsonb_set(claim,'{targets}',keep_targets)); END IF;
+ END LOOP;
+ FOR claim IN SELECT value FROM jsonb_array_elements(provenance->'claims') LOOP
+  SELECT coalesce(jsonb_agg(t),'[]') INTO keep_targets FROM jsonb_array_elements_text(claim->'targets') t WHERE EXISTS(SELECT FROM unnest(selected_targets) selected_target WHERE t=selected_target OR left(t,length(selected_target)+1)=selected_target||'/');
+  IF jsonb_array_length(keep_targets)>0 THEN merged_claims:=merged_claims||jsonb_build_array(jsonb_set(claim,'{targets}',keep_targets)); END IF;
+ END LOOP;
+ SELECT coalesce(jsonb_agg(old_conflict),'[]') INTO conflicts FROM jsonb_array_elements(coalesce(p_old.provenance->'conflicts','[]')) old_conflict WHERE
+  NOT EXISTS(SELECT FROM jsonb_array_elements(coalesce(p_old.provenance->'decisions','[]')) old_decision WHERE old_decision->>'conflict_id'=old_conflict->>'id')
+  OR NOT EXISTS(SELECT FROM unnest(selected_targets) selected_target WHERE old_conflict->>'target'=selected_target OR left(old_conflict->>'target',length(selected_target)+1)=selected_target||'/')
+  OR EXISTS(SELECT FROM jsonb_array_elements(provenance->'conflicts') new_conflict WHERE new_conflict->>'id'=old_conflict->>'id');
+ conflicts:=private.unique_json(conflicts||(provenance->'conflicts'));
+ SELECT coalesce(jsonb_agg(old_decision),'[]') INTO decisions FROM jsonb_array_elements(coalesce(p_old.provenance->'decisions','[]')) old_decision WHERE EXISTS(SELECT FROM jsonb_array_elements(conflicts) cf WHERE cf->>'id'=old_decision->>'conflict_id') AND NOT EXISTS(SELECT FROM jsonb_array_elements(provenance->'decisions') new_decision WHERE new_decision->>'conflict_id'=old_decision->>'conflict_id');
+ decisions:=decisions||(provenance->'decisions');
+ FOR field IN SELECT value FROM jsonb_array_elements(private.field_registry()) WHERE value->>'kind'=p_kind LOOP
+  target:=replace(field->>'path','@id','@'||p_old.entry_id::text);
+  IF EXISTS(SELECT FROM unnest(selected_targets) selected_target WHERE selected_target=target OR left(selected_target,length(target)+1)=target||'/') THEN
+   SELECT value INTO assessment FROM jsonb_array_elements(provenance->'coverage') c WHERE c->'targets' ? target;
+  ELSE SELECT value INTO assessment FROM jsonb_array_elements(p_old.provenance->'coverage') c WHERE c->'targets' ? target; END IF;
+  IF assessment IS NULL THEN assessment:=jsonb_build_object('status','not_checked','job_id',NULL,'reason','Entered manually; website extraction has not assessed this field.'); END IF;
+  coverage:=coverage||jsonb_build_array(jsonb_set(assessment,'{targets}',jsonb_build_array(target)));
+ END LOOP;
+ provenance:=provenance||jsonb_build_object('claims',merged_claims,'conflicts',conflicts,'decisions',decisions,'coverage',coverage,'sources',private.unique_json((p_old.provenance->'sources')||(provenance->'sources')),'evidence',private.unique_json((p_old.provenance->'evidence')||(provenance->'evidence')),'operations',private.unique_json((p_old.provenance->'operations')||(provenance->'operations')));
+ RETURN candidate||jsonb_build_object('content',private.resolve_pointer(merged_business,root),'provenance',provenance);
+END $$;
+-- Candidates are validated once, when a job first stores them. Later updates (decisions) must leave them untouched, which
+-- the immutable_candidates check enforces; re-validating them would reject proposals stored before 0019, whose content
+-- lacks the new keys, whenever one is applied or dismissed.
+CREATE OR REPLACE FUNCTION private.validate_finalized_proposals() RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
+BEGIN
+ IF NEW.proposals IS DISTINCT FROM OLD.proposals AND NEW.proposals ? 'candidates' THEN
+  IF NOT (OLD.proposals ? 'candidates') THEN PERFORM private.assert_proposals(NEW.company_id,NEW.requested_by,NEW.proposals); END IF;
+  IF jsonb_typeof(NEW.proposals->'decisions') IS DISTINCT FROM 'array' OR (SELECT coalesce(jsonb_agg(value ORDER BY ord),'[]') FROM jsonb_array_elements(NEW.proposals->'decisions') WITH ORDINALITY q(value,ord) WHERE ord<=jsonb_array_length(coalesce(OLD.proposals->'decisions','[]'))) IS DISTINCT FROM coalesce(OLD.proposals->'decisions','[]') THEN RAISE EXCEPTION 'append_only_decisions'; END IF;
+  IF OLD.proposals ? 'candidates' AND (NEW.proposals-'decisions') IS DISTINCT FROM (OLD.proposals-'decisions') THEN RAISE EXCEPTION 'immutable_candidates'; END IF;
+ END IF;
+ RETURN NEW;
+END $$;
 -- A storage reference names the owning company in its path (<folder>/<company uuid>/<object uuid>.<ext>). The JSON
 -- contract cannot know the company, so every new revision is checked against its own company_id here, whichever write
 -- path produced it (create_entry, save_entry_revision, revert_entry or a direct insert).
