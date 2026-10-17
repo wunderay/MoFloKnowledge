@@ -39,6 +39,9 @@ jobs:
       - run: npm run typecheck
       - run: node scripts/generate-sql-contract.mjs --check
       - run: npm run unit
+        env:
+          # Chrome is preinstalled on GitHub's ubuntu-latest image; the renderer test launches it directly.
+          CHROMIUM_PATH: /usr/bin/google-chrome
       - run: npm run build
 
   db:
