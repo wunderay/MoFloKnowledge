@@ -2701,7 +2701,7 @@
           ],
           "additionalProperties": false
         },
-        "maxItems": 1000
+        "maxItems": 1001
       },
       "operations": {
         "type": "array",
@@ -4901,7 +4901,7 @@
               ],
               "additionalProperties": false
             },
-            "maxItems": 1000
+            "maxItems": 1001
           },
           "operations": {
             "type": "array",
