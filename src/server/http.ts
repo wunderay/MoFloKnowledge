@@ -68,7 +68,7 @@ export function mapDatabaseError(error: {
   if (/rate_limit/.test(value))
     return new HttpError(429, "rate_limited", "Please wait before retrying.");
   if (
-    /invalid|validation|archived|last_owner|unreviewed|approval|approved|evidence|coverage/.test(
+    /invalid|validation|archived|last_owner|unreviewed|approval|approved|evidence|coverage|edited_leaf_requires_user_origin|unsupported_origin|unsupported_candidate_origin/.test(
       value,
     ) ||
     error.code === "23514"
