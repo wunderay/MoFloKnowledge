@@ -146,9 +146,10 @@ function AddPageDialog({
   const modal = useCallback((element: HTMLDialogElement | null) => {
     if (element && !element.open) element.showModal();
   }, []);
+  // Focus the address on opening and again once a save has ended (the fields are disabled while it runs).
   useEffect(() => {
-    field.current?.focus();
-  }, []);
+    if (!busy) field.current?.focus();
+  }, [busy]);
 
   const { room, limit } = importRoom(site);
   // Why nothing can be saved, shown from the start; otherwise the message of the last failed attempt.
@@ -183,7 +184,6 @@ function AddPageDialog({
       saving.current = false;
       setBusy(false);
       setError(errorText(failure, "add the page again"));
-      field.current?.focus();
     }
   }
 
@@ -198,6 +198,14 @@ function AddPageDialog({
       onCancel={(event) => {
         event.preventDefault();
         close();
+      }}
+      onClose={(event) => {
+        // The browser can close a modal without a cancel event (Escape pressed twice). Closing is the
+        // normal close, except during a save: the dialog is shown again so a failure is always visible.
+        const element = event.currentTarget;
+        if (saving.current) {
+          if (!element.open) element.showModal();
+        } else onClose();
       }}
     >
       <form onSubmit={submit} noValidate>
