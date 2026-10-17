@@ -29,9 +29,11 @@ export function selectExactSentences(text: string, options: ExcerptOptions = {})
   return selected;
 }
 
-/** Simple clause-level negation/exclusion cue: "no", "not", "never", "without", "except", "excluding", "don't". */
+/** Simple clause-level negation/exclusion cue: not, never, except, excluding, don't, and "provide no/without X". */
 export const hasNegation = (text: string): boolean =>
-  /\b(?:no|not|never|without|except|excluding|excludes?|(?:do|does|did|is|are|can|will)n['’]t|cannot)\b/i.test(text);
+  /\b(?:not|never|except|excluding|excludes?|(?:do|does|did|is|are|can|will)n['’]t|cannot)\b/i.test(text) ||
+  // "provide no X" / "provide services without X" negate the offer; "with no hidden fees" or "grow without hiring" do not.
+  /\b(?:provide|offer|perform|handle|serve)s?\s+(?:\w+\s+)?(?:no|without)\b/i.test(text);
 
 /** Normalize only a company's explicit present-tense statement that it provides services. */
 export function isExplicitServiceProviderSentence(sentence: string, companyNames: readonly string[] = []): boolean {
