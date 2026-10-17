@@ -49,7 +49,15 @@ test('a removed source-backed item can be put back with its original claim, and 
  const user_claim=(item)=>({id:randomUUID(),entry_id:entry,targets:[leaf(item.id)],origin:'user_provided',evidence_ids:[],based_on_claim_ids:[],actor_id:owner,authored_at:'2026-10-16T00:00:00.000Z',note:'Entered by hand'});
  const provenance=(claims,extra={})=>({sources:[sourceRow],evidence:[evidence],claims,coverage,operations:[],conflicts:[],decisions:[],...extra});
  const original=claim(randomUUID());
- let rev=await call(user,'public.create_entry',[company,'market_and_customers',withBuyers(buyer,other),provenance([original,user_claim(other)]),randomUUID()]);
+ // Q20 (provenance-origin-hardening): a member's create_entry takes person-authored values only, so the source-backed
+ // revision 1 comes from the first import (finish_job), the trusted path that stores extracted values.
+ const progress={stage:'crawling',discovered:1,selected:1,captured:1,failed:0,blocked:0,extracted:0,document_limit:10,limits_reached:[]};
+ await call(worker,'private.checkpoint_job',[claimed.id,company,claimed.lease_token,{},progress]);
+ await call(worker,'private.checkpoint_job',[claimed.id,company,claimed.lease_token,{},{...progress,stage:'extracting',extracted:1}]);
+ const candidate=(kind,content,p)=>({id:randomUUID(),kind,target_entry_id:null,base_revision:null,schema_version:'1.0.0',content,provenance:p,conflicts:[]});
+ const others=['company_foundation','positioning','branding_and_style','online_presence'].map(kind=>candidate(kind,defaults[kind],{sources:[],evidence:[],claims:[],coverage:registry.filter(f=>f.kind===kind).map(f=>({targets:[f.path],status:'not_checked',job_id:null,reason:'Not assessed'})),operations:[],conflicts:[],decisions:[]}));
+ await call(worker,'private.finish_job',[claimed.id,company,claimed.lease_token,{candidates:[candidate('market_and_customers',withBuyers(buyer,other),provenance([original,user_claim(other)])),...others],decisions:[]},[{targets:['/market_and_customers/target_buyers'],status:'partial',job_id:claimed.id,reason:'Fixture'}]]);
+ let rev=(await user.query('SELECT * FROM public.knowledge_entry_versions WHERE company_id=$1 AND entry_id=$2 AND revision=1',[company,entry])).rows[0];
  const entryId=rev.entry_id;
  assert.equal(rev.revision,1);
  const operation=(request,note,supersedes)=>({request_id:request,entry_id:entryId,kind:'user_correction',supersedes_claim_id:supersedes,note});
