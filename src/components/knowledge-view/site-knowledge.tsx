@@ -2,16 +2,21 @@ import Link from "next/link";
 import { safeHref } from "../citation-popover";
 import { textOrNull, type ViewSiteLinks } from "./data";
 import { addHref, CoverageNote, ItemSource, Source } from "./parts";
+import { SiteAddPage } from "./site-add-page";
 import { SiteImport } from "./site-import";
 
 const PATH = "/site_links/links";
 
-/** Site Knowledge: the company's internal pages, with "+ Add page" and, for an editable draft, "Import from website". */
+/**
+ * Site Knowledge: the company's internal pages. An editable draft adds pages from a dialog and can
+ * "Import from website"; a saved snapshot or a viewer gets "+ Add page" as a link to the editor.
+ */
 export function SiteKnowledge({
   companyId,
   site,
   canEdit,
   actorId,
+  website = null,
   importBlocked = false,
   onSaved,
   level: Heading = "h2",
@@ -20,6 +25,8 @@ export function SiteKnowledge({
   site: ViewSiteLinks;
   canEdit: boolean;
   actorId: string;
+  /** The Company Foundation website: a page added here must be on this site. */
+  website?: string | null;
   /** The view is older than a saved import; the picker stays disabled until it is reloaded. */
   importBlocked?: boolean;
   onSaved: () => Promise<void>;
@@ -40,8 +47,14 @@ export function SiteKnowledge({
           </p>
         </div>
         <div className="knowledge-view__site-actions">
-          <Link className="knowledge-view__site-add" href={addHref(companyId, "site_links")}>+ Add page</Link>
-          {canEdit && actorId && <SiteImport companyId={companyId} actorId={actorId} site={site} blocked={importBlocked} onSaved={onSaved} />}
+          {canEdit && actorId ? (
+            <>
+              <SiteAddPage companyId={companyId} actorId={actorId} site={site} website={website} blocked={importBlocked} onSaved={onSaved} />
+              <SiteImport companyId={companyId} actorId={actorId} site={site} blocked={importBlocked} onSaved={onSaved} />
+            </>
+          ) : (
+            <Link className="knowledge-view__site-add" href={addHref(companyId, "site_links")}>+ Add page</Link>
+          )}
         </div>
       </div>
       {links.length === 0 ? (

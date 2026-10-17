@@ -37,7 +37,7 @@ export function importRoom(site: ViewSiteLinks): { room: number; limit: "links" 
 /** A new link names its title and its address; its note is empty. */
 const LEAVES_PER_LINK = 2;
 
-type Candidate = { key: string; label: string; url: string };
+export type Candidate = { key: string; label: string; url: string };
 const normalized = (url: string) => {
   try {
     return new URL(url).href;
@@ -63,8 +63,27 @@ export function importCandidates(pages: SourceCoverage["pages"], stored: SiteLin
   return out;
 }
 
-/** Saves `added` after the stored links, the way the editor saves an entry: a new entry or a new revision. */
-export async function saveLinks(companyId: string, actorId: string, site: ViewSiteLinks, added: Candidate[]) {
+/** Why no more pages fit, in words: the links are at their maximum, or the provenance records are full. */
+export function fullText(limit: "links" | "claims" | "operations" | null): string {
+  return limit === "claims" || limit === "operations"
+    ? `The list's source records are full (the maximum of ${limit === "claims" ? MAX_ENTRY_CLAIMS + " source claims" : MAX_ENTRY_OPERATIONS + " recorded changes"}), so no more pages can be added here.`
+    : `The list already has the maximum of ${MAX_LINKS} links, so no more pages can be added.`;
+}
+
+/** The reason recorded with an import's revision. */
+const IMPORT_NOTE = "Pages imported from the website crawl.";
+
+/**
+ * Saves `added` after the stored links, the way the editor saves an entry: a new entry or a new revision.
+ * `note` is the reason recorded with the change.
+ */
+export async function saveLinks(
+  companyId: string,
+  actorId: string,
+  site: ViewSiteLinks,
+  added: Candidate[],
+  note: string = IMPORT_NOTE,
+) {
   const links = [
     ...site.links,
     ...added.map((page) => ({ id: crypto.randomUUID(), title: page.label.slice(0, 20000), url: page.url, note: null })),
@@ -72,7 +91,6 @@ export async function saveLinks(companyId: string, actorId: string, site: ViewSi
   const content = parseBusinessEntry("site_links", { links });
   const requestId = crypto.randomUUID();
   const savedAt = new Date().toISOString();
-  const note = "Pages imported from the website crawl.";
   const { entry } = site;
   if (!entry || entry.revision === 0) {
     // As prepareManualCreation does: coverage for every required field, then the new values as claims.
@@ -131,9 +149,10 @@ export async function saveLinks(companyId: string, actorId: string, site: ViewSi
   );
 }
 
-const errorText = (error: unknown) =>
+/** A failed save in words; `again` finishes the sentence for a list that changed ("import again"). */
+export const errorText = (error: unknown, again = "import again") =>
   error instanceof ApiError && error.status === 409
-    ? "This list changed since the page was loaded. Reload the page to get the latest links, then import again."
+    ? `This list changed since the page was loaded. Reload the page to get the latest links, then ${again}.`
     : error instanceof ZodError
       ? error.issues.map((issue) => issue.message).join("; ")
       : (error as Error).message;
@@ -256,10 +275,8 @@ export function SiteImport({
               <>
                 {limited && (
                   <p className="knowledge-view__dialog-hint">
-                    {limit === "claims" || limit === "operations"
-                      ? `The list's source records are full (the maximum of ${limit === "claims" ? MAX_ENTRY_CLAIMS + " source claims" : MAX_ENTRY_OPERATIONS + " recorded changes"}), so no more pages can be added here.`
-                      : remaining === 0
-                      ? `The list already has the maximum of ${MAX_LINKS} links, so no more pages can be added.`
+                    {remaining === 0 || limit === "claims" || limit === "operations"
+                      ? fullText(limit)
                       : `Only ${remaining} more ${remaining === 1 ? "page" : "pages"} can be added (maximum ${MAX_LINKS} links).`}
                   </p>
                 )}

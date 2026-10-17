@@ -407,3 +407,7 @@
 .knowledge-view__all { display: flex; flex-direction: column; gap: 40px; }
 .knowledge-view__all-section { min-width: 0; }
 .knowledge-view__all-title { margin-bottom: 16px; }
+.knowledge-view__dialog-field { display: flex; flex-direction: column; gap: 4px; }
+.knowledge-view__dialog-label { font-size: 12px; font-weight: 500; }
+.knowledge-view__dialog-input { width: 100%; padding: 8px 10px; border: 1px solid var(--kv-line); border-radius: 8px; background: var(--white, #fff); color: inherit; font: inherit; font-size: 13px; }
+.knowledge-view__dialog-input:focus-visible { border-color: var(--kv-blue); outline: 2px solid var(--kv-blue); outline-offset: 1px; }

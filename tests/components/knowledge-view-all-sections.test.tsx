@@ -12,7 +12,6 @@ import { describe, expect, it, vi } from "vitest";
 import { openView, type SectionLabel, type View } from "../helpers/knowledge-view-site-all-runtime";
 import {
   COMPANY_NAME,
-  EMPTY_COMPANY_ID,
   buildBusiness,
   buildEmptyDraft,
   draftFrom,
@@ -131,6 +130,10 @@ const INDIVIDUAL: Record<string, SectionLabel> = {
 const SIX = ALL_ORDER.filter((label): label is Exclude<(typeof ALL_ORDER)[number], "Key People"> => label !== "Key People");
 const sectionOfKey = (key: string) => Object.keys(INDIVIDUAL).find((s) => key.startsWith(s))!;
 
+/** "+ Add page" buttons inside a card: the control of an editable draft (a snapshot keeps its link to the editor). */
+const addPageButtons = (page: Page, el: Parameters<typeof addPageLinks>[1]) =>
+  page.$(el as never).find("button").toArray().filter((b) => /^\+\s*add page$/i.test(norm(page.$(b).text())));
+
 describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: Source) => {
   // C5 behavioural
   it("is selected by the selector and no longer shows the placeholder notice", async () => {
@@ -204,13 +207,18 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
   });
 
   // C5 behavioural
-  it("contains the Site Knowledge card with its links and \"+ Add page\" link", async () => {
+  it("contains the Site Knowledge card with its links and \"+ Add page\" (a link to the editor; a button on an editable draft)", async () => {
     const page = (await sources[source]("All sections")).page();
     const siteEl = siteCard(page);
     expect(siteEl, 'the card "Sitemap / Internal Links"').not.toBeNull();
     const text = siteCardText(page, siteEl!);
     for (const link of LINKS) expect(text).toContain(link.title);
-    expect(addPageLinks(page, siteEl!)).toEqual([siteAddHref(COMPANY_ID)]);
+    if (source === "draft") {
+      expect(addPageLinks(page, siteEl!), "no link to the editor on an editable draft").toEqual([]);
+      expect(addPageButtons(page, siteEl!), 'one "+ Add page" button').toHaveLength(1);
+    } else {
+      expect(addPageLinks(page, siteEl!)).toEqual([siteAddHref(COMPANY_ID)]);
+    }
   });
 });
 
@@ -232,7 +240,9 @@ describe("C5 All sections, draft and snapshot agree", () => {
     const siteEl = siteCard(page)!;
     expect(siteEl).not.toBeNull();
     expect(siteCardText(page, siteEl)).toMatch(/no (internal )?(links|pages)/i);
-    expect(addPageLinks(page, siteEl)).toEqual([siteAddHref(EMPTY_COMPANY_ID)]);
+    // The empty company's draft is editable, so "+ Add page" is the dialog button, not a link to the editor.
+    expect(addPageLinks(page, siteEl)).toEqual([]);
+    expect(addPageButtons(page, siteEl), 'one "+ Add page" button').toHaveLength(1);
   });
 
   // C5 behavioural
