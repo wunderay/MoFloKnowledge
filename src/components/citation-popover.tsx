@@ -14,12 +14,15 @@ export function CitationPopover({
   approved = false,
   candidate,
   citationContext,
+  name,
 }: {
   path: string;
   provenance: EntryProvenance;
   approved?: boolean;
   candidate?: FieldCandidate;
   citationContext?: CitationContext;
+  /** A person-readable name for the value, used when the path ends in an item id. */
+  name?: string;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLSpanElement>(null);
@@ -55,15 +58,18 @@ export function CitationPopover({
   const origins = candidate
     ? [candidate.origin]
     : [...new Set(claims.map((c) => c.origin))];
-  const label = origins.includes("user_provided")
-    ? "User correction"
-    : origins.includes("generated")
-      ? `Historical generated${approved ? " · approved" : ""}`
-      : origins.includes("inferred")
-        ? "Historical inferred"
-        : evidence.length
-          ? "Sources"
-          : (coverage?.status.replaceAll("_", " ") ?? "Not checked");
+  // Every non-source origin present is named, so one origin never hides another.
+  const originLabels = [
+    origins.includes("user_provided") && "User correction",
+    origins.includes("generated") &&
+      `Historical generated${approved ? " · approved" : ""}`,
+    origins.includes("inferred") && "Historical inferred",
+  ].filter(Boolean);
+  const label = originLabels.length
+    ? originLabels.join(" · ")
+    : evidence.length
+      ? "Sources"
+      : (coverage?.status.replaceAll("_", " ") ?? "Not checked");
   useEffect(() => {
     if (!open) return;
     function outside(e: PointerEvent) {
@@ -108,7 +114,11 @@ export function CitationPopover({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={id}
-        aria-label={`Evidence for ${path.split("/").at(-1)?.replaceAll("_", " ")}`}
+        aria-label={
+          name
+            ? `${label}: evidence for ${name}`
+            : `Evidence for ${path.split("/").at(-1)?.replaceAll("_", " ")}`
+        }
         onClick={() => setOpen(true)}
       >
         {label} ⓘ

@@ -3,14 +3,20 @@ import { verifiedSession } from "@/lib/supabase/server";
 import { readDraft } from "@/server/read-model";
 import { readSnapshot, readVersionSummaries } from "@/server/snapshots";
 import { UUIDSchema } from "@/contracts";
+import { parseSection } from "@/components/knowledge-view/sections";
 import { Notice } from "@/components/ui";
 import { redirect } from "next/navigation";
 export default async function ViewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ companyId?: string; versionId?: string }>;
+  searchParams: Promise<{
+    companyId?: string;
+    versionId?: string;
+    section?: string;
+  }>;
 }) {
   const params = await searchParams;
+  const section = parseSection(params.section);
   const id = UUIDSchema.safeParse(params.companyId);
   if (!id.success)
     return (
@@ -36,6 +42,7 @@ export default async function ViewPage({
           key={id.data}
           companyId={id.data}
           initialVersionId="draft"
+          initialSection={section}
           initialData={{ companyName: draft.company.name, versions, draft }}
         />
       );
@@ -46,6 +53,7 @@ export default async function ViewPage({
         key={id.data}
         companyId={id.data}
         initialVersionId={versionId}
+        initialSection={section}
         initialData={{
           companyName: saved.payload.provenance.company.name,
           versions,
