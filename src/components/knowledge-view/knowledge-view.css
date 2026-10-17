@@ -41,12 +41,15 @@
   font-size: 13px;
   font-weight: 600;
 }
-.knowledge-view .knowledge-view__select {
-  display: block;
-  width: auto;
+/* The section listbox: a pill button that opens a list of the sections. data-state drives the motion. */
+.knowledge-view__listbox { position: relative; }
+.knowledge-view .knowledge-view__listbox-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   min-height: 38px;
   max-width: 100%;
-  padding: 9px 36px 9px 18px;
+  padding: 9px 16px 9px 18px;
   border: 1px solid transparent;
   border-radius: 30px;
   background-color: var(--kv-pale);
@@ -55,6 +58,50 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.knowledge-view .knowledge-view__listbox-trigger:hover { border-color: #cfdcff; }
+.knowledge-view__listbox-chevron {
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform .18s ease, margin-top .18s ease;
+}
+.knowledge-view__listbox[data-state="open"] .knowledge-view__listbox-chevron { margin-top: 3px; transform: rotate(-135deg); }
+.knowledge-view__listbox-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid var(--kv-line);
+  border-radius: 16px;
+  background: var(--white, #fff);
+  box-shadow: 0 8px 28px #172b4d1f;
+  transform-origin: top right;
+}
+.knowledge-view__listbox-list[data-state="open"] { animation: knowledge-view-listbox-in .16s ease-out; }
+.knowledge-view__listbox-list:focus { outline: none; }
+.knowledge-view__listbox-option { padding: 9px 14px; border-radius: 10px; font-size: 13px; cursor: pointer; }
+.knowledge-view__listbox-option[aria-selected="true"] { color: var(--kv-blue); font-weight: 600; }
+.knowledge-view__listbox-option--active { background: var(--kv-pale); }
+.knowledge-view__listbox-list:focus-visible .knowledge-view__listbox-option--active { outline: 2px solid var(--kv-blue); outline-offset: -2px; }
+@keyframes knowledge-view-listbox-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-view .knowledge-view__listbox-trigger,
+  .knowledge-view__listbox-chevron { transition: none; }
+  .knowledge-view__listbox-list[data-state="open"] { animation: none; }
 }
 .knowledge-view :is(button, select, a, summary):focus-visible { outline: 2px solid var(--kv-blue); outline-offset: 3px; }
 

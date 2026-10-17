@@ -7,10 +7,11 @@ import type { EntryKind } from "../../src/contracts";
 
 export const SECTIONS = [
   "General Info",
+  "Brand Identity",
+  "Business Offerings",
   "Customers & Industry",
   "Sales & Marketing",
-  "Business Offerings",
-  "Brand Identity",
+  "Key People",
   "Site Knowledge",
   "All sections",
 ] as const;
@@ -19,6 +20,7 @@ export type SectionLabel = (typeof SECTIONS)[number];
 export const LATER_SECTIONS: SectionLabel[] = [
   "Business Offerings",
   "Brand Identity",
+  "Key People",
   "Site Knowledge",
   "All sections",
 ];

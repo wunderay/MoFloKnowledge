@@ -20,11 +20,8 @@ import { EmptyState, Notice, StatusBadge } from "./ui";
 import { EntryHistory } from "./entry-history";
 import { filterView } from "@/knowledge/filter-view";
 import { SectionView } from "./knowledge-view/section-view";
-import {
-  KNOWLEDGE_SECTIONS,
-  parseSection,
-  type KnowledgeSectionId,
-} from "./knowledge-view/sections";
+import { SectionListbox } from "./knowledge-view/section-listbox";
+import { type KnowledgeSectionId } from "./knowledge-view/sections";
 import "./knowledge-view/knowledge-view.css";
 type ViewEntry = {
   id: string;
@@ -488,24 +485,15 @@ export function KnowledgeViewer({
               <span className="knowledge-view__tab" aria-current="page">Company</span>
             </div>
             <div className="knowledge-view__nav-box">
-            <select
-              className="knowledge-view__select"
-              aria-label="Knowledge section"
+            <SectionListbox
               value={knowledgeSection}
-              onChange={(event) => {
-                const next = parseSection(event.target.value);
+              onSelect={(next) => {
                 setKnowledgeSection(next);
                 const url = new URL(window.location.href);
                 url.searchParams.set("section", next);
                 window.history.replaceState(null, "", url);
               }}
-            >
-              {KNOWLEDGE_SECTIONS.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+            />
             </div>
           </nav>
           <div className="knowledge-view__panel">
