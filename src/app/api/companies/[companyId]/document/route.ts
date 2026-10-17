@@ -17,7 +17,7 @@ export const GET = route(async (request, context, { client, user }) => {
   const format = z.enum(["json", "docx", "pdf"]).parse(parameters.get("format"));
   const input = selected === "draft"
     ? { kind: "draft" as const, draft: await readDraft(client, companyId, user!.id) }
-    : { kind: "snapshot" as const, snapshot: (await readSnapshot(client, companyId, IdSchema.parse(selected), user!.id)).payload };
+    : await readSnapshot(client, companyId, IdSchema.parse(selected), user!.id).then((saved) => ({ kind: "snapshot" as const, snapshot: saved.payload, stored: saved.stored }));
   const name = input.kind === "draft" ? input.draft.company.name : input.snapshot.provenance.company.name;
   const version = input.kind === "draft" ? "draft" : input.snapshot.version;
   const bytes = format === "json" ? canonicalStringify(documentData(input))

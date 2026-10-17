@@ -8,7 +8,7 @@ import { factualBullets } from "./narrative-prose";
 
 export type DocumentInput =
   | { kind: "draft"; draft: z.infer<typeof DraftResponseSchema> }
-  | { kind: "snapshot"; snapshot: KnowledgeBaseExport };
+  | { kind: "snapshot"; snapshot: KnowledgeBaseExport; stored?: unknown };
 export type DocumentTextRun = { text: string; citations?: number[]; bold?: boolean; href?: string };
 export type DocumentParagraph = {
   text: string;
@@ -55,7 +55,7 @@ export function documentFilename(name: string, version: number | "draft") {
   return version === "draft" ? filename.replace(/-v1\.json$/, "-draft.docx") : filename.replace(/\.json$/, ".docx");
 }
 export function documentData(input: DocumentInput) {
-  return input.kind === "draft" ? input.draft : input.snapshot;
+  return input.kind === "draft" ? input.draft : input.stored ?? input.snapshot;
 }
 
 /** A company profile, using complete stored wording rather than a technical serialization. */
