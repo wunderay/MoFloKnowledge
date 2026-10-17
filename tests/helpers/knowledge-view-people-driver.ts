@@ -94,10 +94,13 @@ export async function openKeyPeople(opts: Omit<OpenOptions, "section" | "rawSect
 // ---- finders -------------------------------------------------------------------------------
 const LIST_ROLES = ["list", "listbox", "navigation", "tablist", "menu", "radiogroup"];
 export function peopleListNode(view: View): HNode | null {
+  // The name must be given (aria-label / aria-labelledby): a list is never named by the text it contains.
+  const named = (n: HNode) => typeof n.props["aria-label"] === "string" || typeof n.props["aria-labelledby"] === "string";
   return (
     view.all().find((n) => {
-      if (!(LIST_ROLES.includes(roleOf(n)) || ["ul", "ol", "nav"].includes(n.tag)) || !/\bpeople\b|\bpersons?\b/i.test(view.nameOf(n))) return false;
-      return !/^knowledge section/i.test(view.nameOf(n));
+      if (!(LIST_ROLES.includes(roleOf(n)) || ["ul", "ol", "nav"].includes(n.tag)) || !named(n)) return false;
+      const name = view.nameOf(n);
+      return /\bpeople\b|\bpersons?\b/i.test(name) && !/^knowledge section/i.test(name);
     }) ?? null
   );
 }
