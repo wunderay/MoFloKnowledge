@@ -114,7 +114,8 @@ test('C5: a new migration makes the SQL contract know the new fields, defaults a
  await t.test("the Q5 migration is new (0018, or 0019 when Q6's 0018_knowledge_assets_storage.sql is present), is recorded as applied; 0001-0017 are untouched",async()=>{
   const files=(await readdir(migrationsDirectory)).filter(x=>x.endsWith('.sql')).sort();
   const q6='0018_knowledge_assets_storage.sql';
-  const added=files.filter(file=>migrationNumber(file)>=18&&file!==q6);
+  // Later Quests add their own migrations (0020 archives entries); only the two numbers this Quest could take count here.
+  const added=files.filter(file=>migrationNumber(file)>=18&&migrationNumber(file)<=19&&file!==q6);
   assert.equal(added.length,1,'exactly one Q5 migration numbered above the migrations that came before it');
   const expected=files.includes(q6)?'0019_':'0018_';assert.ok(added[0].startsWith(expected),`Q5's migration is the first free number ${expected.slice(0,4)} (found ${added[0]})`);
   const {rows}=await admin.query("SELECT version FROM supabase_migrations.schema_migrations ORDER BY version");

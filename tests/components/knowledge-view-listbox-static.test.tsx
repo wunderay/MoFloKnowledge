@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderViewPage } from "../helpers/knowledge-view-render";
 import { buildDraft, buildEmptyDraft, snapshotFrom, SNAPSHOT_ID, VERSIONS } from "../helpers/knowledge-view-fixtures";
-import { hasHeading, norm, parse, type Page } from "../helpers/knowledge-view-dom";
+import { hasHeading, headings, norm, parse, type Page } from "../helpers/knowledge-view-dom";
 
 const SECTIONS = [
   ["general", "General Info"],
@@ -103,13 +103,17 @@ describe("C2 default and ?section= mapping", () => {
   });
 });
 
-describe("C2 Key People (new section; its content is built by Q9 and is not locked)", () => {
+/** The Key People heading carries a count badge ("Key People 0"); with no count given, any count. */
+const hasPeopleHeading = (page: Page, count?: number) =>
+  headings(page).some((h) => (count === undefined ? /^key people \d+$/i : new RegExp(`^key people ${count}$`, "i")).test(h.text));
+
+describe("C2 Key People (new section; its content is built by Q9)", () => {
   // behavioural
   it("?section=key-people renders without an error, under the company name, with a 'Key People' heading", async () => {
     const page = await draftPage("key-people");
     expect(page.html).not.toContain("knowledge is unavailable");
     expect(page.$("h1").toArray().map((h) => page.$(h).text())).toContain("Harbor & Pine Coffee Roasters");
-    expect(hasHeading(page, "Key People")).toBe(true);
+    expect(hasPeopleHeading(page), "a heading 'Key People' with its count").toBe(true);
     expect(shownSection(page)).toEqual(["Key People"]);
   });
 
@@ -127,10 +131,10 @@ describe("C2 Key People (new section; its content is built by Q9 and is not lock
     const snap = parse(
       await renderViewPage({ snapshot: { payload: snapshotFrom(draft), versionId: SNAPSHOT_ID }, versions: VERSIONS, section: "key-people" }),
     );
-    expect(hasHeading(snap, "Key People")).toBe(true);
+    expect(hasPeopleHeading(snap), "a heading 'Key People' with its count").toBe(true);
     const empty = parse(await renderViewPage({ draft: buildEmptyDraft(), versions: [], section: "key-people" }));
     expect(empty.html).not.toContain("knowledge is unavailable");
-    expect(hasHeading(empty, "Key People")).toBe(true);
+    expect(hasPeopleHeading(empty, 0)).toBe(true);
   });
 });
 

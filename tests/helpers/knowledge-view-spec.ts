@@ -16,7 +16,7 @@ export const SECTIONS = [
   "All sections",
 ] as const;
 export type SectionLabel = (typeof SECTIONS)[number];
-/** Placeholder sections: their content is built by later Quests. */
+/** Sections built after the selector Quest. Only their selection is checked with this list; each has its own tests for its content. */
 export const LATER_SECTIONS: SectionLabel[] = [
   "Business Offerings",
   "Brand Identity",

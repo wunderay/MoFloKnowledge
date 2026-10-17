@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Offering } from "@/contracts";
 import { Icon, type IconName } from "../icons";
 import { textOrNull, type ViewOffering } from "./data";
-import { addHref, CoverageNote, EmptyBox, ItemSource, Source } from "./parts";
+import { addHref, CoverageNote, EmptyBox, Field, ItemSource, Source } from "./parts";
 
 /** What the Cost card shows, and the field that holds it: the price wording, else amount with currency and interval, else free/contact. */
 function costOf(pricing: Offering["pricing"]): { text: string; path: string } | null {
@@ -23,30 +23,6 @@ function costOf(pricing: Offering["pricing"]): { text: string; path: string } | 
 
 /** How each field is named in its evidence control: "Sources: evidence for cost of <offering>". */
 const NOUNS = { name: "name", type: "type", description: "description", features: "key features", cost: "cost", model: "pricing model" };
-
-function Field({
-  label,
-  icon,
-  source,
-  children,
-}: {
-  label: string;
-  icon?: IconName;
-  source: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="knowledge-view__field">
-      {icon && (
-        <span className="knowledge-view__field-icon" aria-hidden="true"><Icon name={icon} size={18} /></span>
-      )}
-      <div className="knowledge-view__field-body">
-        <p className="knowledge-view__mini-label">{label}{source}</p>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function OfferingDetail({
   companyId,

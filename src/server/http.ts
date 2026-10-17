@@ -5,6 +5,7 @@ import { appOrigin } from "../lib/config/server";
 import { verifiedSession } from "../lib/supabase/server";
 import { IdSchema } from "../contracts/api-common";
 import {
+  ArchivedEntryResponseSchema,
   CompanyRowSchema,
   RevisionResponseSchema,
 } from "../contracts/api-responses";
@@ -43,6 +44,12 @@ export function mapDatabaseError(error: {
 
   if (/not_authenticated/.test(value))
     return new HttpError(401, "signed_out", "Sign in to continue.");
+  if (/entry_has_dependents/.test(value))
+    return new HttpError(
+      422,
+      "entry_has_dependents",
+      "Another entry cites this one's sources. Remove that citation first.",
+    );
   if (/not_found|unavailable|not_member/.test(value))
     return new HttpError(404, "unavailable", "Resource unavailable.");
   if (/forbidden|insufficient_role|owner_required/.test(value))
@@ -194,6 +201,8 @@ export async function rpc(
   if (name === "create_company") return parseResponse(IdSchema, data);
   if (["update_company", "archive_company"].includes(name))
     return parseResponse(CompanyRowSchema, data);
+  if (name === "archive_entry")
+    return parseResponse(ArchivedEntryResponseSchema, data);
   if (
     [
       "create_entry",

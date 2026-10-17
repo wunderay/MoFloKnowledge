@@ -73,6 +73,15 @@ export const RevisionResponseSchema = z
 export const HistoryRevisionResponseSchema = RevisionResponseSchema.extend({
   citationContext: CitationContextSchema,
 }).strict();
+/** What deleting an entry answers: the entry that left the draft and the revision it was at. */
+export const ArchivedEntryResponseSchema = z
+  .object({
+    id: IdSchema,
+    kind: EntryKindSchema,
+    revision: z.number().int().positive(),
+    archived_at: InstantSchema,
+  })
+  .strict();
 export const DraftEntryResponseSchema = RevisionResponseSchema.extend({
   kind: EntryKindSchema,
   current_revision: z.number().int().positive(),
