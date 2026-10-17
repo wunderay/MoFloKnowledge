@@ -53,6 +53,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
     });
   const needs = market.customer_needs.filter((item) => item.text.trim());
   const channels = market.channels
+    .map((item) => ({ ...item, url: textOrNull(item.url) }))
     .map((item) => ({
       id: item.id,
       label: textOrNull(item.label) ?? item.url ?? textOrNull(item.channel_type) ?? "",

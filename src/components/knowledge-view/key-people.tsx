@@ -8,7 +8,7 @@ import { DeletePerson, PortraitControl } from "./person-actions";
 import { addHref, CoverageNote, EmptyBox, Field, ItemSource, Source } from "./parts";
 
 /** How each field is named in its evidence control: "Sources: evidence for position of <name>". */
-const NOUNS = { name: "name", title: "position", age: "age", gender: "gender", nationality: "nationality", background_or_relevance: "description" };
+const NOUNS = { name: "name", title: "position", role: "role", age: "age", gender: "gender", nationality: "nationality", background_or_relevance: "description" };
 type Key = keyof typeof NOUNS;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -90,6 +90,7 @@ function PersonDetail({
         {field("Name", "name", text(textOrNull(person.name)), { title: "No name yet", hint: "Name this person." })}
         {field("Position", "title", text(textOrNull(person.title)), { title: "No position yet", hint: "For example, Co-founder and CEO." })}
       </div>
+      {field("Role", "role", text(textOrNull(person.role)), { title: "No role yet", hint: "Their role is set in the full editor." })}
       <div className="knowledge-view__field-pair">
         {field("Age", "age", age, { title: "No age yet", hint: "Add their age if you want it shown." })}
         {field("Gender", "gender", text(textOrNull(person.gender)), { title: "No gender yet", hint: "Only what they have said about themselves." })}
