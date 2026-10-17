@@ -207,7 +207,7 @@ describe("what the server stores for an import fits the contract at the link cap
     expect(() => parseBusinessEntry("site_links", { links: manyLinks(500) })).not.toThrow();
   });
 
-  it("importRoom follows the claim budget: legacy 250 links x 2 leaves = 500 claims leaves no room, 400 claims leaves 100 pages of claims but 250 of links", () => {
+  it("importRoom follows the claim budget: 500 claims leave no room, 200 claims (100 links) leave room for 400 more links, and an untouched 60-link entry leaves 440", () => {
     const full = (n: number) => {
       const links = manyLinks(n);
       const provenance = userProvenance(links);
@@ -216,6 +216,41 @@ describe("what the server stores for an import fits the contract at the link cap
     expect(importRoom(full(250))).toEqual({ room: 0, limit: "claims" });
     expect(importRoom(full(100))).toEqual({ room: 400, limit: null });
     expect(importRoom(siteLinksFrom(siteDraft({ links: manyLinks(60) }).entries as never))).toEqual({ room: MAX_LINKS - 60, limit: null });
+  });
+});
+
+describe("the operation budget", () => {
+  const withOperations = (count: number) => {
+    const links = manyLinks(10);
+    const provenance = userProvenance(links);
+    provenance.operations = Array.from({ length: count }, (_, i) => ({
+      request_id: `00000000-0000-4000-8000-${(0x0b0000 + i).toString(16).padStart(12, "0")}`,
+      entry_id: SITE_ENTRY_ID,
+      kind: "user_correction",
+      supersedes_claim_id: null,
+      note: null,
+    }));
+    return siteDraft({ links, provenance });
+  };
+  it("a save adds two operations: 998 stored leaves room, 999 does not", () => {
+    expect(importRoom(siteLinksFrom(withOperations(998).entries as never))).toEqual({ room: MAX_LINKS - 10, limit: null });
+    expect(importRoom(siteLinksFrom(withOperations(999).entries as never))).toEqual({ room: 0, limit: "operations" });
+  });
+  it("at 999 operations the picker says the source records are full and sends nothing", async () => {
+    const view = await openSite({ draft: withOperations(999), inventory: inventory([PAGES.shop]) });
+    const dialog = await openPicker(view);
+    expect(view.text(dialog)).toMatch(/source records are full/i);
+    for (const box of boxes(view, dialog)) await view.check(box.node, true);
+    await view.settle();
+    await confirm(view);
+    expect(view.server.writes).toEqual([]);
+  });
+  it("at 998 operations an import is still sent", async () => {
+    const view = await openSite({ draft: withOperations(998), inventory: inventory([PAGES.shop]) });
+    await openPicker(view);
+    await selectPages(view, [PAGES.shop]);
+    await confirm(view);
+    expect(view.server.writes).toHaveLength(1);
   });
 });
 

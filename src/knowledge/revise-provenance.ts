@@ -18,6 +18,8 @@ export const MAX_CLAIM_TARGETS = 1000;
 /** Most claims, and most operations, one entry's provenance may hold (EntryProvenanceSchema). */
 export const MAX_ENTRY_CLAIMS = 500;
 export const MAX_ENTRY_OPERATIONS = 1000;
+/** Operations one save adds: the user_correction here and the save_entry_revision the database records. */
+export const OPERATIONS_PER_SAVE = 2;
 /** How many claims one save adds for `leaves` newly claimed values: they share claims of up to MAX_CLAIM_TARGETS. */
 export const claimsForLeaves = (leaves: number) => Math.ceil(leaves / MAX_CLAIM_TARGETS);
 /**

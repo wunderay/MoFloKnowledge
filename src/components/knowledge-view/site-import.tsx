@@ -11,7 +11,7 @@ import {
 } from "@/contracts";
 import { URLSchema } from "@/contracts/primitives";
 import type { SourceCoverage } from "@/contracts/source-coverage";
-import { MAX_CLAIM_TARGETS, MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, reviseProvenance } from "@/knowledge/revise-provenance";
+import { MAX_CLAIM_TARGETS, MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, OPERATIONS_PER_SAVE, reviseProvenance } from "@/knowledge/revise-provenance";
 import { ApiError, api, companyPath, write } from "../api-client";
 import type { ViewSiteLinks } from "./data";
 
@@ -21,7 +21,7 @@ export const MAX_LINKS = 500;
  * How many more links an import may add, and why not more. The links themselves are capped at
  * MAX_LINKS. The save also writes provenance, which the API caps separately, and the server (not this
  * browser) builds it: reviseProvenance names the new values (two per link: title and address) in
- * shared claims, so a save adds claimsForLeaves(2 * links) claims (see groupClaims) and one operation. Room is what
+ * shared claims, so a save adds claimsForLeaves(2 * links) claims (see groupClaims) and OPERATIONS_PER_SAVE operations. Room is what
  * both the link cap and the claims and operations still free allow.
  */
 export function importRoom(site: ViewSiteLinks): { room: number; limit: "links" | "claims" | "operations" | null } {
@@ -30,7 +30,7 @@ export function importRoom(site: ViewSiteLinks): { room: number; limit: "links" 
   const claimRoom = MAX_ENTRY_CLAIMS - (provenance?.claims.length ?? 0);
   // The most links k with claimsForLeaves(LEAVES_PER_LINK * k) <= claimRoom.
   const byClaims = claimRoom <= 0 ? 0 : Math.floor((claimRoom * MAX_CLAIM_TARGETS) / LEAVES_PER_LINK);
-  if (provenance && provenance.operations.length >= MAX_ENTRY_OPERATIONS) return { room: 0, limit: "operations" };
+  if (provenance && provenance.operations.length + OPERATIONS_PER_SAVE > MAX_ENTRY_OPERATIONS) return { room: 0, limit: "operations" };
   if (byClaims < linkRoom) return { room: byClaims, limit: "claims" };
   return { room: linkRoom, limit: linkRoom === 0 ? "links" : null };
 }
