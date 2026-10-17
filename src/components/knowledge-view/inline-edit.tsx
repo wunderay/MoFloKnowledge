@@ -1,9 +1,9 @@
 "use client";
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
+  useId,
   useRef,
   useState,
   type KeyboardEvent,
@@ -31,17 +31,17 @@ export type EditEnv = {
   /** Reloads the draft after a save. It resolves once the save is committed, even if the reload failed. */
   onSaved: () => Promise<void>;
 };
-const EditContext = createContext<EditEnv | null>(null);
-/** Wraps the sections of an editable draft; a snapshot, a viewer and an archived company have no provider. */
-export const EditProvider = EditContext;
-/** The editing environment, or null when the view is read-only. */
-export const useEdit = () => useContext(EditContext);
 
 const MAX_ITEMS = 500;
 const SAVED_MS = 3000;
 const UNDO_MS = 10000;
+/** How long a save waits for the view to show the revision it just wrote before the next save goes on regardless. */
+const FRESH_MS = 8000;
 const CONFLICT = "This value changed since the page was loaded. Reload the page to get the latest, then try again.";
+const STALE = "The view is out of date. Reload to see the latest, then make this change again.";
 const TOO_LONG = `Keep this to ${MAX_TEXT_LENGTH.toLocaleString("en-US")} characters or fewer.`;
+
+type Content = Record<string, any>;
 
 // ---- saving ---------------------------------------------------------------------------------------------------------
 type Feedback =
@@ -57,8 +57,6 @@ function failure(error: unknown): Feedback {
   if (error instanceof ZodError) return { kind: "failed", message: error.issues.map((issue) => issue.message).join("; "), retry: false };
   return { kind: "failed", message: (error as Error)?.message || "The change could not be saved.", retry: true };
 }
-
-type Content = Record<string, any>;
 
 /** Parses `content` as the entry of `kind` and prepares its save (a new entry or a new revision). */
 function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: string): PreparedSave {
@@ -77,59 +75,179 @@ const messageOf = (error: unknown) =>
   error instanceof ZodError ? error.issues.map((issue) => issue.message).join("; ") : ((error as Error)?.message ?? "The change could not be saved.");
 
 /**
- * One save at a time per field: Saving…, then ✓ Saved, or the failure with (when it can be repeated) a Retry that
- * sends the very same request again. A resolved save has been committed; `then` runs once it has, and again after a retry.
+ * What one field shows, kept above the sections so that switching section neither drops what was typed nor loses
+ * the outcome of a save that finishes (or fails) while the field is not on screen.
  */
-function useSaver(env: EditEnv | null) {
-  const [feedback, setFeedback] = useState<Feedback>(IDLE);
-  const latest = useRef<Feedback>(IDLE);
-  const live = useRef(env);
-  live.current = env;
-  const busy = useRef(false);
-  const pending = useRef<{ save: PreparedSave; then?: () => void } | null>(null);
-  const show = useCallback((next: Feedback) => {
-    latest.current = next;
-    setFeedback(next);
-  }, []);
+type Slot = {
+  /** A text field's editor, or a chip list's add field, is open. */
+  editing: boolean;
+  draft: string;
+  /** Why the typed value was refused. */
+  problem: string;
+  feedback: Feedback;
+  /** The last removal of a chip list, which Undo takes back. */
+  toast: { text: string; previous: IdentifiedText[]; id: string } | null;
+  /** Focus goes back to the field's button once its editor has closed (text fields). */
+  refocus: boolean;
+  /** Where a chip list puts focus next: a chip's id, or "add". `n` makes a repeated request new. */
+  focus: { target: string; n: number } | null;
+};
+const EMPTY: Slot = { editing: false, draft: "", problem: "", feedback: IDLE, toast: null, refocus: false, focus: null };
+
+/** A change to one entry, as a function of the entry's latest content, so that a queued change is rebuilt on the latest revision. */
+type Task = {
+  kind: EntryKind;
+  note: string;
+  transform: (content: Content) => Content;
+  /** Runs once the change is committed (and again after a retry). */
+  then?: () => void;
+  prepared?: PreparedSave;
+};
+
+type Host = {
+  env: () => EditEnv;
+  slot: (key: string) => Slot;
+  patch: (key: string, change: Partial<Slot>) => void;
+  isBusy: (key: string) => boolean;
+  mount: (key: string) => () => void;
+  /** Closes the editor of a field; `back` returns focus to its button. */
+  close: (key: string, back: boolean) => void;
+  requestFocus: (key: string, target: string) => void;
+  submit: (key: string, task: Task) => Promise<boolean>;
+  retry: (key: string) => Promise<boolean>;
+  clear: (key: string) => void;
+};
+type EditState = { env: EditEnv; host: Host; slots: Record<string, Slot> };
+const EditContext = createContext<EditState | null>(null);
+const useSlot = (key: string): { state: EditState | null; slot: Slot } => {
+  const state = useContext(EditContext);
+  return { state, slot: state?.slots[key] ?? EMPTY };
+};
+/** The editing environment, or null when the view is read-only. */
+export const useEdit = () => useContext(EditContext)?.env ?? null;
+
+/**
+ * Wraps the sections of an editable draft; a snapshot, a viewer and an archived company have no provider.
+ * It owns what the fields show and runs their saves: one at a time per entry kind, each rebuilt on the revision the
+ * view shows once the save before it has been read back, so back-to-back changes never race one another.
+ */
+export function EditProvider({ env, children }: { env: EditEnv; children: ReactNode }) {
+  const [slots, setSlots] = useState<Record<string, Slot>>({});
+  const latest = useRef({ env, slots });
+  latest.current.env = env;
+  const waiting = useRef<(() => void)[]>([]);
+  const hostRef = useRef<Host | null>(null);
+  // Resolves the saves that wait for the view to show a revision (after every render).
   useEffect(() => {
-    if (feedback.kind !== "saved") return;
-    const timer = setTimeout(() => show(IDLE), SAVED_MS);
-    return () => clearTimeout(timer);
-  }, [feedback, show]);
-  const run = useCallback(
-    async (save: PreparedSave, then?: () => void): Promise<boolean> => {
-      if (busy.current) return false;
-      busy.current = true;
-      pending.current = { save, then };
-      show({ kind: "saving" });
-      try {
-        await sendEntrySave(save);
-      } catch (error) {
-        busy.current = false;
-        show(failure(error));
+    for (const check of [...waiting.current]) check();
+  });
+  if (!hostRef.current) {
+    const busy = new Set<string>();
+    const tasks = new Map<string, Task>();
+    const queues = new Map<EntryKind, Promise<unknown>>();
+    const mounted = new Map<string, number>();
+    let focusCount = 0;
+    const patch = (key: string, change: Partial<Slot>) => {
+      latest.current.slots = { ...latest.current.slots, [key]: { ...(latest.current.slots[key] ?? EMPTY), ...change } };
+      setSlots(latest.current.slots);
+    };
+    const slot = (key: string) => latest.current.slots[key] ?? EMPTY;
+    /** Resolves once the view shows `revision` of the entry of `kind` (or is blocked, or a while has passed). */
+    const fresh = (kind: EntryKind, revision: number) =>
+      new Promise<void>((resolve) => {
+        const ready = () => latest.current.env.blocked || (latest.current.env.entry(kind)?.revision ?? 0) >= revision;
+        if (ready()) return resolve();
+        const done = () => {
+          clearTimeout(timer);
+          waiting.current = waiting.current.filter((check) => check !== poll);
+          resolve();
+        };
+        const poll = () => ready() && done();
+        const timer = setTimeout(done, FRESH_MS);
+        waiting.current.push(poll);
+      });
+    const execute = async (key: string, task: Task): Promise<boolean> => {
+      const settle = (feedback: Feedback) => {
+        busy.delete(key);
+        patch(key, { feedback });
         return false;
+      };
+      const env = latest.current.env;
+      if (env.blocked) return settle({ kind: "failed", message: STALE, retry: false });
+      if (!task.prepared) {
+        try {
+          const base = baseOf(env, task.kind);
+          const content = task.transform(structuredClone(base));
+          if (canonicalStringify(content as BusinessEntry) === canonicalStringify(base as BusinessEntry)) {
+            // Nothing to write any more (the value is already there).
+            busy.delete(key);
+            tasks.delete(key);
+            task.then?.();
+            patch(key, { feedback: IDLE });
+            return true;
+          }
+          task.prepared = prepareContent(env, task.kind, content, task.note);
+        } catch (error) {
+          return settle({ kind: "failed", message: messageOf(error), retry: false });
+        }
       }
-      pending.current = null;
+      const revision = (env.entry(task.kind)?.revision ?? 0) + 1;
       try {
-        await live.current?.onSaved();
+        await sendEntrySave(task.prepared);
+      } catch (error) {
+        return settle(failure(error));
+      }
+      tasks.delete(key);
+      try {
+        await latest.current.env.onSaved();
       } catch {
         // The save is committed; the view marks itself stale and offers a reload.
       }
-      busy.current = false;
-      then?.();
-      show({ kind: "saved" });
+      await fresh(task.kind, revision);
+      busy.delete(key);
+      task.then?.();
+      patch(key, { feedback: { kind: "saved" } });
       return true;
-    },
-    [show],
-  );
-  const retry = useCallback(async () => {
-    const last = pending.current;
-    return last ? run(last.save, last.then) : false;
-  }, [run]);
-  const clear = useCallback(() => {
-    if (!busy.current) show(IDLE);
-  }, [show]);
-  return { feedback, latest, busy, run, retry, clear };
+    };
+    const enqueue = (key: string, task: Task) => {
+      const run = (queues.get(task.kind) ?? Promise.resolve()).then(() => execute(key, task));
+      queues.set(task.kind, run.catch(() => undefined));
+      return run;
+    };
+    hostRef.current = {
+      env: () => latest.current.env,
+      slot,
+      patch,
+      isBusy: (key) => busy.has(key),
+      mount: (key) => {
+        mounted.set(key, (mounted.get(key) ?? 0) + 1);
+        return () => void mounted.set(key, (mounted.get(key) ?? 1) - 1);
+      },
+      close: (key, back) => patch(key, { editing: false, problem: "", refocus: back && (mounted.get(key) ?? 0) > 0 }),
+      requestFocus: (key, target) => {
+        if ((mounted.get(key) ?? 0) > 0) patch(key, { focus: { target, n: ++focusCount } });
+      },
+      submit: async (key, task) => {
+        if (busy.has(key) || latest.current.env.blocked) return false;
+        busy.add(key);
+        tasks.set(key, task);
+        patch(key, { feedback: { kind: "saving" } });
+        return enqueue(key, task);
+      },
+      retry: async (key) => {
+        const task = tasks.get(key);
+        if (!task || busy.has(key)) return false;
+        busy.add(key);
+        patch(key, { feedback: { kind: "saving" } });
+        return enqueue(key, task);
+      },
+      clear: (key) => {
+        if (!busy.has(key)) patch(key, { feedback: IDLE });
+      },
+    };
+  }
+  latest.current.slots = slots;
+  return <EditContext value={{ env, host: hostRef.current!, slots }}>{children}</EditContext>;
 }
 
 /** The outcome of a save, or the reason a value was refused, as the person should read it. */
@@ -155,6 +273,21 @@ function Outcome({ problem, feedback, onRetry }: { problem?: string; feedback: F
     );
   return null;
 }
+
+/** Clears the "✓ Saved" a few seconds after it appeared. */
+function useSavedTimer(state: EditState | null, key: string, feedback: Feedback) {
+  useEffect(() => {
+    if (!state || feedback.kind !== "saved") return;
+    const timer = setTimeout(() => state.host.patch(key, { feedback: IDLE }), SAVED_MS);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+}
+
+/** True when focus is nowhere in particular (an element that held it has just gone), so it may be given back. */
+const focusIsFree = () => {
+  const active = document.activeElement;
+  return !active || active === document.body;
+};
 
 // ---- text fields ------------------------------------------------------------------------------------------------------
 /** One text field of an entry: how the editor shows it, and how typed text becomes the entry's content. */
@@ -269,15 +402,18 @@ function Trigger({
   heading = false,
   block = false,
 }: TriggerOptions & { label: string; blocked: boolean; onOpen: () => void; triggerRef: RefObject<HTMLElement | null> }) {
+  const valueId = useId();
   const empty = shown === null || shown === undefined || shown === "";
   const className = `knowledge-view__inline${block ? " knowledge-view__inline--block" : ""}${empty ? " knowledge-view__inline--empty" : ""}`;
   const title = blocked ? "Reload to see the latest before editing again." : "Click to edit";
+  // The button is named "Edit <Field>"; the value it shows is its description, so it is still read out.
   const content = (
     <>
-      <span className="knowledge-view__inline-text">{empty ? placeholder : shown}</span>
+      <span id={valueId} className="knowledge-view__inline-text">{empty ? placeholder : shown}</span>
       {!empty && <Icon name="pencil" size={13} />}
     </>
   );
+  const describedBy = empty ? undefined : valueId;
   if (heading)
     return (
       <span
@@ -286,6 +422,7 @@ function Trigger({
         tabIndex={blocked ? -1 : 0}
         aria-disabled={blocked || undefined}
         aria-label={`Edit ${label}`}
+        aria-describedby={describedBy}
         title={title}
         className={className}
         onClick={blocked ? undefined : onOpen}
@@ -307,6 +444,7 @@ function Trigger({
       ref={triggerRef as RefObject<HTMLButtonElement>}
       type="button"
       aria-label={`Edit ${label}`}
+      aria-describedby={describedBy}
       title={title}
       className={className}
       disabled={blocked}
@@ -319,107 +457,99 @@ function Trigger({
 
 /**
  * The state of one inline text field: closed (a button showing the value), or open (a text field, or for
- * `multiline` a textarea with Save and Cancel). Returns null when the view is read-only.
+ * `multiline` a textarea with Save and Cancel). Returns null when the view is read-only. What is typed, and the
+ * outcome of a save, live above the section (see EditProvider), so they survive a change of section.
  */
 export function useTextField(spec: TextSpec, multiline = false) {
-  const env = useEdit();
-  const saver = useSaver(env);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [problem, setProblem] = useState("");
-  const draftRef = useRef("");
-  const open = useRef(false);
-  const refocus = useRef(false);
+  const key = `${spec.kind}/${spec.label}`;
+  const { state, slot } = useSlot(key);
+  const { editing, draft, problem, feedback } = slot;
   const field = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const trigger = useRef<HTMLElement>(null);
-  const live = useRef({ env, spec });
-  live.current = { env, spec };
+  const host = state?.host;
 
+  useEffect(() => (host ? host.mount(key) : undefined), [host, key]);
+  useSavedTimer(state, key, feedback);
   useEffect(() => {
+    if (!host) return;
     if (editing) {
       const element = field.current;
       if (!element) return;
       element.focus();
       const end = element.value.length;
       element.setSelectionRange(end, end);
-    } else if (refocus.current) {
-      refocus.current = false;
-      trigger.current?.focus();
+    } else if (slot.refocus) {
+      host.patch(key, { refocus: false });
+      // Not when the person has already moved on to something else during the save.
+      if (focusIsFree()) trigger.current?.focus();
     }
   }, [editing]);
 
-  const close = (back: boolean) => {
-    open.current = false;
-    refocus.current = back;
-    setProblem("");
-    setEditing(false);
-  };
+  if (!state || !host) return null;
+  const env = state.env;
+  const saving = feedback.kind === "saving";
   const start = () => {
-    const { env: now, spec: target } = live.current;
-    if (!now || now.blocked || open.current) return;
-    const text = target.read(baseOf(now, target.kind));
-    draftRef.current = text;
-    open.current = true;
-    saver.clear();
-    setProblem("");
-    setDraft(text);
-    setEditing(true);
+    const now = host.env();
+    if (now.blocked || host.slot(key).editing) return;
+    host.patch(key, { editing: true, draft: spec.read(baseOf(now, spec.kind)), problem: "", feedback: host.isBusy(key) ? host.slot(key).feedback : IDLE });
   };
   const cancel = () => {
-    if (!open.current || saver.busy.current) return;
-    saver.clear();
-    close(true);
+    if (!host.slot(key).editing || host.isBusy(key)) return;
+    host.patch(key, { feedback: IDLE, draft: "" });
+    host.close(key, true);
   };
   /** Validates the text and saves it; `back` returns focus to the button once the editor closes. */
-  const commit = async (back: boolean) => {
-    const { env: now, spec: target } = live.current;
-    if (!now || !open.current || saver.busy.current) return;
-    const base = baseOf(now, target.kind);
-    const typed = draftRef.current;
-    if (typed.trim() === target.read(base).trim()) {
-      saver.clear();
-      close(back);
+  const commit = (back: boolean) => {
+    const now = host.env();
+    const current = host.slot(key);
+    if (now.blocked || !current.editing || host.isBusy(key)) return;
+    const base = baseOf(now, spec.kind);
+    const typed = current.draft;
+    if (typed.trim() === spec.read(base).trim()) {
+      host.patch(key, { feedback: IDLE });
+      host.close(key, back);
       return;
     }
-    const built = target.apply(structuredClone(base), typed);
+    const built = spec.apply(structuredClone(base), typed);
     if ("error" in built) {
-      setProblem(built.error);
+      host.patch(key, { problem: built.error });
       return;
     }
-    setProblem("");
     if (canonicalStringify(built.content as BusinessEntry) === canonicalStringify(base as BusinessEntry)) {
-      saver.clear();
-      close(back);
+      host.patch(key, { problem: "", feedback: IDLE });
+      host.close(key, back);
       return;
     }
-    let save: PreparedSave;
     try {
-      save = prepareContent(now, target.kind, built.content, `Updated ${target.label} from the knowledge view.`);
+      parseBusinessEntry(spec.kind, built.content);
     } catch (error) {
-      setProblem(messageOf(error));
+      host.patch(key, { problem: messageOf(error) });
       return;
     }
-    await saver.run(save, () => close(back));
+    host.patch(key, { problem: "" });
+    void host.submit(key, {
+      kind: spec.kind,
+      note: `Updated ${spec.label} from the knowledge view.`,
+      transform: (content) => {
+        const result = spec.apply(content, typed);
+        if ("error" in result) throw new Error(result.error);
+        return result.content;
+      },
+      then: () => host.close(key, back),
+    });
   };
-
-  if (!env) return null;
-  const saving = saver.feedback.kind === "saving";
-  const typing = (event: { target: { value: string } }) => {
-    draftRef.current = event.target.value;
-    setDraft(event.target.value);
-    setProblem("");
-    if (saver.latest.current.kind === "failed") saver.clear();
-  };
+  const typing = (event: { target: { value: string } }) =>
+    host.patch(key, { draft: event.target.value, problem: "", ...(host.slot(key).feedback.kind === "failed" ? { feedback: IDLE } : {}) });
   const keys = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
       event.preventDefault();
       cancel();
     } else if (event.key === "Enter" && !(multiline && event.shiftKey) && !event.nativeEvent?.isComposing) {
       event.preventDefault();
-      void commit(true);
+      commit(true);
     }
   };
-  const notice = <Outcome problem={problem} feedback={saver.feedback} onRetry={() => void saver.retry()} />;
+  const notice = <Outcome problem={problem} feedback={feedback} onRetry={() => void host.retry(key)} />;
   return {
     editing,
     feedback: notice,
@@ -449,8 +579,9 @@ export function useTextField(spec: TextSpec, multiline = false) {
             onKeyDown={keys}
             onBlur={() => {
               // A field that was just closed still blurs; a failed save waits for Retry or Enter instead of starting another.
-              if (!open.current || saver.busy.current || saver.latest.current.kind === "failed") return;
-              void commit(false);
+              const now = host.slot(key);
+              if (!now.editing || host.isBusy(key) || now.feedback.kind === "failed") return;
+              commit(false);
             }}
           />
         );
@@ -469,7 +600,7 @@ export function useTextField(spec: TextSpec, multiline = false) {
             onKeyDown={keys}
           />
           <div className="knowledge-view__inline-actions">
-            <button type="button" className="knowledge-view__inline-save" disabled={saving || !changed} onClick={() => void commit(true)}>
+            <button type="button" className="knowledge-view__inline-save" disabled={saving || !changed} onClick={() => commit(true)}>
               Save
             </button>
             <button type="button" className="knowledge-view__inline-cancel" disabled={saving} onClick={cancel}>
@@ -541,110 +672,120 @@ const sameText = (text: string) => text.trim().replace(/\s+/g, " ").toLowerCase(
  * An add or a remove is saved at once; a removal can be undone from the toast that follows it.
  */
 export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[] }) {
-  const env = useEdit();
-  const saver = useSaver(env);
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [problem, setProblem] = useState("");
-  const [toast, setToast] = useState<{ text: string; previous: IdentifiedText[] } | null>(null);
-  const draftRef = useRef("");
-  const addingRef = useRef(false);
-  const refocus = useRef(false);
+  const key = `${list.kind}/${list.key}`;
+  const { state, slot } = useSlot(key);
+  const { editing: adding, draft, problem, feedback, toast } = slot;
   const field = useRef<HTMLInputElement>(null);
   const pill = useRef<HTMLButtonElement>(null);
-  const live = useRef({ env, list });
-  live.current = { env, list };
+  const removes = useRef(new Map<string, HTMLElement>());
+  const host = state?.host;
 
+  useEffect(() => (host ? host.mount(key) : undefined), [host, key]);
+  useSavedTimer(state, key, feedback);
   useEffect(() => {
-    if (adding) field.current?.focus();
-    else if (refocus.current) {
-      refocus.current = false;
-      pill.current?.focus();
-    }
+    if (host && adding) field.current?.focus();
   }, [adding]);
   useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), UNDO_MS);
+    if (!host || !slot.focus) return;
+    const { target } = slot.focus;
+    host.patch(key, { focus: null });
+    if (target === "add") (host.slot(key).editing ? field.current : pill.current)?.focus();
+    else removes.current.get(target)?.focus();
+  }, [slot.focus]);
+  useEffect(() => {
+    if (!host || !toast) return;
+    const timer = setTimeout(() => host.patch(key, { toast: null }), UNDO_MS);
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const stored = (): IdentifiedText[] => {
-    const { env: now, list: spec } = live.current;
-    return ((now ? baseOf(now, spec.kind) : {})[spec.key] ?? []) as IdentifiedText[];
-  };
-  const prepare = (next: IdentifiedText[], note: string): PreparedSave | null => {
-    const { env: now, list: spec } = live.current;
-    if (!now) return null;
-    try {
-      const content = baseOf(now, spec.kind);
-      content[spec.key] = next;
-      return prepareContent(now, spec.kind, content, note);
-    } catch (error) {
-      setProblem(messageOf(error));
-      return null;
-    }
-  };
-  const closeField = (back: boolean) => {
-    addingRef.current = false;
-    refocus.current = back;
-    draftRef.current = "";
-    setDraft("");
-    setProblem("");
-    setAdding(false);
-  };
-  async function add() {
-    const { env: now, list: spec } = live.current;
-    if (!now || now.blocked || saver.busy.current) return;
-    const text = draftRef.current.trim();
-    if (!text) return;
-    const current = stored();
-    if (text.length > MAX_TEXT_LENGTH) return void setProblem(TOO_LONG);
-    if (current.length >= MAX_ITEMS) return void setProblem(`This list is full: it can hold at most ${MAX_ITEMS} items.`);
-    if (current.some((item) => sameText(item.text) === sameText(text))) return void setProblem(`“${text}” is already in the list.`);
-    setProblem("");
-    const save = prepare([...current, { id: crypto.randomUUID(), text }], `Added ${spec.noun} from the knowledge view.`);
-    if (!save) return;
-    await saver.run(save, () => {
-      draftRef.current = "";
-      setDraft("");
-      setToast(null);
-    });
-  }
-  async function remove(item: ChipItem) {
-    const { env: now, list: spec } = live.current;
-    if (!now || now.blocked || saver.busy.current) return;
-    const current = stored();
-    const save = prepare(current.filter((entry) => entry.id !== item.id), `Removed ${spec.noun} from the knowledge view.`);
-    if (!save) return;
-    setProblem("");
-    await saver.run(save, () => setToast({ text: item.label, previous: current }));
-  }
-  async function undo() {
-    const { env: now, list: spec } = live.current;
-    if (!now || now.blocked || saver.busy.current || !toast) return;
-    const save = prepare(toast.previous, `Restored the ${spec.noun} list after a removal.`);
-    if (!save) return;
-    await saver.run(save, () => setToast(null));
-  }
-
-  if (!env) return null;
+  if (!state || !host) return null;
+  const { env } = state;
   const { noun } = list;
-  const saving = saver.feedback.kind === "saving";
+  const saving = feedback.kind === "saving";
   const locked = env.blocked || saving;
-  const showFeedback = !(toast && saver.feedback.kind === "saved");
+  const storedList = () => (baseOf(host.env(), list.kind)[list.key] ?? []) as IdentifiedText[];
+  const closeField = (back: boolean) => {
+    host.patch(key, { editing: false, draft: "", problem: "" });
+    if (back) host.requestFocus(key, "add");
+  };
+  const add = () => {
+    const now = host.env();
+    const current = host.slot(key);
+    if (now.blocked || host.isBusy(key)) return;
+    const text = current.draft.trim();
+    if (!text) return;
+    const stored = storedList();
+    if (text.length > MAX_TEXT_LENGTH) return host.patch(key, { problem: TOO_LONG });
+    if (stored.length >= MAX_ITEMS) return host.patch(key, { problem: `This list is full: it can hold at most ${MAX_ITEMS} items.` });
+    if (stored.some((item) => sameText(item.text) === sameText(text))) return host.patch(key, { problem: `“${text}” is already in the list.` });
+    host.patch(key, { problem: "" });
+    const item = { id: crypto.randomUUID(), text };
+    void host.submit(key, {
+      kind: list.kind,
+      note: `Added ${noun} from the knowledge view.`,
+      transform: (content) => {
+        const now = (content[list.key] ?? []) as IdentifiedText[];
+        if (now.length >= MAX_ITEMS) throw new Error(`This list is full: it can hold at most ${MAX_ITEMS} items.`);
+        if (now.some((entry) => sameText(entry.text) === sameText(text))) throw new Error(`“${text}” is already in the list.`);
+        content[list.key] = [...now, item];
+        return content;
+      },
+      then: () => host.patch(key, { draft: "", toast: null }),
+    });
+  };
+  const remove = (item: ChipItem, index: number) => {
+    if (host.env().blocked || host.isBusy(key)) return;
+    const previous = storedList();
+    // Focus goes to the next chip, or to the Add control when there is none.
+    const next = items[index + 1]?.id ?? "add";
+    host.patch(key, { problem: "" });
+    void host.submit(key, {
+      kind: list.kind,
+      note: `Removed ${noun} from the knowledge view.`,
+      transform: (content) => {
+        content[list.key] = ((content[list.key] ?? []) as IdentifiedText[]).filter((entry) => entry.id !== item.id);
+        return content;
+      },
+      then: () => {
+        host.patch(key, { toast: { text: item.label, previous, id: item.id } });
+        host.requestFocus(key, next);
+      },
+    });
+  };
+  const undo = () => {
+    const taken = host.slot(key).toast;
+    if (!taken || host.env().blocked || host.isBusy(key)) return;
+    void host.submit(key, {
+      kind: list.kind,
+      note: `Restored the ${noun} list after a removal.`,
+      transform: (content) => {
+        content[list.key] = taken.previous;
+        return content;
+      },
+      then: () => {
+        host.patch(key, { toast: null });
+        host.requestFocus(key, taken.id);
+      },
+    });
+  };
+  const showFeedback = !(toast && feedback.kind === "saved");
   return (
     <>
       <ul className="knowledge-view__chips">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <li className="knowledge-view__chip knowledge-view__chip--editable" key={item.id}>
             {item.label}
             {item.mark}
             <button
+              ref={(element) => {
+                if (element) removes.current.set(item.id, element);
+                else removes.current.delete(item.id);
+              }}
               type="button"
               className="knowledge-view__chip-remove"
               aria-label={`Remove ${item.label}`}
               disabled={locked}
-              onClick={() => void remove(item)}
+              onClick={() => remove(item, index)}
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -662,27 +803,25 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
               value={draft}
               disabled={env.blocked}
               readOnly={saving}
-              onChange={(event) => {
-                draftRef.current = event.target.value;
-                setDraft(event.target.value);
-                setProblem("");
-                if (saver.latest.current.kind === "failed") saver.clear();
-              }}
+              onChange={(event) =>
+                host.patch(key, { draft: event.target.value, problem: "", ...(host.slot(key).feedback.kind === "failed" ? { feedback: IDLE } : {}) })
+              }
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
                   event.preventDefault();
-                  if (!saver.busy.current) {
-                    saver.clear();
+                  if (!host.isBusy(key)) {
+                    host.patch(key, { feedback: IDLE });
                     closeField(true);
                   }
                 } else if (event.key === "Enter" && !event.nativeEvent?.isComposing) {
                   event.preventDefault();
-                  void add();
+                  add();
                 }
               }}
               onBlur={() => {
-                if (!addingRef.current || saver.busy.current || saver.latest.current.kind === "failed") return;
-                if (!draftRef.current.trim()) closeField(false);
+                const now = host.slot(key);
+                if (!now.editing || host.isBusy(key) || now.feedback.kind === "failed") return;
+                if (!now.draft.trim()) closeField(false);
               }}
             />
           ) : (
@@ -693,9 +832,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
               aria-label={`Add ${noun}`}
               disabled={env.blocked}
               onClick={() => {
-                if (env.blocked) return;
-                addingRef.current = true;
-                setAdding(true);
+                if (!env.blocked) host.patch(key, { editing: true });
               }}
             >
               Add
@@ -706,12 +843,12 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
       {toast && (
         <span className="knowledge-view__toast" role="status">
           Removed “{toast.text}”.{" "}
-          <button type="button" className="knowledge-view__toast-undo" disabled={locked} onClick={() => void undo()}>
+          <button type="button" className="knowledge-view__toast-undo" disabled={locked} onClick={undo}>
             Undo
           </button>
         </span>
       )}
-      <Outcome problem={problem} feedback={showFeedback ? saver.feedback : IDLE} onRetry={() => void saver.retry()} />
+      <Outcome problem={problem} feedback={showFeedback ? feedback : IDLE} onRetry={() => void host.retry(key)} />
     </>
   );
 }

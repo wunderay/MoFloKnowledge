@@ -49,7 +49,7 @@ export function SectionView({
   actorId?: string;
   /** True while the view is older than a saved import: the picker would work from stale entries. */
   importBlocked?: boolean;
-  onSaved?: () => Promise<void>;
+  onSaved?: (what?: "changes") => Promise<void>;
 }) {
   const profile = profileFrom(entries, citationContext);
   // An editable draft edits General Info, Customers & Industry and Sales & Marketing in place; everything else reads only.
@@ -59,7 +59,7 @@ export function SectionView({
           companyId,
           actorId,
           blocked: importBlocked,
-          onSaved,
+          onSaved: () => onSaved("changes"),
           entry: (kind) => {
             const found = entries.find((item) => item.kind === kind);
             return found && found.id !== undefined
@@ -123,5 +123,5 @@ export function SectionView({
         ))}
       </div>
     );
-  return edit ? <EditProvider value={edit}>{shown}</EditProvider> : shown;
+  return edit ? <EditProvider env={edit}>{shown}</EditProvider> : shown;
 }

@@ -124,6 +124,8 @@ export function KnowledgeViewer({
   const [error, setError] = useState("");
   /** An import was saved but the draft could not be re-read: the view is older than the stored entry. */
   const [staleDraft, setStaleDraft] = useState<string | null>(null);
+  /** What the unread save was: a change made in place, or (as before) links and people. */
+  const [staleWhat, setStaleWhat] = useState<"links" | "changes">("links");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(!initialData);
   const initializedList = useRef(false);
@@ -235,7 +237,7 @@ export function KnowledgeViewer({
    * save as failed or send it again): it marks the view stale, which blocks further imports and
    * offers a reload, until a later read succeeds.
    */
-  async function refreshDraft() {
+  async function refreshDraft(what?: "changes") {
     setRefreshing(true);
     try {
       const data = await api<{
@@ -248,6 +250,7 @@ export function KnowledgeViewer({
       setCitationContext(data.citationContext);
       setStaleDraft(null);
     } catch (error) {
+      setStaleWhat(what ?? staleWhat);
       setStaleDraft((error as Error).message || "The draft could not be read.");
     } finally {
       setRefreshing(false);
@@ -456,7 +459,7 @@ export function KnowledgeViewer({
       </div>
       {staleDraft !== null && versionId === "draft" && (
         <Notice>
-          Saved. Reload to see the latest links. The draft could not be read: {staleDraft}{" "}
+          {`Saved. Reload to see the latest ${staleWhat}. The draft could not be read: ${staleDraft}`}{" "}
           <button
             type="button"
             className="button"
