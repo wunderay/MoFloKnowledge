@@ -6,7 +6,27 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
   const { positioning, market, presence } = profile;
   const marketHref = addHref(companyId, "market_and_customers");
   const pitch = textOrNull(positioning.company_pitch);
-  const personas = market.ideal_customer_personas.filter((p) => textOrNull(p.name) || textOrNull(p.role));
+  // A persona counts as filled when any of its fields has content; name and role may both be null.
+  const personas = market.ideal_customer_personas
+    .map((persona, index) => {
+      const goals = persona.goals.map((g) => g.text.trim()).filter(Boolean);
+      const painPoints = persona.pain_points.map((g) => g.text.trim()).filter(Boolean);
+      const personaName = textOrNull(persona.name);
+      const role = textOrNull(persona.role);
+      const organization = textOrNull(persona.organization_type);
+      // Never invent a name: fall back to what the data says, then to a numbered label.
+      const heading = personaName ?? role ?? organization ?? `Persona ${index + 1}`;
+      return {
+        id: persona.id,
+        heading,
+        role: role !== heading ? role : null,
+        organization: organization !== heading ? organization : null,
+        goals,
+        painPoints,
+        filled: Boolean(personaName || role || organization || goals.length || painPoints.length),
+      };
+    })
+    .filter((persona) => persona.filled);
   const needs = market.customer_needs.filter((item) => item.text.trim());
   const channels = market.channels
     .map((item) => ({ id: item.id, label: textOrNull(item.label) ?? item.url ?? "", detail: textOrNull(item.channel_type) }))
@@ -51,18 +71,16 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
         <KnowledgeCard title="Ideal persona" subtitle="The person you sell to.">
           {personas.length > 0 ? (
             <ul className="knowledge-view__list">
-              {personas.map((persona) => (
-                <li key={persona.id}>
-                  <strong>{textOrNull(persona.name) ?? textOrNull(persona.role)}</strong>
-                  {textOrNull(persona.name) && textOrNull(persona.role) && <span>{persona.role}</span>}
-                  {textOrNull(persona.organization_type) && <small>{persona.organization_type}</small>}
-                  {persona.goals.length > 0 && <small>Goals: {persona.goals.map((g) => g.text).join("; ")}</small>}
-                  {persona.pain_points.length > 0 && (
-                    <small>Pain points: {persona.pain_points.map((p) => p.text).join("; ")}</small>
-                  )}
-                </li>
-              ))}
-            </ul>
+                {personas.map((persona) => (
+                  <li key={persona.id}>
+                    <strong>{persona.heading}</strong>
+                    {persona.role && <span>{persona.role}</span>}
+                    {persona.organization && <small>{persona.organization}</small>}
+                    {persona.goals.length > 0 && <small>Goals: {persona.goals.join("; ")}</small>}
+                    {persona.painPoints.length > 0 && <small>Pain points: {persona.painPoints.join("; ")}</small>}
+                  </li>
+                ))}
+              </ul>
           ) : (
             <EmptyBox title="No ideal persona yet" hint="Capture who to picture when speaking." href={marketHref} />
           )}
