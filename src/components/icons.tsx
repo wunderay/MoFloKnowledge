@@ -8,7 +8,15 @@ export type IconName =
   | "sign-out"
   | "plus"
   | "refresh"
-  | "arrow-up-right";
+  | "arrow-up-right"
+  | "calendar"
+  | "users"
+  | "building"
+  | "layers"
+  | "pin"
+  | "truck"
+  | "target"
+  | "link";
 
 const paths: Record<IconName, ReactNode> = {
   companies: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
@@ -19,6 +27,14 @@ const paths: Record<IconName, ReactNode> = {
   plus: <path d="M12 5v14M5 12h14" />,
   refresh: <><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 7a7 7 0 0 1 11.5-1L20 9M4 15l2.4 3A7 7 0 0 0 18 17" /></>,
   "arrow-up-right": <path d="M6 18 18 6M6 6h12v12" />,
+  calendar: <><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></>,
+  users: <><circle cx="9" cy="8" r="3.2" /><path d="M3 20a6 6 0 0 1 12 0M16 5.2a3.2 3.2 0 0 1 0 5.6M17.5 14.2A6 6 0 0 1 21 20" /></>,
+  building: <><path d="M5 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17M15 9h3a1 1 0 0 1 1 1v11M3 21h18M9 7h2M9 11h2M9 15h2" /></>,
+  layers: <><path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5" /></>,
+  pin: <><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></>,
+  truck: <><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7" /><circle cx="7.5" cy="17.5" r="1.8" /><circle cx="17" cy="17.5" r="1.8" /></>,
+  target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.2" /></>,
+  link: <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1" />,
 };
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {

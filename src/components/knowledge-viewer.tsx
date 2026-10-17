@@ -15,11 +15,17 @@ import {
 import { api, companyPath, write } from "./api-client";
 import { CATEGORY_SPECS, labelOf } from "./business-fields";
 import { ValueView } from "./entry-value";
-import { CompanyProfile } from "./company-profile";
 import { SourceCoverage } from "./source-coverage";
 import { EmptyState, Notice, StatusBadge } from "./ui";
 import { EntryHistory } from "./entry-history";
 import { filterView } from "@/knowledge/filter-view";
+import { SectionView } from "./knowledge-view/section-view";
+import {
+  KNOWLEDGE_SECTIONS,
+  parseSection,
+  type KnowledgeSectionId,
+} from "./knowledge-view/sections";
+import "./knowledge-view/knowledge-view.css";
 type ViewEntry = {
   id: string;
   company_id: string;
@@ -63,10 +69,12 @@ function snapshotEntries(payload: KnowledgeBaseExport): ViewEntry[] {
 export function KnowledgeViewer({
   companyId,
   initialVersionId,
+  initialSection,
   initialData,
 }: {
   companyId: string;
   initialVersionId?: string;
+  initialSection?: KnowledgeSectionId;
   initialData?: {
     companyName: string;
     versions: Version[];
@@ -100,6 +108,9 @@ export function KnowledgeViewer({
     initialData?.snapshot ?? null,
   );
   const [mode, setMode] = useState("profile");
+  const [knowledgeSection, setKnowledgeSection] = useState<KnowledgeSectionId>(
+    initialSection ?? "general",
+  );
   const [exportFormat, setExportFormat] = useState("docx");
   const [query, setQuery] = useState("");
   const [section, setSection] = useState("");
@@ -304,26 +315,74 @@ export function KnowledgeViewer({
         <Link href="/dashboard">View companies</Link>
       </Notice>
     );
+  const profileMode = mode === "profile";
+  const heading = (entry: ViewEntry) =>
+    "name" in entry.content && entry.content.name
+      ? String(entry.content.name)
+      : CATEGORY_SPECS[entry.kind]!.label;
   return (
-    <div className="version-viewer">
-      <div className="breadcrumb">
-        <Link href="/dashboard">Companies</Link>
-        <span>/</span>
-        <Link href={`/knowledge?companyId=${companyId}`}>{name}</Link>
-        <span>/</span>
-        <span>View knowledge</span>
-      </div>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Knowledge library</p>
-          <h1>{name}</h1>
-          <p>
-            {versionId === "draft"
-              ? "Current draft · changes are reviewed before publication."
-              : "Saved knowledge · an immutable record of reviewed company facts."}
-          </p>
+    <div className="version-viewer knowledge-view">
+      <h1 className="sr-only">{name}</h1>
+      <div className="knowledge-view__toolbar">
+        <div className="knowledge-view__toolbar-group">
+          <select
+            className="company-switcher"
+            aria-label="Switch company"
+            value={companyId}
+            onChange={(event) =>
+              window.location.assign(
+                `/knowledge/view?companyId=${event.target.value}`,
+              )
+            }
+          >
+            {!companies.some((company) => company.id === companyId) && (
+              <option value={companyId}>{name}</option>
+            )}
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Knowledge version"
+            className="company-switcher"
+            value={versionId}
+            onChange={(e) => {
+              setVersionId(e.target.value);
+              const url = new URL(window.location.href);
+              url.searchParams.set("versionId", e.target.value);
+              window.history.replaceState(null, "", url);
+            }}
+          >
+            <option value="draft">Current draft</option>
+            {versions.map((v) => (
+              <option key={v.id} value={v.id}>
+                Version {v.version_number} ·{" "}
+                {new Date(v.created_at).toLocaleDateString()}
+              </option>
+            ))}
+          </select>
+          <div className="actions" aria-label="Display mode">
+            {["profile", "cards", "table", "detail", "json"].map((item) => (
+              <button
+                className="button"
+                key={item}
+                onClick={() => setMode(item)}
+                aria-pressed={mode === item}
+              >
+                {labelOf(item)}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="actions">
+        <div className="knowledge-view__toolbar-group">
+          {payload && (
+            <span className="knowledge-view__status">
+              Version {payload.version} · saved{" "}
+              {new Date(payload.saved_at).toLocaleString()} · read only
+            </span>
+          )}
           <Link className="button" href={`/knowledge?companyId=${companyId}`}>
             Open current draft
           </Link>
@@ -342,7 +401,7 @@ export function KnowledgeViewer({
               <option value="pdf">PDF (.pdf)</option>
             </select>
             <button
-              className="button button--primary version-viewer__document-export"
+              className="button version-viewer__document-export"
               type="submit"
               disabled={loading || !versionId || (versionId !== "draft" && !payload)}
               title="Export all saved values and supporting evidence, regardless of filters"
@@ -352,7 +411,7 @@ export function KnowledgeViewer({
           </form>
           {payload && (
             <a
-              className="button button--primary"
+              className="button"
               href={companyPath(companyId, `/versions/${versionId}/download`)}
             >
               Download JSON ↓
@@ -360,67 +419,78 @@ export function KnowledgeViewer({
           )}
         </div>
       </div>
-      <div className="panel">
-        <div className="section-heading">
-          <div className="actions">
-            <select
-              className="company-switcher"
-              aria-label="Switch company"
-              value={companyId}
-              onChange={(event) =>
-                window.location.assign(
-                  `/knowledge/view?companyId=${event.target.value}`,
-                )
-              }
+      {error && (
+        <Notice error>
+          {error}
+          {canEdit && versionId === "draft" && (
+            <button
+              className="button"
+              onClick={() => setReload((value) => value + 1)}
             >
-              {!companies.some((company) => company.id === companyId) && (
-                <option value={companyId}>{name}</option>
-              )}
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
+              Reload latest draft
+            </button>
+          )}
+        </Notice>
+      )}
+      {profileMode ? (
+        <>
+          <nav className="knowledge-view__nav" aria-label="Knowledge navigation">
+            <div className="knowledge-view__nav-box">
+              <span className="knowledge-view__tab" aria-current="page">Company</span>
+            </div>
+            <div className="knowledge-view__nav-box">
             <select
-              aria-label="Knowledge version"
-              className="company-switcher"
-              value={versionId}
-              onChange={(e) => {
-                setVersionId(e.target.value);
+              className="knowledge-view__select"
+              aria-label="Knowledge section"
+              value={knowledgeSection}
+              onChange={(event) => {
+                const next = parseSection(event.target.value);
+                setKnowledgeSection(next);
                 const url = new URL(window.location.href);
-                url.searchParams.set("versionId", e.target.value);
+                url.searchParams.set("section", next);
                 window.history.replaceState(null, "", url);
               }}
             >
-              <option value="draft">Current draft</option>
-              {versions.map((v) => (
-                <option key={v.id} value={v.id}>
-                  Version {v.version_number} ·{" "}
-                  {new Date(v.created_at).toLocaleDateString()}
+              {KNOWLEDGE_SECTIONS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
                 </option>
               ))}
             </select>
+            </div>
+          </nav>
+          <div className="knowledge-view__panel">
+            {loading ? (
+              <Notice>Loading knowledge…</Notice>
+            ) : (
+              <SectionView
+                section={knowledgeSection}
+                companyId={companyId}
+                name={name}
+                entries={entries}
+              />
+            )}
           </div>
-          <div className="actions" aria-label="Display mode">
-            {["profile", "cards", "table", "detail", "json"].map((item) => (
-              <button
-                className={`button${mode === item ? " button--primary" : ""}`}
-                key={item}
-                onClick={() => setMode(item)}
-                aria-pressed={mode === item}
-              >
-                {labelOf(item)}
-              </button>
-            ))}
-          </div>
-        </div>
-        {payload && (
-          <p className="field__hint">
-            Version {payload.version} · saved{" "}
-            {new Date(payload.saved_at).toLocaleString()} · read only
+          <p className="knowledge-view__tip">
+            <span aria-hidden="true">ⓘ</span> Tip: keep company facts specific and evidence based. Anything missing can be filled in from the editor.
           </p>
-        )}
+          {versionId === "draft" && !loading && entries.length > 0 && (
+            <details className="knowledge-view__review">
+              <summary>Review draft entries ({entries.length})</summary>
+              <ul>
+                {entries.map((entry) => (
+                  <li key={entry.id}>
+                    <span className="knowledge-view__review-name">{heading(entry)}</span>
+                    <StatusBadge value={entry.review_status} />
+                    {draftActions(entry)}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </>
+      ) : (
+      <div className="panel">
         <div className="version-viewer__filters">
           <input
             className="filter-input"
@@ -489,19 +559,6 @@ export function KnowledgeViewer({
             )}
           </select>
         </div>
-        {error && (
-          <Notice error>
-            {error}
-            {canEdit && versionId === "draft" && (
-              <button
-                className="button"
-                onClick={() => setReload((value) => value + 1)}
-              >
-                Reload latest draft
-              </button>
-            )}
-          </Notice>
-        )}
         <SourceCoverage key={companyId} companyId={companyId} viewingSnapshot={versionId !== "draft"} />
         {loading ? (
           <Notice>Loading knowledge…</Notice>
@@ -513,12 +570,6 @@ export function KnowledgeViewer({
           <EmptyState title="No matching knowledge">
             <p>Adjust the filters or review the current draft.</p>
           </EmptyState>
-        ) : mode === "profile" ? (
-          <CompanyProfile
-            entries={filtered}
-            citationContext={citationContext}
-            actions={draftActions}
-          />
         ) : mode === "table" ? (
           <table className="data-table">
             <thead>
@@ -626,6 +677,7 @@ export function KnowledgeViewer({
           </div>
         )}
       </div>
+      )}
       {history && (
         <EntryHistory
           companyId={companyId}
