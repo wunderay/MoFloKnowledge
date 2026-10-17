@@ -68,12 +68,14 @@ export function KnowledgeViewer({
   initialVersionId,
   initialSection,
   initialOffering,
+  initialPerson,
   initialData,
 }: {
   companyId: string;
   initialVersionId?: string;
   initialSection?: KnowledgeSectionId;
   initialOffering?: string;
+  initialPerson?: string;
   initialData?: {
     companyName: string;
     versions: Version[];
@@ -112,6 +114,7 @@ export function KnowledgeViewer({
     initialSection ?? "general",
   );
   const [offeringId, setOfferingId] = useState(initialOffering ?? "");
+  const [personId, setPersonId] = useState(initialPerson ?? "");
   const [exportFormat, setExportFormat] = useState("docx");
   const [query, setQuery] = useState("");
   const [section, setSection] = useState("");
@@ -515,6 +518,14 @@ export function KnowledgeViewer({
                   setOfferingId(id);
                   const url = new URL(window.location.href);
                   url.searchParams.set("offering", id);
+                  window.history.replaceState(null, "", url);
+                }}
+                personId={personId}
+                onSelectPerson={(id) => {
+                  setPersonId(id);
+                  const url = new URL(window.location.href);
+                  if (id) url.searchParams.set("person", id);
+                  else url.searchParams.delete("person");
                   window.history.replaceState(null, "", url);
                 }}
               />

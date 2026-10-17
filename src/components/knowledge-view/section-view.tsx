@@ -1,5 +1,5 @@
 import type { BusinessEntry, CitationContext, EntryKind, EntryProvenance, ReviewStatus } from "@/contracts";
-import { offeringsFrom, profileFrom, siteLinksFrom } from "./data";
+import { offeringsFrom, peopleFrom, profileFrom, siteLinksFrom } from "./data";
 import { BrandIdentity } from "./brand";
 import { CustomersIndustry } from "./customers-industry";
 import { GeneralInfo } from "./general-info";
@@ -18,6 +18,8 @@ export function SectionView({
   citationContext,
   offeringId = "",
   onSelectOffering = () => {},
+  personId = "",
+  onSelectPerson = () => {},
   canEdit = false,
   actorId = "",
   importBlocked = false,
@@ -38,7 +40,10 @@ export function SectionView({
   /** The `offering` URL value and how a click on the offering list changes it. */
   offeringId?: string;
   onSelectOffering?: (id: string) => void;
-  /** An editable draft offers "+ Add page" and "Import from website"; `onSaved` reloads the draft after it saved. */
+  /** The `person` URL value and how a click on the key people list changes it ("" selects the first person). */
+  personId?: string;
+  onSelectPerson?: (id: string) => void;
+  /** An editable draft offers "+ Add page", "Import from website" and the key people actions; `onSaved` reloads the draft after it saved. */
   canEdit?: boolean;
   actorId?: string;
   /** True while the view is older than a saved import: the picker would work from stale entries. */
@@ -47,7 +52,18 @@ export function SectionView({
 }) {
   const profile = profileFrom(entries, citationContext);
   const one = (id: KnowledgeSectionId, level: "h2" | "h3" = "h2") => {
-    if (id === "key-people") return <KeyPeople companyId={companyId} titled={level === "h2"} />;
+    if (id === "key-people")
+      return (
+        <KeyPeople
+          companyId={companyId}
+          people={peopleFrom(entries, citationContext)}
+          selectedId={personId}
+          onSelect={onSelectPerson}
+          canEdit={canEdit && Boolean(actorId)}
+          blocked={importBlocked}
+          onSaved={onSaved}
+        />
+      );
     if (id === "general") return <GeneralInfo companyId={companyId} name={name} profile={profile} />;
     if (id === "customers") return <CustomersIndustry companyId={companyId} profile={profile} />;
     if (id === "sales") return <SalesMarketing companyId={companyId} name={name} profile={profile} />;
@@ -75,12 +91,12 @@ export function SectionView({
     );
   };
   if (section !== "all") return one(section);
-  // Every section under its own heading, in listbox order. Business Offerings carries its own heading.
+  // Every section under its own heading, in listbox order. Business Offerings and Key People carry their own heading.
   return (
     <div className="knowledge-view__all">
       {KNOWLEDGE_SECTIONS.filter((item) => item.id !== "all").map((item) => (
         <section className="knowledge-view__all-section" key={item.id}>
-          {item.id !== "offerings" && (
+          {item.id !== "offerings" && item.id !== "key-people" && (
             <h2 className="knowledge-view__section-title knowledge-view__all-title">{item.label}</h2>
           )}
           {one(item.id, "h3")}

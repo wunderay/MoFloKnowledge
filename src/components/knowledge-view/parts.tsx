@@ -106,6 +106,31 @@ export function EmptyBox({ title, hint, href, note }: { title: string; hint: str
   );
 }
 
+/** One labelled value in a detail panel: an optional icon, the label with its evidence control, and the value or its empty state. */
+export function Field({
+  label,
+  icon,
+  source,
+  children,
+}: {
+  label: string;
+  icon?: IconName;
+  source: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="knowledge-view__field">
+      {icon && (
+        <span className="knowledge-view__field-icon" aria-hidden="true"><Icon name={icon} size={18} /></span>
+      )}
+      <div className="knowledge-view__field-body">
+        <p className="knowledge-view__mini-label">{label}{source}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export type ChipItem = { id: string; label: string; detail?: string | null; mark?: ReactNode };
 
 /** One outlined pill per item. An empty list is a single dashed "+ Add" pill; a filled list ends with a dashed "Add" pill. */

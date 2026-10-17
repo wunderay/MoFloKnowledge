@@ -30,6 +30,7 @@ import {
   type Page,
 } from "../helpers/knowledge-view-dom";
 import { brandBanner, labelGroup, listRows, offeringsList } from "../helpers/knowledge-view-offerings-brand-dom";
+import { peopleList } from "../helpers/knowledge-view-people-dom";
 import {
   ALL_ORDER,
   ancestorsOf,
@@ -173,7 +174,8 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
       "Sales & Marketing": card(page, "Pitch", SALES),
       "Business Offerings": offeringsList(page),
       "Brand Identity": card(page, "Logos", BRAND),
-      "Key People": page.$('a[href*="category=key_person"]').toArray()[0] ?? null,
+      // the people list when the company has people, else the empty state's link to the editor
+      "Key People": peopleList(page) ?? page.$('a[href*="category=key_person"]').toArray()[0] ?? null,
       "Site Knowledge": siteHeading(page),
     };
     ALL_ORDER.forEach((label, i) => {

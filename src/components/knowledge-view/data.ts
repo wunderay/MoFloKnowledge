@@ -15,6 +15,7 @@ import {
   type MarketAndCustomers,
   type Offering,
   type OnlinePresence,
+  type Person,
   type Positioning,
   type SiteLink,
   type SiteLinks,
@@ -129,6 +130,34 @@ export function offeringsFrom(
       offering: entry.content as Offering,
       evidence: { provenance: entry.provenance, approved: entry.review_status === "approved", citationContext },
     }));
+}
+
+/**
+ * One key person, with what backs their values and, for an editable draft, the entry to revise or delete.
+ * `entryId` and `revision` come from the stored entry; a saved snapshot has no use for them.
+ */
+export type ViewPerson = { person: Person; evidence: Evidence; entryId: string; revision: number };
+
+/** The key person entries, in the order the draft or snapshot lists them, each with its own evidence. */
+export function peopleFrom(
+  entries: { id?: string; current_revision?: number; kind: EntryKind; content: BusinessEntry; provenance: EntryProvenance; review_status: ReviewStatus }[],
+  citationContext?: CitationContext,
+): ViewPerson[] {
+  return entries
+    .filter((entry) => entry.kind === "key_person")
+    .map((entry) => ({
+      person: entry.content as Person,
+      evidence: { provenance: entry.provenance, approved: entry.review_status === "approved", citationContext },
+      entryId: entry.id ?? (entry.content as Person).id,
+      revision: entry.current_revision ?? 0,
+    }));
+}
+
+/** Up to two capital letters for a person's avatar: the first letters of the first and last words of the name. */
+export function initialsOf(name: string | null): string {
+  const words = (name ?? "").split(/\s+/).map((word) => [...word.replace(/[^\p{L}\p{N}]/gu, "")][0]).filter(Boolean) as string[];
+  if (words.length === 0) return "";
+  return (words.length === 1 ? words[0]! : words[0]! + words[words.length - 1]!).toUpperCase();
 }
 
 const under = (target: string, path: string) => target === path || target.startsWith(`${path}/`);

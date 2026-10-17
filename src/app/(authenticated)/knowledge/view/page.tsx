@@ -14,12 +14,15 @@ export default async function ViewPage({
     versionId?: string;
     section?: string;
     offering?: string;
+    person?: string;
   }>;
 }) {
   const params = await searchParams;
   const section = parseSection(params.section);
   // The selected offering's entry id; one that matches no offering selects the first.
   const offering = typeof params.offering === "string" ? params.offering : undefined;
+  // The selected key person's entry id; one that matches nobody selects the first person.
+  const person = typeof params.person === "string" ? params.person : undefined;
   const id = UUIDSchema.safeParse(params.companyId);
   if (!id.success)
     return (
@@ -47,6 +50,7 @@ export default async function ViewPage({
           initialVersionId="draft"
           initialSection={section}
           initialOffering={offering}
+          initialPerson={person}
           initialData={{ companyName: draft.company.name, versions, draft }}
         />
       );
@@ -59,6 +63,7 @@ export default async function ViewPage({
         initialVersionId={versionId}
         initialSection={section}
         initialOffering={offering}
+        initialPerson={person}
         initialData={{
           companyName: saved.payload.provenance.company.name,
           versions,
