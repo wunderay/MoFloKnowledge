@@ -22,6 +22,18 @@ export const SaveEntrySchema = z
     reviewStatus: z.enum(["unreviewed", "approved", "rejected"]),
     reason: z.string().max(2000).optional(),
     genderAttestation: z.string().trim().min(10).max(2000).optional(),
+    /**
+     * Put list items back as an earlier revision of the same entry had them (an Undo): the server checks each item
+     * against that revision and, where it matches, carries over the item's original source-backed claims and evidence
+     * instead of recording the person as their author. Anything that does not match is saved as an ordinary edit.
+     */
+    restoreFrom: z
+      .object({
+        revision: z.number().int().positive(),
+        itemIds: z.array(IdSchema).min(1).max(500),
+      })
+      .strict()
+      .optional(),
     requestId: IdSchema,
   })
   .strict();

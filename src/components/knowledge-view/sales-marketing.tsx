@@ -1,9 +1,12 @@
 import { safeHref } from "../citation-popover";
 import { socialHandle, textOrNull, type ViewProfile } from "./data";
+import { FIELDS, InlineArea, InlineChips, LISTS, useEdit } from "./inline-edit";
 import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, StatAdd, Stats } from "./parts";
 
 export function SalesMarketing({ companyId, name, profile }: { companyId: string; name: string; profile: ViewProfile }) {
   const { positioning, market, presence } = profile;
+  // An editable draft edits these values in place; a saved version and a viewer see text and "+ Add" links.
+  const edit = useEdit() !== null;
   const mev = profile.evidence.market;
   const pev = profile.evidence.positioning;
   const oev = profile.evidence.presence;
@@ -117,7 +120,14 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
           subtitle="The one-paragraph version."
           source={<Source evidence={pev} path={p.pitch} filled={pitch !== null} />}
         >
-          {pitch ? (
+          {edit ? (
+            <InlineArea
+              spec={FIELDS.pitch}
+              value={pitch}
+              empty={{ title: "No pitch yet", hint: "A short statement that can be repeated verbatim." }}
+              note={<CoverageNote evidence={pev} path={p.pitch} empty={pitch === null} />}
+            />
+          ) : pitch ? (
             <>
               <p className="knowledge-view__text">{pitch}</p>
               <CoverageNote evidence={pev} path={p.pitch} empty={false} />
@@ -166,7 +176,19 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
           subtitle="The pains and jobs to be done."
           source={<Source evidence={mev} path={p.needs} filled={needs.length > 0} />}
         >
-          {needs.length > 0 ? (
+          {edit ? (
+            <>
+              <InlineChips
+                list={LISTS.needs}
+                items={needs.map((need) => ({
+                  id: need.id,
+                  label: need.text.trim(),
+                  mark: <ItemSource evidence={mev} path={`${p.needs}/@${need.id}`} name={need.text.trim()} />,
+                }))}
+              />
+              <CoverageNote evidence={mev} path={p.needs} empty={needs.length === 0} />
+            </>
+          ) : needs.length > 0 ? (
             <>
               <ul className="knowledge-view__list">
                 {needs.map((need) => (

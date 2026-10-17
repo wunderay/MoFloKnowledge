@@ -13,6 +13,7 @@ import {
   type Assessment,
 } from "@/contracts";
 import { api, companyPath, write } from "./api-client";
+import { timing } from "./knowledge-view/timing";
 import { CATEGORY_SPECS, labelOf } from "./business-fields";
 import { ValueView } from "./entry-value";
 import { SourceCoverage } from "./source-coverage";
@@ -124,6 +125,8 @@ export function KnowledgeViewer({
   const [error, setError] = useState("");
   /** An import was saved but the draft could not be re-read: the view is older than the stored entry. */
   const [staleDraft, setStaleDraft] = useState<string | null>(null);
+  /** What the unread save was: a change made in place, or (as before) links and people. */
+  const [staleWhat, setStaleWhat] = useState<"links" | "changes">("links");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(!initialData);
   const initializedList = useRef(false);
@@ -235,19 +238,31 @@ export function KnowledgeViewer({
    * save as failed or send it again): it marks the view stale, which blocks further imports and
    * offers a reload, until a later read succeeds.
    */
-  async function refreshDraft() {
+  async function refreshDraft(what?: "changes") {
     setRefreshing(true);
     try {
-      const data = await api<{
-        company: { role: string; archived_at: string | null };
-        entries: ViewEntry[];
-        citationContext?: CitationContext;
-      }>(companyPath(companyId, "/draft"));
+      // A read that does not settle in time leaves the view stale (the save stands, and is never sent again).
+      const read = new AbortController();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const data = await Promise.race([
+        api<{
+          company: { role: string; archived_at: string | null };
+          entries: ViewEntry[];
+          citationContext?: CitationContext;
+        }>(companyPath(companyId, "/draft"), { signal: read.signal }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            read.abort();
+            reject(new Error("The draft was not read in time."));
+          }, timing.reread);
+        }),
+      ]).finally(() => clearTimeout(timer));
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
       setEntries(data.entries);
       setCitationContext(data.citationContext);
       setStaleDraft(null);
     } catch (error) {
+      setStaleWhat(what ?? staleWhat);
       setStaleDraft((error as Error).message || "The draft could not be read.");
     } finally {
       setRefreshing(false);
@@ -456,7 +471,7 @@ export function KnowledgeViewer({
       </div>
       {staleDraft !== null && versionId === "draft" && (
         <Notice>
-          Saved. Reload to see the latest links. The draft could not be read: {staleDraft}{" "}
+          {`Saved. Reload to see the latest ${staleWhat}. The draft could not be read: ${staleDraft}`}{" "}
           <button
             type="button"
             className="button"

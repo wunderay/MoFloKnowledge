@@ -166,6 +166,7 @@ export function Chips({ items, href, noun }: { items: ChipItem[]; href: string; 
 export function Banner({
   label,
   title,
+  titleFeedback,
   caption,
   placeholder = false,
   icon,
@@ -174,7 +175,10 @@ export function Banner({
   children,
 }: {
   label: string;
-  title: string;
+  /** The heading: text, or the control that edits it in place. */
+  title: ReactNode;
+  /** What saving the heading reports, shown under it (outside the heading, whose text it would change). */
+  titleFeedback?: ReactNode;
   /** Small text under the heading; label, heading and caption then form one first cell. */
   caption?: string;
   placeholder?: boolean;
@@ -191,6 +195,7 @@ export function Banner({
         {title}
         {source}
       </h2>
+      {titleFeedback !== undefined && <div className="knowledge-view__banner-feedback">{titleFeedback}</div>}
       {caption && <p className="knowledge-view__banner-caption">{caption}</p>}
     </>
   );
@@ -203,6 +208,16 @@ export function Banner({
       {children}
       {note}
     </div>
+  );
+}
+
+/** A count in a banner: the number, which a screen reader hears with its noun in the right form ("1 Buyer", "2 Buyers"). */
+export function Count({ n, one, many }: { n: number; one: string; many: string }) {
+  return (
+    <span>
+      {n}
+      <span className="sr-only"> {n === 1 ? one : many}</span>
+    </span>
   );
 }
 

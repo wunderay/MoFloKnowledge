@@ -11,6 +11,7 @@ import {
   type EntryKind,
   type EntryProvenance,
   type BusinessEntry,
+  type Claim,
 } from "../contracts";
 import { reviseProvenance } from "../knowledge/revise-provenance";
 import { stableId } from "../lib/identity";
@@ -65,6 +66,7 @@ export async function prepareRevision(
     requestId: string;
     reviewStatus: string;
     genderAttestation?: string;
+    restoreFrom?: { revision: number; itemIds: string[] };
   },
 ) {
   const entry = await checked(
@@ -134,10 +136,14 @@ export async function prepareRevision(
           : (input.reason ?? "User-provided correction."),
       })
     : provenance;
+  // An Undo puts items back with the claims and evidence they had; the browser's own provenance is never used for it.
+  const restored = input.restoreFrom
+    ? await restoreItems(client, companyId, entryId, kind, input.restoreFrom, input.expectedRevision, content, revised, stored, input.requestId)
+    : { provenance: revised, stored };
   // An entry saved before a field existed has no coverage for it yet; every registered field needs exactly one row.
-  const covered = new Set(revised.coverage.flatMap((row) => row.targets));
+  const covered = new Set(restored.provenance.coverage.flatMap((row) => row.targets));
   const covering = {
-    ...revised,
+    ...restored.provenance,
     coverage: [
       ...revised.coverage,
       ...requiredCoverageTargets(entryBusiness(kind, content))
@@ -156,11 +162,100 @@ export async function prepareRevision(
       kind,
       content,
       covering,
-      stored,
+      restored.stored,
       entryId,
       input.requestId,
       actorId,
     ),
+  };
+}
+
+const dedupe = <T extends { id: string }>(items: T[]) => [...new Map(items.map((item) => [item.id, item])).values()];
+
+/**
+ * Carries the original claims of restored list items over from an earlier revision of the same entry. An item is
+ * restored only when every value it has now equals the earlier revision's, it has nothing more, every value had a
+ * claim that was not authored by a person, and the claims' evidence and the claims they rest on are still available.
+ * Such an item gets claims with the origin, evidence and notes it had (under new ids, since the originals may have
+ * been narrowed since), instead of the new claim recording the person as its author. Every other item keeps the
+ * claims the ordinary edit gave it. Evidence and sources come from the stored revisions, never from the browser.
+ */
+async function restoreItems(
+  client: Client,
+  companyId: string,
+  entryId: string,
+  kind: EntryKind,
+  restore: { revision: number; itemIds: string[] },
+  expectedRevision: number,
+  content: BusinessEntry,
+  revised: EntryProvenance,
+  stored: EntryProvenance,
+  requestId: string,
+): Promise<{ provenance: EntryProvenance; stored: EntryProvenance }> {
+  const refuse = () => new HttpError(422, "invalid_restore", "The revision to restore from is unavailable.");
+  if (restore.revision >= expectedRevision) throw refuse();
+  const earlier = await checked(
+    client
+      .from("knowledge_entry_versions")
+      .select("company_id,entry_id,revision,content,provenance")
+      .eq("company_id", companyId)
+      .eq("entry_id", entryId)
+      .eq("revision", restore.revision)
+      .maybeSingle(),
+  );
+  // A revision of another entry or company is never a source (the query is scoped; the row is checked as well).
+  if (!earlier || earlier.company_id !== companyId || earlier.entry_id !== entryId || earlier.revision !== restore.revision) throw refuse();
+  const before = entryBusiness(kind, parseStoredEntry(kind, earlier.content));
+  const after = entryBusiness(kind, content);
+  const past = earlier.provenance as EntryProvenance;
+  const provenance = structuredClone(revised);
+  const present = new Set(provenance.claims.map((claim) => claim.id));
+  const claimsOf = (leaves: { path: string }[]) => leaves.map((leaf) => past.claims.find((claim) => claim.targets.includes(leaf.path)));
+  const underItem = (id: string) => (leaf: { path: string }) => leaf.path.split("/").includes(`@${id}`);
+  const carried = new Map<string, Claim>();
+  const restoredPaths = new Set<string>();
+  const evidenceIds = new Set<string>();
+  for (const id of new Set(restore.itemIds)) {
+    const was = enumerateFactualLeaves(before).filter(underItem(id));
+    const now = enumerateFactualLeaves(after).filter(underItem(id));
+    if (
+      was.length === 0 ||
+      was.length !== now.length ||
+      !was.every((leaf) => now.some((other) => other.path === leaf.path && canonicalStringify(other.value) === canonicalStringify(leaf.value)))
+    )
+      continue;
+    const claims = claimsOf(was);
+    const sound = claims.every(
+      (claim) =>
+        claim &&
+        claim.origin !== "user_provided" &&
+        claim.evidence_ids.every((evidence) => past.evidence.some((row) => row.id === evidence)) &&
+        claim.based_on_claim_ids.every((basis) => present.has(basis)),
+    );
+    if (!sound) continue;
+    was.forEach((leaf, index) => {
+      const claim = claims[index]!;
+      const id = stableId(requestId, claim.id, "restored");
+      const have = carried.get(id) ?? { ...claim, id, entry_id: entryId, targets: [] };
+      have.targets.push(leaf.path);
+      carried.set(id, have);
+      restoredPaths.add(leaf.path);
+      claim.evidence_ids.forEach((evidence) => evidenceIds.add(evidence));
+    });
+  }
+  if (carried.size === 0) return { provenance: revised, stored };
+  provenance.claims = [
+    ...provenance.claims
+      .map((claim) => ({ ...claim, targets: claim.targets.filter((target) => !restoredPaths.has(target)) }))
+      .filter((claim) => claim.targets.length > 0),
+    ...carried.values(),
+  ];
+  const evidence = past.evidence.filter((row) => evidenceIds.has(row.id));
+  const sourceIds = new Set(evidence.map((row) => row.source_page_id));
+  const sources = past.sources.filter((row) => sourceIds.has(row.id));
+  return {
+    provenance,
+    stored: { ...stored, evidence: dedupe([...stored.evidence, ...evidence]), sources: dedupe([...stored.sources, ...sources]) },
   };
 }
 

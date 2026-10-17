@@ -1,19 +1,13 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ZodError } from "zod";
-import {
-  createEmptyProvenance,
-  createEntryDefault,
-  entryBusiness,
-  parseBusinessEntry,
-  requiredCoverageTargets,
-  type SiteLink,
-} from "@/contracts";
+import { parseBusinessEntry, type SiteLink } from "@/contracts";
 import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
 import type { SourceCoverage } from "@/contracts/source-coverage";
-import { MAX_CLAIM_TARGETS, MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, OPERATIONS_PER_SAVE, reviseProvenance } from "@/knowledge/revise-provenance";
-import { ApiError, api, companyPath, write } from "../api-client";
+import { MAX_CLAIM_TARGETS, MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, OPERATIONS_PER_SAVE } from "@/knowledge/revise-provenance";
+import { ApiError, api, companyPath } from "../api-client";
 import type { ViewSiteLinks } from "./data";
+import { prepareEntrySave, sendEntrySave } from "./save-entry";
 
 /** The most links one site_links entry can hold. */
 export const MAX_LINKS = 500;
@@ -89,63 +83,8 @@ export async function saveLinks(
     ...added.map((page) => ({ id: crypto.randomUUID(), title: page.label.slice(0, MAX_TEXT_LENGTH), url: page.url, note: null })),
   ];
   const content = parseBusinessEntry("site_links", { links });
-  const requestId = crypto.randomUUID();
-  const savedAt = new Date().toISOString();
-  const { entry } = site;
-  if (!entry || entry.revision === 0) {
-    // As prepareManualCreation does: coverage for every required field, then the new values as claims.
-    const empty = createEmptyProvenance();
-    empty.coverage = requiredCoverageTargets(entryBusiness("site_links", content)).map((target) => ({
-      targets: [target],
-      status: "not_checked" as const,
-      job_id: null,
-      reason: "Entered manually; website extraction has not assessed this field.",
-    }));
-    const provenance = reviseProvenance({
-      kind: "site_links",
-      entryId: requestId,
-      before: createEntryDefault("site_links", requestId),
-      after: content,
-      provenance: empty,
-      actorId,
-      savedAt,
-      requestId,
-      note,
-    });
-    await api(companyPath(companyId, "/entries"), write("POST", { kind: "site_links", content, provenance, requestId }));
-    return;
-  }
-  const stored = structuredClone(entry.provenance);
-  if (!stored.coverage.length)
-    stored.coverage = [
-      {
-        targets: ["/site_links/links"],
-        status: "not_checked" as const,
-        job_id: null,
-        reason: "Manually entered section. Website coverage has not been checked.",
-      },
-    ];
-  const provenance = reviseProvenance({
-    kind: "site_links",
-    entryId: entry.id,
-    before: entry.content,
-    after: content,
-    provenance: stored,
-    actorId,
-    savedAt,
-    requestId,
-    note,
-  });
-  await api(
-    companyPath(companyId, `/entries/${entry.id}/revisions`),
-    write("POST", {
-      expectedRevision: entry.revision,
-      content,
-      provenance,
-      reviewStatus: "unreviewed",
-      reason: note,
-      requestId,
-    }),
+  await sendEntrySave(
+    prepareEntrySave({ companyId, actorId, kind: "site_links", entry: site.entry, content, note }),
   );
 }
 

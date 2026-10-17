@@ -3,6 +3,7 @@ import { offeringsFrom, peopleFrom, profileFrom, siteLinksFrom } from "./data";
 import { BrandIdentity } from "./brand";
 import { CustomersIndustry } from "./customers-industry";
 import { GeneralInfo } from "./general-info";
+import { EditProvider, type EditEnv } from "./inline-edit";
 import { KeyPeople } from "./key-people";
 import { BusinessOfferings } from "./offerings";
 import { SalesMarketing } from "./sales-marketing";
@@ -48,9 +49,25 @@ export function SectionView({
   actorId?: string;
   /** True while the view is older than a saved import: the picker would work from stale entries. */
   importBlocked?: boolean;
-  onSaved?: () => Promise<void>;
+  onSaved?: (what?: "changes") => Promise<void>;
 }) {
   const profile = profileFrom(entries, citationContext);
+  // An editable draft edits General Info, Customers & Industry and Sales & Marketing in place; everything else reads only.
+  const edit: EditEnv | null =
+    canEdit && actorId
+      ? {
+          companyId,
+          actorId,
+          blocked: importBlocked,
+          onSaved: () => onSaved("changes"),
+          entry: (kind) => {
+            const found = entries.find((item) => item.kind === kind);
+            return found && found.id !== undefined
+              ? { id: found.id, revision: found.current_revision ?? 0, content: found.content, provenance: found.provenance }
+              : null;
+          },
+        }
+      : null;
   const one = (id: KnowledgeSectionId, level: "h2" | "h3" = "h2") => {
     if (id === "key-people")
       return (
@@ -90,18 +107,21 @@ export function SectionView({
       />
     );
   };
-  if (section !== "all") return one(section);
-  // Every section under its own heading, in listbox order. Business Offerings and Key People carry their own heading.
-  return (
-    <div className="knowledge-view__all">
-      {KNOWLEDGE_SECTIONS.filter((item) => item.id !== "all").map((item) => (
-        <section className="knowledge-view__all-section" key={item.id}>
-          {item.id !== "offerings" && item.id !== "key-people" && (
-            <h2 className="knowledge-view__section-title knowledge-view__all-title">{item.label}</h2>
-          )}
-          {one(item.id, "h3")}
-        </section>
-      ))}
-    </div>
-  );
+  const shown =
+    section !== "all" ? (
+      one(section)
+    ) : (
+      // Every section under its own heading, in listbox order. Business Offerings and Key People carry their own heading.
+      <div className="knowledge-view__all">
+        {KNOWLEDGE_SECTIONS.filter((item) => item.id !== "all").map((item) => (
+          <section className="knowledge-view__all-section" key={item.id}>
+            {item.id !== "offerings" && item.id !== "key-people" && (
+              <h2 className="knowledge-view__section-title knowledge-view__all-title">{item.label}</h2>
+            )}
+            {one(item.id, "h3")}
+          </section>
+        ))}
+      </div>
+    );
+  return edit ? <EditProvider env={edit}>{shown}</EditProvider> : shown;
 }
