@@ -187,8 +187,11 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     const comparable = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
     const coversParts = raw && parts.every((part) => comparable(raw).includes(comparable(part)));
     const wording = coversParts ? raw : [raw, parts.join(", ")].filter(Boolean).join(" — ");
-    const locationLabel = typeof value.label === "string" && value.label ? `${value.label}: ` : "";
-    if (wording) prose([fact(sentence(`${prefix}${locationLabel}${wording}`), path)]);
+    const label = typeof value.label === "string" ? value.label : "";
+    // A label-only address still shows the part that exists.
+    const locationLabel = wording && label ? `${label}: ` : "";
+    const detail = wording || label;
+    if (detail) prose([fact(sentence(`${prefix}${locationLabel}${detail}`), path)]);
   };
   const displayedLinks = new Set<string>();
   const renderValue = (value: unknown, title: string, path: string, depth = 0): void => {
@@ -275,14 +278,16 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     }
     if (Array.isArray(value)) {
       if (/\/(?:customer_needs|goals|pain_points|industry_outlook)$/.test(path)) {
-        value = value.filter((item) => !(typeof item?.text === "string" && repeatedNarrative(item.text)));
+        // A repeated sentence is not narrated again, but the item's other facts (publisher, date) still render.
+        value = value.filter((item) => !(typeof item?.text === "string" && repeatedNarrative(item.text))
+          || Object.entries(item).some(([key, child]) => key !== "id" && key !== "text" && populated(child)));
         if (!(value as unknown[]).length) return;
       }
       heading(title, "field");
       for (const [index, item] of (value as unknown[]).entries()) {
         const itemPath = `${path}/${item && typeof item === "object" && "id" in item ? `@${item.id}` : index}`;
         if (item && typeof item === "object" && "text" in item) {
-          narrative(String(item.text), `${itemPath}/text`, { bullet: true, depth });
+          if (!repeatedNarrative(String(item.text))) narrative(String(item.text), `${itemPath}/text`, { bullet: true, depth });
           for (const [key, child] of Object.entries(item)) if (!["id", "text"].includes(key)) renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
         } else if (item && typeof item === "object") {
           const fields = Object.entries(item).filter(([key]) => key !== "id");

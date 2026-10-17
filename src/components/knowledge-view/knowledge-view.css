@@ -312,7 +312,7 @@
 .knowledge-view__field { display: flex; align-items: flex-start; gap: 12px; min-width: 0; padding: 12px 14px; border: 1px solid var(--kv-line); border-radius: 12px; }
 .knowledge-view__field-body { flex: 1 1 0; min-width: 0; }
 .knowledge-view__field-icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 10px; background: var(--kv-pale); color: var(--kv-blue); }
-.knowledge-view__field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.knowledge-view__field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
 .knowledge-view__field .knowledge-view__text { font-size: 15px; line-height: 1.6; }
 .knowledge-view__field .knowledge-view__empty { padding: 10px 14px; }
 .knowledge-view__field .knowledge-view__list > li { font-size: 15px; }
