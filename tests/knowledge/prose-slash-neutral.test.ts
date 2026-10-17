@@ -1,4 +1,9 @@
 import { expect, it } from "vitest";
+import JSZip from "jszip";
+import { load } from "cheerio";
+import fixture from "../contracts/illustrative-export.json";
+import { KnowledgeBaseExportSchema } from "../../src/contracts";
+import { documentParagraphs, renderKnowledgeDocument } from "../../src/knowledge/document-export";
 import { factualBullets } from "../../src/knowledge/narrative-prose";
 
 const texts = (tail: string) => factualBullets(`We provide ${tail}`, "Lumen Ledger").map((bullet) => bullet.text);
@@ -22,4 +27,24 @@ it("does not backtrack catastrophically on long punctuation runs", () => {
     factualBullets(`We provide ${run}`, "Lumen Ledger");
     expect(performance.now() - started).toBeLessThan(200);
   }
+});
+
+it("keeps literal tokens wrapped in Markdown emphasis or code spans, with the complete sentence", () => {
+  for (const token of ["**our.com**", "`our.com`", "_our.com_", "~~our.com~~", "**our@example.com**"]) {
+    expect(texts(`links to ${token} for our clients.`)).toEqual([`links to ${token} for its clients.`]);
+  }
+  expect(factualBullets("We provide links to `https://x.io/our` for our clients.", "Lumen Ledger"))
+    .toEqual([{ text: "We provide links to `https://x.io/our` for our clients.", label: "Company statement" }]);
+  expect(texts("links for **our** clients.")).toEqual(["links for **its** clients."]);
+});
+
+it("shows an emphasised literal domain in the document projection and DOCX", async () => {
+  const snapshot = KnowledgeBaseExportSchema.parse(fixture);
+  snapshot.offerings[0].description = "We offer links to **our.com** for our clients.";
+  const paragraphs = documentParagraphs({ kind: "snapshot", snapshot });
+  expect(paragraphs.some((p) => p.text === "links to **our.com** for its clients.")).toBe(true);
+  const zip = await JSZip.loadAsync(await renderKnowledgeDocument({ kind: "snapshot", snapshot }));
+  const text = load(await zip.file("word/document.xml")!.async("string"), { xmlMode: true }).text();
+  expect(text).toContain("our.com");
+  expect(text).not.toContain("its.com");
 });
