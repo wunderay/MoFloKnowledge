@@ -150,16 +150,19 @@ describe("C4 Logos card", () => {
   });
 
   // behavioural
-  it("shows every logo as an image with alt text, labelled Primary / its own label / Logo N", async () => {
+  it("shows every logo as an image with alt text, labelled Primary / its own label / Logo", async () => {
     const page = await openBrand({ draft: brandDraft() });
     const logos = cardOf(page, "Logos");
     expect(imagesIn(page, logos).map((i) => i.src)).toEqual(LOGOS.map((l) => l.url));
     for (const image of imagesIn(page, logos)) expect(image.alt.trim()).not.toBe("");
-    const labels = ["Primary", "Stacked lockup", "Logo 3"];
-    labels.forEach((label, i) => {
+    const labels = ["Primary", "Stacked lockup", "Logo"];
+    labels.slice(0, 2).forEach((label, i) => {
       const t = tile(page, logos, label, labels.filter((l) => l !== label));
       expect(imagesIn(page, t).map((x) => x.src), `the "${label}" tile holds its own image`).toEqual([LOGOS[i]!.url]);
     });
+    // "Logo" is also the start of the card's own title, so the third tile is found by its image.
+    const third = page.$(logos).find("img").toArray().map((img) => page.$(img)).find((img) => img.attr("src") === LOGOS[2]!.url)!;
+    expect(norm(third.closest("li").text()), "a logo without a variant is captioned exactly Logo").toBe("Logo");
   });
 
   // behavioural

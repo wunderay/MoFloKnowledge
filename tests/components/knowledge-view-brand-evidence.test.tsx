@@ -31,7 +31,7 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
     const page = await open[source]();
     // The source-backed first item and the untouched third item of each list have no marker.
     for (const [title, first, third] of [
-      ["Logos", "Primary", "Logo 3"],
+      ["Logos", "Primary", "Logo"],
       ["Colors", "#1F4E79", "#F2E8CF"],
       ["Fonts", "Fraunces", "IBM Plex Mono"],
     ] as const) {
@@ -69,7 +69,7 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
     const page = await open[source]();
     const all = imagesIn(page, page.$(".knowledge-view__panel")[0]!);
     expect(all.map((i) => i.src)).toEqual([LOGOS[0]!.url, ...LOGOS.map((l) => l.url)]);
-    const labels = ["Primary", "Primary", "Stacked lockup", "Logo 3"];
+    const labels = ["Primary", "Primary", "Stacked lockup", "Logo"];
     all.forEach((image, i) => {
       expect(image.alt).toContain(COMPANY_NAME);
       expect(image.alt).toContain(labels[i]!);
