@@ -9,8 +9,9 @@ type Rule = {
     allow: boolean;
     pattern: string;
 };
-// Untrusted Crawl-delay is capped so it always fits a timer (< 2^31 ms); deadlines bound it further.
-const MAX_CRAWL_DELAY_MS = 60_000;
+// Untrusted Crawl-delay is honoured as asked, only clamped to what a timer can hold (< 2^31 ms).
+// A delay that cannot fit the task/job deadline is rejected up front by the scheduler, never slept.
+const MAX_CRAWL_DELAY_MS = 2 ** 31 - 1;
 export function parseRobots(text: string): {
     rules: Rule[];
     delayMs: number;
@@ -115,7 +116,11 @@ export class RobotsCache {
                 if (response.status >= 400 && response.status < 500 && response.status !== 429)
                     return { rules: [], delayMs: 500, blocked: 'robots unavailable' };
                 if (response.status === 429 && attempt === 0)
-                    await new Promise<void>((resolve, reject) => { const timer = setTimeout(resolve, retryAfterMs(response.headers['retry-after'])); signal?.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true }); });
+                    await new Promise<void>((resolve, reject) => {
+                        const abort = () => { clearTimeout(timer); reject(signal!.reason); };
+                        const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, retryAfterMs(response.headers['retry-after']));
+                        signal?.addEventListener('abort', abort, { once: true });
+                    });
             }
             catch (error) {
                 if (signal?.aborted)

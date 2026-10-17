@@ -8,7 +8,7 @@ import {
   type Reservation,
   CRAWL_LIMITS,
 } from "./budgets";
-import { Scheduler } from "./scheduler";
+import { DeadlineError, Scheduler } from "./scheduler";
 import { RobotsCache } from "./robots";
 import { fetchDocument } from "../network/pinned-transport";
 import { technicalObservations } from "../extract/observations";
@@ -68,15 +68,20 @@ export async function runCrawl(
     },
   );
   const scheduler = new Scheduler(signal);
+  const jobDeadlineAt = Date.now() + CRAWL_LIMITS.jobMs;
+  let timedOut = false;
   // Job-level signal (outer cancellation + job deadline) bounds robots loads and their pacing.
   const robots = new RobotsCache(
     fetcher,
     (url) => scheduler.pace(url, 500, scheduler.signal),
     scheduler.signal,
   );
-  const expired = (error: unknown) =>
-    scheduler.signal.aborted ||
-    ["TimeoutError", "AbortError"].includes((error as Error)?.name);
+  // A deadline outcome: an unsatisfiable pacing wait, or the job deadline aborting this very operation.
+  const deadlineHit = (error: unknown) =>
+    error instanceof DeadlineError ||
+    (scheduler.signal.aborted &&
+      (error === scheduler.signal.reason ||
+        ["TimeoutError", "AbortError"].includes((error as Error)?.name)));
   const captures: StoredCapture[] = [];
   const errors = (saved.errors as SafeJobError[] | undefined) ?? [];
   const progress: Progress = {
@@ -135,8 +140,7 @@ export async function runCrawl(
         Number(
           (
             (row.observations as Record<string, unknown>)?.design as
-              | { resourceBytes?: number }
-              | undefined
+              { resourceBytes?: number } | undefined
           )?.resourceBytes ?? 0,
         ),
       0,
@@ -167,6 +171,7 @@ export async function runCrawl(
       ...new Set([
         ...frontier.limitsReached,
         ...budgets.limitsReached,
+        ...(timedOut ? ["time"] : []),
         ...(designUsed >= CRAWL_LIMITS.designBytes ? ["design_bytes"] : []),
       ]),
     ];
@@ -191,8 +196,12 @@ export async function runCrawl(
         try {
           const response = await scheduler.runHttp(
             item.url,
-            (taskSignal) =>
-              fetcher(item.url, {
+            (taskSignal) => {
+              const deadlineAt = Math.min(
+                jobDeadlineAt,
+                Date.now() + CRAWL_LIMITS.fetchMs,
+              );
+              return fetcher(item.url, {
                 scope: frontier.scope,
                 signal: taskSignal,
                 onRequest: async (url) => {
@@ -202,9 +211,11 @@ export async function runCrawl(
                     url,
                     Math.max(500, rule.delayMs),
                     taskSignal,
+                    deadlineAt,
                   );
                 },
-              }),
+              });
+            },
             policy.delayMs,
             signal,
             true,
@@ -232,7 +243,9 @@ export async function runCrawl(
         } catch (error) {
           if (
             signal.aborted ||
-            expired(error) ||
+            scheduler.signal.aborted ||
+            error instanceof DeadlineError ||
+            jobDeadlineAt - Date.now() < CRAWL_LIMITS.fetchMs ||
             error instanceof NetworkPolicyError ||
             attempt === 1
           )
@@ -346,7 +359,7 @@ export async function runCrawl(
       if (error instanceof NetworkPolicyError) throw error;
       progress.failed++;
       errors.push(
-        expired(error)
+        deadlineHit(error)
           ? {
               code: "deadline_exceeded",
               url: item.url,
@@ -358,7 +371,8 @@ export async function runCrawl(
               code: "capture_failed",
               url: item.url,
               retryable: false,
-              message: "This page could not be captured within the crawl policy.",
+              message:
+                "This page could not be captured within the crawl policy.",
             },
       );
     } finally {
@@ -367,7 +381,11 @@ export async function runCrawl(
     }
   }
   await persist();
-  while (!scheduler.signal.aborted) {
+  for (;;) {
+    if (scheduler.signal.aborted) {
+      timedOut = true;
+      break;
+    }
     const batch: { item: FrontierItem; reservation: Reservation }[] = [];
     for (let index = 0; index < 3; index++) {
       const item = frontier.next();
