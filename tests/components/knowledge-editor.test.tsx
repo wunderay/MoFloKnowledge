@@ -81,11 +81,11 @@ const authoritative = {
   entries: [{ ...original, current_revision: 2, content: selected, provenance: savedProvenance }],
   draftGeneration: 2,
 };
-function render() {
+function render(entries: any[] = [original]) {
   harness.cursor = 0;
   const wrapper = KnowledgeEditor({
     companyId: "company",
-    initialDraft: { ...authoritative, entries: [original] } as any,
+    initialDraft: { ...authoritative, entries } as any,
   });
   const content = wrapper.props.children as ReactElement<any>;
   return elements((content.type as (props: unknown) => React.ReactNode)(content.props));
@@ -178,4 +178,45 @@ it("keeps local edits and the API error when the save itself fails", async () =>
   expect(harness.state.values.entry).toEqual(selected);
   expect(harness.dispatch).not.toHaveBeenCalledWith({ type: "saved", id: "entry" });
   expect(harness.api).toHaveBeenCalledTimes(1);
+});
+
+
+it("selects one offering at a time while preserving each offering's unsaved fields", () => {
+  const offerings = ["First service", "Second service"].map((name, index) => ({
+    ...original, id: `offering-${index}`, kind: "offering",
+    content: { ...createEntryDefault("offering", `offering-${index}`), name },
+  }));
+  harness.state = { category: "offering", values: {}, provenance: {}, dirty: [] };
+  const selectOffering = (tree: ReactElement<any>[], name: string) => tree.find((node) =>
+    node.type === "button" && elements(node).some((child) => child.type === "strong" && child.props.children === name),
+  )!;
+  expect(field(render(offerings), "name").props.value).toBe("First service");
+  selectOffering(render(offerings), "Second service").props.onClick();
+  const second = render(offerings);
+  expect(second.filter((node) => node.props.name === "name")).toHaveLength(1);
+  expect(field(second, "name").props.value).toBe("Second service");
+  field(second, "description").props.onChange("Local second description");
+  selectOffering(render(offerings), "First service").props.onClick();
+  expect(field(render(offerings), "description").props.value).toBeNull();
+  selectOffering(render(offerings), "Second service").props.onClick();
+  expect(field(render(offerings), "description").props.value).toBe("Local second description");
+  expect(harness.state.dirty).toContain("offering-1");
+});
+
+it("selects a newly added offering without discarding the previous offering's edits", () => {
+  const offering = {
+    ...original, id: "existing", kind: "offering",
+    content: { ...createEntryDefault("offering", "existing"), name: "Existing service" },
+  };
+  harness.state = { category: "offering", values: {}, provenance: {}, dirty: [] };
+  field(render([offering]), "description").props.onChange("Keep this description");
+  const add = render([offering]).find((node) => node.type === "button" &&
+    Array.isArray(node.props.children) && node.props.children.includes("offering"))!;
+  add.props.onClick();
+  const added = render([offering]);
+  expect(field(added, "name").props.value).toBeNull();
+  expect(added.filter((node) => node.props.name === "name")).toHaveLength(1);
+  expect(harness.state.values.existing.description).toBe("Keep this description");
+  const selectedButton = added.find((node) => node.type === "button" && node.props["aria-current"] === "true")!;
+  expect(text(elements(selectedButton))).toContain("Untitled offering 2");
 });
