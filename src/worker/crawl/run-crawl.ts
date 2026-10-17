@@ -414,8 +414,17 @@ export async function runCrawl(
             c.capture.normalizedUrl === item.url ||
             c.capture.finalUrl === item.url,
         )
-      )
+      ) {
+        // Committed after the last checkpoint: recover its links on resume.
+        const done = captures.find(
+          (c) =>
+            c.capture.normalizedUrl === item.url ||
+            c.capture.finalUrl === item.url,
+        );
+        for (const link of done?.capture.links ?? [])
+          frontier.add(link.url, link.label, item.depth + 1);
         continue;
+      }
       try {
         batch.push({ item, reservation: budgets.reserve(item.depth, 0) });
         inFlight.set(item.url, item);
