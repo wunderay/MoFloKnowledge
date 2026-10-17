@@ -236,7 +236,7 @@ export function CompanyDashboard({
               <div className="company-card__footer">
                 <StatusBadge value={c.role ?? "member"} />
                 <Link
-                  href={`/knowledge${c.archived_at ? "/view" : ""}?companyId=${c.id}`}
+                  href={`/knowledge${c.archived_at ? "/view" : ""}?companyId=${c.id}${c.latestJob && !c.archived_at ? `&jobId=${c.latestJob.id}` : ""}`}
                   className="button button--quiet"
                 >
                   {c.archived_at ? "View history" : "Open workspace"}{" "}

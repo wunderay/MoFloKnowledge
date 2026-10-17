@@ -31,26 +31,45 @@ function searchable(value: unknown): string {
       .join(" ");
   return String(value);
 }
+// An entry matches origin/coverage only through its own claims and targets, never through provenance shared with other entries.
+function ownProvenance(e: ViewEntry) {
+  const id = (e as { entry_id?: string }).entry_id;
+  const contentId = (e.content as { id?: string }).id;
+  const root =
+    e.kind === "key_person"
+      ? `/key_people/@${contentId}`
+      : e.kind === "offering"
+        ? `/offerings/@${contentId}`
+        : `/${e.kind}`;
+  return {
+    claims: e.provenance.claims.filter((c) => c.entry_id === id),
+    coverage: e.provenance.coverage.filter((c) =>
+      c.targets.some((t) => t === root || t.startsWith(`${root}/`)),
+    ),
+  };
+}
 export function filterView<T extends ViewEntry>(
   entries: T[],
   filters: ViewFilters,
 ): T[] {
   const query = filters.query?.normalize("NFKC").toLocaleLowerCase().trim();
-  return entries.filter(
-    (e) =>
+  return entries.filter((e) => {
+    const own = ownProvenance(e);
+    return (
       e.company_id === filters.companyId &&
       (!filters.section || e.kind === filters.section) &&
       (!filters.origin ||
-        e.provenance.claims.some((c) => c.origin === filters.origin)) &&
+        own.claims.some((c) => c.origin === filters.origin)) &&
       (!filters.reviewStatus || e.review_status === filters.reviewStatus) &&
       (!filters.coverage ||
-        e.provenance.coverage.some((c) => c.status === filters.coverage)) &&
+        own.coverage.some((c) => c.status === filters.coverage)) &&
       (!query ||
         searchable(e.content)
           .normalize("NFKC")
           .toLocaleLowerCase()
-          .includes(query)),
-  );
+          .includes(query))
+    );
+  });
 }
 export function resetScopedFilters(companyId: string): ViewFilters {
   return { companyId };
