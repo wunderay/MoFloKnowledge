@@ -128,6 +128,12 @@ export function KnowledgeViewer({
   /** What the unread save was: a change made in place, or (as before) links and people. */
   const [staleWhat, setStaleWhat] = useState<"links" | "changes">("links");
   const [refreshing, setRefreshing] = useState(false);
+  /** Counts draft reads and view loads; a read applies only while it is the latest one. */
+  const readEpoch = useRef(0);
+  const viewNow = useRef({ companyId, versionId });
+  viewNow.current = { companyId, versionId };
+  const staleWhatNow = useRef(staleWhat);
+  staleWhatNow.current = staleWhat;
   const [loading, setLoading] = useState(!initialData);
   const initializedList = useRef(false);
   const initializedView = useRef(false);
@@ -181,6 +187,9 @@ export function KnowledgeViewer({
     setCoverage("");
   }, [companyId, versionId]);
   useEffect(() => {
+    // Loading a view supersedes every draft read still on its way.
+    readEpoch.current++;
+    setRefreshing(false);
     if (initialData && !initializedView.current) {
       initializedView.current = true;
       return;
@@ -230,42 +239,63 @@ export function KnowledgeViewer({
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false);
       });
-    return () => abort.abort();
+    return () => {
+      readEpoch.current++;
+      abort.abort();
+    };
   }, [companyId, versionId, reload]);
   /**
-   * Re-reads the draft after an import so the view shows it, without blanking the page. The import
-   * is already saved when this runs, so a failed read never rejects (the caller must not treat the
-   * save as failed or send it again): it marks the view stale, which blocks further imports and
-   * offers a reload, until a later read succeeds.
+   * Re-reads the draft after a save so the view shows it, without blanking the page. The save is
+   * already committed when this runs, so the returned promise never rejects (the caller must not
+   * treat the save as failed or send it again). A failed or slow read marks the view stale, which
+   * blocks further imports and offers a reload, until a later read succeeds.
+   *
+   * Only the read started last for the company and draft the view is showing may apply its result
+   * (success, failure or timeout). A read that was superseded by a newer read, or by navigation to
+   * another version or company, resolves quietly and changes nothing.
    */
-  async function refreshDraft(what?: "changes") {
+  async function refreshDraft(what?: "changes", userInitiated = false) {
+    const forCompany = companyId;
+    const current = viewNow.current;
+    if (current.companyId !== forCompany || current.versionId !== "draft")
+      return;
+    const mine = ++readEpoch.current;
+    const latest = () => readEpoch.current === mine;
     setRefreshing(true);
+    const read = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      // A read that does not settle in time leaves the view stale (the save stands, and is never sent again).
-      const read = new AbortController();
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const data = await Promise.race([
-        api<{
-          company: { role: string; archived_at: string | null };
-          entries: ViewEntry[];
-          citationContext?: CitationContext;
-        }>(companyPath(companyId, "/draft"), { signal: read.signal }),
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(() => {
-            read.abort();
-            reject(new Error("The draft was not read in time."));
-          }, timing.reread);
-        }),
-      ]).finally(() => clearTimeout(timer));
+      const request = api<{
+        company: { role: string; archived_at: string | null };
+        entries: ViewEntry[];
+        citationContext?: CitationContext;
+      }>(companyPath(forCompany, "/draft"), { signal: read.signal });
+      // A read after a save that does not settle in time leaves the view stale (the save stands, and is
+      // never sent again). A Reload the person asked for is not cut off.
+      const data = userInitiated
+        ? await request
+        : await Promise.race([
+            request,
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(() => {
+                read.abort();
+                reject(new Error("The draft was not read in time."));
+              }, timing.reread);
+            }),
+          ]);
+      if (!latest()) return;
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
       setEntries(data.entries);
       setCitationContext(data.citationContext);
       setStaleDraft(null);
     } catch (error) {
-      setStaleWhat(what ?? staleWhat);
+      if (!latest()) return;
+      setStaleWhat(userInitiated ? staleWhatNow.current : (what ?? "links"));
       setStaleDraft((error as Error).message || "The draft could not be read.");
     } finally {
-      setRefreshing(false);
+      clearTimeout(timer);
+      if (latest()) setRefreshing(false);
+      else read.abort();
     }
   }
   async function reject(entry: ViewEntry) {
@@ -477,7 +507,7 @@ export function KnowledgeViewer({
             className="button"
             disabled={refreshing}
             aria-busy={refreshing}
-            onClick={() => void refreshDraft()}
+            onClick={() => void refreshDraft(undefined, true)}
           >
             {refreshing ? "Reloading…" : "Reload"}
           </button>
@@ -527,7 +557,7 @@ export function KnowledgeViewer({
                 canEdit={canEdit && versionId === "draft"}
                 actorId={actorId}
                 importBlocked={staleDraft !== null}
-                onSaved={refreshDraft}
+                onSaved={(what) => refreshDraft(what)}
                 offeringId={offeringId}
                 onSelectOffering={(id) => {
                   setOfferingId(id);
