@@ -19,7 +19,7 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
     .map((item) => ({
       id: item.id,
       label: item.text.trim(),
-      mark: <ItemSource evidence={ev} path={`/company_foundation/alternative_company_names/@${item.id}`} />,
+      mark: <ItemSource evidence={ev} path={`/company_foundation/alternative_company_names/@${item.id}`} name={item.text.trim()} />,
     }))
     .filter((item) => item.label);
   const mainPath = "/company_foundation/main_address";
@@ -93,7 +93,7 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
                       <li key={address.id}>
                         {address.label && <strong>{address.label}</strong>}
                         <span>{address.text}</span>
-                        <ItemSource evidence={ev} path={`${othersPath}/@${address.id}`} />
+                        <ItemSource evidence={ev} path={`${othersPath}/@${address.id}`} name={address.label ?? address.text ?? "location"} />
                       </li>
                     ))}
                   </ul>

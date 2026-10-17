@@ -25,7 +25,7 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
       .map((item) => ({
         id: item.id,
         label: item.text.trim(),
-        mark: <ItemSource evidence={evidence} path={`${field}/@${item.id}`} />,
+        mark: <ItemSource evidence={evidence} path={`${field}/@${item.id}`} name={item.text.trim()} />,
       }))
       .filter((item) => item.label);
   const roles = texts(foundation.company_role, fev, p.role);
@@ -36,11 +36,12 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
   const suppliers = market.suppliers_and_partners
     .map((partner) => {
       const name = textOrNull(partner.name);
+      const label = name ?? textOrNull(partner.relationship_text) ?? textOrNull(partner.relationship_type) ?? partner.url ?? "";
       return {
         id: partner.id,
-        label: name ?? textOrNull(partner.relationship_text) ?? textOrNull(partner.relationship_type) ?? partner.url ?? "",
+        label,
         detail: name ? textOrNull(partner.relationship_type) : null,
-        mark: <ItemSource evidence={mev} path={`${p.suppliers}/@${partner.id}`} />,
+        mark: <ItemSource evidence={mev} path={`${p.suppliers}/@${partner.id}`} name={label} />,
       };
     })
     .filter((item) => item.label);
@@ -117,7 +118,7 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
                     {(item.publisher || item.published_on) && (
                       <small>{[item.publisher, item.published_on].filter(Boolean).join(" · ")}</small>
                     )}
-                    <ItemSource evidence={mev} path={`${p.outlook}/@${item.id}`} />
+                    <ItemSource evidence={mev} path={`${p.outlook}/@${item.id}`} name={item.text.trim()} />
                   </li>
                 ))}
               </ul>

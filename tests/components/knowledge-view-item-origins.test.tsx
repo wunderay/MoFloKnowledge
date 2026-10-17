@@ -32,6 +32,7 @@ const open = {
 /** The text each list item shows, in stored order. */
 const SHOWN: Record<string, (b: Business) => string[]> = {
   Buyers: (b) => b.market_and_customers.target_buyers.map((x) => x.text),
+  Suppliers: (b) => b.market_and_customers.suppliers_and_partners.map((x) => x.name!),
   "Industry groupings": (b) => b.market_and_customers.industry_groupings.map((x) => x.text),
   "Service locations": (b) => b.company_foundation.service_locations.map((x) => x.text),
   "Company role": (b) => b.company_foundation.company_role.map((x) => x.text),

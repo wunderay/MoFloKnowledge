@@ -139,12 +139,26 @@ export function buildEvidence(opts: EvidenceOptions = {}) {
   }
   // Like the real draft, a lookup of every cited claim, excerpt and source rides along.
   draft.citationContext = { claims, evidence, sources: [source] } as never;
-  const payload = snapshotFrom(draft);
-  payload.provenance.sources = [source];
-  payload.provenance.evidence = evidence;
-  payload.provenance.claims = claims as never;
-  payload.provenance.coverage = coverage as never;
-  return { business, draft: draft as Draft, snapshot: { payload, versionId: SNAPSHOT_ID }, claims, evidence, sources: [source], coverage };
+  // Built on demand: a snapshot must satisfy the export schema (UUID ids), a draft need not.
+  const snapshot = () => {
+    const payload = snapshotFrom(draft);
+    payload.provenance.sources = [source];
+    payload.provenance.evidence = evidence;
+    payload.provenance.claims = claims as never;
+    payload.provenance.coverage = coverage as never;
+    return { payload, versionId: SNAPSHOT_ID };
+  };
+  return {
+    business,
+    draft: draft as Draft,
+    get snapshot() {
+      return snapshot();
+    },
+    claims,
+    evidence,
+    sources: [source],
+    coverage,
+  };
 }
 
 export const evidenceDraft = (opts?: EvidenceOptions) => buildEvidence(opts).draft;
@@ -159,6 +173,7 @@ const at = (field: string, index: number, leaf: string): Mark["target"] =>
 /** Every list field with a claim target and an origin its field allows. */
 export const ITEM_MARKS = [
   { card: "Buyers", section: "Customers & Industry", field: "market_and_customers/target_buyers", leaf: "text", origin: "inferred", label: "Historical inferred" },
+  { card: "Suppliers", section: "Customers & Industry", field: "market_and_customers/suppliers_and_partners", leaf: "name", origin: "user_provided", label: "User correction" },
   { card: "Industry groupings", section: "Customers & Industry", field: "market_and_customers/industry_groupings", leaf: "text", origin: "inferred", label: "Historical inferred" },
   { card: "Service locations", section: "Customers & Industry", field: "company_foundation/service_locations", leaf: "text", origin: "user_provided", label: "User correction" },
   { card: "Company role", section: "Customers & Industry", field: "company_foundation/company_role", leaf: "text", origin: "inferred", label: "Historical inferred" },

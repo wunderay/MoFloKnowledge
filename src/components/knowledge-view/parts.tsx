@@ -14,7 +14,17 @@ export const addHref = (companyId: string, kind: EntryKind) =>
  * user corrections, historical generated/inferred labels and coverage reasons.
  * Shown for filled fields, and for empty ones only when coverage was assessed.
  */
-export function Source({ evidence, path, filled }: { evidence: Evidence; path: string; filled: boolean }) {
+export function Source({
+  evidence,
+  path,
+  filled,
+  name,
+}: {
+  evidence: Evidence;
+  path: string;
+  filled: boolean;
+  name?: string;
+}) {
   if (!filled && !coverageFor(evidence.provenance, path) && !hasClaim(evidence.provenance, path)) return null;
   return (
     <CitationPopover
@@ -22,6 +32,7 @@ export function Source({ evidence, path, filled }: { evidence: Evidence; path: s
       provenance={fieldProvenance(evidence.provenance, path)}
       approved={evidence.approved}
       citationContext={evidence.citationContext}
+      name={name}
     />
   );
 }
@@ -31,9 +42,10 @@ export function Source({ evidence, path, filled }: { evidence: Evidence; path: s
  * user corrections or historical generated/inferred wording, so the closed view
  * says which item carries which origin. Items backed by sources rely on the field's control.
  */
-export function ItemSource({ evidence, path }: { evidence: Evidence; path: string }) {
+export function ItemSource({ evidence, path, name }: { evidence: Evidence; path: string; name: string }) {
   if (!hasMarkedOrigin(evidence.provenance, path)) return null;
-  return <Source evidence={evidence} path={path} filled />;
+  // The path ends in an item id, so the control is named by the item's own text instead.
+  return <Source evidence={evidence} path={path} filled name={name} />;
 }
 
 /** Why a field is unknown, partial or contested, in plain text. Shown for empty fields and for any field not fully found. */

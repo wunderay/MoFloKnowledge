@@ -54,7 +54,13 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
       id: item.id,
       label: textOrNull(item.label) ?? item.url ?? textOrNull(item.channel_type) ?? "",
       detail: textOrNull(item.label) || item.url ? textOrNull(item.channel_type) : null,
-      mark: <ItemSource evidence={mev} path={`${p.channels}/@${item.id}`} />,
+      mark: (
+        <ItemSource
+          evidence={mev}
+          path={`${p.channels}/@${item.id}`}
+          name={textOrNull(item.label) ?? item.url ?? textOrNull(item.channel_type) ?? "channel"}
+        />
+      ),
     }))
     .filter((item) => item.label);
   const ctas = market.ctas
@@ -62,7 +68,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
       id: item.id,
       label: item.label.trim(),
       detail: textOrNull(item.purpose),
-      mark: <ItemSource evidence={mev} path={`${p.ctas}/@${item.id}`} />,
+      mark: <ItemSource evidence={mev} path={`${p.ctas}/@${item.id}`} name={item.label.trim()} />,
     }))
     .filter((item) => item.label);
   const funnels = market.funnels.filter((funnel) => textOrNull(funnel.name) || funnel.steps.length > 0);
@@ -85,7 +91,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
                     value: (
                       <>
                         {href ? <a href={href} rel="noreferrer">{handle}</a> : handle}
-                        <Source evidence={oev} path={`${p.socials}/@${link.id}`} filled />
+                        <Source evidence={oev} path={`${p.socials}/@${link.id}`} filled name={link.platform} />
                       </>
                     ),
                   };
@@ -140,7 +146,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
                     {persona.organization && <small>{persona.organization}</small>}
                     {persona.goals.length > 0 && <small>Goals: {persona.goals.join("; ")}</small>}
                     {persona.painPoints.length > 0 && <small>Pain points: {persona.painPoints.join("; ")}</small>}
-                    <ItemSource evidence={mev} path={`${p.personas}/@${persona.id}`} />
+                    <ItemSource evidence={mev} path={`${p.personas}/@${persona.id}`} name={persona.heading} />
                   </li>
                 ))}
               </ul>
@@ -166,7 +172,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
                 {needs.map((need) => (
                   <li key={need.id}>
                     <span>{need.text}</span>
-                    <ItemSource evidence={mev} path={`${p.needs}/@${need.id}`} />
+                    <ItemSource evidence={mev} path={`${p.needs}/@${need.id}`} name={need.text.trim()} />
                   </li>
                 ))}
               </ul>
@@ -214,7 +220,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
                       {funnel.steps.map((step) => <li key={step.id}>{step.label}</li>)}
                     </ol>
                   )}
-                  <ItemSource evidence={mev} path={`${p.funnels}/@${funnel.id}`} />
+                  <ItemSource evidence={mev} path={`${p.funnels}/@${funnel.id}`} name={textOrNull(funnel.name) ?? "funnel"} />
                 </li>
               ))}
             </ul>
