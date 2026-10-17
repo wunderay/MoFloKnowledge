@@ -48,7 +48,6 @@ import {
   type Link,
 } from "../helpers/knowledge-view-site-all-fixtures";
 import {
-  ADD_PAGE,
   RAW,
   addButton,
   addButtons,
@@ -66,7 +65,6 @@ import {
   saveButton,
   theDialog,
   titleField,
-  typeInto,
   urlField,
   valueOf,
   withWebsite,
