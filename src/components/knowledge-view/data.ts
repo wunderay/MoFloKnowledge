@@ -16,6 +16,8 @@ import {
   type Offering,
   type OnlinePresence,
   type Positioning,
+  type SiteLink,
+  type SiteLinks,
   type SocialLink,
 } from "@/contracts";
 
@@ -78,6 +80,41 @@ export function profileFrom(
       presence: presence.evidence,
       branding: branding.evidence,
     },
+  };
+}
+
+/** The site_links entry as the view needs it: its links, what backs them, and enough of the entry to revise it. */
+export type ViewSiteLinks = {
+  links: SiteLink[];
+  evidence: Evidence;
+  /** The stored entry of an editable draft; null when the company has none yet. */
+  entry: { id: string; revision: number; content: SiteLinks; provenance: EntryProvenance } | null;
+};
+
+export function siteLinksFrom(
+  entries: {
+    id?: string;
+    current_revision?: number;
+    kind: EntryKind;
+    content: BusinessEntry;
+    provenance: EntryProvenance;
+    review_status: ReviewStatus;
+  }[],
+  citationContext?: CitationContext,
+): ViewSiteLinks {
+  const found = entries.find((item) => item.kind === "site_links");
+  const content = found?.content as SiteLinks | undefined;
+  return {
+    links: content?.links ?? [],
+    evidence: {
+      provenance: found?.provenance ?? createEmptyProvenance(),
+      approved: found?.review_status === "approved",
+      citationContext,
+    },
+    entry:
+      found?.id !== undefined && content
+        ? { id: found.id, revision: found.current_revision ?? 0, content, provenance: found.provenance }
+        : null,
   };
 }
 

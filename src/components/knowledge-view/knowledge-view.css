@@ -317,3 +317,46 @@
 }
 .knowledge-view__qualifier { display: block; color: var(--kv-muted); font-size: 10px; font-style: italic; line-height: 1.4; overflow-wrap: anywhere; }
 .knowledge-view__stat dd .knowledge-view__qualifier { margin-top: 4px; }
+
+/* Site Knowledge: the card's header carries the two actions; links are compact rows. */
+.knowledge-view__site-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
+.knowledge-view__site-intro { flex: 1 1 260px; min-width: 0; }
+.knowledge-view__site-intro .knowledge-view__card-subtitle { margin-bottom: 0; }
+.knowledge-view__site-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.knowledge-view .knowledge-view__site-add,
+.knowledge-view .knowledge-view__site-import { display: inline-block; padding: 8px 14px; border: 1px solid var(--kv-line); border-radius: 8px; font: inherit; font-size: 12px; font-weight: 500; line-height: 1.4; text-align: center; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.knowledge-view .knowledge-view__site-add { background: var(--white, #fff); color: inherit; }
+.knowledge-view .knowledge-view__site-add:hover { border-color: var(--kv-blue); color: var(--kv-blue); }
+.knowledge-view .knowledge-view__site-import { border-color: var(--kv-blue); background: var(--kv-blue); color: #fff; }
+.knowledge-view .knowledge-view__site-import:hover:not(:disabled) { background: #2f56e0; }
+.knowledge-view .knowledge-view__site-import:disabled, .knowledge-view .knowledge-view__site-add:disabled { opacity: .55; cursor: default; }
+.knowledge-view__site-empty { margin: 14px 0 0; color: var(--kv-muted); font-size: 12px; }
+.knowledge-view__site-list { display: flex; flex-direction: column; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--kv-line); }
+.knowledge-view__site-list > li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-width: 0; padding: 9px 0; border-bottom: 1px solid var(--kv-line); font-size: 13px; line-height: 1.5; }
+.knowledge-view__site-list > li:last-child { border-bottom: 0; padding-bottom: 0; }
+.knowledge-view__site-title { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.knowledge-view__site-url { min-width: 0; color: var(--kv-muted); font-size: 12px; overflow-wrap: anywhere; }
+.knowledge-view a.knowledge-view__site-url { color: var(--kv-blue); text-decoration: none; }
+.knowledge-view a.knowledge-view__site-url:hover { text-decoration: underline; }
+.knowledge-view__site-note { flex: 1 1 100%; color: var(--kv-muted); font-size: 11px; overflow-wrap: anywhere; }
+.knowledge-view__site .citation-popover { align-self: center; }
+
+/* The import dialog: a native modal, so it traps focus and closes with Escape. */
+.knowledge-view__dialog { margin: auto; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0; border: 1px solid var(--kv-line); border-radius: 16px; background: var(--white, #fff); color: inherit; box-shadow: 0 12px 40px #172b4d33; }
+.knowledge-view__dialog::backdrop { background: #172b4d66; }
+.knowledge-view__dialog > form { display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 66px); padding: 20px; overflow: auto; }
+.knowledge-view__dialog-title { margin: 0; font-size: 18px; font-weight: 600; }
+.knowledge-view__dialog-hint { margin: 0; color: var(--kv-muted); font-size: 12px; line-height: 1.5; }
+.knowledge-view__dialog-error { margin: 0; padding: 8px 12px; border: 1px solid #f1b8b8; border-radius: 10px; background: #fff5f5; color: #a12a2a; font-size: 12px; overflow-wrap: anywhere; }
+.knowledge-view__dialog-list { margin: 0; padding: 0; overflow: auto; list-style: none; border: 1px solid var(--kv-line); border-radius: 12px; }
+.knowledge-view__dialog-list > li + li { border-top: 1px solid var(--kv-line); }
+.knowledge-view__dialog-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; cursor: pointer; }
+.knowledge-view__dialog-item input { flex: none; margin-top: 3px; }
+.knowledge-view__dialog-text { min-width: 0; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.knowledge-view__dialog-text small { display: block; color: var(--kv-muted); font-size: 11px; }
+.knowledge-view__dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+/* All sections: each section under its own heading, with room between them. */
+.knowledge-view__all { display: flex; flex-direction: column; gap: 40px; }
+.knowledge-view__all-section { min-width: 0; }
+.knowledge-view__all-title { margin-bottom: 16px; }

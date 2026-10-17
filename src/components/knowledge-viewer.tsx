@@ -82,6 +82,7 @@ export function KnowledgeViewer({
     versions: Version[];
     snapshot?: KnowledgeBaseExport;
     draft?: {
+      actorId?: string;
       company: { role: string; archived_at: string | null };
       entries: ViewEntry[];
       citationContext?: CitationContext;
@@ -131,6 +132,7 @@ export function KnowledgeViewer({
       !initialData.draft.company.archived_at,
     ),
   );
+  const [actorId, setActorId] = useState(initialData?.draft?.actorId ?? "");
   const [history, setHistory] = useState<ViewEntry | null>(null);
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -189,12 +191,14 @@ export function KnowledgeViewer({
     const request =
       versionId === "draft"
         ? api<{
+            actorId?: string;
             company: { name: string; role: string; archived_at: string | null };
             entries: ViewEntry[];
             citationContext?: CitationContext;
           }>(companyPath(companyId, "/draft"), { signal: abort.signal }).then(
             (data) => {
               if (abort.signal.aborted) return;
+              setActorId(data.actorId ?? "");
               setName(data.company.name);
               setCanEdit(
                 data.company.role !== "viewer" && !data.company.archived_at,
@@ -221,6 +225,21 @@ export function KnowledgeViewer({
       });
     return () => abort.abort();
   }, [companyId, versionId, reload]);
+  /** Re-reads the draft after an import so the view shows it, without blanking the page. */
+  async function refreshDraft() {
+    try {
+      const data = await api<{
+        company: { role: string; archived_at: string | null };
+        entries: ViewEntry[];
+        citationContext?: CitationContext;
+      }>(companyPath(companyId, "/draft"));
+      setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
+      setEntries(data.entries);
+      setCitationContext(data.citationContext);
+    } catch (error) {
+      setError((error as Error).message);
+    }
+  }
   async function reject(entry: ViewEntry) {
     setBusy(true);
     setError("");
@@ -472,6 +491,9 @@ export function KnowledgeViewer({
                 name={name}
                 entries={entries}
                 citationContext={citationContext}
+                canEdit={canEdit && versionId === "draft"}
+                actorId={actorId}
+                onSaved={refreshDraft}
                 offeringId={offeringId}
                 onSelectOffering={(id) => {
                   setOfferingId(id);
