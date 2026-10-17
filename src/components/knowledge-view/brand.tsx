@@ -6,6 +6,14 @@ import { addHref, Banner, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Sou
 const SAMPLE = "The quick brown fox jumps over the lazy dog";
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 const POSITIONS = ["Primary", "Secondary", "Tertiary"];
+// Website observations are not brand guidance unless marked confirmed (docs/no-ai-redesign.md).
+const OBSERVED_COLOR = "Observed website color";
+const OBSERVED_FONT = "Observed, not confirmed as brand guidance";
+const METHODS: Record<string, string> = {
+  css_declared: "declared CSS",
+  resource_loaded: "loaded resources",
+  computed_family: "computed font family",
+};
 
 export function BrandIdentity({ companyId, name, profile }: { companyId: string; name: string; profile: ViewProfile }) {
   const { branding } = profile;
@@ -18,6 +26,7 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
   };
   const company = textOrNull(name);
   // Labels count positions in the entry's own lists, so "Logo 3" is the third logo whatever is shown.
+  // Only a confirmed color takes the Primary/Secondary/Tertiary position wording; an observed one is "Color N".
   const logos = branding.logos.map((logo, index) => ({
     id: logo.id,
     label: index === 0 ? "Primary" : (textOrNull(logo.variant) ?? `Logo ${index + 1}`),
@@ -29,15 +38,30 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
     .map((color, index) => ({
       id: color.id,
       hex: color.hex,
-      label: textOrNull(color.apparent_role) ?? POSITIONS[index] ?? `Color ${index + 1}`,
+      observed: color.classification !== "brand_guide_confirmed",
+      label:
+        textOrNull(color.apparent_role) ??
+        (color.classification === "brand_guide_confirmed" ? POSITIONS[index] : undefined) ??
+        `Color ${index + 1}`,
     }))
     .filter((color) => typeof color.hex === "string" && HEX.test(color.hex));
   const fonts = branding.fonts
-    .map((font, index) => ({ id: font.id, family: textOrNull(font.family), label: index === 0 ? "Primary" : `Font ${index + 1}` }))
-    .filter((font): font is { id: string; family: string; label: string } => font.family !== null);
+    .map((font, index) => {
+      const confirmed = font.brand_confirmed === true;
+      const methods = (font.observations ?? []).map((method) => METHODS[method] ?? method).join(", ");
+      return {
+        id: font.id,
+        family: textOrNull(font.family),
+        label: index === 0 && confirmed ? "Primary" : `Font ${index + 1}`,
+        // Shown on every font that is only an observation, with how it was observed.
+        qualifier: confirmed ? null : methods ? `${OBSERVED_FONT} (${methods})` : OBSERVED_FONT,
+      };
+    })
+    .filter((font): font is typeof font & { family: string } => font.family !== null);
   const logoAlt = (label: string) => `${company ?? "Company"} logo (${label})`;
   const primaryLogo = logos[0];
   const primaryFont = fonts[0];
+  const shownColors = colors.slice(0, 3);
   return (
     <>
       <Banner label="Brand Identity" title={company ?? "Your company"} placeholder={!company} caption="Display name">
@@ -74,18 +98,23 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
                 <>
                   {colors.length > 0 ? (
                     <span className="knowledge-view__palette">
-                      {colors.slice(0, 3).map((color) => (
+                      {shownColors.map((color) => (
                         <span
                           className="knowledge-view__palette-swatch"
                           key={color.id}
                           style={{ backgroundColor: color.hex }}
                           role="img"
-                          aria-label={`${color.label} ${color.hex}`}
+                          aria-label={`${color.label} ${color.hex}${color.observed ? `, ${OBSERVED_COLOR.toLowerCase()}` : ""}`}
                         />
                       ))}
                     </span>
                   ) : (
                     <StatAdd href={href}>+ colors</StatAdd>
+                  )}
+                  {shownColors.some((color) => color.observed) && (
+                    <small className="knowledge-view__qualifier">
+                      {shownColors.every((color) => color.observed) ? "Observed website colors" : "Includes observed website colors"}
+                    </small>
                   )}
                   <Source evidence={ev} path={p.colors} filled={colors.length > 0} />
                   <CoverageNote evidence={ev} path={p.colors} empty={colors.length === 0} />
@@ -105,11 +134,12 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
                   ) : (
                     <StatAdd href={href}>+ font</StatAdd>
                   )}
+                  {primaryFont?.qualifier && <small className="knowledge-view__qualifier">{primaryFont.qualifier}</small>}
                   <Source
                     evidence={ev}
                     path={primaryFont ? `${p.fonts}/@${primaryFont.id}` : p.fonts}
                     filled={primaryFont !== undefined}
-                    name={primaryFont?.family}
+                    name={primaryFont ? (primaryFont.qualifier ? `${primaryFont.family}, ${primaryFont.qualifier.toLowerCase()}` : primaryFont.family) : undefined}
                   />
                   <CoverageNote evidence={ev} path={p.fonts} empty={!primaryFont} />
                 </>
@@ -121,7 +151,7 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
       <div className="knowledge-view__grid knowledge-view__grid--2">
         <KnowledgeCard
           title="Logos"
-          subtitle="Marks used across content."
+          subtitle="Logos recorded for the brand."
           source={<Source evidence={ev} path={p.logos} filled={logos.length > 0} />}
         >
           {logos.length > 0 ? (
@@ -155,7 +185,7 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
         </KnowledgeCard>
         <KnowledgeCard
           title="Colors"
-          subtitle="Brand colors used across content."
+          subtitle="Colors recorded for the brand."
           source={<Source evidence={ev} path={p.colors} filled={colors.length > 0} />}
         >
           {colors.length > 0 ? (
@@ -168,8 +198,13 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
                     </span>
                     <span className="knowledge-view__tile-caption">
                       <strong>{color.label}</strong>
-                      <ItemSource evidence={ev} path={`${p.colors}/@${color.id}`} name={`${color.label} ${color.hex}`} />
+                      <ItemSource
+                        evidence={ev}
+                        path={`${p.colors}/@${color.id}`}
+                        name={`${color.label} ${color.hex}${color.observed ? `, ${OBSERVED_COLOR.toLowerCase()}` : ""}`}
+                      />
                     </span>
+                    {color.observed && <small className="knowledge-view__qualifier">{OBSERVED_COLOR}</small>}
                     <small>{color.hex}</small>
                   </li>
                 ))}
@@ -192,7 +227,7 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
       <div className="knowledge-view__grid knowledge-view__grid--1">
         <KnowledgeCard
           title="Fonts"
-          subtitle="Type families used across content."
+          subtitle="Type families recorded for the brand."
           source={<Source evidence={ev} path={p.fonts} filled={fonts.length > 0} />}
         >
           {fonts.length > 0 ? (
@@ -203,7 +238,12 @@ export function BrandIdentity({ companyId, name, profile }: { companyId: string;
                     <div className="knowledge-view__font-name">
                       <p className="knowledge-view__mini-label">{font.label}</p>
                       <strong>{font.family}</strong>
-                      <ItemSource evidence={ev} path={`${p.fonts}/@${font.id}`} name={font.family} />
+                      {font.qualifier && <small className="knowledge-view__qualifier">{font.qualifier}</small>}
+                      <ItemSource
+                        evidence={ev}
+                        path={`${p.fonts}/@${font.id}`}
+                        name={font.qualifier ? `${font.family}, ${font.qualifier.toLowerCase()}` : font.family}
+                      />
                     </div>
                     <p className="knowledge-view__font-sample">{SAMPLE}</p>
                   </li>

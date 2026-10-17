@@ -59,7 +59,8 @@ function OfferingDetail({
   title: string;
 }) {
   const { offering, evidence } = item;
-  const href = addHref(companyId, "offering");
+  // "+ Add" opens the editor on this offering; without entryId it would open the first one.
+  const href = `${addHref(companyId, "offering")}&entryId=${encodeURIComponent(offering.id)}`;
   const base = `/offerings/@${offering.id}`;
   const name = textOrNull(offering.name);
   const type = textOrNull(offering.offering_type);
