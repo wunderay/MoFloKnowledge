@@ -59,6 +59,24 @@ function cardsOf(page: Page, section: LockedSection) {
   );
 }
 const body = (page: Page, el: Element) => cardText(page, el);
+/** The same draft, seen by a viewer: nothing is edited in place and "+ Add" leads to the advanced editor. */
+const viewerOf = (draft: ReturnType<typeof buildDraft>) => ({ ...draft, company: { ...draft.company, role: "viewer" as const } });
+/** The cards an owner edits in place (Quest inline-edit-core), and the accessible name of the control that does it. */
+const INLINE_CONTROL: Record<string, string> = {
+  "Alternate names": "Add alternate name",
+  Overview: "Edit Overview",
+  "Founding story": "Edit Founding story",
+  "Business model": "Edit Business model",
+  "Company role": "Add company role",
+  "Industry groupings": "Add industry grouping",
+  "Service locations": "Add service location",
+  Buyers: "Add buyer",
+  Pitch: "Edit Pitch",
+  "Customer needs": "Add customer need",
+};
+/** The names of the buttons that edit a card's values in place (Edit …, Add …, Remove …). */
+const inlineControls = (page: Page, el: Element) =>
+  page.$(el).find("button").toArray().map((b) => page.$(b).attr("aria-label") ?? "").filter((name) => /^(edit|add) /i.test(name));
 type Element = NonNullable<ReturnType<typeof card>>;
 function expectInOrder(page: Page, titles: string[]) {
   const all = headings(page).map((h) => h.text.toLowerCase());
@@ -312,7 +330,7 @@ describe("C4 Sales & Marketing", () => {
 
 describe("C5 values render as text; empty values render an empty state with + Add", () => {
   // behavioural
-  it.each(LOCKED_SECTIONS)("%s: no input, textarea or select holds a knowledge value", async (section) => {
+  it.each(LOCKED_SECTIONS)("%s: closed or read-only, no input, textarea or select holds a knowledge value", async (section) => {
     const page = await openSection(section);
     const cards = cardsOf(page, section);
     for (const [title, el] of Object.entries(cards))
@@ -323,27 +341,65 @@ describe("C5 values render as text; empty values render an empty state with + Ad
   });
 
   // behavioural
-  it.each(LOCKED_SECTIONS)("%s: a company with no entries shows every card with an empty state and a + Add link to the right entry kind", async (section) => {
-    const page = await openSection(section, { draft: buildEmptyDraft() });
+  it.each(LOCKED_SECTIONS)("%s: a viewer of a company with no entries sees every card with an empty state and a + Add link to the right entry kind", async (section) => {
+    const page = await openSection(section, { draft: viewerOf(buildEmptyDraft()) });
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
       const el = cards[title]!;
       expect(addLinks(page, el), `card "${title}" has a "+ Add" link`).toEqual([
         `/knowledge?companyId=${EMPTY_COMPANY_ID}&category=${kind}`,
       ]);
+      expect(inlineControls(page, el), `card "${title}" has no inline control for a viewer`).toEqual([]);
+      expect(controlsIn(page, el)).toEqual([]);
+      expect(body(page, el)).not.toMatch(/undefined|null|NaN|\[object/);
+    }
+  });
+
+  // behavioural (Quest inline-edit-core: an owner's draft fills these cards in place)
+  it.each(LOCKED_SECTIONS)("%s: an owner of a company with no entries sees every card with an empty state, an inline control on the editable cards and a + Add link on the others", async (section) => {
+    const page = await openSection(section, { draft: buildEmptyDraft() });
+    const cards = cardsOf(page, section);
+    for (const { title, kind } of CARDS_BY_SECTION[section]) {
+      const el = cards[title]!;
+      const control = INLINE_CONTROL[title];
+      if (control) {
+        expect(inlineControls(page, el), `card "${title}" is filled in place`).toEqual([control]);
+        expect(addLinks(page, el), `card "${title}" has no link to the advanced editor`).toEqual([]);
+      } else {
+        expect(addLinks(page, el), `card "${title}" keeps its "+ Add" link`).toEqual([
+          `/knowledge?companyId=${EMPTY_COMPANY_ID}&category=${kind}`,
+        ]);
+        expect(inlineControls(page, el), `card "${title}" is not editable in place yet`).toEqual([]);
+      }
       expect(controlsIn(page, el)).toEqual([]);
       expect(body(page, el)).not.toMatch(/undefined|null|NaN|\[object/);
     }
   });
 
   // behavioural
-  it.each(LOCKED_SECTIONS)("%s: entries that exist but hold blank values get the same empty states", async (section) => {
-    const page = await openSection(section, { draft: draftFrom(createEmptyBusiness()) });
+  it.each(LOCKED_SECTIONS)("%s: entries that exist but hold blank values get the same empty states (a viewer: + Add links)", async (section) => {
+    const page = await openSection(section, { draft: viewerOf(draftFrom(createEmptyBusiness())) });
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section])
       expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([
         `/knowledge?companyId=${COMPANY_ID}&category=${kind}`,
       ]);
+  });
+
+  // behavioural
+  it.each(LOCKED_SECTIONS)("%s: entries that exist but hold blank values get the same empty states (an owner: inline controls where editable)", async (section) => {
+    const page = await openSection(section, { draft: draftFrom(createEmptyBusiness()) });
+    const cards = cardsOf(page, section);
+    for (const { title, kind } of CARDS_BY_SECTION[section]) {
+      const control = INLINE_CONTROL[title];
+      if (control) {
+        expect(inlineControls(page, cards[title]!), `card "${title}"`).toEqual([control]);
+        expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([]);
+      } else
+        expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([
+          `/knowledge?companyId=${COMPANY_ID}&category=${kind}`,
+        ]);
+    }
   });
 
   // behavioural
@@ -353,20 +409,27 @@ describe("C5 values render as text; empty values render an empty state with + Ad
   });
 
   // behavioural
-  it("Edge case: only the empty card gets the empty state; filled cards keep their value and have no + Add", async () => {
+  it("Edge case: only the empty card gets the empty state; filled cards keep their value and have no + Add (a viewer: a link; an owner: the inline control)", async () => {
     const b = buildBusiness();
     b.positioning.founding_story = null;
-    const page = await openSection("General Info", { draft: draftFrom(b) });
-    const cards = cardsOf(page, "General Info");
-    expect(body(page, cards["Founding story"]!)).toMatch(/No founding story yet/i);
-    expect(addLinks(page, cards["Founding story"]!)).toEqual([
-      `/knowledge?companyId=${COMPANY_ID}&category=positioning`,
-    ]);
-    for (const title of ["Headquarters", "Alternate names", "Overview"]) {
-      expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([]);
-      expect(norm(body(page, cards[title]!))).not.toMatch(/No .* yet/i);
+    for (const role of ["viewer", "owner"] as const) {
+      const draft = draftFrom(b, { role });
+      const page = await openSection("General Info", { draft });
+      const cards = cardsOf(page, "General Info");
+      expect(body(page, cards["Founding story"]!)).toMatch(/No founding story yet/i);
+      if (role === "viewer") {
+        expect(addLinks(page, cards["Founding story"]!)).toEqual([`/knowledge?companyId=${COMPANY_ID}&category=positioning`]);
+        expect(inlineControls(page, cards["Founding story"]!)).toEqual([]);
+      } else {
+        expect(addLinks(page, cards["Founding story"]!)).toEqual([]);
+        expect(inlineControls(page, cards["Founding story"]!)).toEqual(["Edit Founding story"]);
+      }
+      for (const title of ["Headquarters", "Alternate names", "Overview"]) {
+        expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([]);
+        expect(norm(body(page, cards[title]!))).not.toMatch(/No .* yet/i);
+      }
+      expect(body(page, cards["Overview"]!)).toContain(OVERVIEW);
     }
-    expect(body(page, cards["Overview"]!)).toContain(OVERVIEW);
   });
 
   // behavioural

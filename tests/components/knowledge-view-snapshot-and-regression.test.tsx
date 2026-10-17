@@ -65,8 +65,10 @@ describe("fixtures", () => {
 
 describe("C6 draft and saved snapshot", () => {
   // behavioural
-  it.each(LOCKED_SECTIONS)("%s: a snapshot renders the same banner and cards as the draft it was made from", async (section) => {
-    const fromDraft = signature(await openSection(section), section);
+  it.each(LOCKED_SECTIONS)("%s: a snapshot renders the same banner and cards as the (read-only) draft it was made from", async (section) => {
+    // An owner's draft edits these sections in place (Quest inline-edit-core), which a snapshot cannot; a viewer's draft reads like one.
+    const readOnlyDraft = { ...draft, company: { ...draft.company, role: "viewer" as const } };
+    const fromDraft = signature(await openSection(section, { draft: readOnlyDraft }), section);
     const fromSnapshot = signature(await openSection(section, { snapshot }), section);
     expect(fromDraft.banner, "draft banner").not.toBeNull();
     expect(fromSnapshot.banner, "snapshot banner").not.toBeNull();

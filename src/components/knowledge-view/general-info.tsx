@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
 import { Icon } from "../icons";
 import { addressText, employeeText, textOrNull, type ViewProfile } from "./data";
+import { FIELDS, InlineArea, InlineChips, InlineLine, LISTS, useEdit } from "./inline-edit";
 import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, StatAdd, Stats } from "./parts";
 
 export function GeneralInfo({ companyId, name, profile }: { companyId: string; name: string; profile: ViewProfile }) {
   const { foundation, positioning } = profile;
+  // An editable draft edits these values in place; a saved version and a viewer see text and "+ Add" links.
+  const edit = useEdit() !== null;
   const ev = profile.evidence.foundation;
   const foundationHref = addHref(companyId, "company_foundation");
   const main = foundation.main_address ? addressText(foundation.main_address) : null;
@@ -43,7 +46,11 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
               label: "Founded",
               icon: "calendar",
               value: withSource(
-                foundation.year_founded ?? <StatAdd href={foundationHref}>+ year</StatAdd>,
+                edit ? (
+                  <InlineLine spec={FIELDS.founded} shown={foundation.year_founded} placeholder="+ year" />
+                ) : (
+                  (foundation.year_founded ?? <StatAdd href={foundationHref}>+ year</StatAdd>)
+                ),
                 "/company_foundation/year_founded",
                 foundation.year_founded !== null,
               ),
@@ -52,7 +59,11 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
               label: "Employees",
               icon: "users",
               value: withSource(
-                employees ?? <StatAdd href={foundationHref}>+ count</StatAdd>,
+                edit ? (
+                  <InlineLine spec={FIELDS.employees} shown={employees} placeholder="+ count" />
+                ) : (
+                  (employees ?? <StatAdd href={foundationHref}>+ count</StatAdd>)
+                ),
                 "/company_foundation/employee_count",
                 employees !== null,
               ),
@@ -61,7 +72,11 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
               label: "Legal entity",
               icon: "building",
               value: withSource(
-                legal ?? <StatAdd href={foundationHref}>+ LLC, Inc…</StatAdd>,
+                edit ? (
+                  <InlineLine spec={FIELDS.legal} shown={legal} placeholder="+ LLC, Inc…" />
+                ) : (
+                  (legal ?? <StatAdd href={foundationHref}>+ LLC, Inc…</StatAdd>)
+                ),
                 "/company_foundation/legal_entity_type",
                 legal !== null,
               ),
@@ -122,7 +137,11 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
           subtitle="Other ways the company is known."
           source={<Source evidence={ev} path={namesPath} filled={alternates.length > 0} />}
         >
-          <Chips items={alternates} href={foundationHref} noun="alternate name" />
+          {edit ? (
+            <InlineChips list={LISTS.names} items={alternates} />
+          ) : (
+            <Chips items={alternates} href={foundationHref} noun="alternate name" />
+          )}
           <CoverageNote evidence={ev} path={namesPath} empty={alternates.length === 0} />
         </KnowledgeCard>
         <KnowledgeCard
@@ -130,7 +149,14 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
           subtitle="The elevator pitch."
           source={<Source evidence={ev} path={overviewPath} filled={overview !== null} />}
         >
-          {overview ? (
+          {edit ? (
+            <InlineArea
+              spec={FIELDS.overview}
+              value={overview}
+              empty={{ title: "No overview yet", hint: "Summarize what the company does in a few sentences." }}
+              note={<CoverageNote evidence={ev} path={overviewPath} empty={overview === null} />}
+            />
+          ) : overview ? (
             <>
               <p className="knowledge-view__text">{overview}</p>
               <CoverageNote evidence={ev} path={overviewPath} empty={false} />
@@ -149,7 +175,14 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
           subtitle="How it all started."
           source={<Source evidence={profile.evidence.positioning} path={storyPath} filled={story !== null} />}
         >
-          {story ? (
+          {edit ? (
+            <InlineArea
+              spec={FIELDS.story}
+              value={story}
+              empty={{ title: "No founding story yet", hint: "Capture how and why the company began." }}
+              note={<CoverageNote evidence={profile.evidence.positioning} path={storyPath} empty={story === null} />}
+            />
+          ) : story ? (
             <>
               <p className="knowledge-view__text">{story}</p>
               <CoverageNote evidence={profile.evidence.positioning} path={storyPath} empty={false} />

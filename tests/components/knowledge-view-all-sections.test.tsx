@@ -228,7 +228,9 @@ describe("C5 All sections, draft and snapshot agree", () => {
   // C5 behavioural
   it("a snapshot shows the same sections as the draft it was made from", async () => {
     const fx = buildSiteEvidence();
-    const fromDraft = signature((await openView({ section: "All sections", draft: fx.draft })).page());
+    // An owner's draft edits three of the sections in place (Quest inline-edit-core), which a snapshot cannot; a viewer's draft reads like one.
+    const readOnlyDraft = { ...fx.draft, company: { ...fx.draft.company, role: "viewer" as const } };
+    const fromDraft = signature((await openView({ section: "All sections", draft: readOnlyDraft })).page());
     const fromSnapshot = signature((await openView({ section: "All sections", snapshot: fx.snapshot() })).page());
     expect(Object.values(fromDraft).every((v) => v), "the draft renders every section").toBe(true);
     expect(fromSnapshot).toEqual(fromDraft);

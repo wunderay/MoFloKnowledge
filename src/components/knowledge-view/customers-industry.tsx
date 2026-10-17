@@ -1,9 +1,13 @@
 import { textOrNull, type ViewProfile } from "./data";
 import type { Evidence } from "./data";
-import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, Stats } from "./parts";
+import { FIELDS, InlineArea, InlineChips, LISTS, useEdit, useTextField } from "./inline-edit";
+import { addHref, Banner, Chips, Count, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, Stats } from "./parts";
 
 export function CustomersIndustry({ companyId, profile }: { companyId: string; profile: ViewProfile }) {
   const { foundation, market } = profile;
+  // An editable draft edits these values in place; a saved version and a viewer see text and "+ Add" links.
+  const edit = useEdit() !== null;
+  const industryField = useTextField(FIELDS.industry);
   const fev = profile.evidence.foundation;
   const mev = profile.evidence.market;
   const foundationHref = addHref(companyId, "company_foundation");
@@ -49,7 +53,12 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
     <>
       <Banner
         label="Industry"
-        title={industry ?? "Your industry"}
+        title={
+          industryField
+            ? industryField.control({ shown: industry, placeholder: "Your industry", heading: true })
+            : (industry ?? "Your industry")
+        }
+        titleFeedback={industryField?.feedback}
         placeholder={!industry}
         icon="target"
         source={<Source evidence={fev} path={p.industry} filled={industry !== null} />}
@@ -57,10 +66,10 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
         <Stats
           counts
           stats={[
-            { label: "Groupings", icon: "layers", value: market.industry_groupings.length },
-            { label: "Locations", icon: "pin", value: foundation.service_locations.length },
-            { label: "Buyers", icon: "users", value: market.target_buyers.length },
-            { label: "Suppliers", icon: "truck", value: market.suppliers_and_partners.length },
+            { label: "Groupings", icon: "layers", value: <Count n={market.industry_groupings.length} one="Grouping" many="Groupings" /> },
+            { label: "Locations", icon: "pin", value: <Count n={foundation.service_locations.length} one="Location" many="Locations" /> },
+            { label: "Buyers", icon: "users", value: <Count n={market.target_buyers.length} one="Buyer" many="Buyers" /> },
+            { label: "Suppliers", icon: "truck", value: <Count n={market.suppliers_and_partners.length} one="Supplier" many="Suppliers" /> },
           ]}
         />
       </Banner>
@@ -71,7 +80,14 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
           subtitle="How you make money."
           source={<Source evidence={fev} path={p.model} filled={businessModel !== null} />}
         >
-          {businessModel ? (
+          {edit ? (
+            <InlineArea
+              spec={FIELDS.model}
+              value={businessModel}
+              empty={{ title: "No business model yet", hint: "Capture how revenue actually flows in." }}
+              note={<CoverageNote evidence={fev} path={p.model} empty={businessModel === null} />}
+            />
+          ) : businessModel ? (
             <>
               <p className="knowledge-view__text">{businessModel}</p>
               <CoverageNote evidence={fev} path={p.model} empty={false} />
@@ -90,7 +106,12 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
           subtitle="How you sit in the value chain."
           source={<Source evidence={fev} path={p.role} filled={roles.length > 0} />}
         >
-          {roles.length > 0 ? (
+          {edit ? (
+            <>
+              <InlineChips list={LISTS.roles} items={roles} />
+              <CoverageNote evidence={fev} path={p.role} empty={roles.length === 0} />
+            </>
+          ) : roles.length > 0 ? (
             <>
               <Chips items={roles} href={foundationHref} noun="company role" />
               <CoverageNote evidence={fev} path={p.role} empty={false} />
@@ -140,7 +161,7 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
           subtitle="Sub-segments you operate in."
           source={<Source evidence={mev} path={p.groupings} filled={groupings.length > 0} />}
         >
-          <Chips items={groupings} href={marketHref} noun="industry grouping" />
+          {edit ? <InlineChips list={LISTS.groupings} items={groupings} /> : <Chips items={groupings} href={marketHref} noun="industry grouping" />}
           <CoverageNote evidence={mev} path={p.groupings} empty={groupings.length === 0} />
         </KnowledgeCard>
         <KnowledgeCard
@@ -148,7 +169,7 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
           subtitle="Where you operate."
           source={<Source evidence={fev} path={p.locations} filled={locations.length > 0} />}
         >
-          <Chips items={locations} href={foundationHref} noun="service location" />
+          {edit ? <InlineChips list={LISTS.locations} items={locations} /> : <Chips items={locations} href={foundationHref} noun="service location" />}
           <CoverageNote evidence={fev} path={p.locations} empty={locations.length === 0} />
         </KnowledgeCard>
         <KnowledgeCard
@@ -156,7 +177,7 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
           subtitle="Who actually purchases."
           source={<Source evidence={mev} path={p.buyers} filled={buyers.length > 0} />}
         >
-          <Chips items={buyers} href={marketHref} noun="buyer" />
+          {edit ? <InlineChips list={LISTS.buyers} items={buyers} /> : <Chips items={buyers} href={marketHref} noun="buyer" />}
           <CoverageNote evidence={mev} path={p.buyers} empty={buyers.length === 0} />
         </KnowledgeCard>
         <KnowledgeCard
