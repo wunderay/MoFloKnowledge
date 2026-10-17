@@ -38,6 +38,9 @@
   "online_presence": {
     "social_media_links": []
   },
+  "site_links": {
+    "links": []
+  },
   "key_people": [],
   "offerings": []
 }

@@ -20,6 +20,7 @@ export const KnowledgeBaseExportSchema = BusinessSchema.extend({
         market_and_customers: v.market_and_customers,
         branding_and_style: v.branding_and_style,
         online_presence: v.online_presence,
+        site_links: v.site_links,
         key_people: v.key_people,
         offerings: v.offerings,
       });

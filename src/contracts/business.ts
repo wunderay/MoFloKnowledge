@@ -5,6 +5,7 @@ import { PositioningSchema } from "./positioning";
 import { MarketAndCustomersSchema } from "./market-and-customers";
 import { BrandingAndStyleSchema } from "./branding-and-style";
 import { OnlinePresenceSchema } from "./online-presence";
+import { SiteLinksSchema } from "./site-links";
 import { PersonSchema } from "./person";
 import { OfferingSchema } from "./offering";
 export const EntryKindSchema = z.enum([
@@ -13,6 +14,7 @@ export const EntryKindSchema = z.enum([
   "market_and_customers",
   "branding_and_style",
   "online_presence",
+  "site_links",
   "key_person",
   "offering",
 ]);
@@ -23,6 +25,7 @@ export const businessEntrySchemas = {
   market_and_customers: MarketAndCustomersSchema,
   branding_and_style: BrandingAndStyleSchema,
   online_presence: OnlinePresenceSchema,
+  site_links: SiteLinksSchema,
   key_person: PersonSchema,
   offering: OfferingSchema,
 } as const;
@@ -32,6 +35,7 @@ export const BusinessEntrySchema = z.union([
   MarketAndCustomersSchema,
   BrandingAndStyleSchema,
   OnlinePresenceSchema,
+  SiteLinksSchema,
   PersonSchema,
   OfferingSchema,
 ]);
@@ -49,6 +53,7 @@ export const BusinessSchema = z
     market_and_customers: MarketAndCustomersSchema,
     branding_and_style: BrandingAndStyleSchema,
     online_presence: OnlinePresenceSchema,
+    site_links: SiteLinksSchema,
     key_people: collection(PersonSchema),
     offerings: collection(OfferingSchema),
   })

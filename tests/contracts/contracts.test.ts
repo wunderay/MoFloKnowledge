@@ -36,6 +36,7 @@ const business = (): Business => {
     market_and_customers: x.market_and_customers,
     branding_and_style: x.branding_and_style,
     online_presence: x.online_presence,
+    site_links: x.site_links,
     key_people: x.key_people,
     offerings: x.offerings,
   });
@@ -52,11 +53,11 @@ describe("canonical business contracts", () => {
     ])
       expect(URLSchema.safeParse(url).success).toBe(false);
   });
-  it("preserves all 41 exact field defaults and rejects missing or unknown nested keys", () => {
+  it("preserves all 42 exact field defaults and rejects missing or unknown nested keys", () => {
     const empty = createEmptyBusiness();
-    expect(FIELD_REGISTRY).toHaveLength(41);
+    expect(FIELD_REGISTRY).toHaveLength(42);
     expect(BusinessSchema.parse(empty)).toEqual(empty);
-    expect(requiredCoverageTargets(empty)).toHaveLength(31);
+    expect(requiredCoverageTargets(empty)).toHaveLength(32);
     const missing = clone();
     delete (
       missing.company_foundation as Partial<typeof missing.company_foundation>
