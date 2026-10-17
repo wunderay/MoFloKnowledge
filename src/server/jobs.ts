@@ -2,6 +2,7 @@ import "server-only";
 import { authorizeCompany } from "./authorize";
 import { checked } from "./read-model";
 import { JobResponseSchema } from "../contracts/api-responses";
+import { EntryKindSchema, withAddedFields } from "../contracts/business";
 import { HttpError, parseResponse } from "./http";
 import type { verifiedSession } from "../lib/supabase/server";
 export async function readJob(
@@ -39,7 +40,15 @@ export async function readJob(
       stage: job.status,
     },
     proposals: {
-      candidates: proposals.candidates ?? [],
+      // Candidates stored before the model fields existed omit them; they read as defaults.
+      candidates: (proposals.candidates ?? []).map(
+        (candidate: { kind?: unknown; content?: unknown }) => {
+          const kind = EntryKindSchema.safeParse(candidate?.kind);
+          return kind.success
+            ? { ...candidate, content: withAddedFields(kind.data, candidate.content) }
+            : candidate;
+        },
+      ),
       decisions: proposals.decisions ?? [],
       coverage: proposals.coverage ?? [],
       initialized_entry_ids: proposals.initialized_entry_ids ?? [],

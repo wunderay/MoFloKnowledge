@@ -47,16 +47,32 @@ export function parseBusinessEntry(
 ): BusinessEntry {
   return businessEntrySchemas[kind].parse(content);
 }
+/** Fields added after the first release; content stored before they existed omits them and reads them as defaults. */
+export const ADDED_FIELDS: Partial<Record<EntryKind, string[]>> = {
+  company_foundation: ["revenue"],
+  online_presence: ["phone"],
+  key_person: ["age", "nationality", "portrait"],
+  offering: ["images"],
+};
+/** The content with its missing added fields at their defaults; every stored field keeps its place and value. */
+export function withAddedFields(kind: EntryKind, content: unknown): unknown {
+  if (!content || typeof content !== "object" || Array.isArray(content))
+    return content;
+  const defaults = createEntryDefault(kind) as unknown as Record<string, unknown>;
+  const missing = (ADDED_FIELDS[kind] ?? []).filter(
+    (field) => !Object.hasOwn(content, field),
+  );
+  return {
+    ...content,
+    ...Object.fromEntries(missing.map((field) => [field, defaults[field]])),
+  };
+}
 /**
- * Reads stored content. Revisions are immutable history, so one saved before a field existed omits it: the missing
- * fields read as their defaults. New writes use parseBusinessEntry, which stays strict.
+ * Reads stored content. Revisions are immutable history, so one saved before an added field existed omits it: only
+ * those fields read as their defaults. New writes use parseBusinessEntry, which stays strict.
  */
 export function parseStoredEntry(kind: EntryKind, content: unknown): BusinessEntry {
-  const complete =
-    content && typeof content === "object" && !Array.isArray(content)
-      ? { ...createEntryDefault(kind), ...content }
-      : content;
-  return parseBusinessEntry(kind, complete);
+  return parseBusinessEntry(kind, withAddedFields(kind, content));
 }
 export const BusinessSchema = z
   .object({

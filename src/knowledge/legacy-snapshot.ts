@@ -1,17 +1,10 @@
-import { createEntryDefault } from "../contracts/defaults";
-import type { EntryKind } from "../contracts/business";
+import { withAddedFields, ADDED_FIELDS, type EntryKind } from "../contracts/business";
 /**
  * Snapshots are immutable. Those published before the `site_links` kind (migration 0017) have neither the section nor
  * its coverage row, and those published before migration 0019 lack revenue, phone, age, nationality, portrait and
  * images and their coverage rows. Readers upgrade a copy before validating: each missing field takes its default and is
  * covered as not checked. The stored payload, its hash and JSON downloads never change.
  */
-const ADDED_FIELDS: Partial<Record<EntryKind, string[]>> = {
-  company_foundation: ["revenue"],
-  online_presence: ["phone"],
-  key_person: ["age", "nationality", "portrait"],
-  offering: ["images"],
-};
 const isObject = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 export function upgradeLegacySnapshot(stored: unknown): unknown {
@@ -20,10 +13,8 @@ export function upgradeLegacySnapshot(stored: unknown): unknown {
   /** The entry with its missing added fields at their defaults; stored fields keep their place and value. */
   const fill = (kind: EntryKind, value: unknown, root: string): unknown => {
     if (!isObject(value)) return value;
-    const defaults = createEntryDefault(kind) as unknown as Record<string, unknown>;
-    const missing = (ADDED_FIELDS[kind] ?? []).filter((field) => !Object.hasOwn(value, field));
-    targets.push(...missing.map((field) => `${root}/${field}`));
-    return { ...value, ...Object.fromEntries(missing.map((field) => [field, defaults[field]])) };
+    targets.push(...(ADDED_FIELDS[kind] ?? []).filter((field) => !Object.hasOwn(value, field)).map((field) => `${root}/${field}`));
+    return withAddedFields(kind, value);
   };
   const items = (kind: EntryKind, value: unknown, root: string): unknown =>
     Array.isArray(value) ? value.map((item) => fill(kind, item, isObject(item) ? `${root}/@${item.id}` : root)) : value;

@@ -128,7 +128,7 @@ END $$;
 CREATE FUNCTION private.assert_asset_company() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF EXISTS(SELECT FROM (SELECT NEW.content->'portrait' AS r UNION ALL SELECT value FROM jsonb_array_elements(CASE WHEN jsonb_typeof(NEW.content->'images')='array' THEN NEW.content->'images' ELSE '[]'::jsonb END)) q
-  WHERE jsonb_typeof(r)='object' AND split_part(r->>'path','/',2) IS DISTINCT FROM NEW.company_id::text) THEN RAISE EXCEPTION 'asset_company_mismatch'; END IF;
+  WHERE jsonb_typeof(r)='object' AND split_part(r->>'path','/',2) IS DISTINCT FROM NEW.company_id::text) THEN RAISE EXCEPTION 'asset_company_mismatch' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END $$;
 CREATE CONSTRAINT TRIGGER assert_asset_company AFTER INSERT ON public.knowledge_entry_versions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION private.assert_asset_company();

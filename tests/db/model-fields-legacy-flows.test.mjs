@@ -157,3 +157,10 @@ test('apply_proposal / merge_saved_proposal: a proposal applied onto an entry sa
  });
  await t.test('the entries publish',async()=>{await publishAndCompare();});
 });
+
+test('a storage reference under another company is refused with a check violation (23514, mapped to HTTP 422)',async()=>{
+ const id=randomUUID(),object=randomUUID();
+ const content={...rev0.person(id),age:null,nationality:null,portrait:{id:object,path:`portraits/${randomUUID()}/${object}.png`,content_type:'image/png',size_bytes:2048}};
+ const targets=['name','title','portrait/path','portrait/content_type','portrait/size_bytes'];
+ await assert.rejects(call(user,'public.create_entry',[company,'key_person',content,provenance('key_person',id,targets,newFields('key_person')),randomUUID()]),e=>{assert.equal(e.code,'23514');assert.match(e.message,/asset_company_mismatch/);return true;});
+});
