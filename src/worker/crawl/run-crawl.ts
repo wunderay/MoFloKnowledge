@@ -260,7 +260,7 @@ export async function runCrawl(
           if (
             signal.aborted ||
             scheduler.signal.aborted ||
-            error instanceof DeadlineError ||
+            (error instanceof DeadlineError && error.scope === "job") ||
             jobDeadlineAt - Date.now() < CRAWL_LIMITS.fetchMs ||
             error instanceof NetworkPolicyError ||
             attempt === 1

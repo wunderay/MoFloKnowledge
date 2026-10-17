@@ -154,7 +154,7 @@ describe("a deadline expiring between batches marks the job partial", () => {
     const result = await crawl(
       {
         robots: "User-agent: *",
-        // The root answers late, after the 800 ms job deadline has passed.
+        // The root answers late, after the 2000 ms job deadline has passed.
         page: async (path) => {
           if (path !== "/") return htmlPage();
           await new Promise((resolve) => setTimeout(resolve, 3_000));
@@ -263,4 +263,112 @@ describe("moderate Crawl-delay is honoured across a batch of same-host siblings"
     expect(result.errors.map((e) => e.code)).toEqual(["deadline_exceeded"]);
     expect(elapsed).toBeLessThan(5_000);
   });
+});
+
+describe("redirect hops under a moderate Crawl-delay", () => {
+  const pages = ["/p1", "/p2", "/p3", "/p4", "/p5", "/p6", "/p7", "/p8", "/p9"];
+  type Request = { path: string; at: number };
+
+  /** Like the real transport: onRequest runs for every hop, and a hop never starts on an expired signal. */
+  function redirectingFetcher(
+    seconds: number,
+    redirecting: Set<string>,
+    requests: Request[],
+  ): typeof fetchDocument {
+    return async (input, options = {}) => {
+      let current = input;
+      for (;;) {
+        options.signal?.throwIfAborted();
+        await options.onRequest?.(current);
+        options.signal?.throwIfAborted();
+        const url = new URL(current);
+        requests.push({ path: url.pathname, at: Date.now() });
+        if (url.pathname === "/robots.txt")
+          return response(
+            current,
+            `User-agent: *\nCrawl-delay: ${seconds}`,
+            true,
+          );
+        if (redirecting.has(url.pathname)) {
+          current = new URL(url.pathname + "/", current).href;
+          continue;
+        }
+        return response(
+          current,
+          htmlPage(url.pathname === "/" ? pages : []),
+          false,
+        );
+      }
+    };
+  }
+
+  async function crawlSite(seconds: number, redirecting: Set<string>) {
+    const requests: Request[] = [];
+    const promise = runCrawl(
+      makeJob("http://example.com/", 10),
+      makeRepository(),
+      new AbortController().signal,
+      undefined,
+      redirectingFetcher(seconds, redirecting, requests),
+    );
+    const started = Date.now();
+    let settled = false;
+    promise.then(
+      () => (settled = true),
+      () => (settled = true),
+    );
+    for (let step = 0; step < 400 && !settled; step++)
+      await vi.advanceTimersByTimeAsync(1_000);
+    const result = await promise;
+    const times = requests.map((r) => r.at).sort((a, b) => a - b);
+    const gaps = times.slice(1).map((time, index) => time - times[index]!);
+    return { result, requests, gaps, elapsed: Date.now() - started };
+  }
+
+  const expectAllCapturedPolitely = (
+    outcome: Awaited<ReturnType<typeof crawlSite>>,
+    seconds: number,
+  ) => {
+    expect(outcome.result.captures).toHaveLength(10);
+    expect(
+      outcome.result.errors.filter(
+        (e) => e.code === "capture_failed" || e.code === "deadline_exceeded",
+      ),
+    ).toEqual([]);
+    expect(
+      Math.min(...outcome.gaps),
+      "two same-host requests were closer than the Crawl-delay",
+    ).toBeGreaterThanOrEqual(seconds * 1000);
+    expect(outcome.elapsed).toBeLessThan(300_000);
+  };
+
+  it.each([5, 10, 14])(
+    "Crawl-delay: %i keeps a redirecting page that is first in its batch",
+    async (seconds) => {
+      expectAllCapturedPolitely(
+        await crawlSite(seconds, new Set(["/p1"])),
+        seconds,
+      );
+    },
+  );
+
+  it.each([5, 10, 14])(
+    "Crawl-delay: %i keeps a redirecting page that is second in its batch",
+    async (seconds) => {
+      expectAllCapturedPolitely(
+        await crawlSite(seconds, new Set(["/p2"])),
+        seconds,
+      );
+    },
+  );
+
+  it.each([4.9, 7])(
+    "Crawl-delay: %s keeps a site where every page redirects to a trailing slash",
+    async (seconds) => {
+      expectAllCapturedPolitely(
+        await crawlSite(seconds, new Set(pages)),
+        seconds,
+      );
+    },
+  );
 });
