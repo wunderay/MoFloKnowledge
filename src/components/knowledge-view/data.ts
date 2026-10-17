@@ -1,7 +1,13 @@
 import {
   createEmptyBusiness,
+  createEmptyProvenance,
   type Address,
+  type Assessment,
   type BusinessEntry,
+  type CitationContext,
+  type CoverageAssessment,
+  type EntryProvenance,
+  type ReviewStatus,
   type CompanyFoundation,
   type EmployeeCount,
   type EntryKind,
@@ -11,28 +17,91 @@ import {
   type SocialLink,
 } from "@/contracts";
 
+/** What backs a section's values: its provenance, review state and the draft's citation lookup. */
+export type Evidence = {
+  provenance: EntryProvenance;
+  approved: boolean;
+  citationContext?: CitationContext;
+};
 export type ViewProfile = {
   foundation: CompanyFoundation;
   positioning: Positioning;
   market: MarketAndCustomers;
   presence: OnlinePresence;
+  evidence: { foundation: Evidence; positioning: Evidence; market: Evidence; presence: Evidence };
 };
 
 /**
  * The single-entry sections the view reads, from a draft's entries or a saved
  * snapshot's. A section with no entry shows the same empty defaults as a blank one.
  */
-export function profileFrom(entries: { kind: EntryKind; content: BusinessEntry }[]): ViewProfile {
+export function profileFrom(
+  entries: { kind: EntryKind; content: BusinessEntry; provenance: EntryProvenance; review_status: ReviewStatus }[],
+  citationContext?: CitationContext,
+): ViewProfile {
   const empty = createEmptyBusiness();
-  const content = <K extends "company_foundation" | "positioning" | "market_and_customers" | "online_presence">(kind: K) =>
-    (entries.find((entry) => entry.kind === kind)?.content ?? empty[kind]) as (typeof empty)[K];
+  const pick = <K extends "company_foundation" | "positioning" | "market_and_customers" | "online_presence">(kind: K) => {
+    const entry = entries.find((item) => item.kind === kind);
+    return {
+      content: (entry?.content ?? empty[kind]) as (typeof empty)[K],
+      evidence: {
+        provenance: entry?.provenance ?? createEmptyProvenance(),
+        approved: entry?.review_status === "approved",
+        citationContext,
+      },
+    };
+  };
+  const foundation = pick("company_foundation");
+  const positioning = pick("positioning");
+  const market = pick("market_and_customers");
+  const presence = pick("online_presence");
   return {
-    foundation: content("company_foundation"),
-    positioning: content("positioning"),
-    market: content("market_and_customers"),
-    presence: content("online_presence"),
+    foundation: foundation.content,
+    positioning: positioning.content,
+    market: market.content,
+    presence: presence.content,
+    evidence: {
+      foundation: foundation.evidence,
+      positioning: positioning.evidence,
+      market: market.evidence,
+      presence: presence.evidence,
+    },
   };
 }
+
+const under = (target: string, path: string) => target === path || target.startsWith(`${path}/`);
+
+/**
+ * The provenance as seen from one field: claims about its items or parts
+ * (".../@id/text", ".../raw") count as claims about the field, so one source
+ * control covers the field's whole value.
+ */
+export function fieldProvenance(provenance: EntryProvenance, path: string): EntryProvenance {
+  return {
+    ...provenance,
+    claims: provenance.claims.map((claim) => ({
+      ...claim,
+      targets: [...new Set(claim.targets.map((target) => (under(target, path) ? path : target)))],
+    })),
+  };
+}
+
+/** The coverage assessment recorded for a field, if any. */
+export const coverageFor = (provenance: EntryProvenance, path: string): CoverageAssessment | undefined =>
+  provenance.coverage.find((item) => item.targets.some((target) => path === target || path.startsWith(`${target}/`)));
+
+export function hasClaim(provenance: EntryProvenance, path: string): boolean {
+  return provenance.claims.some((claim) => claim.targets.some((target) => under(target, path)));
+}
+
+const COVERAGE_LABELS: Partial<Record<Assessment, string>> = {
+  partial: "Partial",
+  conflict: "Conflicting sources",
+  not_found: "Not found in checked pages",
+  found: "Unknown",
+};
+export const coverageLabel = (status: Assessment | undefined) =>
+  (status && COVERAGE_LABELS[status]) || "Unknown · Not assessed";
 
 /** Trimmed text, or null when there is nothing to show. */
 export const textOrNull = (value: string | null | undefined): string | null => value?.trim() || null;

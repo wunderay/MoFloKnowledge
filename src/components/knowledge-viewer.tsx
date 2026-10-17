@@ -36,7 +36,7 @@ type ViewEntry = {
   current_revision: number;
 };
 type Version = { id: string; version_number: number; created_at: string };
-function snapshotEntries(payload: KnowledgeBaseExport): ViewEntry[] {
+export function snapshotEntries(payload: KnowledgeBaseExport): ViewEntry[] {
   const provenance = { ...createEmptyProvenance(), ...payload.provenance };
   return Object.keys(CATEGORY_SPECS).flatMap((kind) => {
     const key =
@@ -468,12 +468,14 @@ export function KnowledgeViewer({
                 companyId={companyId}
                 name={name}
                 entries={entries}
+                citationContext={citationContext}
               />
             )}
           </div>
           <p className="knowledge-view__tip">
             <span aria-hidden="true">ⓘ</span> Tip: keep company facts specific and evidence based. Anything missing can be filled in from the editor.
           </p>
+          <SourceCoverage key={companyId} companyId={companyId} viewingSnapshot={versionId !== "draft"} />
           {versionId === "draft" && !loading && entries.length > 0 && (
             <details className="knowledge-view__review">
               <summary>Review draft entries ({entries.length})</summary>

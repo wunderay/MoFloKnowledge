@@ -1,4 +1,4 @@
-import type { BusinessEntry, EntryKind } from "@/contracts";
+import type { BusinessEntry, CitationContext, EntryKind, EntryProvenance, ReviewStatus } from "@/contracts";
 import { profileFrom } from "./data";
 import { CustomersIndustry } from "./customers-industry";
 import { GeneralInfo } from "./general-info";
@@ -11,13 +11,15 @@ export function SectionView({
   companyId,
   name,
   entries,
+  citationContext,
 }: {
   section: KnowledgeSectionId;
   companyId: string;
   name: string;
-  entries: { kind: EntryKind; content: BusinessEntry }[];
+  entries: { kind: EntryKind; content: BusinessEntry; provenance: EntryProvenance; review_status: ReviewStatus }[];
+  citationContext?: CitationContext;
 }) {
-  const profile = profileFrom(entries);
+  const profile = profileFrom(entries, citationContext);
   if (section === "general") return <GeneralInfo companyId={companyId} name={name} profile={profile} />;
   if (section === "customers") return <CustomersIndustry companyId={companyId} profile={profile} />;
   if (section === "sales") return <SalesMarketing companyId={companyId} name={name} profile={profile} />;

@@ -1,8 +1,10 @@
 import { textOrNull, type ViewProfile } from "./data";
-import { addHref, Banner, Chips, EmptyBox, KnowledgeCard, Stats } from "./parts";
+import { addHref, Banner, Chips, CoverageNote, EmptyBox, KnowledgeCard, Source, Stats } from "./parts";
 
 export function CustomersIndustry({ companyId, profile }: { companyId: string; profile: ViewProfile }) {
   const { foundation, market } = profile;
+  const fev = profile.evidence.foundation;
+  const mev = profile.evidence.market;
   const foundationHref = addHref(companyId, "company_foundation");
   const marketHref = addHref(companyId, "market_and_customers");
   const industry = textOrNull(foundation.industry);
@@ -10,17 +12,39 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
   const texts = (items: { id: string; text: string }[]) =>
     items.map((item) => ({ id: item.id, label: item.text.trim() })).filter((item) => item.label);
   const roles = texts(foundation.company_role);
+  const groupings = texts(market.industry_groupings);
+  const locations = texts(foundation.service_locations);
+  const buyers = texts(market.target_buyers);
   const outlook = market.industry_outlook.filter((item) => item.text.trim());
   const suppliers = market.suppliers_and_partners
-    .map((partner) => ({
-      id: partner.id,
-      label: textOrNull(partner.name) ?? textOrNull(partner.relationship_text) ?? partner.url ?? "",
-      detail: textOrNull(partner.name) ? textOrNull(partner.relationship_type) : null,
-    }))
+    .map((partner) => {
+      const name = textOrNull(partner.name);
+      return {
+        id: partner.id,
+        label: name ?? textOrNull(partner.relationship_text) ?? textOrNull(partner.relationship_type) ?? partner.url ?? "",
+        detail: name ? textOrNull(partner.relationship_type) : null,
+      };
+    })
     .filter((item) => item.label);
+  const p = {
+    industry: "/company_foundation/industry",
+    model: "/company_foundation/business_model",
+    role: "/company_foundation/company_role",
+    outlook: "/market_and_customers/industry_outlook",
+    groupings: "/market_and_customers/industry_groupings",
+    locations: "/company_foundation/service_locations",
+    buyers: "/market_and_customers/target_buyers",
+    suppliers: "/market_and_customers/suppliers_and_partners",
+  };
   return (
     <>
-      <Banner label="Industry" title={industry ?? "Your industry"} placeholder={!industry} icon="target">
+      <Banner
+        label="Industry"
+        title={industry ?? "Your industry"}
+        placeholder={!industry}
+        icon="target"
+        source={<Source evidence={fev} path={p.industry} filled={industry !== null} />}
+      >
         <Stats
           counts
           stats={[
@@ -31,50 +55,107 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
           ]}
         />
       </Banner>
+      <CoverageNote evidence={fev} path={p.industry} empty={industry === null} />
       <div className="knowledge-view__grid knowledge-view__grid--3">
-        <KnowledgeCard title="Business model" subtitle="How you make money.">
+        <KnowledgeCard
+          title="Business model"
+          subtitle="How you make money."
+          source={<Source evidence={fev} path={p.model} filled={businessModel !== null} />}
+        >
           {businessModel ? (
-            <p className="knowledge-view__text">{businessModel}</p>
+            <>
+              <p className="knowledge-view__text">{businessModel}</p>
+              <CoverageNote evidence={fev} path={p.model} empty={false} />
+            </>
           ) : (
-            <EmptyBox title="No business model yet" hint="Capture how revenue actually flows in." href={foundationHref} />
+            <EmptyBox
+              title="No business model yet"
+              hint="Capture how revenue actually flows in."
+              href={foundationHref}
+              note={<CoverageNote evidence={fev} path={p.model} empty />}
+            />
           )}
         </KnowledgeCard>
-        <KnowledgeCard title="Company role" subtitle="How you sit in the value chain.">
+        <KnowledgeCard
+          title="Company role"
+          subtitle="How you sit in the value chain."
+          source={<Source evidence={fev} path={p.role} filled={roles.length > 0} />}
+        >
           {roles.length > 0 ? (
-            <Chips items={roles} href={foundationHref} noun="company role" />
+            <>
+              <Chips items={roles} href={foundationHref} noun="company role" />
+              <CoverageNote evidence={fev} path={p.role} empty={false} />
+            </>
           ) : (
-            <EmptyBox title="No company role yet" hint="Where do you fit between supplier and buyer?" href={foundationHref} />
+            <EmptyBox
+              title="No company role yet"
+              hint="Where do you fit between supplier and buyer?"
+              href={foundationHref}
+              note={<CoverageNote evidence={fev} path={p.role} empty />}
+            />
           )}
         </KnowledgeCard>
-        <KnowledgeCard title="Industry outlook" subtitle="Where the market is heading.">
+        <KnowledgeCard
+          title="Industry outlook"
+          subtitle="Where the market is heading."
+          source={<Source evidence={mev} path={p.outlook} filled={outlook.length > 0} />}
+        >
           {outlook.length > 0 ? (
-            <ul className="knowledge-view__list">
-              {outlook.map((item) => (
-                <li key={item.id}>
-                  <span>{item.text}</span>
-                  {(item.publisher || item.published_on) && (
-                    <small>{[item.publisher, item.published_on].filter(Boolean).join(" · ")}</small>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="knowledge-view__list">
+                {outlook.map((item) => (
+                  <li key={item.id}>
+                    <span>{item.text}</span>
+                    {(item.publisher || item.published_on) && (
+                      <small>{[item.publisher, item.published_on].filter(Boolean).join(" · ")}</small>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <CoverageNote evidence={mev} path={p.outlook} empty={false} />
+            </>
           ) : (
-            <EmptyBox title="No outlook yet" hint="Add the macro context shaping the market." href={marketHref} />
+            <EmptyBox
+              title="No outlook yet"
+              hint="Add the macro context shaping the market."
+              href={marketHref}
+              note={<CoverageNote evidence={mev} path={p.outlook} empty />}
+            />
           )}
         </KnowledgeCard>
       </div>
       <div className="knowledge-view__grid knowledge-view__grid--4">
-        <KnowledgeCard title="Industry groupings" subtitle="Sub-segments you operate in.">
-          <Chips items={texts(market.industry_groupings)} href={marketHref} noun="industry grouping" />
+        <KnowledgeCard
+          title="Industry groupings"
+          subtitle="Sub-segments you operate in."
+          source={<Source evidence={mev} path={p.groupings} filled={groupings.length > 0} />}
+        >
+          <Chips items={groupings} href={marketHref} noun="industry grouping" />
+          <CoverageNote evidence={mev} path={p.groupings} empty={groupings.length === 0} />
         </KnowledgeCard>
-        <KnowledgeCard title="Service locations" subtitle="Where you operate.">
-          <Chips items={texts(foundation.service_locations)} href={foundationHref} noun="service location" />
+        <KnowledgeCard
+          title="Service locations"
+          subtitle="Where you operate."
+          source={<Source evidence={fev} path={p.locations} filled={locations.length > 0} />}
+        >
+          <Chips items={locations} href={foundationHref} noun="service location" />
+          <CoverageNote evidence={fev} path={p.locations} empty={locations.length === 0} />
         </KnowledgeCard>
-        <KnowledgeCard title="Buyers" subtitle="Who actually purchases.">
-          <Chips items={texts(market.target_buyers)} href={marketHref} noun="buyer" />
+        <KnowledgeCard
+          title="Buyers"
+          subtitle="Who actually purchases."
+          source={<Source evidence={mev} path={p.buyers} filled={buyers.length > 0} />}
+        >
+          <Chips items={buyers} href={marketHref} noun="buyer" />
+          <CoverageNote evidence={mev} path={p.buyers} empty={buyers.length === 0} />
         </KnowledgeCard>
-        <KnowledgeCard title="Suppliers" subtitle="Who you depend on.">
+        <KnowledgeCard
+          title="Suppliers"
+          subtitle="Who you depend on."
+          source={<Source evidence={mev} path={p.suppliers} filled={suppliers.length > 0} />}
+        >
           <Chips items={suppliers} href={marketHref} noun="supplier" />
+          <CoverageNote evidence={mev} path={p.suppliers} empty={suppliers.length === 0} />
         </KnowledgeCard>
       </div>
     </>
