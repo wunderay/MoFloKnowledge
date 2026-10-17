@@ -151,6 +151,8 @@ export function deterministicCandidates(
         url.hostname,
       )?.[1];
     if (platform === "linkedin" && !/^\/(?:company|school|showcase)\/[^/]+/i.test(url.pathname)) continue;
+    // Links to other companies' profiles (partners, sponsors, clients) are not the company's own.
+    if (platform && /partner|sponsor|client|supplier|vendor|affiliate/i.test(link.label + " " + url.pathname)) continue;
     if (platform && url.pathname !== "/") {
       const o = observations.find(
         (o) => o.property === "href" && o.value === link.url,

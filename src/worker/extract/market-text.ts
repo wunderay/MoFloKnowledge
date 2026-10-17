@@ -1,6 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
-import { exactSentences } from "./source-excerpts";
+import { exactSentences, hasNegation } from "./source-excerpts";
 
 const root = "/market_and_customers/";
 export const MARKET_TEXT_SUPPORTED_FIELDS = [
@@ -30,6 +30,17 @@ const needText = (text: string) => text.length >= 35 && text.length <= 500 &&
   !/\b(?:contact(?:ing)?|call|schedule|subscribe|sign up)\b|\b(?:these|those) (?:updates|regulations|improvements)|\b(?:we['’]ll|we will) stay\b/i.test(text) &&
   !/\b(?:not|never)\s+(?:be\s+)?(?:looking\s+to\s+)?(?:save|improve|reduce|simplify|secure)\b/i.test(text);
 const sentences = exactSentences;
+const buyerDeclarationPattern = /\b(?:we (?:serve|help|work|offer|provide|cater|speciali[sz]e)|I (?:serve|help|work|offer|provide)|our (?:services|clients|customers)|whether you are|for [^.!?]{1,100}, I can provide|we (?:can |will )?(?:also )?(?:assist|help)|services (?:for|to))\b/i;
+const sentenceAt = (paragraph: string, index: number): string => {
+  let from = 0;
+  for (const sentence of sentences(paragraph)) {
+    const at = paragraph.indexOf(sentence, from);
+    if (at < 0) continue;
+    from = at + sentence.length;
+    if (index < from) return sentence;
+  }
+  return paragraph;
+};
 
 /** Literal passages and observed controls only. These rules never invent a buyer or a conversion step. */
 export function marketTextCandidates(
@@ -109,10 +120,13 @@ export function marketTextCandidates(
           relationship_text: declaredPartners[0], url: null }], [declaredPartners[0]]);
 
       // Restrict buyer phrases to a first-party service declaration, not incidental staff counts or commentary.
-      const buyerDeclaration = /\b(?:we (?:serve|help|work|offer|provide|cater|speciali[sz]e)|I (?:serve|help|work|offer|provide)|our (?:services|clients|customers)|whether you are|for [^.!?]{1,100}, I can provide|we (?:can |will )?(?:also )?(?:assist|help)|services (?:for|to))\b/i.test(paragraph);
+      const buyerDeclaration = buyerDeclarationPattern.test(paragraph);
       if (buyerDeclaration && !/\b(?:we (?:do not|don't)|not (?:for|intended for)|never serve)\b/i.test(paragraph))
         for (const match of paragraph.matchAll(buyerNoun)) {
           const buyer = match[0];
+          // The declaration must be in the buyer's own sentence, and that sentence must not negate it.
+          const own = sentenceAt(paragraph, match.index!);
+          if (!buyerDeclarationPattern.test(own) || hasNegation(own)) continue;
           const before = paragraph.slice(Math.max(0, match.index! - 100), match.index);
           if (!/\b(?:for|serve|help|assist|clients|customers|whether you are|as well as|or a|a growing)\b[^.!?]*$/i.test(before)) continue;
           if (/^business(?:es)?$/i.test(buyer) && !/\b(?:for(?: both)?|serve|and)\s*$/i.test(before)) continue;
