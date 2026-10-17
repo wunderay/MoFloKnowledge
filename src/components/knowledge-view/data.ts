@@ -3,6 +3,7 @@ import {
   createEmptyProvenance,
   type Address,
   type Assessment,
+  type BrandingAndStyle,
   type BusinessEntry,
   type CitationContext,
   type CoverageAssessment,
@@ -12,6 +13,7 @@ import {
   type EmployeeCount,
   type EntryKind,
   type MarketAndCustomers,
+  type Offering,
   type OnlinePresence,
   type Positioning,
   type SocialLink,
@@ -28,8 +30,11 @@ export type ViewProfile = {
   positioning: Positioning;
   market: MarketAndCustomers;
   presence: OnlinePresence;
-  evidence: { foundation: Evidence; positioning: Evidence; market: Evidence; presence: Evidence };
+  branding: BrandingAndStyle;
+  evidence: { foundation: Evidence; positioning: Evidence; market: Evidence; presence: Evidence; branding: Evidence };
 };
+/** One offering entry, with what backs its values. */
+export type ViewOffering = { offering: Offering; evidence: Evidence };
 
 /**
  * The single-entry sections the view reads, from a draft's entries or a saved
@@ -40,7 +45,11 @@ export function profileFrom(
   citationContext?: CitationContext,
 ): ViewProfile {
   const empty = createEmptyBusiness();
-  const pick = <K extends "company_foundation" | "positioning" | "market_and_customers" | "online_presence">(kind: K) => {
+  const pick = <
+    K extends "company_foundation" | "positioning" | "market_and_customers" | "online_presence" | "branding_and_style",
+  >(
+    kind: K,
+  ) => {
     const entry = entries.find((item) => item.kind === kind);
     return {
       content: (entry?.content ?? empty[kind]) as (typeof empty)[K],
@@ -55,18 +64,34 @@ export function profileFrom(
   const positioning = pick("positioning");
   const market = pick("market_and_customers");
   const presence = pick("online_presence");
+  const branding = pick("branding_and_style");
   return {
     foundation: foundation.content,
     positioning: positioning.content,
     market: market.content,
     presence: presence.content,
+    branding: branding.content,
     evidence: {
       foundation: foundation.evidence,
       positioning: positioning.evidence,
       market: market.evidence,
       presence: presence.evidence,
+      branding: branding.evidence,
     },
   };
+}
+
+/** The offering entries, in the order the draft or snapshot lists them, each with its own evidence. */
+export function offeringsFrom(
+  entries: { kind: EntryKind; content: BusinessEntry; provenance: EntryProvenance; review_status: ReviewStatus }[],
+  citationContext?: CitationContext,
+): ViewOffering[] {
+  return entries
+    .filter((entry) => entry.kind === "offering")
+    .map((entry) => ({
+      offering: entry.content as Offering,
+      evidence: { provenance: entry.provenance, approved: entry.review_status === "approved", citationContext },
+    }));
 }
 
 const under = (target: string, path: string) => target === path || target.startsWith(`${path}/`);

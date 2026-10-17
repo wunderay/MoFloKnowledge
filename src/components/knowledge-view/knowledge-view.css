@@ -242,3 +242,76 @@
 .knowledge-view__stat dd .knowledge-view__coverage { margin-top: 6px; font-size: 10px; font-weight: 400; line-height: 1.5; }
 .knowledge-view__chip .citation-popover { margin-top: 3px; }
 .knowledge-view__list > li > .citation-popover { display: inline-block; margin-top: 3px; }
+
+/* Business Offerings: a header row, the list on the left and the selected offering's detail on the right. */
+.knowledge-view__section-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; margin-bottom: 20px; }
+.knowledge-view__section-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.4px; overflow-wrap: anywhere; }
+.knowledge-view__count { padding: 1px 9px; border-radius: 10px; background: var(--kv-pale); color: var(--kv-blue); font-size: 12px; font-weight: 600; letter-spacing: 0; }
+.knowledge-view__section-subtitle { margin: 4px 0 0; color: var(--kv-muted); font-size: 13px; }
+.knowledge-view .knowledge-view__primary-add { display: inline-block; padding: 10px 18px; border-radius: 10px; background: var(--kv-blue); color: #fff; font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+.knowledge-view .knowledge-view__primary-add:hover { background: #2f56e0; }
+.knowledge-view__offerings { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.knowledge-view__offering-list { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 0; padding: 8px; list-style: none; border: 1px solid var(--kv-line); border-radius: 16px; background: var(--white, #fff); }
+.knowledge-view__offering { min-width: 0; border: 1px solid transparent; border-radius: 12px; }
+.knowledge-view__offering--selected { border-color: #cfdcff; background: var(--kv-pale); color: var(--kv-blue); }
+.knowledge-view .knowledge-view__offering-button { display: flex; width: 100%; align-items: center; gap: 12px; min-width: 0; padding: 10px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.knowledge-view__offering-icon { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--kv-pale); color: var(--kv-blue); }
+.knowledge-view__offering--selected .knowledge-view__offering-icon { background: var(--white, #fff); }
+.knowledge-view__offering-text { display: block; min-width: 0; }
+.knowledge-view__offering-text strong { display: block; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.knowledge-view__offering-text small { display: block; color: var(--kv-muted); font-size: 11px; overflow-wrap: anywhere; }
+.knowledge-view__offering > .citation-popover { display: block; margin: -4px 10px 8px 52px; }
+.knowledge-view__offering-detail { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--kv-line); border-radius: 16px; background: var(--white, #fff); }
+.knowledge-view__field { display: flex; align-items: flex-start; gap: 12px; min-width: 0; padding: 12px 14px; border: 1px solid var(--kv-line); border-radius: 12px; }
+.knowledge-view__field-body { flex: 1 1 0; min-width: 0; }
+.knowledge-view__field-icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 10px; background: var(--kv-pale); color: var(--kv-blue); }
+.knowledge-view__field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.knowledge-view__field .knowledge-view__text { font-size: 15px; line-height: 1.6; }
+.knowledge-view__field .knowledge-view__empty { padding: 10px 14px; }
+.knowledge-view__field .knowledge-view__list > li { font-size: 15px; }
+
+/* Brand Identity: the banner's first cell holds label, name and caption; then logos, colors and fonts. */
+.knowledge-view__banner-lead { grid-row: 1 / 3; align-self: center; min-width: 0; }
+.knowledge-view__banner-caption { margin: 6px 0 0; color: var(--kv-muted); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.knowledge-view__banner-logo { display: block; max-width: 100%; max-height: 44px; object-fit: contain; }
+.knowledge-view__palette { display: inline-flex; max-width: 100%; overflow: hidden; border-radius: 10px; }
+.knowledge-view__palette-swatch { display: block; width: 40px; height: 36px; }
+.knowledge-view__font-badge { display: inline-flex; align-items: center; gap: 10px; max-width: 100%; font-size: 14px; overflow-wrap: anywhere; }
+.knowledge-view__font-tile { display: grid; place-items: center; flex: none; width: 40px; height: 36px; border-radius: 10px; background: var(--white, #fff); box-shadow: 0 1px 6px #3865ff14; font-size: 17px; font-weight: 600; }
+.knowledge-view__tiles { display: flex; flex-wrap: wrap; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.knowledge-view__tile { display: flex; flex: 0 0 auto; flex-direction: column; gap: 4px; width: 110px; max-width: 100%; min-width: 0; font-size: 12px; }
+.knowledge-view__tile strong { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.knowledge-view__tile small { color: var(--kv-muted); font-size: 11px; overflow-wrap: anywhere; }
+.knowledge-view__tile-caption { display: block; max-width: 100%; }
+.knowledge-view__tile-caption .citation-popover { display: block; margin-top: 3px; }
+.knowledge-view__logo-frame { display: grid; place-items: center; width: 110px; max-width: 100%; height: 110px; padding: 10px; overflow: hidden; border: 1px solid var(--kv-line); border-radius: 14px; background: var(--white, #fff); text-align: center; }
+.knowledge-view__logo-frame img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.knowledge-view__swatch { position: relative; display: block; width: 84px; max-width: 100%; height: 84px; border: 1px solid #0000001a; border-radius: 14px; }
+.knowledge-view__swatch-hex { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 2px 6px; border-radius: 6px; background: #1d2230; color: #fff; font-size: 10px; font-weight: 500; }
+.knowledge-view .knowledge-view__tile-add { display: grid; place-items: center; width: 110px; max-width: 100%; height: 84px; padding: 8px; border: 1px dashed #cdd3e0; border-radius: 14px; color: var(--kv-muted); font-size: 12px; text-align: center; text-decoration: none; }
+.knowledge-view .knowledge-view__tile-add--logo { height: 110px; }
+.knowledge-view .knowledge-view__tile-add--row { display: block; width: auto; height: auto; margin-top: 12px; padding: 10px 14px; text-align: left; }
+.knowledge-view .knowledge-view__tile-add:hover { border-color: var(--kv-blue); color: var(--kv-blue); }
+.knowledge-view__grid--1 { grid-template-columns: minmax(0, 1fr); }
+.knowledge-view__fonts { margin: 0; padding: 0; list-style: none; }
+.knowledge-view__font-row { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); align-items: center; gap: 8px 24px; padding: 14px 0; border-top: 1px solid var(--kv-line); }
+.knowledge-view__font-row:first-child { padding-top: 0; border-top: 0; }
+.knowledge-view__font-name { min-width: 0; font-size: 15px; overflow-wrap: anywhere; }
+.knowledge-view__font-name .knowledge-view__mini-label { margin-bottom: 4px; }
+.knowledge-view__font-name .citation-popover { display: block; margin-top: 3px; }
+.knowledge-view__font-sample { min-width: 0; margin: 0; padding-left: 24px; border-left: 1px solid var(--kv-line); font-size: 20px; line-height: 1.4; overflow-wrap: anywhere; }
+
+@media (max-width: 1150px) {
+  .knowledge-view__banner-lead { grid-row: auto; }
+}
+@media (max-width: 780px) {
+  .knowledge-view__offerings, .knowledge-view__field-pair { grid-template-columns: minmax(0, 1fr); }
+  .knowledge-view__font-row { grid-template-columns: minmax(0, 1fr); }
+  .knowledge-view__font-sample { padding-left: 0; border-left: 0; font-size: 17px; }
+  .knowledge-view__section-title { font-size: 20px; }
+}
+@media (max-width: 480px) {
+  .knowledge-view__tiles { gap: 12px; }
+  .knowledge-view__tile { width: calc(50% - 6px); }
+  .knowledge-view__logo-frame, .knowledge-view .knowledge-view__tile-add { width: 100%; }
+}
