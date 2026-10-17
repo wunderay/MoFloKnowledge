@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import "./cloud-knowledge.css";
 import { ZodError } from "zod";
 import { useUnsavedNavigation } from "./unsaved-navigation";
 import { ValueView } from "./entry-value";
@@ -27,6 +28,26 @@ import { EntryHistory } from "./entry-history";
 import { PublicationDialog } from "./publication-dialog";
 import { CompanySettings } from "./company-settings";
 import { ProposalReview } from "./proposal-review";
+const VIEW_SPECS = {
+  company_foundation: { label: "General Info", description: "The essential facts, locations, and background of your company." },
+  offering: { label: "Business Offerings", description: "Products and services, with their own features, pricing, and approval." },
+  positioning: { label: "Sales & Marketing", description: "Your company story, social presence, and paths to customers." },
+  market_and_customers: { label: "Customers & Industry", description: "Who you serve, the industries they work in, and what they need." },
+  branding_and_style: { label: "Branding & Style", description: CATEGORY_SPECS.branding_and_style!.description },
+  key_person: { label: "Key People", description: CATEGORY_SPECS.key_person!.description },
+};
+const MARKETING_FIELDS = new Set(["channels", "funnels", "ctas"]);
+const SHARED_CUSTOMER_FIELDS = new Set(["target_buyers", "customer_needs", "ideal_customer_personas"]);
+function viewCategory(category: EntryKind): keyof typeof VIEW_SPECS {
+  return category === "online_presence" ? "positioning" : category;
+}
+function entryFields(kind: EntryKind, marketing: boolean) {
+  return Object.entries(CATEGORY_SPECS[kind]!.fields).filter(([key]) =>
+    kind !== "market_and_customers" || (marketing
+      ? MARKETING_FIELDS.has(key) || SHARED_CUSTOMER_FIELDS.has(key)
+      : !MARKETING_FIELDS.has(key)),
+  );
+}
 type Entry = Pick<
   DraftEntry,
   | "id"
@@ -61,6 +82,7 @@ function KnowledgeEditorContent({
   const [draft, setDraft] = useState<Draft | null>(initialDraft ?? null);
   const { state, dispatch } = useCompanyDraft();
   const hydrated = useHydrated();
+  const [selectedOffering, setSelectedOffering] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -92,6 +114,8 @@ function KnowledgeEditorContent({
     );
     if (category && CATEGORY_SPECS[category])
       dispatch({ type: "category", category: category as EntryKind });
+    const entryId = new URLSearchParams(window.location.search).get("entryId");
+    if (entryId) setSelectedOffering(entryId);
   }, []);
   useEffect(() => {
     if (!initialDraft) refresh();
@@ -101,11 +125,12 @@ function KnowledgeEditorContent({
   }, [refresh]);
   useEffect(() => {
     const entryId = new URLSearchParams(window.location.search).get("entryId");
-    if (entryId && draft)
+    if (entryId && draft) {
       document
         .getElementById(`entry-${entryId}`)
         ?.scrollIntoView({ block: "center" });
-  }, [draft, state.category]);
+    }
+  }, [draft, state.category, selectedOffering]);
   const canNavigate = useUnsavedNavigation(state.dirty.length > 0);
   if (!companyId)
     return (
@@ -124,22 +149,38 @@ function KnowledgeEditorContent({
     draft.company.role !== "viewer" && !draft.company.archived_at;
   const canEdit =
     hydrated && membershipCanEdit && busy === null && !savedAwaitingRefresh;
-  const spec = CATEGORY_SPECS[state.category]!;
-  const entries = draft.entries.filter((e) => e.kind === state.category);
-  const visibleEntries = entries.length
-    ? entries
-    : state.category === "key_person" || state.category === "offering"
-      ? []
-      : [
-          {
-            id: `new-${state.category}`,
-            kind: state.category,
-            current_revision: 0,
-            content: createEntryDefault(state.category),
-            provenance: createEmptyProvenance(),
-            review_status: "unreviewed" as const,
-          },
-        ];
+  const currentView = viewCategory(state.category);
+  const view = VIEW_SPECS[currentView];
+  const marketing = currentView === "positioning";
+  const kinds: EntryKind[] = marketing
+    ? ["online_presence", "positioning", "market_and_customers"]
+    : [currentView];
+  const visibleEntries = kinds.flatMap((kind): Entry[] => {
+    const group = draft.entries.filter((entry) => entry.kind === kind);
+    if (group.length) return group;
+    if (kind === "key_person" || kind === "offering") return [];
+    return [{
+      id: `new-${kind}`, kind, current_revision: 0,
+      content: createEntryDefault(kind), provenance: createEmptyProvenance(),
+      review_status: "unreviewed",
+    }];
+  });
+  const activeOffering = visibleEntries.find((entry) => entry.id === selectedOffering)
+    ?? visibleEntries[0];
+  const renderedEntries = currentView === "offering"
+    ? visibleEntries.filter((entry) => entry.id === activeOffering?.id)
+    : visibleEntries;
+  const foundationEntry = draft.entries.find((entry) => entry.kind === "company_foundation");
+  const foundation = foundationEntry
+    ? (state.values[foundationEntry.id] ?? foundationEntry.content) as Record<string, unknown>
+    : (state.values["new-company_foundation"] ?? {}) as Record<string, unknown>;
+  const employeeCount = foundation.employee_count as { raw?: string; exact?: number; min?: number; max?: number } | null;
+  const employeeLabel = employeeCount?.raw || (employeeCount?.exact != null
+    ? String(employeeCount.exact)
+    : employeeCount?.min != null && employeeCount?.max != null
+      ? `${employeeCount.min}–${employeeCount.max}`
+      : employeeCount?.min != null ? `${employeeCount.min}+`
+      : employeeCount?.max != null ? `Up to ${employeeCount.max}` : "Unknown");
   function changeCategory(category: EntryKind) {
     dispatch({ type: "category", category });
   }
@@ -232,6 +273,8 @@ function KnowledgeEditorContent({
       }
       // The server may normalize conflict decisions and content. Keep local edits
       // and controls locked until that authoritative revision is available.
+      if (entry.kind === "offering" && isNew)
+        setSelectedOffering(result.entry_id ?? result.id ?? entry.id);
       setSavedAwaitingRefresh(entry.id);
       if (!(await refresh())) return;
       dispatch({ type: "saved", id: entry.id });
@@ -327,71 +370,10 @@ function KnowledgeEditorContent({
     };
     setDraft({ ...draft!, entries: [...draft!.entries, entry] });
     dispatch({ type: "edit", id, content: entry.content });
+    if (entry.kind === "offering") setSelectedOffering(id);
   }
   return (
-    <div className="knowledge-editor">
-      <div className="breadcrumb">
-        <Link href="/dashboard">Companies</Link>
-        <span>/</span>
-        <span>{draft.company.name}</span>
-      </div>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Scrape & build</p>
-          <h1>{draft.company.name}</h1>
-          <p>Review the facts. Refine the story. Keep the evidence.</p>
-        </div>
-        <div className="actions">
-          <select
-            aria-label="Switch company"
-            className="company-switcher"
-            value={companyId}
-            onChange={(e) => {
-              if (canNavigate())
-                window.location.assign(
-                  `/knowledge?companyId=${e.target.value}`,
-                );
-            }}
-          >
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <Link
-            className="button"
-            href={`/knowledge/view?companyId=${companyId}`}
-          >
-            View knowledge
-          </Link>
-          <button
-            className="button button--primary"
-            disabled={!canEdit || state.dirty.length > 0}
-            onClick={() => setPublish(true)}
-          >
-            Save knowledge version
-          </button>
-          {draft.company.role !== "viewer" && (
-            <button
-              className="button"
-              onClick={() => setSettings(true)}
-              aria-label="Company settings"
-            >
-              ⚙
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="section-heading">
-        <span className="muted">
-          Current draft · generation {draft.draftGeneration}
-        </span>
-        <div className="actions">
-          <StatusBadge value={draft.company.role} />
-          {state.dirty.length > 0 && <StatusBadge value="unsaved_changes" />}
-        </div>
-      </div>
+    <div className="knowledge-editor cloud-knowledge">
       {!membershipCanEdit && (
         <Notice>
           {draft.company.archived_at
@@ -399,12 +381,6 @@ function KnowledgeEditorContent({
             : "You have viewer access. You can inspect evidence and download saved versions."}
         </Notice>
       )}
-      <ScrapeProgress
-        companyId={companyId}
-        website={draft.company.website_url}
-        canEdit={canEdit}
-        onComplete={refresh}
-      />
       {error && (
         <Notice error>
           {error}
@@ -489,62 +465,135 @@ function KnowledgeEditorContent({
         </Notice>
       )}
       {message && <Notice>{message}</Notice>}
-      <div className="knowledge-editor__layout">
-        <nav className="category-nav" aria-label="Knowledge categories">
-          {Object.entries(CATEGORY_SPECS).map(([kind, category]) => {
-            const group = draft.entries.filter((e) => e.kind === kind);
-            const coverage = group.flatMap(
-              (entry) =>
-                (state.provenance[entry.id] ?? entry.provenance).coverage,
-            );
-            const assessed = coverage
-              .filter((item) => item.status !== "not_checked")
-              .reduce((total, item) => total + item.targets.length, 0);
-            const fieldCount =
-              group.length * Object.keys(category.fields).length ||
-              (["key_person", "offering"].includes(kind)
-                ? 0
-                : Object.keys(category.fields).length);
-            return (
-              <button
-                type="button"
-                key={kind}
-                className={`category-nav__item${state.category === kind ? " category-nav__item--active" : ""}`}
-                onClick={() => changeCategory(kind as EntryKind)}
-                disabled={!hydrated}
-                aria-current={state.category === kind ? "page" : undefined}
-              >
-                <span aria-hidden>{category.icon}</span>
-                <span>
-                  {category.label}
-                  <small className="category-nav__coverage">
-                    {assessed}/{fieldCount} fields checked
-                  </small>
-                </span>
-                <span className="category-nav__count">
-                  {group.filter((e) => e.review_status === "approved").length}/
-                  {group.length ||
-                    (["key_person", "offering"].includes(kind) ? 0 : 1)}{" "}
-                  reviewed
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+      <nav className="cloud-knowledge__navigation" aria-label="Knowledge categories">
+        <div className="cloud-knowledge__navigation-context"><span className="cloud-knowledge__tab" aria-current="page">Company</span><span className="cloud-knowledge__company-name">{draft.company.name}</span></div>
+        <div className="cloud-knowledge__navigation-actions">
+          <Link href={`/knowledge/view?companyId=${companyId}`} className="cloud-knowledge__site-link">Site Knowledge ↗</Link>
+          <select
+            className="cloud-knowledge__category-select"
+            aria-label="Knowledge category"
+            value={currentView}
+            disabled={!hydrated}
+            onChange={(event) => changeCategory(event.target.value as EntryKind)}
+          >
+            {Object.entries(VIEW_SPECS).map(([kind, category]) => (
+              <option key={kind} value={kind}>{category.label}</option>
+            ))}
+          </select>
+        </div>
+      </nav>
+      <div className={`cloud-knowledge__card cloud-knowledge__card--${currentView}`}>
         <section className="knowledge-editor__content">
+          {currentView === "company_foundation" && (
+            <div className="cloud-knowledge__banner">
+              <div><span className="cloud-knowledge__banner-label">Company overview</span><h3>{draft.company.name}</h3></div>
+              <dl className="cloud-knowledge__stats">
+                <div><dt>Founded</dt><dd>{String(foundation.year_founded ?? "Unknown")}</dd></div>
+                <div><dt>Employees</dt><dd>{employeeLabel}</dd></div>
+                <div><dt>Legal entity</dt><dd>{String(foundation.legal_entity_type ?? "Unknown")}</dd></div>
+              </dl>
+            </div>
+          )}
           <div className="knowledge-editor__header">
             <div className="section-heading">
-              <h2>{spec.label}</h2>
-              {canEdit &&
-                ["key_person", "offering"].includes(state.category) && (
-                  <button className="button" onClick={addRepeatable}>
-                    ＋ Add{" "}
-                    {state.category === "key_person" ? "person" : "offering"}
-                  </button>
-                )}
+              <h2>{view.label}</h2>
+              {canEdit && ["key_person", "offering"].includes(currentView) && (
+                <button className="button" onClick={addRepeatable}>
+                  ＋ Add {currentView === "key_person" ? "person" : "offering"}
+                </button>
+              )}
             </div>
-            <p>{spec.description}</p>
+            <p>{view.description}</p>
+            <div className="cloud-knowledge__coverage" aria-label="Review coverage">
+              {kinds.map((kind) => {
+                const group = draft.entries.filter((entry) => entry.kind === kind);
+                const coverage = group.flatMap((entry) => (state.provenance[entry.id] ?? entry.provenance).coverage);
+                const assessed = coverage.filter((item) => item.status !== "not_checked")
+                  .reduce((total, item) => total + item.targets.length, 0);
+                const fields = group.length * Object.keys(CATEGORY_SPECS[kind]!.fields).length ||
+                  (["key_person", "offering"].includes(kind) ? 0 : Object.keys(CATEGORY_SPECS[kind]!.fields).length);
+                return <span key={kind}>{marketing && `${CATEGORY_SPECS[kind]!.label}: `}{assessed}/{fields} fields checked · {group.filter((entry) => entry.review_status === "approved").length}/{group.length || (["key_person", "offering"].includes(kind) ? 0 : 1)} reviewed</span>;
+              })}
+            </div>
           </div>
+          {currentView === "market_and_customers" && (
+            <div className="cloud-knowledge__banner">
+              <div><span className="cloud-knowledge__banner-label">Industry</span><h3>{String(foundation.industry ?? "Not recorded")}</h3></div>
+              <p>Industry, business model, and company role can be edited in General Info.</p>
+            </div>
+          )}
+          <div className="cloud-knowledge__workspace-controls" aria-label="Company workspace controls">
+            <div className="cloud-knowledge__workspace-context"><Link href="/dashboard">Companies</Link><span aria-hidden="true"> / </span><span>{draft.company.name}</span></div>
+        <div className="actions">
+          <select
+            aria-label="Switch company"
+            className="company-switcher"
+            value={companyId}
+            onChange={(e) => {
+              if (canNavigate())
+                window.location.assign(
+                  `/knowledge?companyId=${e.target.value}`,
+                );
+            }}
+          >
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <Link
+            className="button"
+            href={`/knowledge/view?companyId=${companyId}`}
+          >
+            View knowledge
+          </Link>
+          <button
+            className="button button--primary"
+            disabled={!canEdit || state.dirty.length > 0}
+            onClick={() => setPublish(true)}
+          >
+            Save knowledge version
+          </button>
+          {draft.company.role !== "viewer" && (
+            <button
+              className="button"
+              onClick={() => setSettings(true)}
+              aria-label="Company settings"
+            >
+              ⚙
+            </button>
+          )}
+        </div>
+      <div className="cloud-knowledge__draft-status">
+        <span className="muted">
+          Current draft · generation {draft.draftGeneration}
+        </span>
+        <div className="actions">
+          <StatusBadge value={draft.company.role} />
+          {state.dirty.length > 0 && <StatusBadge value="unsaved_changes" />}
+        </div>
+      </div>
+          </div>
+          <div className={currentView === "offering" && visibleEntries.length > 0 ? "cloud-knowledge__offerings" : "cloud-knowledge__sections"}>
+            {currentView === "offering" && visibleEntries.length > 0 && (
+              <nav className="cloud-knowledge__offering-list" aria-label="Business offerings">
+                <p className="cloud-knowledge__list-label">Your offerings <span>{visibleEntries.length}</span></p>
+                {visibleEntries.map((entry, index) => {
+                  const value = state.values[entry.id] ?? entry.content;
+                  return <button
+                    key={entry.id} type="button"
+                    className={`cloud-knowledge__offering${activeOffering?.id === entry.id ? " cloud-knowledge__offering--selected" : ""}`}
+                    aria-current={activeOffering?.id === entry.id ? "true" : undefined}
+                    onClick={() => setSelectedOffering(entry.id)}
+                  >
+                    <span className="cloud-knowledge__offering-icon" aria-hidden="true">▱</span>
+                    <span><strong>{"name" in value && value.name ? String(value.name) : `Untitled offering ${index + 1}`}</strong><small>{state.dirty.includes(entry.id) ? "Unsaved changes" : entry.review_status.replaceAll("_", " ")}</small></span>
+                    <span aria-hidden="true">›</span>
+                  </button>;
+                })}
+              </nav>
+            )}
           {visibleEntries.length === 0 && (
             <div className="panel">
               <EmptyState
@@ -557,7 +606,8 @@ function KnowledgeEditorContent({
               </EmptyState>
             </div>
           )}
-          {visibleEntries.map((entry) => {
+          {renderedEntries.map((entry) => {
+            const spec = CATEGORY_SPECS[entry.kind]!;
             const value = state.values[entry.id] ?? entry.content;
             const provenance = state.provenance[entry.id] ?? entry.provenance;
             const root =
@@ -573,7 +623,7 @@ function KnowledgeEditorContent({
             );
             return (
               <article
-                className="knowledge-editor__entry panel"
+                className={`knowledge-editor__entry cloud-knowledge__entry cloud-knowledge__entry--${entry.kind}`}
                 id={`entry-${entry.id}`}
                 key={entry.id}
               >
@@ -667,11 +717,15 @@ function KnowledgeEditorContent({
                     ))}
                   </Notice>
                 )}
-                <div className="field-grid">
-                  {Object.entries(spec.fields).map(([key, field]) => (
+                {entry.kind === "market_and_customers" && (
+                  <p className="cloud-knowledge__save-scope">These controls save and review the full Market & customers entry, including fields in both Customers & Industry and Sales & Marketing.</p>
+                )}
+                <div className="cloud-knowledge__field-grid">
+                  {entryFields(entry.kind, marketing).map(([key, field]) => (
+                    <div className={`cloud-knowledge__field-card cloud-knowledge__field-card--${key}`} key={key}>
                     <BusinessField
                       key={key}
-                      spec={field}
+                      spec={key === "main_address" ? { ...field, label: "Headquarters" } : key === "alternative_company_names" ? { ...field, label: "Alternate names" } : field}
                       name={key}
                       path={`${root}/${key}`}
                       value={(value as Record<string, unknown>)[key]}
@@ -687,6 +741,7 @@ function KnowledgeEditorContent({
                         })
                       }
                     />
+                    </div>
                   ))}
                 </div>
                 {entry.kind === "key_person" &&
@@ -754,6 +809,7 @@ function KnowledgeEditorContent({
               </article>
             );
           })}
+          </div>
           <ProposalReview
             citationContext={draft.citationContext}
             companyId={companyId}
@@ -762,6 +818,17 @@ function KnowledgeEditorContent({
             onApplied={refresh}
           />
         </section>
+      </div>
+      <p className="cloud-knowledge__tip"><span aria-hidden="true">ⓘ</span> Helpful tip: Keep company facts specific and evidence based. Review sources before approving, and leave unknown values empty.</p>
+      <div className="cloud-knowledge__capture">
+        <h2>Website capture</h2>
+        <p className="muted">Add fresh source material and review proposed changes.</p>
+      <ScrapeProgress
+        companyId={companyId}
+        website={draft.company.website_url}
+        canEdit={canEdit}
+        onComplete={refresh}
+      />
       </div>
       {history && (
         <EntryHistory
