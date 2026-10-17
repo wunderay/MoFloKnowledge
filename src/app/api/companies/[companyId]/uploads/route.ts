@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { HttpError, mapDatabaseError, route } from "../../../../../server/http";
 import {
-  MAX_REQUEST_BYTES,
   TYPES_MESSAGE,
   UPLOAD_BUCKET,
   UPLOAD_KINDS,
@@ -9,6 +8,7 @@ import {
   limitFor,
   limitMessage,
   parseId,
+  readUploadForm,
   sniffImage,
   storageUnavailable,
   type UploadKind,
@@ -18,14 +18,7 @@ export const runtime = "nodejs";
 export const POST = route(async (request, context, { client, user }) => {
   const companyId = parseId((await context.params).companyId);
   await authorizeUploads(client, companyId, user!.id, true);
-  const length = Number(request.headers.get("content-length"));
-  if (length > MAX_REQUEST_BYTES) throw new HttpError(413, "payload_too_large", limitMessage("logos"));
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
-    throw new HttpError(400, "invalid_input", "Send the image as multipart form data.");
-  }
+  const form = await readUploadForm(request);
   const kind = form.get("kind");
   if (typeof kind !== "string" || !UPLOAD_KINDS.includes(kind as UploadKind))
     throw new HttpError(400, "invalid_input", "Choose logos, portraits, or offering-images.");
@@ -44,7 +37,10 @@ export const POST = route(async (request, context, { client, user }) => {
   const stored = await client.storage
     .from(UPLOAD_BUCKET)
     .upload(path, bytes, { contentType: image.type, upsert: false });
-  if (stored.error) throw storageUnavailable();
+  if (stored.error) {
+    await authorizeUploads(client, companyId, user!.id, true); // archived or revoked mid-request: say so
+    throw storageUnavailable();
+  }
   const inserted = await client.from("uploads").insert({
     id,
     company_id: companyId,
@@ -61,6 +57,7 @@ export const POST = route(async (request, context, { client, user }) => {
     } catch {
       /* An unreferenced object is unreachable through the app. */
     }
+    await authorizeUploads(client, companyId, user!.id, true);
     throw mapDatabaseError(inserted.error);
   }
   return { id, path, content_type: image.type, size_bytes: bytes.byteLength, url: `/api/companies/${companyId}/uploads/${id}` };

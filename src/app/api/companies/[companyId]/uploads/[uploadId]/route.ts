@@ -44,7 +44,13 @@ export const DELETE = route(async (_request, context, { client, user }) => {
   // readable object without a row. Removing an already-missing object is not an error, so a retry completes.
   const removed = await client.storage.from(UPLOAD_BUCKET).remove([upload.path]);
   if (removed.error) throw storageUnavailable();
-  const { error } = await client.from("uploads").delete().eq("id", uploadId).eq("company_id", companyId);
+  const { data, error } = await client
+    .from("uploads")
+    .delete()
+    .eq("id", uploadId)
+    .eq("company_id", companyId)
+    .select("id");
   if (error) throw mapDatabaseError(error);
+  if (!data?.length) throw unavailable(); // another request deleted it first, or the row was not ours to delete
   return { id: uploadId };
 });

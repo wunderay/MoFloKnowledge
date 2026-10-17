@@ -90,3 +90,37 @@ export async function findUpload(client: Client, companyId: string, uploadId: st
   if (!data || !match || match[1] !== companyId) throw unavailable();
   return { path: String(data.path), type: TYPE_BY_EXTENSION[match[2]!]! };
 }
+
+/**
+ * The multipart body, read with a hard byte cap before anything is parsed, so a chunked body with no declared
+ * length cannot be buffered without bound. Parsed afterwards by the platform's own multipart parser.
+ */
+export async function readUploadForm(request: Request): Promise<FormData> {
+  if (Number(request.headers.get("content-length")) > MAX_REQUEST_BYTES) throw tooLarge();
+  const reader = request.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  if (reader)
+    for (;;) {
+      const result = await reader.read();
+      if (result.done) break;
+      size += result.value.byteLength;
+      if (size > MAX_REQUEST_BYTES) {
+        await reader.cancel();
+        throw tooLarge();
+      }
+      chunks.push(result.value);
+    }
+  try {
+    return await new Request(request.url, {
+      method: "POST",
+      headers: { "content-type": request.headers.get("content-type") ?? "" },
+      body: Buffer.concat(chunks),
+    }).formData();
+  } catch {
+    throw new HttpError(400, "invalid_input", "Send the image as multipart form data.");
+  }
+}
+function tooLarge() {
+  return new HttpError(413, "payload_too_large", limitMessage("logos"));
+}
