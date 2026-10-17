@@ -278,6 +278,7 @@ export function assembleKnowledgeBase(
     {
       entryIds: approved.map((e) => e.entry_id),
       approved: true,
+      aggregate: true,
       historicalClaimIds: input.historicalClaimIds,
     },
   );

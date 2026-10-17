@@ -1,7 +1,7 @@
 import type { EntryProvenance, ExportProvenance, Claim } from "./provenance";
 import { parseBusinessEntry, type EntryKind } from "./business";
 import { canonicalStringify } from "../knowledge/canonical-json";
-import { EntryProvenanceSchema, ExportProvenanceSchema } from "./provenance";
+import { AggregateProvenanceSchema, EntryProvenanceSchema, ExportProvenanceSchema } from "./provenance";
 import {
   enumerateFactualLeaves,
   resolveStablePointer,
@@ -35,6 +35,8 @@ export type ProvenanceOptions = {
   requireCoverage?: boolean;
   capturedSources?: CapturedSource[];
   approved?: boolean;
+  /** The input aggregates a whole snapshot's entries, so it may hold up to the snapshot coverage cap. */
+  aggregate?: boolean;
 };
 export function validateProvenance(
   business: Record<string, unknown>,
@@ -45,7 +47,11 @@ export function validateProvenance(
   const add = (code: string, path: string, message: string) =>
     issues.push({ code, path, message });
   const parsed = (
-    "company" in input ? ExportProvenanceSchema : EntryProvenanceSchema
+    "company" in input
+      ? ExportProvenanceSchema
+      : options.aggregate
+        ? AggregateProvenanceSchema
+        : EntryProvenanceSchema
   ).safeParse(input);
   if (!parsed.success)
     return parsed.error.issues.map((x) => ({

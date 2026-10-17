@@ -171,6 +171,12 @@ export const EntryProvenanceSchema = z
     decisions: collection(ConflictDecisionSchema).optional().default([]),
   })
   .strict();
+/** The most coverage rows a snapshot holds: 32 singleton rows + 8 per person or offering x 500 + 1 (500 claims cap them). */
+export const MAX_SNAPSHOT_COVERAGE = 4033;
+/** Provenance aggregated across a snapshot's entries: the entry shape, with the snapshot-sized coverage cap. */
+export const AggregateProvenanceSchema = EntryProvenanceSchema.extend({
+  coverage: z.array(CoverageAssessmentSchema).max(MAX_SNAPSHOT_COVERAGE),
+}).strict();
 export const EntryStateSchema = z
   .object({
     entry_id: uuid,
@@ -192,7 +198,7 @@ export const ExportProvenanceSchema = z
     claims: collection(ClaimSchema),
     // 32 singleton rows + 8 per person or offering + 1 for an empty collection; a snapshot carries at most 500 claims, each
     // person or offering needs one, so 32 + 8 x 500 + 1 = 4,033 rows.
-    coverage: z.array(CoverageAssessmentSchema).max(4033),
+    coverage: z.array(CoverageAssessmentSchema).max(MAX_SNAPSHOT_COVERAGE),
     operations: z.array(OperationSchema).max(1000),
   })
   .strict();
