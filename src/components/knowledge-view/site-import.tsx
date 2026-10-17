@@ -32,24 +32,28 @@ export function importRoom(site: ViewSiteLinks): { room: number; limit: "links" 
 const LEAVES_PER_LINK = 2;
 
 export type Candidate = { key: string; label: string; url: string };
-const normalized = (url: string) => {
+/** The address with its hash and trailing slashes dropped, so "/visit/#map" and "/visit" are one page; the query stays. */
+export function pageKey(url: string): string {
   try {
-    return new URL(url).href;
+    const parsed = new URL(url);
+    parsed.hash = "";
+    const path = parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.protocol}//${parsed.host}${path}${parsed.search}`;
   } catch {
-    return url;
+    return url.trim();
   }
-};
+}
 
 /**
  * The captured pages that can become links: plain http(s) addresses without credentials that are
  * not stored links yet, each address once, in the inventory's order.
  */
 export function importCandidates(pages: SourceCoverage["pages"], stored: SiteLink[]): Candidate[] {
-  const seen = new Set(stored.map((link) => normalized(link.url)));
+  const seen = new Set(stored.map((link) => pageKey(link.url)));
   const out: Candidate[] = [];
   for (const page of pages) {
     if (page.state !== "captured" || !URLSchema.safeParse(page.url).success) continue;
-    const key = normalized(page.url);
+    const key = pageKey(page.url);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ key, label: page.title?.trim() || page.url, url: page.url });
