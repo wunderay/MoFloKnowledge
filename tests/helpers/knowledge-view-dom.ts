@@ -25,19 +25,9 @@ export function contains(outer: AnyNode, inner: AnyNode): boolean {
 export const textOf = ({ $ }: Page, el: AnyNode) => norm($(el).text());
 
 // ---- the section selector ---------------------------------------------------
-// The selector is a listbox whose options are rendered only while it is open, so the server markup
-// carries the trigger (a button named "Knowledge section" that shows the current section) and the
-// sections' identifiers come from this table, in the order of the listbox (Q10 navigation-listbox).
-export const SELECTOR_SECTIONS = [
-  { label: "General Info", value: "general" },
-  { label: "Brand Identity", value: "brand" },
-  { label: "Business Offerings", value: "offerings" },
-  { label: "Customers & Industry", value: "customers" },
-  { label: "Sales & Marketing", value: "sales" },
-  { label: "Key People", value: "key-people" },
-  { label: "Site Knowledge", value: "site" },
-  { label: "All sections", value: "all" },
-] as const;
+// The selector is a listbox: the server markup carries its trigger (a button named "Knowledge section"
+// that shows the current section) and the options, hidden while the list is closed, each with its
+// identifier in data-section.
 function triggerName(page: Page, el: Element): string {
   const { $ } = page;
   const label = $(el).attr("aria-label");
@@ -57,12 +47,19 @@ export function sectionSelector(page: Page): Element | null {
   return trigger ? ((trigger.parent as Element | null) ?? trigger) : null;
 }
 export type SelectorItem = { label: string; value: string; selected: boolean };
-/** The selector's entries in listbox order, with the identifier each one submits; the selected one is the section the trigger shows. */
+/** The listbox's options in document order, with the identifier each one submits; the selected one has aria-selected=true. */
 export function selectorItems(page: Page): SelectorItem[] {
-  const trigger = selectorTrigger(page);
-  if (!trigger) return [];
-  const shown = norm(page.$(trigger).text());
-  return SELECTOR_SECTIONS.map((item) => ({ ...item, selected: item.label === shown }));
+  const root = sectionSelector(page);
+  if (!root) return [];
+  const { $ } = page;
+  return $(root)
+    .find('[role="option"]')
+    .toArray()
+    .map((el) => ({
+      label: norm($(el).text()),
+      value: $(el).attr("data-section") ?? "",
+      selected: $(el).attr("aria-selected") === "true",
+    }));
 }
 export function selectedSection(page: Page): string[] {
   return selectorItems(page).filter((i) => i.selected).map((i) => i.label);

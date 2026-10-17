@@ -21,6 +21,8 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
   const wrap = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
+  /** Space selected an option: its keyup would otherwise click the trigger (Firefox) and reopen the list. */
+  const swallowKeyup = useRef(false);
   const state = open ? "open" : "closed";
 
   useEffect(() => {
@@ -41,6 +43,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
   }, [open, active]);
 
   const show = () => {
+    swallowKeyup.current = false;
     setActive(indexOf(value));
     setOpen(true);
   };
@@ -52,6 +55,10 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
     const next = KNOWLEDGE_SECTIONS[index]!.id;
     close();
     onSelect(next);
+  };
+  const onTriggerKeyUp = (event: KeyboardEvent) => {
+    if (event.key === " " && swallowKeyup.current) event.preventDefault();
+    swallowKeyup.current = false;
   };
   const onTriggerKey = (event: KeyboardEvent) => {
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -69,6 +76,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
     else if (event.key === "End") move(last);
     else if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
+      swallowKeyup.current = event.key === " ";
       choose(active);
     } else if (event.key === "Escape") {
       event.preventDefault();
@@ -79,7 +87,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
 
   return (
     <div className="knowledge-view__listbox" data-state={state} ref={wrap}>
-      <span className="sr-only" id={labelId}>Knowledge section</span>
+      <span className="sr-only" id={labelId} hidden>Knowledge section</span>
       <button
         type="button"
         id={triggerId}
@@ -90,40 +98,41 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
         aria-expanded={open}
         aria-controls={listId}
         aria-labelledby={`${labelId} ${triggerId}`}
-        onClick={() => (open ? setOpen(false) : show())}
+        onClick={() => (open ? close() : show())}
         onKeyDown={onTriggerKey}
+        onKeyUp={onTriggerKeyUp}
       >
         <span>{sectionLabel(value)}</span>
         <span className="knowledge-view__listbox-chevron" aria-hidden="true" />
       </button>
-      {open && (
-        <ul
-          id={listId}
-          ref={list}
-          role="listbox"
-          tabIndex={-1}
-          className="knowledge-view__listbox-list"
-          data-state={state}
-          aria-labelledby={labelId}
-          aria-activedescendant={optionId(KNOWLEDGE_SECTIONS[active]!.id)}
-          onKeyDown={onListKey}
-        >
-          {KNOWLEDGE_SECTIONS.map((item, index) => (
-            <li
-              key={item.id}
-              id={optionId(item.id)}
-              role="option"
-              aria-selected={item.id === value}
-              className={`knowledge-view__listbox-option${index === active ? " knowledge-view__listbox-option--active" : ""}`}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseMove={() => active !== index && setActive(index)}
-              onClick={() => choose(index)}
-            >
-              {item.label}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul
+        id={listId}
+        ref={list}
+        role="listbox"
+        tabIndex={-1}
+        className="knowledge-view__listbox-list"
+        data-state={state}
+        hidden={!open}
+        aria-labelledby={labelId}
+        aria-activedescendant={open ? optionId(KNOWLEDGE_SECTIONS[active]!.id) : undefined}
+        onKeyDown={onListKey}
+      >
+        {KNOWLEDGE_SECTIONS.map((item, index) => (
+          <li
+            key={item.id}
+            id={optionId(item.id)}
+            data-section={item.id}
+            role="option"
+            aria-selected={item.id === value}
+            className={`knowledge-view__listbox-option${index === active ? " knowledge-view__listbox-option--active" : ""}`}
+            onMouseDown={(event) => event.preventDefault()}
+            onMouseMove={() => active !== index && setActive(index)}
+            onClick={() => choose(index)}
+          >
+            {item.label}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
