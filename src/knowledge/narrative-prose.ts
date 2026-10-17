@@ -4,6 +4,14 @@ const sentences = new Intl.Segmenter("en", { granularity: "sentence" });
 const quoted = (text: string) => /["“”«»‘’]/u.test(text)
   || /(?:^|\s)'[^'\n]+'(?:\s|[.,!?]|$)/u.test(text);
 
+// Literal tokens (email, URL, www host, host/path, @handle, #hashtag) must reach the reader byte-for-byte.
+const literalShape = [/^[^\s@/]+@[^\s@/]+\.\p{L}{2,}$/u, /^\w+:\/\//u, /^www\./iu,
+  /^[^\s/@.]+(?:\.[^\s/@.]+)*\.\p{L}{2,}\/\S*$/u, /^[@#]\w+$/u];
+const literalToken = (token: string) => {
+  const core = token.replace(/^.*\]\(/u, "").replace(/^[(<["']+/u, "").replace(/[.,;:!?)\]>'"]+$/u, "");
+  return literalShape.some((shape) => shape.test(core));
+};
+
 export function factualBullets(text: string, company: string, verbatim = false): FactualBullet[] {
   if (quoted(text)) return [{ text }];
   const personal = /\b(?:I|my|me)\b/iu.test(text);
@@ -30,8 +38,7 @@ export function factualBullets(text: string, company: string, verbatim = false):
     const body = assistance?.[1] ?? predicate;
     const specialtyResult = verb === "specialize in" && /^[^,]+, ensuring [^,]+$/su.test(body);
     if ((body.includes(",") && !specialtyResult) || /^(?:no|not|never)\b/u.test(body)) return { text: statement, label: "Company statement" };
-    const neutral = (value: string) => value.replace(/\S+/gu, (token) => (/[@/#.]/u.test(token.replace(/[.,;:!?)\]'"]+$/u, ""))
-      ? token : token.replace(/\bour\b/gu, "its")));
+    const neutral = (value: string) => value.replace(/\S+/gu, (token) => literalToken(token) ? token : token.replace(/\bour\b/gu, "its"));
     const labels: Record<string, string> = { "specialize in": "Specialty", provide: "Services provided", offer: "Services offered",
       perform: "Activities performed", use: "Tools used", "adhere to": "Adherence" };
     const label = labels[verb];
