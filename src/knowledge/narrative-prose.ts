@@ -7,8 +7,7 @@ const quoted = (text: string) => /["“”«»‘’]/u.test(text)
 export function factualBullets(text: string, company: string, verbatim = false): FactualBullet[] {
   if (quoted(text)) return [{ text }];
   const personal = /\b(?:I|my|me)\b/iu.test(text);
-  return [...sentences.segment(text)].map(({ segment }) => {
-    const statement = segment.trim();
+  return [...sentences.segment(text)].map(({ segment }) => segment.trim()).filter(Boolean).map((statement) => {
     if (verbatim || personal) return { text: statement };
     const welcome = `Welcome to ${company}, a trusted partner for `;
     if (statement.startsWith(welcome)) {
