@@ -478,3 +478,5 @@
 .knowledge-view__chip--editable { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
 button.knowledge-view__chip--add { font-family: inherit; cursor: pointer; }
 button.knowledge-view__chip--add:disabled { opacity: .55; cursor: default; }
+.knowledge-view__swatch--unavailable { border-style: dashed; border-color: #cdd3e0; background: transparent; }
+.knowledge-view__offering-actions { display: flex; justify-content: flex-end; }

@@ -23,6 +23,7 @@ export function SectionView({
   onSelectPerson = () => {},
   canEdit = false,
   actorId = "",
+  generation = null,
   importBlocked = false,
   onSaved = async () => {},
 }: {
@@ -47,12 +48,14 @@ export function SectionView({
   /** An editable draft offers "+ Add page", "Import from website" and the key people actions; `onSaved` reloads the draft after it saved. */
   canEdit?: boolean;
   actorId?: string;
+  /** The draft's generation, which renaming the company quotes (null: the name cannot be edited). */
+  generation?: number | null;
   /** True while the view is older than a saved import: the picker would work from stale entries. */
   importBlocked?: boolean;
   onSaved?: (what?: "changes") => Promise<void>;
 }) {
   const profile = profileFrom(entries, citationContext);
-  // An editable draft edits General Info, Customers & Industry and Sales & Marketing in place; everything else reads only.
+  // An editable draft edits General Info, Customers & Industry, Sales & Marketing, Business Offerings and Brand Identity in place; everything else reads only.
   const edit: EditEnv | null =
     canEdit && actorId
       ? {
@@ -61,7 +64,9 @@ export function SectionView({
           blocked: importBlocked,
           onSaved: () => onSaved("changes"),
           entry: (kind) => {
-            const found = entries.find((item) => item.kind === kind);
+            // An offering (or any entry that is one of many) is asked for as "<kind>@<entry id>"; the others by their kind.
+            const [base, id] = kind.split("@");
+            const found = entries.find((item) => (id === undefined ? item.kind === kind : item.kind === base && item.id === id));
             return found && found.id !== undefined
               ? { id: found.id, revision: found.current_revision ?? 0, content: found.content, provenance: found.provenance }
               : null;
@@ -89,11 +94,22 @@ export function SectionView({
         <BusinessOfferings
           companyId={companyId}
           offerings={offeringsFrom(entries, citationContext)}
+          canEdit={edit !== null}
+          blocked={importBlocked}
+          onSaved={onSaved}
           selectedId={offeringId}
           onSelect={onSelectOffering}
         />
       );
-    if (id === "brand") return <BrandIdentity companyId={companyId} name={name} profile={profile} />;
+    if (id === "brand")
+      return (
+        <BrandIdentity
+          companyId={companyId}
+          name={name}
+          profile={profile}
+          rename={edit && generation !== null ? { generation, blocked: importBlocked, onRenamed: () => onSaved("changes") } : undefined}
+        />
+      );
     return (
       <SiteKnowledge
         companyId={companyId}

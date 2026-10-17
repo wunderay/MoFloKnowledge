@@ -77,7 +77,9 @@ export async function renderOB(opts: OBRenderOptions): Promise<string> {
   if (opts.section !== undefined) query.set("section", opts.section);
   if (opts.offering !== undefined) query.set("offering", opts.offering);
   state.search = query.toString();
-  state.draft = opts.draft ?? null;
+  // These read-only (Q3) tests look at the view as a viewer sees it: an owner's draft edits in place (Quest offerings-brand-edit,
+  // which has its own tests), and its controls are not part of what they check.
+  state.draft = opts.draft ? { ...opts.draft, company: { ...opts.draft.company, role: "viewer" } } : null;
   state.snapshot = opts.snapshot?.payload ?? null;
   state.versions = VERSIONS;
   const { default: ViewPage } = await import("../../src/app/(authenticated)/knowledge/view/page");

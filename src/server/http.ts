@@ -6,6 +6,7 @@ import { verifiedSession } from "../lib/supabase/server";
 import { IdSchema } from "../contracts/api-common";
 import {
   ArchivedEntryResponseSchema,
+  RestoredEntryResponseSchema,
   CompanyRowSchema,
   RevisionResponseSchema,
 } from "../contracts/api-responses";
@@ -212,6 +213,8 @@ export async function rpc(
     return parseResponse(CompanyRowSchema, data);
   if (name === "archive_entry")
     return parseResponse(ArchivedEntryResponseSchema, data);
+  if (name === "restore_entry")
+    return parseResponse(RestoredEntryResponseSchema, data);
   if (
     [
       "create_entry",

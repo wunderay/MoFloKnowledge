@@ -82,6 +82,10 @@ export const ArchivedEntryResponseSchema = z
     archived_at: InstantSchema,
   })
   .strict();
+/** What restoring a deleted entry answers: the entry that is back in the draft and the revision it is at. */
+export const RestoredEntryResponseSchema = z
+  .object({ id: IdSchema, kind: EntryKindSchema, revision: z.number().int().positive() })
+  .strict();
 export const DraftEntryResponseSchema = RevisionResponseSchema.extend({
   kind: EntryKindSchema,
   current_revision: z.number().int().positive(),
