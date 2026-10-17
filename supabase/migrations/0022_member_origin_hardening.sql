@@ -4,7 +4,7 @@
 -- a non-person-authored claim only when it is exactly the claim that already supported that value in the entry's history
 -- (same origin, notes and supporting claims, and the very evidence rows of that earlier revision), or when it selects a
 -- candidate stored in the previous revision's conflicts. Conflicts whose candidates are not person-authored are carried
--- over from the previous revision unchanged, never planted. Refusals use SQLSTATE
+-- over from the previous revision unchanged with the evidence rows they had, never planted. Refusals use SQLSTATE
 -- 23514 (check_violation); the API maps these and edited_leaf_requires_user_origin to a 422.
 BEGIN;
 SET ROLE moflo_owner;
@@ -27,7 +27,7 @@ BEGIN
   IF EXISTS(SELECT FROM jsonb_array_elements(coalesce(conflict->'candidates','[]'::jsonb)) candidate WHERE candidate->>'origin' IS DISTINCT FROM 'user_provided')
    AND NOT EXISTS(
     SELECT FROM jsonb_array_elements(coalesce(previous->'conflicts','[]'::jsonb)) stored
-    WHERE stored=conflict
+    WHERE stored=conflict AND private.evidence_rows_match((SELECT coalesce(jsonb_agg(e.value),'[]'::jsonb) FROM jsonb_array_elements(coalesce(conflict->'candidates','[]'::jsonb)) candidate,jsonb_array_elements(coalesce(candidate->'evidence_ids','[]'::jsonb)) e),p_provenance,previous)
    ) THEN RAISE EXCEPTION 'unsupported_candidate_origin:%',conflict->>'target' USING ERRCODE='23514'; END IF;
  END LOOP;
  FOR c IN SELECT value FROM jsonb_array_elements(coalesce(p_provenance->'claims','[]'::jsonb)) LOOP
