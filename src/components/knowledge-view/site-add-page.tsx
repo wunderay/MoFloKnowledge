@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { SiteLink } from "@/contracts";
-import { URLSchema } from "@/contracts/primitives";
+import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
 import type { ViewSiteLinks } from "./data";
 import { errorText, fullText, importRoom, saveLinks } from "./site-import";
 
@@ -61,7 +61,11 @@ export function checkPage(input: { url: string; title: string }, links: SiteLink
   const key = pageKey(parsed.href);
   const existing = links.find((link) => pageKey(link.url) === key);
   if (existing) return { ok: false, message: `"${existing.title.trim() || existing.url}" is already in the list.` };
-  return { ok: true, url: parsed.href, title: input.title.trim() || parsed.href };
+  // A longer title would have to be cut to fit; say so instead of saving something else than was typed.
+  const name = input.title.trim();
+  if (name.length > MAX_TEXT_LENGTH)
+    return { ok: false, message: `Keep the title to ${MAX_TEXT_LENGTH.toLocaleString("en-US")} characters or fewer.` };
+  return { ok: true, url: parsed.href, title: name || parsed.href };
 }
 
 /** "+ Add page" and the dialog that adds one page to the Site Knowledge list. */

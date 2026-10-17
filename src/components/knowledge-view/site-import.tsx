@@ -9,7 +9,7 @@ import {
   requiredCoverageTargets,
   type SiteLink,
 } from "@/contracts";
-import { URLSchema } from "@/contracts/primitives";
+import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
 import type { SourceCoverage } from "@/contracts/source-coverage";
 import { MAX_CLAIM_TARGETS, MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, OPERATIONS_PER_SAVE, reviseProvenance } from "@/knowledge/revise-provenance";
 import { ApiError, api, companyPath, write } from "../api-client";
@@ -86,7 +86,7 @@ export async function saveLinks(
 ) {
   const links = [
     ...site.links,
-    ...added.map((page) => ({ id: crypto.randomUUID(), title: page.label.slice(0, 20000), url: page.url, note: null })),
+    ...added.map((page) => ({ id: crypto.randomUUID(), title: page.label.slice(0, MAX_TEXT_LENGTH), url: page.url, note: null })),
   ];
   const content = parseBusinessEntry("site_links", { links });
   const requestId = crypto.randomUUID();

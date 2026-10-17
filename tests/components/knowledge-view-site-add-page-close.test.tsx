@@ -1,11 +1,12 @@
+// Also: a title over the link title limit is refused, not truncated.
 // The browser can close a modal <dialog> without a cancel event (Escape pressed twice), and fires a
 // "close" event. The add-page dialog must stay recoverable: while a save runs it is shown again, so a
 // failure is visible; otherwise it closes normally. After a failed save the address field has focus.
 import { describe, expect, it, vi } from "vitest";
 import { focusedPath } from "../helpers/knowledge-view-site-all-runtime";
-import { openSite } from "../helpers/knowledge-view-site-all-import";
+import { openSite, sentWrite } from "../helpers/knowledge-view-site-all-import";
 import { SITE, siteDraft } from "../helpers/knowledge-view-site-all-fixtures";
-import { addButton, alertText, fill, openAdd, openDialogs, theDialog, urlField, valueOf } from "../helpers/knowledge-view-add-page";
+import { addButton, alertText, fill, openAdd, openDialogs, save, theDialog, titleField, urlField, valueOf } from "../helpers/knowledge-view-add-page";
 
 vi.setConfig({ testTimeout: 30_000 });
 
@@ -55,5 +56,37 @@ describe("a dialog the browser closes by itself", () => {
     expect(view.server.writes).toEqual([]);
     await openAdd(view);
     expect(addButton(view)).toBeDefined();
+  });
+});
+
+describe("the title length limit", () => {
+  it("a title of exactly 20,000 characters is saved whole", async () => {
+    const view = await openSite({ draft: siteDraft() });
+    await openAdd(view);
+    const title = "t".repeat(20_000);
+    await fill(view, NEW_URL, title);
+    await save(view);
+    expect(openDialogs(view)).toHaveLength(0);
+    expect(sentWrite(view.server, "revise").content.links.at(-1)!.title).toBe(title);
+  });
+  it("a title of 20,001 characters is refused with a message, the input intact and nothing sent", async () => {
+    const view = await openSite({ draft: siteDraft() });
+    await openAdd(view);
+    const title = "t".repeat(20_001);
+    await fill(view, NEW_URL, title);
+    await save(view);
+    const dialog = theDialog(view)!;
+    expect(dialog, "the dialog stays open").toBeDefined();
+    expect(alertText(view, dialog)).toMatch(/title.*20,000 characters or fewer/i);
+    expect(valueOf(view, titleField(view, dialog))).toBe(title);
+    expect(valueOf(view, urlField(view, dialog))).toBe(NEW_URL);
+    expect(view.server.writes, "nothing was sent").toEqual([]);
+  });
+  it("20,000 characters of spaces around a short title do not count", async () => {
+    const view = await openSite({ draft: siteDraft() });
+    await openAdd(view);
+    await fill(view, NEW_URL, `${" ".repeat(15_000)}Short${" ".repeat(15_000)}`);
+    await save(view);
+    expect(sentWrite(view.server, "revise").content.links.at(-1)!.title).toBe("Short");
   });
 });
