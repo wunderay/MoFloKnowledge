@@ -1,5 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { CRAWL_LIMITS } from './budgets';
+const MAX_TIMER_MS = 2 ** 31 - 1; // larger timer delays overflow and fire after 1 ms
 class Semaphore {
     private active = 0;
     private waiting: (() => void)[] = [];
@@ -30,7 +31,7 @@ export class Scheduler {
     async pace(input: string, gapMs = 500, signal = this.signal) { const host = new URL(input).hostname; const prior = this.hostQueues.get(host) ?? Promise.resolve(); let release!: () => void; const turn = new Promise<void>(resolve => { release = resolve; }); this.hostQueues.set(host, turn); try {
         await prior;
         signal.throwIfAborted();
-        const wait = (this.starts.get(host) ?? 0) + Math.max(500, gapMs) - Date.now();
+        const wait = (this.starts.get(host) ?? 0) + Math.min(MAX_TIMER_MS, Math.max(500, gapMs)) - Date.now();
         if (wait > 0)
             await delay(wait, undefined, { signal });
         this.starts.set(host, Date.now());

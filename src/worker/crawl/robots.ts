@@ -9,6 +9,8 @@ type Rule = {
     allow: boolean;
     pattern: string;
 };
+// Untrusted Crawl-delay is capped so it always fits a timer (< 2^31 ms); deadlines bound it further.
+const MAX_CRAWL_DELAY_MS = 60_000;
 export function parseRobots(text: string): {
     rules: Rule[];
     delayMs: number;
@@ -41,7 +43,7 @@ export function parseRobots(text: string): {
                 group.rules.push({ allow: key === 'allow', pattern: value });
             }
             if (key === 'crawl-delay' && Number.isFinite(Number(value)))
-                group.delayMs = Math.max(500, Number(value) * 1000);
+                group.delayMs = Math.min(MAX_CRAWL_DELAY_MS, Math.max(500, Number(value) * 1000));
         }
     }
     const specificity=(agents:string[])=>Math.max(0,...agents.filter(agent=>agent&&agent!=='*'&&'mofloknowledgebot'.startsWith(agent)).map(agent=>agent.length));
@@ -85,12 +87,19 @@ export class RobotsCache {
         delayMs: number;
         blocked?: string;
     }>>();
-    constructor(private readonly fetcher: Fetcher = fetchDocument, private readonly onRequest?: FetchOptions['onRequest']) { }
+    // `loadSignal` bounds the shared robots.txt loads (job level); each caller's `signal` only bounds its own wait,
+    // so one caller's expired task deadline never poisons the cached load for the others.
+    constructor(private readonly fetcher: Fetcher = fetchDocument, private readonly onRequest?: FetchOptions['onRequest'], private readonly loadSignal?: AbortSignal) { }
     async check(input: string, signal?: AbortSignal): Promise<RobotsDecision> {
         const url = new URL(input);
-        if (!this.cache.has(url.origin))
-            this.cache.set(url.origin, this.load(url.origin, signal));
-        const policy = await this.cache.get(url.origin)!;
+        signal?.throwIfAborted();
+        let loading = this.cache.get(url.origin);
+        if (!loading) {
+            loading = this.load(url.origin, this.loadSignal);
+            this.cache.set(url.origin, loading);
+            loading.catch(() => this.cache.get(url.origin) === loading && this.cache.delete(url.origin));
+        }
+        const policy = await abortable(loading, signal);
         return { allowed: !policy.blocked && robotsAllows(url.pathname + url.search, policy.rules), delayMs: policy.delayMs, ...(policy.blocked ? { limitation: policy.blocked } : {}) };
     }
     private async load(origin: string, signal?: AbortSignal) {
@@ -115,4 +124,16 @@ export class RobotsCache {
         }
         return { rules: [], delayMs: 500, blocked: 'robots indeterminate after retry' };
     }
+}
+
+function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+    if (!signal)
+        return promise;
+    return new Promise<T>((resolve, reject) => {
+        if (signal.aborted)
+            return reject(signal.reason);
+        const abort = () => reject(signal.reason);
+        signal.addEventListener('abort', abort, { once: true });
+        promise.then(value => { signal.removeEventListener('abort', abort); resolve(value); }, error => { signal.removeEventListener('abort', abort); reject(error); });
+    });
 }
