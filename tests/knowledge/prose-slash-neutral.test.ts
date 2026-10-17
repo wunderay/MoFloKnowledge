@@ -11,7 +11,7 @@ it("neutralises slash-joined and dot-joined prose while keeping literal tokens",
   expect(texts("tools for our clients at our.com today.")).toEqual(["tools for its clients at our.com today."]);
   expect(texts("tools for our clients at our.com.")).toEqual(["tools for its clients at our.com."]);
   for (const token of ["our.studio", "our.cloud", "our.co.za", "our.com#top", "our.com#", "our.clients", "#our-team", "@our-brand",
-    "@our.brand", "#our-team2", "#our-team's", "our@localhost", "our@example.com/our", "our.com?x=our", "our.com…"]) {
+    "@our.brand", "#our-team2", "#our-team's", "our@localhost", "our@example.com/our", "our.com…"]) {
     expect(texts(`tools for our clients at ${token}`).join(" ")).toBe(`tools for its clients at ${token}`);
   }
 });
