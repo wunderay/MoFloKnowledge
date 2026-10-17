@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type Keyboard
 import type { SiteLink } from "@/contracts";
 import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
 import type { ViewSiteLinks } from "./data";
-import { errorText, fullText, importRoom, saveLinks } from "./site-import";
+import { errorText, fullText, importRoom, pageKey, saveLinks } from "./site-import";
 
 const NO_WEBSITE = "Add the company website first.";
 const NOTE = "Page added from the knowledge view.";
@@ -18,18 +18,6 @@ export function companyHost(website: string | null | undefined): string | null {
     return bareHost(new URL(website.trim()).hostname) || null;
   } catch {
     return null;
-  }
-}
-
-/** The address with its hash and trailing slashes dropped, so "/visit/#map" and "/visit" are one page; the query stays. */
-function pageKey(url: string): string {
-  try {
-    const parsed = new URL(url);
-    parsed.hash = "";
-    const path = parsed.pathname.replace(/\/+$/, "");
-    return `${parsed.protocol}//${parsed.host}${path}${parsed.search}`;
-  } catch {
-    return url.trim();
   }
 }
 

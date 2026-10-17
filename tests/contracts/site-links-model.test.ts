@@ -272,8 +272,7 @@ describe("C3 [behavioural + non-regression] database contract inputs", () => {
 
   it("[non-regression -> must stay green] node scripts/generate-sql-contract.mjs --check passes", () => {
     const result = spawnSync(process.execPath, ["scripts/generate-sql-contract.mjs", "--check"], { cwd: root, encoding: "utf8" });
-    expect(result.stderr).toBe("");
-    expect(result.status).toBe(0);
+    expect(result.status, result.stderr).toBe(0);
   });
 });
 

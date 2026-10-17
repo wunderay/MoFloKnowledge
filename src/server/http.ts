@@ -58,6 +58,15 @@ export function mapDatabaseError(error: {
       "forbidden",
       "Your role cannot perform this action.",
     );
+  if (
+    error.code === "23505" &&
+    /knowledge_entries_singleton_idx/.test(`${value} ${error.details ?? ""}`)
+  )
+    return new HttpError(
+      409,
+      "conflict",
+      "The saved state changed. Refresh and compare your changes.",
+    );
   if (/stale|conflict|active_job/.test(value))
     return new HttpError(
       409,
