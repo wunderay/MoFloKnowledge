@@ -224,9 +224,9 @@
 }
 
 /* Evidence controls stay small and secondary, at the card's right edge. */
-.knowledge-view__card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.knowledge-view .citation-popover { flex: none; font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
-.knowledge-view .citation-popover__trigger { padding: 2px 7px; border: 1px solid #dfe6fa; border-radius: 999px; background: transparent; color: var(--kv-muted); font: inherit; font-size: 10px; white-space: nowrap; }
+.knowledge-view__card-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 4px 10px; }
+.knowledge-view .citation-popover { flex: 0 1 auto; min-width: 0; max-width: 100%; font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.knowledge-view .citation-popover__trigger { max-width: 100%; padding: 2px 8px; border: 1px solid #dfe6fa; border-radius: 12px; background: transparent; color: var(--kv-muted); font: inherit; font-size: 10px; line-height: 1.4; text-align: left; white-space: normal; overflow-wrap: anywhere; }
 .knowledge-view .citation-popover__trigger:hover { border-color: var(--kv-blue); color: var(--kv-blue); }
 .knowledge-view__mini-label .citation-popover { margin-left: 6px; }
 .knowledge-view__stat dd .citation-popover { display: block; margin-top: 6px; }
