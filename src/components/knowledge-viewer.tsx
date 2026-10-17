@@ -123,7 +123,8 @@ export function KnowledgeViewer({
   const [coverage, setCoverage] = useState("");
   const [error, setError] = useState("");
   /** An import was saved but the draft could not be re-read: the view is older than the stored entry. */
-  const [staleDraft, setStaleDraft] = useState(false);
+  const [staleDraft, setStaleDraft] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(!initialData);
   const initializedList = useRef(false);
   const initializedView = useRef(false);
@@ -186,7 +187,7 @@ export function KnowledgeViewer({
     const abort = new AbortController();
     setLoading(true);
     setError("");
-    setStaleDraft(false);
+    setStaleDraft(null);
     setEntries([]);
     setPayload(null);
     setCitationContext(undefined);
@@ -235,6 +236,7 @@ export function KnowledgeViewer({
    * offers a reload, until a later read succeeds.
    */
   async function refreshDraft() {
+    setRefreshing(true);
     try {
       const data = await api<{
         company: { role: string; archived_at: string | null };
@@ -244,9 +246,11 @@ export function KnowledgeViewer({
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
       setEntries(data.entries);
       setCitationContext(data.citationContext);
-      setStaleDraft(false);
-    } catch {
-      setStaleDraft(true);
+      setStaleDraft(null);
+    } catch (error) {
+      setStaleDraft((error as Error).message || "The draft could not be read.");
+    } finally {
+      setRefreshing(false);
     }
   }
   async function reject(entry: ViewEntry) {
@@ -450,11 +454,17 @@ export function KnowledgeViewer({
           )}
         </div>
       </div>
-      {staleDraft && versionId === "draft" && (
-        <Notice error>
-          Saved. Reload to see the latest links.{" "}
-          <button className="button" onClick={() => void refreshDraft()}>
-            Reload
+      {staleDraft !== null && versionId === "draft" && (
+        <Notice>
+          Saved. Reload to see the latest links. The draft could not be read: {staleDraft}{" "}
+          <button
+            type="button"
+            className="button"
+            disabled={refreshing}
+            aria-busy={refreshing}
+            onClick={() => void refreshDraft()}
+          >
+            {refreshing ? "Reloading…" : "Reload"}
           </button>
         </Notice>
       )}
@@ -510,7 +520,7 @@ export function KnowledgeViewer({
                 citationContext={citationContext}
                 canEdit={canEdit && versionId === "draft"}
                 actorId={actorId}
-                importBlocked={staleDraft}
+                importBlocked={staleDraft !== null}
                 onSaved={refreshDraft}
                 offeringId={offeringId}
                 onSelectOffering={(id) => {

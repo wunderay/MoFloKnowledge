@@ -4,7 +4,6 @@ import { ZodError } from "zod";
 import {
   createEmptyProvenance,
   createEntryDefault,
-  type EntryProvenance,
   entryBusiness,
   parseBusinessEntry,
   requiredCoverageTargets,
@@ -12,47 +11,31 @@ import {
 } from "@/contracts";
 import { URLSchema } from "@/contracts/primitives";
 import type { SourceCoverage } from "@/contracts/source-coverage";
-import { reviseProvenance } from "@/knowledge/revise-provenance";
+import { MAX_CLAIM_TARGETS, MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, reviseProvenance } from "@/knowledge/revise-provenance";
 import { ApiError, api, companyPath, write } from "../api-client";
 import type { ViewSiteLinks } from "./data";
 
 /** The most links one site_links entry can hold. */
 export const MAX_LINKS = 500;
-/** What one provenance can hold (EntryProvenanceSchema): claims, each naming up to MAX_TARGETS leaves; operations. */
-export const MAX_CLAIMS = 500;
-export const MAX_OPERATIONS = 1000;
-export const MAX_TARGETS = 1000;
-
 /**
  * How many more links an import may add, and why not more. The links themselves are capped at
- * MAX_LINKS. The save also writes provenance, which the API caps separately: it needs at least one
- * more claim and one more operation than the entry already holds, so an entry whose claims or
- * operations are already at the cap cannot take an import even when it has room for links.
+ * MAX_LINKS. The save also writes provenance, which the API caps separately, and the server (not this
+ * browser) builds it: reviseProvenance names the new values (two per link: title and address) in
+ * shared claims, so a save adds claimsForLeaves(2 * links) claims (see groupClaims) and one operation. Room is what
+ * both the link cap and the claims and operations still free allow.
  */
 export function importRoom(site: ViewSiteLinks): { room: number; limit: "links" | "claims" | "operations" | null } {
   const linkRoom = Math.max(0, MAX_LINKS - site.links.length);
   const provenance = site.entry?.provenance;
-  if (provenance && provenance.claims.length >= MAX_CLAIMS) return { room: 0, limit: "claims" };
-  if (provenance && provenance.operations.length >= MAX_OPERATIONS) return { room: 0, limit: "operations" };
+  const claimRoom = MAX_ENTRY_CLAIMS - (provenance?.claims.length ?? 0);
+  // The most links k with claimsForLeaves(LEAVES_PER_LINK * k) <= claimRoom.
+  const byClaims = claimRoom <= 0 ? 0 : Math.floor((claimRoom * MAX_CLAIM_TARGETS) / LEAVES_PER_LINK);
+  if (provenance && provenance.operations.length >= MAX_ENTRY_OPERATIONS) return { room: 0, limit: "operations" };
+  if (byClaims < linkRoom) return { room: byClaims, limit: "claims" };
   return { room: linkRoom, limit: linkRoom === 0 ? "links" : null };
 }
-
-/**
- * The claims reviseProvenance wrote for the new values, one per leaf, grouped into as few claims as
- * the schema allows (a claim may name MAX_TARGETS leaves). Two leaves per link means MAX_LINKS links
- * need one claim instead of 2 * MAX_LINKS, which the API would reject. Claims the entry already had
- * are left as they are.
- */
-function groupNewClaims(revised: EntryProvenance, before: EntryProvenance | null): EntryProvenance {
-  const known = new Set((before?.claims ?? []).map((claim) => claim.id));
-  const fresh = revised.claims.filter((claim) => !known.has(claim.id));
-  if (fresh.length <= 1) return revised;
-  const targets = fresh.flatMap((claim) => claim.targets);
-  const grouped = [];
-  for (let at = 0; at < targets.length; at += MAX_TARGETS)
-    grouped.push({ ...fresh[0]!, id: crypto.randomUUID(), targets: targets.slice(at, at + MAX_TARGETS) });
-  return { ...revised, claims: [...revised.claims.filter((claim) => known.has(claim.id)), ...grouped] };
-}
+/** A new link names its title and its address; its note is empty. */
+const LEAVES_PER_LINK = 2;
 
 type Candidate = { key: string; label: string; url: string };
 const normalized = (url: string) => {
@@ -100,20 +83,17 @@ export async function saveLinks(companyId: string, actorId: string, site: ViewSi
       job_id: null,
       reason: "Entered manually; website extraction has not assessed this field.",
     }));
-    const provenance = groupNewClaims(
-      reviseProvenance({
-        kind: "site_links",
-        entryId: requestId,
-        before: createEntryDefault("site_links", requestId),
-        after: content,
-        provenance: empty,
-        actorId,
-        savedAt,
-        requestId,
-        note,
-      }),
-      null,
-    );
+    const provenance = reviseProvenance({
+      kind: "site_links",
+      entryId: requestId,
+      before: createEntryDefault("site_links", requestId),
+      after: content,
+      provenance: empty,
+      actorId,
+      savedAt,
+      requestId,
+      note,
+    });
     await api(companyPath(companyId, "/entries"), write("POST", { kind: "site_links", content, provenance, requestId }));
     return;
   }
@@ -127,20 +107,17 @@ export async function saveLinks(companyId: string, actorId: string, site: ViewSi
         reason: "Manually entered section. Website coverage has not been checked.",
       },
     ];
-  const provenance = groupNewClaims(
-    reviseProvenance({
-      kind: "site_links",
-      entryId: entry.id,
-      before: entry.content,
-      after: content,
-      provenance: stored,
-      actorId,
-      savedAt,
-      requestId,
-      note,
-    }),
-    entry.provenance,
-  );
+  const provenance = reviseProvenance({
+    kind: "site_links",
+    entryId: entry.id,
+    before: entry.content,
+    after: content,
+    provenance: stored,
+    actorId,
+    savedAt,
+    requestId,
+    note,
+  });
   await api(
     companyPath(companyId, `/entries/${entry.id}/revisions`),
     write("POST", {
@@ -280,7 +257,7 @@ export function SiteImport({
                 {limited && (
                   <p className="knowledge-view__dialog-hint">
                     {limit === "claims" || limit === "operations"
-                      ? `The list's source records are full (the maximum of ${limit === "claims" ? MAX_CLAIMS + " source claims" : MAX_OPERATIONS + " recorded changes"}), so no more pages can be added here.`
+                      ? `The list's source records are full (the maximum of ${limit === "claims" ? MAX_ENTRY_CLAIMS + " source claims" : MAX_ENTRY_OPERATIONS + " recorded changes"}), so no more pages can be added here.`
                       : remaining === 0
                       ? `The list already has the maximum of ${MAX_LINKS} links, so no more pages can be added.`
                       : `Only ${remaining} more ${remaining === 1 ? "page" : "pages"} can be added (maximum ${MAX_LINKS} links).`}

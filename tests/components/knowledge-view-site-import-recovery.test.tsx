@@ -4,7 +4,7 @@
 //  2. the provenance the importer writes must fit the API's claim cap at the promised 500 links.
 import { describe, expect, it, vi } from "vitest";
 import { CreateEntrySchema, SaveEntrySchema } from "../../src/contracts/api-entries";
-import { entryBusiness, validateProvenance } from "../../src/contracts";
+import { EntryProvenanceSchema, createEmptyProvenance, entryBusiness, parseBusinessEntry, validateProvenance } from "../../src/contracts";
 import { siteCard, siteCardText } from "../helpers/knowledge-view-site-all-dom";
 import { FakeServer, type Req } from "../helpers/knowledge-view-site-all-runtime";
 import {
@@ -15,7 +15,6 @@ import {
   openSite,
   pickerDialog,
   selectPages,
-  validated,
 } from "../helpers/knowledge-view-site-all-import";
 import {
   ACTOR,
@@ -29,6 +28,7 @@ import {
   noSiteDraft,
   siteDraft,
   userProvenance,
+  type Link,
   type Page,
 } from "../helpers/knowledge-view-site-all-fixtures";
 
@@ -36,6 +36,8 @@ vi.setConfig({ testTimeout: 60_000 });
 
 // The runtime helper maps "@/..." imports when it loads, so the components are imported after it.
 const { MAX_LINKS, importCandidates, importRoom, saveLinks } = await import("../../src/components/knowledge-view/site-import");
+const { claimsForLeaves } = await import("../../src/knowledge/revise-provenance");
+const { prepareManualCreation, prepareRevision } = await import("../../src/server/revisions");
 const { siteLinksFrom } = await import("../../src/components/knowledge-view/data");
 
 /** After the first successful write, GET /draft answers 503 until `recover()` is called. */
@@ -114,67 +116,111 @@ describe("a saved import whose draft re-read fails", () => {
 });
 
 // ---- the claim budget -----------------------------------------------------------------------------------
+// The browser's provenance is not stored: the server rebuilds it (prepareManualCreation for a new entry,
+// prepareRevision for a revision). These tests send the importer's real request through those functions
+// and validate what they would store against the contracts, including the 500-claim cap.
+const ACTOR_ID = ACTOR;
 const pagesOf = (count: number, from = 1): Page[] =>
   Array.from({ length: count }, (_, i) => ({ ...PAGES.shop, sourceId: null, url: `${SITE}/crawled/${from + i}`, title: `Crawled page ${from + i}` }));
 
-/** Runs the real writer against the fake API and returns the request it sent. */
-async function write(draft: ReturnType<typeof siteDraft>, pages: Page[]): Promise<Req> {
+/** Runs the real client writer against the fake API and returns the request it sent. */
+async function sentBy(draft: ReturnType<typeof siteDraft>, pages: Page[]): Promise<Req> {
   const server = new FakeServer({ draft });
   vi.stubGlobal("fetch", server.fetch);
   const site = siteLinksFrom(draft.entries as never);
-  const added = importCandidates(pages, site.links);
-  await saveLinks(COMPANY_ID, ACTOR, site, added);
+  await saveLinks(COMPANY_ID, ACTOR, site, importCandidates(pages, site.links));
   expect(server.writes).toHaveLength(1);
   return server.writes[0]!;
 }
-function check(req: Req, kind: "create" | "revise") {
-  const parsed = kind === "create" ? CreateEntrySchema.safeParse(req.body) : SaveEntrySchema.safeParse(req.body);
-  expect(parsed.success ? [] : parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`)).toEqual([]);
-  const sent = validated(req, kind);
-  expect(validateProvenance(entryBusiness("site_links", sent.content as never), sent.provenance)).toEqual([]);
-  return sent;
+const stored = (provenance: unknown) => {
+  const parsed = EntryProvenanceSchema.safeParse(provenance);
+  expect(parsed.success ? [] : parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`), "within the stored provenance contract (500 claims)").toEqual([]);
+  return provenance as ReturnType<typeof createEmptyProvenance>;
+};
+/** The provenance the server would store for a first entry made from this request. */
+async function created(pages: Page[]) {
+  const req = await sentBy(noSiteDraft(), pages);
+  const body = CreateEntrySchema.parse(req.body);
+  const content = parseBusinessEntry("site_links", body.content) as { links: Link[] };
+  const provenance = stored(prepareManualCreation(body.kind, body.content, body.requestId, ACTOR_ID));
+  expect(validateProvenance(entryBusiness("site_links", content as never), provenance)).toEqual([]);
+  return { content, provenance };
+}
+/** The provenance the server would store for a revision made from this request onto `draft`'s entry. */
+async function revised(draft: ReturnType<typeof siteDraft>, pages: Page[]) {
+  const req = await sentBy(draft, pages);
+  const body = SaveEntrySchema.parse(req.body);
+  const entry = draft.entries.find((e) => e.id === SITE_ENTRY_ID)!;
+  const rows: Record<string, unknown> = {
+    knowledge_entries: { kind: "site_links", current_revision: entry.current_revision },
+    knowledge_entry_versions: { content: entry.content, provenance: entry.provenance },
+  };
+  const client = {
+    from: (table: string) => {
+      const query: any = { select: () => query, eq: () => query, maybeSingle: () => Promise.resolve({ data: rows[table], error: null }) };
+      return query;
+    },
+  };
+  const out = await prepareRevision(client as never, COMPANY_ID, SITE_ENTRY_ID, ACTOR_ID, body as never);
+  const provenance = stored(out.provenance);
+  expect(validateProvenance(entryBusiness("site_links", out.content as never), provenance)).toEqual([]);
+  return { content: out.content as { links: Link[] }, provenance };
 }
 
-describe("the importer's provenance fits the API schemas at the link cap", () => {
-  it("creating an entry with 500 imported links: one grouped claim, accepted by CreateEntrySchema and validateProvenance", async () => {
-    const sent = check(await write(noSiteDraft(), pagesOf(500)), "create");
-    expect(sent.content.links).toHaveLength(MAX_LINKS);
-    expect(sent.provenance.claims.length).toBeLessThanOrEqual(500);
-    expect(sent.provenance.claims.flatMap((c) => c.targets)).toHaveLength(1000);
+describe("what the server stores for an import fits the contract at the link cap", () => {
+  it("creating an entry with 500 imported links stores 1000 targets in one claim", async () => {
+    const { content, provenance } = await created(pagesOf(500));
+    expect(content.links).toHaveLength(MAX_LINKS);
+    expect(provenance.claims.length).toBe(claimsForLeaves(2 * MAX_LINKS));
+    expect(provenance.claims.flatMap((c) => c.targets)).toHaveLength(2 * MAX_LINKS);
   });
 
-  it("revising a 499-link entry (long-list provenance) with the last link: accepted by SaveEntrySchema", async () => {
-    const links = manyLinks(499);
-    const sent = check(await write(siteDraft({ links }), pagesOf(1)), "revise");
-    expect(sent.content.links).toHaveLength(MAX_LINKS);
+  it("251 new links no longer need 502 claims (the case the review found)", async () => {
+    const { provenance } = await created(pagesOf(251));
+    expect(provenance.claims.length).toBe(1);
   });
 
-  it("revising a 100-link entry with one claim per leaf (200 claims) with 400 links: accepted", async () => {
+  it("revising a 499-link entry (grouped provenance) with the last link", async () => {
+    const { content } = await revised(siteDraft({ links: manyLinks(499) }), pagesOf(1));
+    expect(content.links).toHaveLength(MAX_LINKS);
+  });
+
+  it("revising a 100-link legacy entry with one claim per leaf (200 claims) with 400 links keeps its claims and adds one", async () => {
     const links = manyLinks(100);
     const draft = siteDraft({ links, provenance: userProvenance(links) });
-    expect(draft.entries.find((e) => e.id === SITE_ENTRY_ID)!.provenance.claims).toHaveLength(200);
-    const sent = check(await write(draft, pagesOf(400)), "revise");
-    expect(sent.content.links).toHaveLength(MAX_LINKS);
-    expect(sent.provenance.claims).toHaveLength(201);
+    const before = draft.entries.find((e) => e.id === SITE_ENTRY_ID)!.provenance;
+    expect(before.claims).toHaveLength(200);
+    const { content, provenance } = await revised(draft, pagesOf(400));
+    expect(content.links).toHaveLength(MAX_LINKS);
+    expect(provenance.claims).toHaveLength(201);
+    expect(provenance.claims.slice(0, 200).map((c) => c.id)).toEqual(before.claims.map((c) => c.id));
   });
 
-  it("251 new links no longer need 502 claims (the rejected case)", async () => {
-    const sent = check(await write(noSiteDraft(), pagesOf(251)), "create");
-    expect(sent.provenance.claims.length).toBeLessThan(500);
+  it("the editor's own save path (prepareManualCreation of a 300-link list) is grouped too", () => {
+    const grouped = prepareManualCreation("site_links" as never, { links: manyLinks(300) } as never, "22222222-2222-4222-8222-222222222222", ACTOR_ID);
+    expect(grouped.claims).toHaveLength(1);
+    stored(grouped);
   });
 
-  it("an entry whose claims are already at the API cap offers no room, even with few links", () => {
-    const links = manyLinks(60); // 60 links x (title, url) = 120 leaves; pad the claims to the cap
-    const provenance = userProvenance(links);
-    provenance.claims = Array.from({ length: 500 }, (_, i) => ({ ...userProvenance(manyLinks(1)).claims[0]!, id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` }));
-    const draft = siteDraft({ links, provenance });
-    expect(importRoom(siteLinksFrom(draft.entries as never)).room).toBe(0);
-    expect(importRoom(siteLinksFrom(siteDraft({ links }).entries as never)).room).toBe(MAX_LINKS - 60);
+  it("501 links are refused by the content contract; the picker never builds them", () => {
+    expect(() => parseBusinessEntry("site_links", { links: manyLinks(501) })).toThrow();
+    expect(() => parseBusinessEntry("site_links", { links: manyLinks(500) })).not.toThrow();
+  });
+
+  it("importRoom follows the claim budget: legacy 250 links x 2 leaves = 500 claims leaves no room, 400 claims leaves 100 pages of claims but 250 of links", () => {
+    const full = (n: number) => {
+      const links = manyLinks(n);
+      const provenance = userProvenance(links);
+      return siteLinksFrom(siteDraft({ links, provenance: { ...provenance, claims: Array.from({ length: Math.min(500, 2 * n) }, (_, i) => ({ ...userProvenance(manyLinks(1)).claims[0]!, id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` })) } }).entries as never);
+    };
+    expect(importRoom(full(250))).toEqual({ room: 0, limit: "claims" });
+    expect(importRoom(full(100))).toEqual({ room: 400, limit: null });
+    expect(importRoom(siteLinksFrom(siteDraft({ links: manyLinks(60) }).entries as never))).toEqual({ room: MAX_LINKS - 60, limit: null });
   });
 });
 
 describe("the picker states the limit it enforces", () => {
-  it("with 501 candidate pages and no links it offers 500 and says so; checking more than 500 does not select a 501st", async () => {
+  it("with 501 candidate pages and no links it offers 500 and says so", async () => {
     const view = await openSite({ draft: noSiteDraft(), inventory: inventory(pagesOf(501)) });
     const dialog = await openPicker(view);
     expect(view.text(dialog)).toMatch(/only 500 more pages can be added \(maximum 500 links\)/i);
