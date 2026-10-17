@@ -130,6 +130,8 @@ export function KnowledgeViewer({
   const [refreshing, setRefreshing] = useState(false);
   /** Counts draft reads and view loads; a read applies only while it is the latest one. */
   const readEpoch = useRef(0);
+  /** The draft read now on its way; a newer read or a navigation aborts it. */
+  const activeRead = useRef<AbortController | null>(null);
   const viewNow = useRef({ companyId, versionId });
   viewNow.current = { companyId, versionId };
   const staleWhatNow = useRef(staleWhat);
@@ -189,6 +191,7 @@ export function KnowledgeViewer({
   useEffect(() => {
     // Loading a view supersedes every draft read still on its way.
     readEpoch.current++;
+    activeRead.current?.abort();
     setRefreshing(false);
     if (initialData && !initializedView.current) {
       initializedView.current = true;
@@ -241,6 +244,7 @@ export function KnowledgeViewer({
       });
     return () => {
       readEpoch.current++;
+      activeRead.current?.abort();
       abort.abort();
     };
   }, [companyId, versionId, reload]);
@@ -262,7 +266,9 @@ export function KnowledgeViewer({
     const mine = ++readEpoch.current;
     const latest = () => readEpoch.current === mine;
     setRefreshing(true);
+    // An older read is not aborted here: the locked ordering tests keep it pending until it answers.
     const read = new AbortController();
+    activeRead.current = read;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const request = api<{
@@ -270,19 +276,21 @@ export function KnowledgeViewer({
         entries: ViewEntry[];
         citationContext?: CitationContext;
       }>(companyPath(forCompany, "/draft"), { signal: read.signal });
-      // A read after a save that does not settle in time leaves the view stale (the save stands, and is
-      // never sent again). A Reload the person asked for is not cut off.
-      const data = userInitiated
-        ? await request
-        : await Promise.race([
-            request,
-            new Promise<never>((_, reject) => {
-              timer = setTimeout(() => {
-                read.abort();
-                reject(new Error("The draft was not read in time."));
-              }, timing.reread);
-            }),
-          ]);
+      // A read that does not settle in time leaves the view stale (a save stands, and is never sent
+      // again). The read after a save keeps timing.reread; a Reload the person asked for gets the
+      // longer timing.reload, so its button cannot stay disabled for ever.
+      const data = await Promise.race([
+        request,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => {
+              read.abort();
+              reject(new Error("The draft was not read in time."));
+            },
+            userInitiated ? timing.reload : timing.reread,
+          );
+        }),
+      ]);
       if (!latest()) return;
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
       setEntries(data.entries);
@@ -294,8 +302,8 @@ export function KnowledgeViewer({
       setStaleDraft((error as Error).message || "The draft could not be read.");
     } finally {
       clearTimeout(timer);
+      if (activeRead.current === read) activeRead.current = null;
       if (latest()) setRefreshing(false);
-      else read.abort();
     }
   }
   async function reject(entry: ViewEntry) {
