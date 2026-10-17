@@ -8,10 +8,10 @@ const literal=value=>`'${JSON.stringify(value).replaceAll("'","''")}'::jsonb`;
 // Applied migrations are never edited (scripts/migrate.mjs refuses a changed one). 0004 froze the original contract;
 // later changes live in the newest migration holding a generated block, which this script rewrites and checks.
 // Schemas changed since 0004 are replaced there and every other schema must still equal the frozen 0004 copy.
-const changedSinceFrozen=['site_links','export_provenance','export'];
+const changedSinceFrozen=['company_foundation','online_presence','site_links','key_person','offering','export_provenance','export'];
 const directory=new URL('../supabase/migrations/',import.meta.url);
 const begin='-- BEGIN GENERATED CONTRACT (scripts/generate-sql-contract.mjs; do not edit)\n',end='-- END GENERATED CONTRACT\n';
-const block=`${begin}ALTER FUNCTION private.contract_schema(text) RENAME TO contract_schema_before_site_links;\nCREATE FUNCTION private.contract_schema(p_kind text) RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $fn$ SELECT coalesce(${literal(Object.fromEntries(changedSinceFrozen.map(key=>[key,schemas[key]])))}->p_kind,private.contract_schema_before_site_links(p_kind)) $fn$;\nCREATE OR REPLACE FUNCTION private.business_defaults() RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $fn$ SELECT ${literal(defaults)} $fn$;\nCREATE OR REPLACE FUNCTION private.field_registry() RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $fn$ SELECT ${literal(fields)} $fn$;\n${end}`;
+const block=`${begin}ALTER FUNCTION private.contract_schema(text) RENAME TO contract_schema_before_model_fields;\nCREATE FUNCTION private.contract_schema(p_kind text) RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $fn$ SELECT coalesce(${literal(Object.fromEntries(changedSinceFrozen.map(key=>[key,schemas[key]])))}->p_kind,private.contract_schema_before_model_fields(p_kind)) $fn$;\nCREATE OR REPLACE FUNCTION private.business_defaults() RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $fn$ SELECT ${literal(defaults)} $fn$;\nCREATE OR REPLACE FUNCTION private.field_registry() RETURNS jsonb LANGUAGE sql IMMUTABLE SET search_path='' AS $fn$ SELECT ${literal(fields)} $fn$;\n${end}`;
 const files=(await readdir(directory)).filter(name=>name.endsWith('.sql')).sort();
 const holders=[];for(const name of files)if((await readFile(new URL(name,directory),'utf8')).includes(begin))holders.push(name);
 const holder=holders.at(-1);

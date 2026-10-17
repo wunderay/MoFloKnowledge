@@ -9,6 +9,7 @@ import { EmployeeCountSchema } from "./numeric-values";
 export const CompanyFoundationSchema = z
   .object({
     overview: text,
+    revenue: text,
     website: URLSchema.nullable(),
     industry: text,
     business_model: text,

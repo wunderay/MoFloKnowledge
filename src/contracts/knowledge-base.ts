@@ -3,6 +3,7 @@ import { BusinessSchema } from "./business";
 import { UUIDSchema, InstantSchema } from "./primitives";
 import { ExportProvenanceSchema } from "./provenance";
 import { assertUniqueBusinessIds } from "./stable-pointer";
+import { storageRefCompany } from "./storage-ref";
 export const KnowledgeBaseExportSchema = BusinessSchema.extend({
   schema_version: z.literal("1.0.0"),
   company_id: UUIDSchema,
@@ -27,5 +28,15 @@ export const KnowledgeBaseExportSchema = BusinessSchema.extend({
     } catch (e) {
       ctx.addIssue({ code: "custom", message: (e as Error).message });
     }
+    // Storage paths name the owning company; a reference into another company's folder is never valid.
+    const refs = [
+      ...v.key_people.flatMap((person) => (person.portrait ? [person.portrait] : [])),
+      ...v.offerings.flatMap((offering) => offering.images),
+    ];
+    if (refs.some((ref) => storageRefCompany(ref) !== v.company_id))
+      ctx.addIssue({
+        code: "custom",
+        message: "Storage reference belongs to another company",
+      });
   });
 export type KnowledgeBaseExport = z.infer<typeof KnowledgeBaseExportSchema>;

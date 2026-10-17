@@ -6,7 +6,7 @@ import {
   DraftResponseSchema,
 } from "../contracts/api-responses";
 import { authorizeCompany } from "./authorize";
-import { parseBusinessEntry, EntryProvenanceSchema } from "../contracts";
+import { parseStoredEntry, EntryProvenanceSchema } from "../contracts";
 import { readCitationContext } from "./citation-context";
 type Client = Awaited<ReturnType<typeof verifiedSession>>["client"];
 export async function checked<T>(
@@ -61,7 +61,7 @@ export async function readDraft(client: Client, id: string, userId: string) {
         id: entry.id,
         created_at: entry.created_at,
         saved_at: rev.created_at,
-        content: parseBusinessEntry(entry.kind, rev.content),
+        content: parseStoredEntry(entry.kind, rev.content),
         provenance: EntryProvenanceSchema.parse(rev.provenance),
       };
     }),

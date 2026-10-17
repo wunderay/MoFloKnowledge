@@ -1,6 +1,6 @@
 import { createEmptyBusiness } from "../contracts/defaults";
 import {
-  parseBusinessEntry,
+  parseStoredEntry,
   entryRoot,
   type Business,
   type BusinessEntry,
@@ -96,7 +96,7 @@ function approvedBusiness(entries: SnapshotEntry[]): Business {
     if (ids.has(entry.entry_id)) throw new Error("Duplicate entry UUID");
     ids.add(entry.entry_id);
     if (entry.review_status !== "approved") continue;
-    const content = parseBusinessEntry(entry.kind, entry.content);
+    const content = parseStoredEntry(entry.kind, entry.content);
     if (entry.kind === "key_person") {
       if (!("id" in content) || content.id !== entry.entry_id)
         throw new Error("Person ID must match entry ID");
@@ -278,6 +278,7 @@ export function assembleKnowledgeBase(
     {
       entryIds: approved.map((e) => e.entry_id),
       approved: true,
+      aggregate: true,
       historicalClaimIds: input.historicalClaimIds,
     },
   );

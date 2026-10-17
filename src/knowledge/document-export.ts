@@ -306,7 +306,8 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       heading(title, "field");
       for (const [key, child] of Object.entries(value)) if (key !== "id") renderValue(child, label(key), `${path}/${key}`, depth);
     } else {
-      const formatted = typeof value === "boolean" ? value ? "Yes" : "No" : String(value);
+      const formatted = typeof value === "boolean" ? value ? "Yes" : "No"
+        : path === "/online_presence/phone" && typeof value === "string" ? value.replace(/^(\d{3})(\d{3})(\d{4})$/, "($1) $2-$3") : String(value);
       const citation = citations(path);
       if (typeof value === "string" && value.length > 160) {
         heading(title, "field");
@@ -388,7 +389,8 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       if (distinctDetails.length) prose(joined(distinctDetails.map((field) => fact(subtitleFragment(fields[field]), `${path}/${field}`)), key === "key_people" ? "; " : " · "), { muted: true });
       if (key === "key_people" && fields.gender) add(String(fields.gender), { label: "Stated gender", citations: citations(`${path}/gender`) });
       for (const [field, value] of Object.entries(item)) {
-        if (["id", "name", ...(key === "key_people" ? ["title", "role", "gender"] : ["offering_type", "category"])].includes(field)) continue;
+        // Uploaded images are not embedded and their storage details are not for readers.
+        if (["id", "name", "portrait", "images", ...(key === "key_people" ? ["title", "role", "gender"] : ["offering_type", "category"])].includes(field)) continue;
         if (["description", "background_or_relevance"].includes(field) && typeof value === "string" && populated(value)) narrative(value, `${path}/${field}`);
         else renderValue(value, label(field), `${path}/${field}`);
       }

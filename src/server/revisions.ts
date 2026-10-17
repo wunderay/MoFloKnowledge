@@ -3,6 +3,7 @@ import {
   createEmptyProvenance,
   createEntryDefault,
   parseBusinessEntry,
+  parseStoredEntry,
   entryBusiness,
   requiredCoverageTargets,
   enumerateFactualLeaves,
@@ -115,14 +116,14 @@ export async function prepareRevision(
     };
   });
   let sequence = 0;
-  const changed =
-    canonicalStringify(previous.content) !== canonicalStringify(content);
+  const before = parseStoredEntry(kind, previous.content);
+  const changed = canonicalStringify(before) !== canonicalStringify(content);
   const revised = changed
     ? reviseProvenance({
         newId: () => stableId(input.requestId, String(sequence++)),
         kind,
         entryId,
-        before: parseBusinessEntry(kind, previous.content),
+        before,
         after: content,
         provenance,
         actorId,
@@ -133,12 +134,28 @@ export async function prepareRevision(
           : (input.reason ?? "User-provided correction."),
       })
     : provenance;
+  // An entry saved before a field existed has no coverage for it yet; every registered field needs exactly one row.
+  const covered = new Set(revised.coverage.flatMap((row) => row.targets));
+  const covering = {
+    ...revised,
+    coverage: [
+      ...revised.coverage,
+      ...requiredCoverageTargets(entryBusiness(kind, content))
+        .filter((target) => !covered.has(target))
+        .map((target) => ({
+          targets: [target],
+          status: "not_checked" as const,
+          job_id: null,
+          reason: "Entered manually; website extraction has not assessed this field.",
+        })),
+    ],
+  };
   return {
     content,
     provenance: preserveSelectedCandidates(
       kind,
       content,
-      revised,
+      covering,
       stored,
       entryId,
       input.requestId,

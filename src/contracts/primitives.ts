@@ -36,10 +36,10 @@ export const DecimalSchema = z
   .string()
   .max(100)
   .regex(/^(?:0|[1-9]\d*)(?:\.\d+)?$/);
-export const collection = <T extends z.ZodTypeAny>(schema: T) =>
+export const collection = <T extends z.ZodTypeAny>(schema: T, max = 500) =>
   z
     .array(schema)
-    .max(500)
+    .max(max)
     .superRefine((items, ctx) => {
       const ids = new Set<string>();
       items.forEach((item, index) => {

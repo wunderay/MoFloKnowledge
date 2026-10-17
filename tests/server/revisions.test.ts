@@ -33,7 +33,7 @@ it("creates authentic manual claims and stable request identities with all field
     actor_id: actor,
     evidence_ids: [],
   });
-  expect(first.coverage).toHaveLength(12);
+  expect(first.coverage).toHaveLength(13);
   expect(
     validateProvenance(entryBusiness("company_foundation", content), first),
   ).toEqual([]);

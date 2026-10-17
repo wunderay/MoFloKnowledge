@@ -13,6 +13,18 @@
     "coverageRequired": true
   },
   {
+    "path": "/company_foundation/revenue",
+    "kind": "company_foundation",
+    "field": "revenue",
+    "type": "string | null",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
     "path": "/company_foundation/website",
     "kind": "company_foundation",
     "field": "website",
@@ -363,6 +375,18 @@
     "coverageRequired": true
   },
   {
+    "path": "/online_presence/phone",
+    "kind": "online_presence",
+    "field": "phone",
+    "type": "Phone | null",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
     "path": "/site_links/links",
     "kind": "site_links",
     "field": "links",
@@ -431,6 +455,41 @@
     "allowedOrigins": [
       "source_backed",
       "inferred",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/key_people/@id/age",
+    "kind": "key_person",
+    "field": "age",
+    "type": "integer | null",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/key_people/@id/nationality",
+    "kind": "key_person",
+    "field": "nationality",
+    "type": "string | null",
+    "default": null,
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/key_people/@id/portrait",
+    "kind": "key_person",
+    "field": "portrait",
+    "type": "StorageRef | null",
+    "default": null,
+    "allowedOrigins": [
       "user_provided"
     ],
     "coverageRequired": true
@@ -518,6 +577,17 @@
     "default": null,
     "allowedOrigins": [
       "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
+    "path": "/offerings/@id/images",
+    "kind": "offering",
+    "field": "images",
+    "type": "StorageRef[]",
+    "default": [],
+    "allowedOrigins": [
       "user_provided"
     ],
     "coverageRequired": true

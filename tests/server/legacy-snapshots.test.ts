@@ -52,7 +52,7 @@ it("readSnapshot upgrades a legacy payload for readers and keeps the stored payl
   ]);
   expect(saved.stored).toEqual(legacy);
   expect(canonicalStringify(saved.stored)).toBe(stored);
-  expect(saved.payload.company_foundation).toEqual(legacy.company_foundation);
+  expect(saved.payload.company_foundation).toEqual({ ...legacy.company_foundation, revenue: null });
 });
 
 it("the version and download routes serve a legacy snapshot; the download is the stored bytes", async () => {

@@ -26,7 +26,8 @@
     },
     "other_locations": [],
     "service_locations": [],
-    "alternative_company_names": []
+    "alternative_company_names": [],
+    "revenue": null
   },
   "positioning": {
     "company_pitch": "Keep your independent shop organized with Lumen Ledger inventory software.",
@@ -88,7 +89,8 @@
     ]
   },
   "online_presence": {
-    "social_media_links": []
+    "social_media_links": [],
+    "phone": null
   },
   "site_links": {
     "links": []
@@ -100,7 +102,10 @@
       "title": "Founder",
       "role": "Founder of Lumen Ledger",
       "gender": null,
-      "background_or_relevance": null
+      "background_or_relevance": null,
+      "age": null,
+      "nationality": null,
+      "portrait": null
     }
   ],
   "offerings": [
@@ -123,7 +128,8 @@
         "qualifications": [],
         "as_of": null
       },
-      "url": "https://lumen-ledger.example/pricing"
+      "url": "https://lumen-ledger.example/pricing",
+      "images": []
     }
   ],
   "provenance": {
@@ -581,6 +587,54 @@
       {
         "targets": [
           "/site_links/links"
+        ],
+        "status": "not_checked",
+        "job_id": null,
+        "reason": "No approved entry assessed this field."
+      },
+      {
+        "targets": [
+          "/company_foundation/revenue"
+        ],
+        "status": "not_checked",
+        "job_id": null,
+        "reason": "No approved entry assessed this field."
+      },
+      {
+        "targets": [
+          "/online_presence/phone"
+        ],
+        "status": "not_checked",
+        "job_id": null,
+        "reason": "No approved entry assessed this field."
+      },
+      {
+        "targets": [
+          "/key_people/@30000000-0000-4000-8000-000000000006/age"
+        ],
+        "status": "not_checked",
+        "job_id": null,
+        "reason": "No approved entry assessed this field."
+      },
+      {
+        "targets": [
+          "/key_people/@30000000-0000-4000-8000-000000000006/nationality"
+        ],
+        "status": "not_checked",
+        "job_id": null,
+        "reason": "No approved entry assessed this field."
+      },
+      {
+        "targets": [
+          "/key_people/@30000000-0000-4000-8000-000000000006/portrait"
+        ],
+        "status": "not_checked",
+        "job_id": null,
+        "reason": "No approved entry assessed this field."
+      },
+      {
+        "targets": [
+          "/offerings/@30000000-0000-4000-8000-000000000007/images"
         ],
         "status": "not_checked",
         "job_id": null,

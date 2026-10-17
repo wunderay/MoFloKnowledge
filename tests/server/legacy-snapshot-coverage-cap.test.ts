@@ -1,5 +1,5 @@
 // A snapshot published before 0017 can already hold the maximum number of coverage rows (190 people x 5 fields,
-// 3 offerings x 7, 29 singleton fields = 1,000). Upgrading adds one row, so the read path must still accept it.
+// 3 offerings x 7, 29 singleton fields = 1,000). Upgrading adds rows (site_links, then the model fields), so the read path must still accept it.
 import { beforeEach, expect, it, vi } from "vitest";
 import JSZip from "jszip";
 import { load } from "cheerio";
@@ -51,7 +51,8 @@ it("the fixture is a legacy snapshot with exactly 1,000 coverage rows", () => {
 it("reads it, serves the original bytes for download, and renders the document", async () => {
   const saved = await readSnapshot(session() as never, companyId, versionId, userId);
   expect(saved.payload.site_links).toEqual({ links: [] });
-  expect(saved.payload.provenance.coverage).toHaveLength(1001);
+  // The upgrade adds 7 rows: site_links, revenue, phone, the person's age, nationality and portrait, the offering's images.
+  expect(saved.payload.provenance.coverage).toHaveLength(1007);
   expect(canonicalStringify(saved.stored)).toBe(stored);
   expect((await version(new Request("https://app.example/v"), params)).status).toBe(200);
   const file = await download(new Request("https://app.example/d"), params);

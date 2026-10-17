@@ -17,6 +17,9 @@ export function createEntryDefault(
       role: null,
       gender: null,
       background_or_relevance: null,
+      age: null,
+      nationality: null,
+      portrait: null,
     };
   if (kind === "offering")
     return {
@@ -28,6 +31,7 @@ export function createEntryDefault(
       features: [],
       pricing: null,
       url: null,
+      images: [],
     };
   return createEmptyBusiness()[kind];
 }

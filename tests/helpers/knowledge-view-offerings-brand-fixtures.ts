@@ -48,6 +48,7 @@ export const OFFERINGS: Business["offerings"] = [
       pricing_model: "Recurring subscription",
     }),
     url: "https://www.harborandpine.example/subscribe",
+    images: [],
   },
   {
     id: OFFERING_IDS[1],
@@ -62,6 +63,7 @@ export const OFFERINGS: Business["offerings"] = [
       pricing_model: "Volume-tiered quote",
     }),
     url: "https://www.harborandpine.example/wholesale",
+    images: [],
   },
   {
     id: OFFERING_IDS[2],
@@ -72,6 +74,7 @@ export const OFFERINGS: Business["offerings"] = [
     features: [],
     pricing: pricing({ kind: "free", raw: "Free for subscribers" }),
     url: null,
+    images: [],
   },
   {
     // No name, no type, no features, no pricing: only a description.
@@ -83,6 +86,7 @@ export const OFFERINGS: Business["offerings"] = [
     features: [],
     pricing: null,
     url: null,
+    images: [],
   },
 ];
 

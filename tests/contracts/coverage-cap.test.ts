@@ -1,4 +1,5 @@
-// The export keeps at most 1,000 + 1 coverage rows: 1,000 was the maximum before site_links, which adds one registered field.
+// The export keeps at most 4,033 coverage rows (32 singleton rows + 8 per person or offering x 500 + 1). It was 1,001 (1,000
+// before site_links); the model fields raised it, see model-fields-coverage-cap.test.ts for the derivation.
 import { expect, it } from "vitest";
 import fixture from "./site-links-export.json";
 import { KnowledgeBaseExportSchema } from "../../src/contracts";
@@ -11,9 +12,9 @@ const withRows = (count: number) => {
   return copy;
 };
 
-it("accepts a snapshot at the new maximum of 1,001 coverage rows and still rejects one more", () => {
-  expect(fixture.provenance.coverage.length).toBeLessThan(1000);
-  expect(KnowledgeBaseExportSchema.safeParse(withRows(1000)).success).toBe(true);
+it("accepts a snapshot at the new maximum of 4,033 coverage rows and still rejects one more", () => {
+  expect(fixture.provenance.coverage.length).toBeLessThan(4033);
   expect(KnowledgeBaseExportSchema.safeParse(withRows(1001)).success).toBe(true);
-  expect(KnowledgeBaseExportSchema.safeParse(withRows(1002)).success).toBe(false);
+  expect(KnowledgeBaseExportSchema.safeParse(withRows(4033)).success).toBe(true);
+  expect(KnowledgeBaseExportSchema.safeParse(withRows(4034)).success).toBe(false);
 });
