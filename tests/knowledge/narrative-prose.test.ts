@@ -51,3 +51,14 @@ it("uses the shared factual bullets for unrelated company profiles while preserv
   expect(documentData(input)).toEqual(before);
   expect(snapshot).toEqual(before);
 });
+
+
+it("omits whitespace segments between factual and verbatim paragraphs while keeping every statement", () => {
+  const text = "  First complete fact.\n\n \t\nSecond qualified fact.\r\n\r\n  ";
+  for (const verbatim of [false, true]) {
+    expect(factualBullets(text, "Lumen Ledger", verbatim)).toEqual([
+      { text: "First complete fact." }, { text: "Second qualified fact." },
+    ]);
+    expect(factualBullets(" \n\r\n\t ", "Lumen Ledger", verbatim)).toEqual([]);
+  }
+});

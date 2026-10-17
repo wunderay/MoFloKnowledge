@@ -213,3 +213,28 @@ it("composes distinct populated and sparse company shapes without repetitive sen
   const shortIndustry = documentParagraphs({ kind: "snapshot", snapshot: sparse }).map((item) => item.text);
   expect(shortIndustry).toEqual(expect.arrayContaining(["IT", "LLC"]));
 });
+
+
+it("exports multi-paragraph descriptions and biographies without empty or citation-only bullets", async () => {
+  const snapshot = KnowledgeBaseExportSchema.parse(fixture);
+  snapshot.offerings[0].description = "A complete service fact.\n\n \t\nSupport requires an appointment.\r\n\r\n";
+  snapshot.key_people[0].background_or_relevance = "A complete biography fact.\n\nA second biography fact.";
+  const before = structuredClone(snapshot);
+  const input = { kind: "snapshot", snapshot } as const;
+  const paragraphs = documentParagraphs(input);
+  const bullets = paragraphs.filter((paragraph) => paragraph.bullet);
+  expect(bullets.every((paragraph) => paragraph.text.trim().length > 0)).toBe(true);
+  for (const text of ["A complete service fact.", "Support requires an appointment.", "A complete biography fact.", "A second biography fact."]) {
+    expect(bullets.filter((paragraph) => paragraph.text === text)).toHaveLength(1);
+  }
+  expect(bullets.find((paragraph) => paragraph.text === "A complete service fact.")?.citations?.length).toBeGreaterThan(0);
+  const zip = await JSZip.loadAsync(await renderKnowledgeDocument(input));
+  const $ = load(await zip.file("word/document.xml")!.async("string"), { xmlMode: true });
+  $("w\\:p").filter((_index, node) => $(node).find("w\\:numPr").length > 0).each((_index, node) => {
+    const fact = $(node).clone();
+    fact.find("w\\:hyperlink[w\\:anchor]").remove();
+    expect(fact.text().trim().length).toBeGreaterThan(0);
+  });
+  expect(documentData(input)).toEqual(before);
+  expect(snapshot).toEqual(before);
+});
