@@ -303,8 +303,10 @@ describe("C4 outer cancellation still aborts everything", () => {
     expect((outcome as Extract<Settled<CrawlResult>, { state: "rejected" }>).reason).toBe("cancelled");
   };
 
-  it("C4 cancelling during a hostile Crawl-delay sleep rejects with the cancellation reason and issues no page request", async () => {
-    const { outcome, records, site } = await run(hostileRobots("86400"), {
+  it("C4 cancelling during a satisfiable Crawl-delay sleep rejects with the cancellation reason and issues no page request", async () => {
+    // Crawl-delay 3 fits inside the 5 s deadlines, so the crawl really sleeps
+    // (about 3 s before the first page) and the cancel at 100 ms lands in that sleep.
+    const { outcome, records, site } = await run(hostileRobots("3"), {
       jobMs: 5000,
       fetchMs: 5000,
       cancelAfterMs: 100,
