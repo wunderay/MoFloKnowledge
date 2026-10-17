@@ -1,11 +1,12 @@
 import type { BusinessEntry, CitationContext, EntryKind, EntryProvenance, ReviewStatus } from "@/contracts";
-import { offeringsFrom, profileFrom } from "./data";
+import { offeringsFrom, profileFrom, siteLinksFrom } from "./data";
 import { BrandIdentity } from "./brand";
 import { CustomersIndustry } from "./customers-industry";
 import { GeneralInfo } from "./general-info";
 import { BusinessOfferings } from "./offerings";
 import { SalesMarketing } from "./sales-marketing";
 import { KNOWLEDGE_SECTIONS, type KnowledgeSectionId } from "./sections";
+import { SiteKnowledge } from "./site-knowledge";
 
 /** The selected section of the company's knowledge, laid out as the MoFlo Cloud reference shows. */
 export function SectionView({
@@ -16,30 +17,72 @@ export function SectionView({
   citationContext,
   offeringId = "",
   onSelectOffering = () => {},
+  canEdit = false,
+  actorId = "",
+  importBlocked = false,
+  onSaved = async () => {},
 }: {
   section: KnowledgeSectionId;
   companyId: string;
   name: string;
-  entries: { kind: EntryKind; content: BusinessEntry; provenance: EntryProvenance; review_status: ReviewStatus }[];
+  entries: {
+    id?: string;
+    current_revision?: number;
+    kind: EntryKind;
+    content: BusinessEntry;
+    provenance: EntryProvenance;
+    review_status: ReviewStatus;
+  }[];
   citationContext?: CitationContext;
   /** The `offering` URL value and how a click on the offering list changes it. */
   offeringId?: string;
   onSelectOffering?: (id: string) => void;
+  /** An editable draft offers "Import from website"; `onSaved` reloads the draft after it saved. */
+  canEdit?: boolean;
+  actorId?: string;
+  /** True while the view is older than a saved import: the picker would work from stale entries. */
+  importBlocked?: boolean;
+  onSaved?: () => Promise<void>;
 }) {
   const profile = profileFrom(entries, citationContext);
-  if (section === "general") return <GeneralInfo companyId={companyId} name={name} profile={profile} />;
-  if (section === "customers") return <CustomersIndustry companyId={companyId} profile={profile} />;
-  if (section === "sales") return <SalesMarketing companyId={companyId} name={name} profile={profile} />;
-  if (section === "offerings")
+  const one = (id: KnowledgeSectionId, level: "h2" | "h3" = "h2") => {
+    if (id === "general") return <GeneralInfo companyId={companyId} name={name} profile={profile} />;
+    if (id === "customers") return <CustomersIndustry companyId={companyId} profile={profile} />;
+    if (id === "sales") return <SalesMarketing companyId={companyId} name={name} profile={profile} />;
+    if (id === "offerings")
+      return (
+        <BusinessOfferings
+          companyId={companyId}
+          offerings={offeringsFrom(entries, citationContext)}
+          selectedId={offeringId}
+          onSelect={onSelectOffering}
+        />
+      );
+    if (id === "brand") return <BrandIdentity companyId={companyId} name={name} profile={profile} />;
     return (
-      <BusinessOfferings
+      <SiteKnowledge
         companyId={companyId}
-        offerings={offeringsFrom(entries, citationContext)}
-        selectedId={offeringId}
-        onSelect={onSelectOffering}
+        site={siteLinksFrom(entries, citationContext)}
+        canEdit={canEdit}
+        actorId={actorId}
+        importBlocked={importBlocked}
+        onSaved={onSaved}
+        level={level}
       />
     );
-  if (section === "brand") return <BrandIdentity companyId={companyId} name={name} profile={profile} />;
-  const label = KNOWLEDGE_SECTIONS.find((item) => item.id === section)!.label;
-  return <p className="knowledge-view__placeholder">{label} is not shown in this view yet.</p>;
+  };
+  if (section !== "all") return one(section);
+  // Every section under its own heading, in selector order. Business Offerings carries its own heading.
+  return (
+    <div className="knowledge-view__all">
+      {KNOWLEDGE_SECTIONS.filter((item) => item.id !== "all").map((item) => (
+        <section className="knowledge-view__all-section" key={item.id}>
+          {item.id !== "offerings" && (
+            <h2 className="knowledge-view__section-title knowledge-view__all-title">{item.label}</h2>
+          )}
+          {one(item.id, "h3")}
+        </section>
+      ))}
+    </div>
+  );
 }

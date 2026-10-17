@@ -13,6 +13,31 @@ import {
   resolveStablePointer,
 } from "../contracts/stable-pointer";
 import { canonicalStringify } from "./canonical-json";
+/** Most targets one claim may name (ClaimSchema). */
+export const MAX_CLAIM_TARGETS = 1000;
+/** Most claims, and most operations, one entry's provenance may hold (EntryProvenanceSchema). */
+export const MAX_ENTRY_CLAIMS = 500;
+export const MAX_ENTRY_OPERATIONS = 1000;
+/** Operations one save adds: the user_correction here and the save_entry_revision the database records. */
+export const OPERATIONS_PER_SAVE = 2;
+/** How many claims one save adds for `leaves` newly claimed values: they share claims of up to MAX_CLAIM_TARGETS. */
+export const claimsForLeaves = (leaves: number) => Math.ceil(leaves / MAX_CLAIM_TARGETS);
+/**
+ * One claim per MAX_CLAIM_TARGETS targets in place of one per target. The claims of one save share
+ * entry, origin, actor, time and note, so naming their targets together loses nothing, and a list of
+ * hundreds of items stays under the 500-claim cap. The ids of the first claim of each group are kept
+ * (so retries with a deterministic id generator stay stable).
+ */
+export function groupClaims(created: Claim[]): Claim[] {
+  const out: Claim[] = [];
+  const targets = created.flatMap((claim) => claim.targets);
+  for (let at = 0; at < targets.length; at += MAX_CLAIM_TARGETS)
+    out.push({
+      ...created[Math.min(at, created.length - 1)]!,
+      targets: targets.slice(at, at + MAX_CLAIM_TARGETS),
+    });
+  return out;
+}
 export type ReviseInput = {
   kind: EntryKind;
   entryId: string;
@@ -63,6 +88,7 @@ export function reviseProvenance(input: ReviseInput): EntryProvenance {
     });
     if (targets.length) claims.push({ ...claim, targets });
   }
+  const created: Claim[] = [];
   for (const target of changed) {
     let value: unknown;
     try {
@@ -71,7 +97,7 @@ export function reviseProvenance(input: ReviseInput): EntryProvenance {
       continue;
     }
     if (value !== null && typeof value === "object") continue;
-    claims.push({
+    created.push({
       id: makeId(),
       entry_id: input.entryId,
       targets: [target],
@@ -83,6 +109,7 @@ export function reviseProvenance(input: ReviseInput): EntryProvenance {
       note: input.note,
     });
   }
+  claims.push(...groupClaims(created));
   result.claims = claims;
   const refs = new Set([
     ...claims.flatMap((c) => c.evidence_ids),

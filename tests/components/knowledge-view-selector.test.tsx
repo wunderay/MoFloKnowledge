@@ -119,7 +119,8 @@ describe("C8 sections built in later Quests", () => {
   });
 
   // behavioural
-  it.each(LATER_SECTIONS)("Edge case: %s does not show the locked sections' cards as its own", async (label) => {
+  // Revised by Q4: All sections now shows every section's cards (Q4 C5), so it is excluded here.
+  it.each(LATER_SECTIONS.filter((label) => label !== "All sections"))("Edge case: %s does not show the locked sections' cards as its own", async (label) => {
     const page = await openSection(label);
     expect(hasHeading(page, "Founding story")).toBe(false);
     expect(hasHeading(page, "Calls to action")).toBe(false);

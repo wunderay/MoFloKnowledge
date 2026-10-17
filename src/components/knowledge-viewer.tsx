@@ -82,6 +82,7 @@ export function KnowledgeViewer({
     versions: Version[];
     snapshot?: KnowledgeBaseExport;
     draft?: {
+      actorId?: string;
       company: { role: string; archived_at: string | null };
       entries: ViewEntry[];
       citationContext?: CitationContext;
@@ -121,6 +122,9 @@ export function KnowledgeViewer({
   const [review, setReview] = useState("");
   const [coverage, setCoverage] = useState("");
   const [error, setError] = useState("");
+  /** An import was saved but the draft could not be re-read: the view is older than the stored entry. */
+  const [staleDraft, setStaleDraft] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(!initialData);
   const initializedList = useRef(false);
   const initializedView = useRef(false);
@@ -131,6 +135,7 @@ export function KnowledgeViewer({
       !initialData.draft.company.archived_at,
     ),
   );
+  const [actorId, setActorId] = useState(initialData?.draft?.actorId ?? "");
   const [history, setHistory] = useState<ViewEntry | null>(null);
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -182,6 +187,7 @@ export function KnowledgeViewer({
     const abort = new AbortController();
     setLoading(true);
     setError("");
+    setStaleDraft(null);
     setEntries([]);
     setPayload(null);
     setCitationContext(undefined);
@@ -189,12 +195,14 @@ export function KnowledgeViewer({
     const request =
       versionId === "draft"
         ? api<{
+            actorId?: string;
             company: { name: string; role: string; archived_at: string | null };
             entries: ViewEntry[];
             citationContext?: CitationContext;
           }>(companyPath(companyId, "/draft"), { signal: abort.signal }).then(
             (data) => {
               if (abort.signal.aborted) return;
+              setActorId(data.actorId ?? "");
               setName(data.company.name);
               setCanEdit(
                 data.company.role !== "viewer" && !data.company.archived_at,
@@ -221,6 +229,30 @@ export function KnowledgeViewer({
       });
     return () => abort.abort();
   }, [companyId, versionId, reload]);
+  /**
+   * Re-reads the draft after an import so the view shows it, without blanking the page. The import
+   * is already saved when this runs, so a failed read never rejects (the caller must not treat the
+   * save as failed or send it again): it marks the view stale, which blocks further imports and
+   * offers a reload, until a later read succeeds.
+   */
+  async function refreshDraft() {
+    setRefreshing(true);
+    try {
+      const data = await api<{
+        company: { role: string; archived_at: string | null };
+        entries: ViewEntry[];
+        citationContext?: CitationContext;
+      }>(companyPath(companyId, "/draft"));
+      setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
+      setEntries(data.entries);
+      setCitationContext(data.citationContext);
+      setStaleDraft(null);
+    } catch (error) {
+      setStaleDraft((error as Error).message || "The draft could not be read.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
   async function reject(entry: ViewEntry) {
     setBusy(true);
     setError("");
@@ -422,6 +454,20 @@ export function KnowledgeViewer({
           )}
         </div>
       </div>
+      {staleDraft !== null && versionId === "draft" && (
+        <Notice>
+          Saved. Reload to see the latest links. The draft could not be read: {staleDraft}{" "}
+          <button
+            type="button"
+            className="button"
+            disabled={refreshing}
+            aria-busy={refreshing}
+            onClick={() => void refreshDraft()}
+          >
+            {refreshing ? "Reloading…" : "Reload"}
+          </button>
+        </Notice>
+      )}
       {error && (
         <Notice error>
           {error}
@@ -472,6 +518,10 @@ export function KnowledgeViewer({
                 name={name}
                 entries={entries}
                 citationContext={citationContext}
+                canEdit={canEdit && versionId === "draft"}
+                actorId={actorId}
+                importBlocked={staleDraft !== null}
+                onSaved={refreshDraft}
                 offeringId={offeringId}
                 onSelectOffering={(id) => {
                   setOfferingId(id);
