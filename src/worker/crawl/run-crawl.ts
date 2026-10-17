@@ -8,7 +8,7 @@ import {
   type Reservation,
   CRAWL_LIMITS,
 } from "./budgets";
-import { Scheduler } from "./scheduler";
+import { DeadlineError, Scheduler, type Deadline } from "./scheduler";
 import { RobotsCache } from "./robots";
 import { fetchDocument } from "../network/pinned-transport";
 import { technicalObservations } from "../extract/observations";
@@ -68,9 +68,23 @@ export async function runCrawl(
     },
   );
   const scheduler = new Scheduler(signal);
-  const robots = new RobotsCache(fetcher, (url) =>
-    scheduler.pace(url, 500, signal),
+  const jobDeadlineAt = Date.now() + CRAWL_LIMITS.jobMs;
+  let timedOut = false;
+  // Time kept free for the request itself once pacing is done.
+  const fetchMargin = () =>
+    Math.min(1000, CRAWL_LIMITS.fetchMs / 4, CRAWL_LIMITS.jobMs / 4);
+  // Job-level signal (outer cancellation + job deadline) bounds robots loads and their pacing.
+  const robots = new RobotsCache(
+    fetcher,
+    (url) => scheduler.pace(url, 500, scheduler.signal),
+    scheduler.signal,
   );
+  // A deadline outcome: an unsatisfiable pacing wait, or the job deadline aborting this very operation.
+  const deadlineHit = (error: unknown) =>
+    error instanceof DeadlineError ||
+    (scheduler.signal.aborted &&
+      (error === scheduler.signal.reason ||
+        ["TimeoutError", "AbortError"].includes((error as Error)?.name)));
   const captures: StoredCapture[] = [];
   const errors = (saved.errors as SafeJobError[] | undefined) ?? [];
   const progress: Progress = {
@@ -129,8 +143,7 @@ export async function runCrawl(
         Number(
           (
             (row.observations as Record<string, unknown>)?.design as
-              | { resourceBytes?: number }
-              | undefined
+              { resourceBytes?: number } | undefined
           )?.resourceBytes ?? 0,
         ),
       0,
@@ -161,6 +174,7 @@ export async function runCrawl(
       ...new Set([
         ...frontier.limitsReached,
         ...budgets.limitsReached,
+        ...(timedOut ? ["time"] : []),
         ...(designUsed >= CRAWL_LIMITS.designBytes ? ["design_bytes"] : []),
       ]),
     ];
@@ -169,7 +183,7 @@ export async function runCrawl(
   async function processItem(item: FrontierItem, reservation: Reservation) {
     let finished = false;
     try {
-      const policy = await robots.check(item.url, signal);
+      const policy = await robots.check(item.url, scheduler.signal);
       if (!policy.allowed) {
         progress.blocked++;
         errors.push({
@@ -180,28 +194,47 @@ export async function runCrawl(
         });
         return;
       }
+      // A Crawl-delay that cannot leave room for a fetch is never waited out.
+      if (policy.delayMs + fetchMargin() > CRAWL_LIMITS.fetchMs)
+        throw new DeadlineError(
+          "Crawl-delay is longer than the time allowed for one fetch",
+        );
       let document: Awaited<ReturnType<typeof fetchDocument>> | undefined;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const response = await scheduler.runHttp(
             item.url,
-            (taskSignal) =>
-              fetcher(item.url, {
+            (taskSignal) => {
+              // The first hop was paced by runHttp under the job deadline; only redirect hops pace here.
+              let paced = false;
+              const taskAt = Date.now() + CRAWL_LIMITS.fetchMs;
+              const hopDeadline: Deadline =
+                jobDeadlineAt <= taskAt
+                  ? { at: jobDeadlineAt - fetchMargin(), scope: "job" }
+                  : { at: taskAt - fetchMargin(), scope: "task" };
+              return fetcher(item.url, {
                 scope: frontier.scope,
                 signal: taskSignal,
                 onRequest: async (url) => {
-                  const rule = await robots.check(url, signal);
+                  const rule = await robots.check(url, taskSignal);
                   if (!rule.allowed) throw new Error("robots_blocked");
+                  if (!paced) {
+                    paced = true;
+                    return;
+                  }
                   await scheduler.pace(
                     url,
                     Math.max(500, rule.delayMs),
-                    signal,
+                    taskSignal,
+                    hopDeadline,
                   );
                 },
-              }),
+              });
+            },
             policy.delayMs,
             signal,
-            true,
+            false,
+            { at: jobDeadlineAt - fetchMargin(), scope: "job" },
           );
           document = response;
           if (response.status !== 429 && response.status < 500) break;
@@ -220,12 +253,15 @@ export async function runCrawl(
                 ),
               ),
               undefined,
-              { signal },
+              { signal: scheduler.signal },
             );
           }
         } catch (error) {
           if (
             signal.aborted ||
+            scheduler.signal.aborted ||
+            (error instanceof DeadlineError && error.scope === "job") ||
+            jobDeadlineAt - Date.now() < CRAWL_LIMITS.fetchMs ||
             error instanceof NetworkPolicyError ||
             attempt === 1
           )
@@ -338,19 +374,36 @@ export async function runCrawl(
       if (signal.aborted) throw signal.reason;
       if (error instanceof NetworkPolicyError) throw error;
       progress.failed++;
-      errors.push({
-        code: "capture_failed",
-        url: item.url,
-        retryable: false,
-        message: "This page could not be captured within the crawl policy.",
-      });
+      if (error instanceof DeadlineError && error.scope === "job")
+        timedOut = true;
+      errors.push(
+        deadlineHit(error)
+          ? {
+              code: "deadline_exceeded",
+              url: item.url,
+              retryable: false,
+              message:
+                "The crawl deadline passed (timeout or robots.txt Crawl-delay) before this page could be captured.",
+            }
+          : {
+              code: "capture_failed",
+              url: item.url,
+              retryable: false,
+              message:
+                "This page could not be captured within the crawl policy.",
+            },
+      );
     } finally {
       if (!finished) budgets.finish(reservation, 0, 0);
       inFlight.delete(item.url);
     }
   }
   await persist();
-  while (!signal.aborted) {
+  for (;;) {
+    if (scheduler.signal.aborted) {
+      timedOut = true;
+      break;
+    }
     const batch: { item: FrontierItem; reservation: Reservation }[] = [];
     for (let index = 0; index < 3; index++) {
       const item = frontier.next();

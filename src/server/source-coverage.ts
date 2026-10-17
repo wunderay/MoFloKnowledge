@@ -48,7 +48,7 @@ export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]):
     });
   }
   for (const error of errors) {
-    if (!error.url || !["capture_failed", "robots_blocked"].includes(error.code)) continue;
+    if (!error.url || !["capture_failed", "deadline_exceeded", "robots_blocked"].includes(error.code)) continue;
     const url = resolve(error.url);
     if (pages.has(url)) continue;
     pages.set(url, { sourceId: null, url, title: null,

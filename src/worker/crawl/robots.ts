@@ -9,6 +9,9 @@ type Rule = {
     allow: boolean;
     pattern: string;
 };
+// Untrusted Crawl-delay is honoured as asked, only clamped to what a timer can hold (< 2^31 ms).
+// A delay that cannot fit the task/job deadline is rejected up front by the scheduler, never slept.
+const MAX_CRAWL_DELAY_MS = 2 ** 31 - 1;
 export function parseRobots(text: string): {
     rules: Rule[];
     delayMs: number;
@@ -41,7 +44,7 @@ export function parseRobots(text: string): {
                 group.rules.push({ allow: key === 'allow', pattern: value });
             }
             if (key === 'crawl-delay' && Number.isFinite(Number(value)))
-                group.delayMs = Math.max(500, Number(value) * 1000);
+                group.delayMs = Math.min(MAX_CRAWL_DELAY_MS, Math.max(500, Number(value) * 1000));
         }
     }
     const specificity=(agents:string[])=>Math.max(0,...agents.filter(agent=>agent&&agent!=='*'&&'mofloknowledgebot'.startsWith(agent)).map(agent=>agent.length));
@@ -85,12 +88,19 @@ export class RobotsCache {
         delayMs: number;
         blocked?: string;
     }>>();
-    constructor(private readonly fetcher: Fetcher = fetchDocument, private readonly onRequest?: FetchOptions['onRequest']) { }
+    // `loadSignal` bounds the shared robots.txt loads (job level); each caller's `signal` only bounds its own wait,
+    // so one caller's expired task deadline never poisons the cached load for the others.
+    constructor(private readonly fetcher: Fetcher = fetchDocument, private readonly onRequest?: FetchOptions['onRequest'], private readonly loadSignal?: AbortSignal) { }
     async check(input: string, signal?: AbortSignal): Promise<RobotsDecision> {
         const url = new URL(input);
-        if (!this.cache.has(url.origin))
-            this.cache.set(url.origin, this.load(url.origin, signal));
-        const policy = await this.cache.get(url.origin)!;
+        signal?.throwIfAborted();
+        let loading = this.cache.get(url.origin);
+        if (!loading) {
+            loading = this.load(url.origin, this.loadSignal);
+            this.cache.set(url.origin, loading);
+            loading.catch(() => this.cache.get(url.origin) === loading && this.cache.delete(url.origin));
+        }
+        const policy = await abortable(loading, signal);
         return { allowed: !policy.blocked && robotsAllows(url.pathname + url.search, policy.rules), delayMs: policy.delayMs, ...(policy.blocked ? { limitation: policy.blocked } : {}) };
     }
     private async load(origin: string, signal?: AbortSignal) {
@@ -106,7 +116,11 @@ export class RobotsCache {
                 if (response.status >= 400 && response.status < 500 && response.status !== 429)
                     return { rules: [], delayMs: 500, blocked: 'robots unavailable' };
                 if (response.status === 429 && attempt === 0)
-                    await new Promise<void>((resolve, reject) => { const timer = setTimeout(resolve, retryAfterMs(response.headers['retry-after'])); signal?.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true }); });
+                    await new Promise<void>((resolve, reject) => {
+                        const abort = () => { clearTimeout(timer); reject(signal!.reason); };
+                        const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, retryAfterMs(response.headers['retry-after']));
+                        signal?.addEventListener('abort', abort, { once: true });
+                    });
             }
             catch (error) {
                 if (signal?.aborted)
@@ -115,4 +129,16 @@ export class RobotsCache {
         }
         return { rules: [], delayMs: 500, blocked: 'robots indeterminate after retry' };
     }
+}
+
+function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+    if (!signal)
+        return promise;
+    return new Promise<T>((resolve, reject) => {
+        if (signal.aborted)
+            return reject(signal.reason);
+        const abort = () => reject(signal.reason);
+        signal.addEventListener('abort', abort, { once: true });
+        promise.then(value => { signal.removeEventListener('abort', abort); resolve(value); }, error => { signal.removeEventListener('abort', abort); reject(error); });
+    });
 }

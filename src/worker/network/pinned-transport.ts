@@ -38,6 +38,7 @@ export function createPinnedFetcher(approve: DestinationApprover) {
         for (;;) {
             if (options.scope)
                 assertDocumentScope(current, options.scope);
+            signal.throwIfAborted();
             await options.onRequest?.(current);
             signal.throwIfAborted();
             const { url, addresses } = await new Promise<Awaited<ReturnType<DestinationApprover>>>((resolve, reject) => { const abort = () => reject(signal.reason); signal.addEventListener('abort', abort, { once: true }); approve(current).then(resolve, reject).finally(() => signal.removeEventListener('abort', abort)); if (signal.aborted)
