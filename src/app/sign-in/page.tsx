@@ -27,6 +27,9 @@ export default function SignInPage() {
           <h2>Welcome back</h2>
           <p className="muted">Sign in to your company knowledge.</p>
           <SignInForm />
+          <p className="muted">
+            <a href="/sign-up">Create an account</a>
+          </p>
         </div>
       </section>
     </main>
