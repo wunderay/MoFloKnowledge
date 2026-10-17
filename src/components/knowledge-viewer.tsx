@@ -70,11 +70,13 @@ export function KnowledgeViewer({
   companyId,
   initialVersionId,
   initialSection,
+  initialOffering,
   initialData,
 }: {
   companyId: string;
   initialVersionId?: string;
   initialSection?: KnowledgeSectionId;
+  initialOffering?: string;
   initialData?: {
     companyName: string;
     versions: Version[];
@@ -111,6 +113,7 @@ export function KnowledgeViewer({
   const [knowledgeSection, setKnowledgeSection] = useState<KnowledgeSectionId>(
     initialSection ?? "general",
   );
+  const [offeringId, setOfferingId] = useState(initialOffering ?? "");
   const [exportFormat, setExportFormat] = useState("docx");
   const [query, setQuery] = useState("");
   const [section, setSection] = useState("");
@@ -469,6 +472,13 @@ export function KnowledgeViewer({
                 name={name}
                 entries={entries}
                 citationContext={citationContext}
+                offeringId={offeringId}
+                onSelectOffering={(id) => {
+                  setOfferingId(id);
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("offering", id);
+                  window.history.replaceState(null, "", url);
+                }}
               />
             )}
           </div>

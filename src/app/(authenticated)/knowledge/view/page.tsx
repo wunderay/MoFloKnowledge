@@ -13,10 +13,13 @@ export default async function ViewPage({
     companyId?: string;
     versionId?: string;
     section?: string;
+    offering?: string;
   }>;
 }) {
   const params = await searchParams;
   const section = parseSection(params.section);
+  // The selected offering's entry id; one that matches no offering selects the first.
+  const offering = typeof params.offering === "string" ? params.offering : undefined;
   const id = UUIDSchema.safeParse(params.companyId);
   if (!id.success)
     return (
@@ -43,6 +46,7 @@ export default async function ViewPage({
           companyId={id.data}
           initialVersionId="draft"
           initialSection={section}
+          initialOffering={offering}
           initialData={{ companyName: draft.company.name, versions, draft }}
         />
       );
@@ -54,6 +58,7 @@ export default async function ViewPage({
         companyId={id.data}
         initialVersionId={versionId}
         initialSection={section}
+        initialOffering={offering}
         initialData={{
           companyName: saved.payload.provenance.company.name,
           versions,

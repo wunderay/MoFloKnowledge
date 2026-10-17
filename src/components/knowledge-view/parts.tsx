@@ -141,6 +141,7 @@ export function Chips({ items, href, noun }: { items: ChipItem[]; href: string; 
 export function Banner({
   label,
   title,
+  caption,
   placeholder = false,
   icon,
   source,
@@ -149,6 +150,8 @@ export function Banner({
 }: {
   label: string;
   title: string;
+  /** Small text under the heading; label, heading and caption then form one first cell. */
+  caption?: string;
   placeholder?: boolean;
   icon?: IconName;
   source?: ReactNode;
@@ -156,16 +159,22 @@ export function Banner({
   children: ReactNode;
 }) {
   // Label, heading and stats are siblings so the whole banner is one container.
-  return (
-    <div className={`knowledge-view__banner${icon ? " knowledge-view__banner--icon" : ""}`}>
-      {icon && (
-        <span className="knowledge-view__banner-icon" aria-hidden="true"><Icon name={icon} size={22} /></span>
-      )}
+  const lead = (
+    <>
       <p className="knowledge-view__banner-label">{label}</p>
       <h2 className={`knowledge-view__banner-title${placeholder ? " knowledge-view__banner-title--placeholder" : ""}`}>
         {title}
         {source}
       </h2>
+      {caption && <p className="knowledge-view__banner-caption">{caption}</p>}
+    </>
+  );
+  return (
+    <div className={`knowledge-view__banner${icon ? " knowledge-view__banner--icon" : ""}`}>
+      {icon && (
+        <span className="knowledge-view__banner-icon" aria-hidden="true"><Icon name={icon} size={22} /></span>
+      )}
+      {caption ? <div className="knowledge-view__banner-lead">{lead}</div> : lead}
       {children}
       {note}
     </div>
