@@ -1,6 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
-import { exactSentences, selectExactSentences } from "./source-excerpts";
+import { exactSentences, hasNegation, selectExactSentences } from "./source-excerpts";
 
 type Section = {
   heading: string | null;
@@ -65,7 +65,7 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
     for (const original of [...new Set(texts)].slice(0, 80)) {
       const first = exactSentences(original)[0] ?? "";
       const text = selectExactSentences(original, { maxSentences: first.length < 80 ? 2 : 1, maxCharacters: 300 }).join(" ");
-      if (text && text.length <= 4000 && !excluded.includes(text) && !promotional.test(text) && idsFor([original]).length)
+      if (text && text.length <= 4000 && !excluded.includes(text) && !promotional.test(text) && !hasNegation(text) && idsFor([original]).length)
         add("features", [{ text }], entity, [...context, original], [], priority);
     }
   };
