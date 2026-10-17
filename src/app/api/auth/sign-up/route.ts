@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { createClient } from "../../../../lib/supabase/server";
+import { appOrigin } from "../../../../lib/config/server";
 import {
   assertWriteOrigin,
   readJson,
@@ -26,9 +27,12 @@ export async function POST(request: Request) {
     const { data, error } = await client.auth.signUp({
       email: body.email,
       password: body.password,
-      options: { emailRedirectTo: `${process.env.APP_ORIGIN}/auth/callback` },
+      options: { emailRedirectTo: `${appOrigin()}/auth/callback` },
     });
     if (error) {
+      // An existing account gets the same answer as a new one awaiting confirmation (no enumeration).
+      if (error.code === "user_already_exists")
+        return json({ signedUp: true, signedIn: false }, id);
       if (error.status === 429)
         throw new HttpError(
           429,
