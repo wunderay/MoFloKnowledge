@@ -5,11 +5,10 @@ const quoted = (text: string) => /["“”«»‘’]/u.test(text)
   || /(?:^|\s)'[^'\n]+'(?:\s|[.,!?]|$)/u.test(text);
 
 // Literal tokens (email, URL, www host, host/path, @handle, #hashtag) must reach the reader byte-for-byte.
-const literalShape = [/^[^\s@/]+@[^\s@/]+\.\p{L}{2,}$/u, /^\w+:\/\//u, /^www\./iu,
-  /^[^\s/@.]+(?:\.[^\s/@.]+)*\.\p{L}{2,}\/\S*$/u,
-  /^[^\s/@.]+(?:\.[^\s/@.]+)*\.(?:com|org|net|io|co|ai|app|dev|edu|gov|info|biz|me|us|uk|ca|au|de|fr|jp|nz|ie|in)$/iu, /^[@#]\w+$/u];
+const literalShape = [/^[^\s@]+@[^\s@]+$/u, /^\w+:\/\//u, /^www\./iu,
+  /^[^\s/@.#?]+(?:\.[^\s/@.#?]+)*\.\p{L}{2,}(?:[/?#]\S*)?$/u, /^[@#][\p{L}\p{N}_.'’-]+$/u];
 const literalToken = (token: string) => {
-  const core = token.replace(/^.*\]\(/u, "").replace(/^[(<["']+/u, "").replace(/[.,;:!?)\]>'"]+$/u, "");
+  const core = token.replace(/^.*\]\(/u, "").replace(/^[(<["']+/u, "").replace(/[.,;:!?)\]>'"…]+$/u, "");
   return literalShape.some((shape) => shape.test(core));
 };
 
