@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import {
   createEmptyProvenance,
   createEntryDefault,
+  type EntryProvenance,
   entryBusiness,
   parseBusinessEntry,
   requiredCoverageTargets,
@@ -17,6 +18,41 @@ import type { ViewSiteLinks } from "./data";
 
 /** The most links one site_links entry can hold. */
 export const MAX_LINKS = 500;
+/** What one provenance can hold (EntryProvenanceSchema): claims, each naming up to MAX_TARGETS leaves; operations. */
+export const MAX_CLAIMS = 500;
+export const MAX_OPERATIONS = 1000;
+export const MAX_TARGETS = 1000;
+
+/**
+ * How many more links an import may add, and why not more. The links themselves are capped at
+ * MAX_LINKS. The save also writes provenance, which the API caps separately: it needs at least one
+ * more claim and one more operation than the entry already holds, so an entry whose claims or
+ * operations are already at the cap cannot take an import even when it has room for links.
+ */
+export function importRoom(site: ViewSiteLinks): { room: number; limit: "links" | "claims" | "operations" | null } {
+  const linkRoom = Math.max(0, MAX_LINKS - site.links.length);
+  const provenance = site.entry?.provenance;
+  if (provenance && provenance.claims.length >= MAX_CLAIMS) return { room: 0, limit: "claims" };
+  if (provenance && provenance.operations.length >= MAX_OPERATIONS) return { room: 0, limit: "operations" };
+  return { room: linkRoom, limit: linkRoom === 0 ? "links" : null };
+}
+
+/**
+ * The claims reviseProvenance wrote for the new values, one per leaf, grouped into as few claims as
+ * the schema allows (a claim may name MAX_TARGETS leaves). Two leaves per link means MAX_LINKS links
+ * need one claim instead of 2 * MAX_LINKS, which the API would reject. Claims the entry already had
+ * are left as they are.
+ */
+function groupNewClaims(revised: EntryProvenance, before: EntryProvenance | null): EntryProvenance {
+  const known = new Set((before?.claims ?? []).map((claim) => claim.id));
+  const fresh = revised.claims.filter((claim) => !known.has(claim.id));
+  if (fresh.length <= 1) return revised;
+  const targets = fresh.flatMap((claim) => claim.targets);
+  const grouped = [];
+  for (let at = 0; at < targets.length; at += MAX_TARGETS)
+    grouped.push({ ...fresh[0]!, id: crypto.randomUUID(), targets: targets.slice(at, at + MAX_TARGETS) });
+  return { ...revised, claims: [...revised.claims.filter((claim) => known.has(claim.id)), ...grouped] };
+}
 
 type Candidate = { key: string; label: string; url: string };
 const normalized = (url: string) => {
@@ -45,7 +81,7 @@ export function importCandidates(pages: SourceCoverage["pages"], stored: SiteLin
 }
 
 /** Saves `added` after the stored links, the way the editor saves an entry: a new entry or a new revision. */
-async function saveLinks(companyId: string, actorId: string, site: ViewSiteLinks, added: Candidate[]) {
+export async function saveLinks(companyId: string, actorId: string, site: ViewSiteLinks, added: Candidate[]) {
   const links = [
     ...site.links,
     ...added.map((page) => ({ id: crypto.randomUUID(), title: page.label.slice(0, 20000), url: page.url, note: null })),
@@ -64,17 +100,20 @@ async function saveLinks(companyId: string, actorId: string, site: ViewSiteLinks
       job_id: null,
       reason: "Entered manually; website extraction has not assessed this field.",
     }));
-    const provenance = reviseProvenance({
-      kind: "site_links",
-      entryId: requestId,
-      before: createEntryDefault("site_links", requestId),
-      after: content,
-      provenance: empty,
-      actorId,
-      savedAt,
-      requestId,
-      note,
-    });
+    const provenance = groupNewClaims(
+      reviseProvenance({
+        kind: "site_links",
+        entryId: requestId,
+        before: createEntryDefault("site_links", requestId),
+        after: content,
+        provenance: empty,
+        actorId,
+        savedAt,
+        requestId,
+        note,
+      }),
+      null,
+    );
     await api(companyPath(companyId, "/entries"), write("POST", { kind: "site_links", content, provenance, requestId }));
     return;
   }
@@ -88,17 +127,20 @@ async function saveLinks(companyId: string, actorId: string, site: ViewSiteLinks
         reason: "Manually entered section. Website coverage has not been checked.",
       },
     ];
-  const provenance = reviseProvenance({
-    kind: "site_links",
-    entryId: entry.id,
-    before: entry.content,
-    after: content,
-    provenance: stored,
-    actorId,
-    savedAt,
-    requestId,
-    note,
-  });
+  const provenance = groupNewClaims(
+    reviseProvenance({
+      kind: "site_links",
+      entryId: entry.id,
+      before: entry.content,
+      after: content,
+      provenance: stored,
+      actorId,
+      savedAt,
+      requestId,
+      note,
+    }),
+    entry.provenance,
+  );
   await api(
     companyPath(companyId, `/entries/${entry.id}/revisions`),
     write("POST", {
@@ -124,12 +166,15 @@ export function SiteImport({
   companyId,
   actorId,
   site,
+  blocked = false,
   onSaved,
 }: {
   companyId: string;
   actorId: string;
   site: ViewSiteLinks;
-  /** Reloads the draft after a save so the card shows the new links. */
+  /** An earlier import was saved but the view could not be refreshed: no new import until it is. */
+  blocked?: boolean;
+  /** Reloads the draft after a save so the card shows the new links. It resolves once the save is committed, even if the reload failed. */
   onSaved: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -162,7 +207,7 @@ export function SiteImport({
   }, [open, companyId]);
 
   const candidates = pages ? importCandidates(pages, site.links) : [];
-  const remaining = Math.max(0, MAX_LINKS - site.links.length);
+  const { room: remaining, limit } = importRoom(site);
   const chosen = candidates.filter((page) => selected.includes(page.key)).slice(0, remaining);
   const full = chosen.length >= remaining;
   function show() {
@@ -197,7 +242,13 @@ export function SiteImport({
   const limited = candidates.length > remaining;
   return (
     <>
-      <button type="button" className="knowledge-view__site-import" onClick={show}>
+      <button
+        type="button"
+        className="knowledge-view__site-import"
+        onClick={show}
+        disabled={blocked}
+        title={blocked ? "Reload to see the latest links before importing again." : undefined}
+      >
         Import from website
       </button>
       <dialog
@@ -228,7 +279,9 @@ export function SiteImport({
               <>
                 {limited && (
                   <p className="knowledge-view__dialog-hint">
-                    {remaining === 0
+                    {limit === "claims" || limit === "operations"
+                      ? `The list's source records are full (the maximum of ${limit === "claims" ? MAX_CLAIMS + " source claims" : MAX_OPERATIONS + " recorded changes"}), so no more pages can be added here.`
+                      : remaining === 0
                       ? `The list already has the maximum of ${MAX_LINKS} links, so no more pages can be added.`
                       : `Only ${remaining} more ${remaining === 1 ? "page" : "pages"} can be added (maximum ${MAX_LINKS} links).`}
                   </p>

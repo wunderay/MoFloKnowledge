@@ -122,6 +122,8 @@ export function KnowledgeViewer({
   const [review, setReview] = useState("");
   const [coverage, setCoverage] = useState("");
   const [error, setError] = useState("");
+  /** An import was saved but the draft could not be re-read: the view is older than the stored entry. */
+  const [staleDraft, setStaleDraft] = useState(false);
   const [loading, setLoading] = useState(!initialData);
   const initializedList = useRef(false);
   const initializedView = useRef(false);
@@ -184,6 +186,7 @@ export function KnowledgeViewer({
     const abort = new AbortController();
     setLoading(true);
     setError("");
+    setStaleDraft(false);
     setEntries([]);
     setPayload(null);
     setCitationContext(undefined);
@@ -225,7 +228,12 @@ export function KnowledgeViewer({
       });
     return () => abort.abort();
   }, [companyId, versionId, reload]);
-  /** Re-reads the draft after an import so the view shows it, without blanking the page. */
+  /**
+   * Re-reads the draft after an import so the view shows it, without blanking the page. The import
+   * is already saved when this runs, so a failed read never rejects (the caller must not treat the
+   * save as failed or send it again): it marks the view stale, which blocks further imports and
+   * offers a reload, until a later read succeeds.
+   */
   async function refreshDraft() {
     try {
       const data = await api<{
@@ -236,8 +244,9 @@ export function KnowledgeViewer({
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
       setEntries(data.entries);
       setCitationContext(data.citationContext);
-    } catch (error) {
-      setError((error as Error).message);
+      setStaleDraft(false);
+    } catch {
+      setStaleDraft(true);
     }
   }
   async function reject(entry: ViewEntry) {
@@ -441,6 +450,14 @@ export function KnowledgeViewer({
           )}
         </div>
       </div>
+      {staleDraft && versionId === "draft" && (
+        <Notice error>
+          Saved. Reload to see the latest links.{" "}
+          <button className="button" onClick={() => void refreshDraft()}>
+            Reload
+          </button>
+        </Notice>
+      )}
       {error && (
         <Notice error>
           {error}
@@ -493,6 +510,7 @@ export function KnowledgeViewer({
                 citationContext={citationContext}
                 canEdit={canEdit && versionId === "draft"}
                 actorId={actorId}
+                importBlocked={staleDraft}
                 onSaved={refreshDraft}
                 offeringId={offeringId}
                 onSelectOffering={(id) => {

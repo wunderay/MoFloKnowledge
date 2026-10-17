@@ -12,6 +12,7 @@ export function SiteKnowledge({
   site,
   canEdit,
   actorId,
+  importBlocked = false,
   onSaved,
   level: Heading = "h2",
 }: {
@@ -19,6 +20,8 @@ export function SiteKnowledge({
   site: ViewSiteLinks;
   canEdit: boolean;
   actorId: string;
+  /** The view is older than a saved import; the picker stays disabled until it is reloaded. */
+  importBlocked?: boolean;
   onSaved: () => Promise<void>;
   /** The card heading's level: h3 when the card sits under a section heading. */
   level?: "h2" | "h3";
@@ -38,7 +41,7 @@ export function SiteKnowledge({
         </div>
         <div className="knowledge-view__site-actions">
           <Link className="knowledge-view__site-add" href={addHref(companyId, "site_links")}>+ Add page</Link>
-          {canEdit && actorId && <SiteImport companyId={companyId} actorId={actorId} site={site} onSaved={onSaved} />}
+          {canEdit && actorId && <SiteImport companyId={companyId} actorId={actorId} site={site} blocked={importBlocked} onSaved={onSaved} />}
         </div>
       </div>
       {links.length === 0 ? (

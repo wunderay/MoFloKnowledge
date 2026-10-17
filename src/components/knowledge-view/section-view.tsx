@@ -19,6 +19,7 @@ export function SectionView({
   onSelectOffering = () => {},
   canEdit = false,
   actorId = "",
+  importBlocked = false,
   onSaved = async () => {},
 }: {
   section: KnowledgeSectionId;
@@ -39,6 +40,8 @@ export function SectionView({
   /** An editable draft offers "Import from website"; `onSaved` reloads the draft after it saved. */
   canEdit?: boolean;
   actorId?: string;
+  /** True while the view is older than a saved import: the picker would work from stale entries. */
+  importBlocked?: boolean;
   onSaved?: () => Promise<void>;
 }) {
   const profile = profileFrom(entries, citationContext);
@@ -62,6 +65,7 @@ export function SectionView({
         site={siteLinksFrom(entries, citationContext)}
         canEdit={canEdit}
         actorId={actorId}
+        importBlocked={importBlocked}
         onSaved={onSaved}
         level={level}
       />
