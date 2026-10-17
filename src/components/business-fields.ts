@@ -200,6 +200,23 @@ export const CATEGORY_SPECS: Record<
       },
     },
   },
+  site_links: {
+    label: "Site links",
+    icon: "↗",
+    description:
+      "The company's own internal site pages, listed by hand with an optional note.",
+    fields: {
+      links: {
+        items: {
+          fields: {
+            title: { ...t, default: "" },
+            url: { ...url, default: "" },
+            note: t,
+          },
+        },
+      },
+    },
+  },
   key_person: {
     label: "Key people",
     icon: "♙",

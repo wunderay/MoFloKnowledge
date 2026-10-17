@@ -1,5 +1,6 @@
 import "server-only";
 import { KnowledgeBaseExportSchema } from "../contracts";
+import { upgradeLegacySnapshot } from "../knowledge/legacy-snapshot";
 import { authorizeCompany } from "./authorize";
 import { checked } from "./read-model";
 import { VersionSummarySchema } from "../contracts/api-responses";
@@ -21,7 +22,8 @@ export async function readSnapshot(
       .maybeSingle(),
   );
   if (!saved) throw new HttpError(404, "unavailable", "Resource unavailable.");
-  return { ...saved, payload: KnowledgeBaseExportSchema.parse(saved.payload) };
+  // `payload` is the validated, current-shape view for rendering; `stored` is exactly what was frozen (hash, downloads).
+  return { ...saved, payload: KnowledgeBaseExportSchema.parse(upgradeLegacySnapshot(saved.payload)), stored: saved.payload as unknown };
 }
 
 export async function readVersionSummaries(

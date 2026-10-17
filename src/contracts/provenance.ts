@@ -190,7 +190,8 @@ export const ExportProvenanceSchema = z
     sources: collection(SourceSchema),
     evidence: collection(EvidenceSchema),
     claims: collection(ClaimSchema),
-    coverage: z.array(CoverageAssessmentSchema).max(1000),
+    // 1,000 rows before site_links; the registry's 30th singleton field adds one row to every snapshot.
+    coverage: z.array(CoverageAssessmentSchema).max(1001),
     operations: z.array(OperationSchema).max(1000),
   })
   .strict();
