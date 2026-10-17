@@ -9,7 +9,7 @@ describe("Q21 sales-marketing polish", () => {
   it("a javascript: social profile link is not linked", async () => {
     const b = buildBusiness();
     b.online_presence.social_media_links = [
-      { ...b.online_presence.social_media_links[0]!, platform: "Instagram", handle: "evilhandle", profile_url: "javascript:alert(1)" },
+      { ...b.online_presence.social_media_links[0]!, platform: "Instagram", profile_url: "javascript:alert(1)" },
     ];
     const page = await openSection("Sales & Marketing", { draft: draftFrom(b) });
     const hrefs = page.$("a").toArray().map((a) => page.$(a).attr("href") ?? "");
