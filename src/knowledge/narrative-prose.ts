@@ -4,6 +4,21 @@ const sentences = new Intl.Segmenter("en", { granularity: "sentence" });
 const quoted = (text: string) => /["“”«»‘’]/u.test(text)
   || /(?:^|\s)'[^'\n]+'(?:\s|[.,!?]|$)/u.test(text);
 
+// Literal tokens (email, URL, www host, host/path, @handle, #hashtag) must reach the reader byte-for-byte.
+const literalShape = [/^[^\s@]+@[^\s@]+$/u, /^\w+:\/\//u, /^www\./iu,
+  /^[^\s/@.#?]+(?:\.[^\s/@.#?]+)*\.(?:\p{L}{2,}|xn--[a-z0-9-]+)(?:[/?#]\S*)?$/iu, /^[@#][\p{L}\p{N}_.'’-]+$/u];
+const trailing = new Set([...".,;:!?)]>'\"…*_`~"]);
+const literalToken = (token: string) => {
+  const link = token.lastIndexOf("](");
+  const body = link < 0 ? token : token.slice(link + 2);
+  let start = 0;
+  while (start < body.length && "(<[\"'*_`~".includes(body[start])) start += 1;
+  let end = body.length;
+  while (end > start && trailing.has(body[end - 1])) end -= 1;
+  const core = body.slice(start, end);
+  return literalShape.some((shape) => shape.test(core));
+};
+
 export function factualBullets(text: string, company: string, verbatim = false): FactualBullet[] {
   if (quoted(text)) return [{ text }];
   const personal = /\b(?:I|my|me)\b/iu.test(text);
@@ -30,7 +45,7 @@ export function factualBullets(text: string, company: string, verbatim = false):
     const body = assistance?.[1] ?? predicate;
     const specialtyResult = verb === "specialize in" && /^[^,]+, ensuring [^,]+$/su.test(body);
     if ((body.includes(",") && !specialtyResult) || /^(?:no|not|never)\b/u.test(body)) return { text: statement, label: "Company statement" };
-    const neutral = (value: string) => value.replace(/\bour\b/gu, "its");
+    const neutral = (value: string) => value.replace(/\S+/gu, (token) => literalToken(token) ? token : token.replace(/\bour\b/gu, "its"));
     const labels: Record<string, string> = { "specialize in": "Specialty", provide: "Services provided", offer: "Services offered",
       perform: "Activities performed", use: "Tools used", "adhere to": "Adherence" };
     const label = labels[verb];
