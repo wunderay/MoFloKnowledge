@@ -27,6 +27,10 @@ const shared = vi.hoisted(() => ({
   search: "",
   server: null as null | { draft: unknown; snapshot: unknown; versions: unknown[] },
   refresh: null as null | (() => void),
+  /** Every navigation the UI asked for (router.push/replace, history.pushState/replaceState, location.assign). */
+  nav: [] as string[],
+  /** Path of the element that last received focus() (document.activeElement). */
+  focused: null as string | null,
 }));
 
 vi.mock("react", async (original) => {
@@ -62,8 +66,8 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(shared.search),
   usePathname: () => "/knowledge/view",
   useRouter: () => ({
-    push: () => {},
-    replace: () => {},
+    push: (url: unknown) => void shared.nav.push(String(url)),
+    replace: (url: unknown) => void shared.nav.push(String(url)),
     refresh: () => shared.refresh?.(),
     back: () => {},
     prefetch: () => {},
@@ -345,6 +349,7 @@ class App {
         matches: () => false,
         focus: () => {
           meta.focusCalls++;
+          shared.focused = meta.path;
         },
         showModal: () => {
           meta.showModalCalls++;
@@ -609,7 +614,10 @@ function installGlobals(app: App, server: FakeServer, href: string) {
     ...eventTarget,
     body,
     documentElement: body,
-    activeElement: null,
+    get activeElement() {
+      const path = shared.focused;
+      return path ? app.fakes.get(path)?.node ?? null : null;
+    },
     getElementById: (id: string) => {
       const found = app.query(`#${id}`)[0];
       return found ? app.fakeFor(found).node : null;
@@ -623,8 +631,18 @@ function installGlobals(app: App, server: FakeServer, href: string) {
   });
   vi.stubGlobal("window", {
     ...eventTarget,
-    location: { href, assign: () => {}, reload: () => {}, origin: "http://localhost", pathname: "/knowledge/view", search: "" },
-    history: { replaceState: () => {}, pushState: () => {} },
+    location: {
+      href,
+      assign: (url: unknown) => void shared.nav.push(String(url)),
+      reload: () => {},
+      origin: "http://localhost",
+      pathname: "/knowledge/view",
+      search: new URL(href).search,
+    },
+    history: {
+      replaceState: (_state: unknown, _unused: unknown, url?: unknown) => void (url != null && shared.nav.push(String(url))),
+      pushState: (_state: unknown, _unused: unknown, url?: unknown) => void (url != null && shared.nav.push(String(url))),
+    },
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
     innerWidth: 1280,
     innerHeight: 800,
@@ -891,12 +909,18 @@ export type OpenOptions = {
   draft?: Draft;
   snapshot?: { payload: KnowledgeBaseExport | unknown; versionId: string };
   versions?: { id: string; version_number: number; created_at: string }[];
+  /** A raw `section` URL value (used instead of `section`), e.g. an identifier or an unknown value. */
+  rawSection?: string;
+  /** Put companyId, versionId and these extra parameters in the URL the client reads (useSearchParams / location). */
+  fullUrl?: { extra?: Record<string, string> };
   /** Configure the fake API before the page renders (sources, failures). */
   server?: (server: FakeServer) => void;
 };
 
 /** Mount any element in the runtime (used to check the runtime itself). */
 export async function mountElement(element: React.ReactElement, server = new FakeServer({})): Promise<View> {
+  shared.nav = [];
+  shared.focused = null;
   const app = new App(element, async () => element);
   installGlobals(app, server, "http://localhost/");
   app.render();
@@ -912,8 +936,16 @@ export async function openView(opts: OpenOptions): Promise<View> {
   const server = new FakeServer({ draft: opts.draft, snapshot: opts.snapshot?.payload, versions: opts.versions ?? [] });
   opts.server?.(server);
   shared.server = server;
-  const sectionId = opts.section ? SECTION_IDS[opts.section] : undefined;
-  shared.search = sectionId ? `section=${encodeURIComponent(sectionId)}` : "";
+  const sectionId = opts.rawSection !== undefined ? opts.rawSection : opts.section ? SECTION_IDS[opts.section] : undefined;
+  const versionParam = opts.snapshot ? opts.snapshot.versionId : "draft";
+  const clientQuery = new URLSearchParams(
+    opts.fullUrl
+      ? { companyId: companyId as string, versionId: versionParam, ...(opts.fullUrl.extra ?? {}), ...(sectionId ? { section: sectionId } : {}) }
+      : sectionId ? { section: sectionId } : {},
+  ).toString();
+  shared.search = clientQuery;
+  shared.nav = [];
+  shared.focused = null;
   const make = async () => {
     const { default: ViewPage } = await import("../../src/app/(authenticated)/knowledge/view/page");
     return (await ViewPage({
@@ -925,9 +957,25 @@ export async function openView(opts: OpenOptions): Promise<View> {
     } as never)) as React.ReactElement;
   };
   const app = new App(await make(), make);
-  installGlobals(app, server, `http://localhost/knowledge/view?companyId=${companyId}${sectionId ? `&section=${sectionId}` : ""}`);
+  installGlobals(
+    app,
+    server,
+    opts.fullUrl
+      ? `http://localhost/knowledge/view?${clientQuery}`
+      : `http://localhost/knowledge/view?companyId=${companyId}${sectionId ? `&section=${sectionId}` : ""}`,
+  );
   app.render();
   const view = new View(app, server);
   await view.settle();
   return view;
 }
+
+/** Navigations requested since the view was opened, in order (URLs as the UI passed them). */
+export const navigations = () => [...shared.nav];
+export const clearNavigations = () => void (shared.nav = []);
+/** Path of the element that last received focus (null if none). */
+export const focusedPath = () => shared.focused;
+/** Simulate the browser focusing an element (e.g. a click on a button focuses it). */
+export const focusPath = (path: string | null) => void (shared.focused = path);
+/** Document-level listeners registered by the UI for an event type. */
+export const documentHandlers = (view: View, type: string) => [...(view.app.documentListeners.get(type) ?? [])];
