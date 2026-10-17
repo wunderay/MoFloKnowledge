@@ -511,10 +511,13 @@ describe("C5 contract sources and migration files for the SQL contract", () => {
       expect(registry.map((item) => item.path), wanted).toContain(wanted);
   });
 
-  it("[behavioural] a NEW migration 0018 exists, holds the generated contract block and names the new fields", () => {
-    const added = migrations.filter((name) => Number.parseInt(name.split("_")[0], 10) >= 18);
-    expect(added.length, "a migration numbered 0018 or later").toBeGreaterThan(0);
-    expect(added[0].startsWith("0018_"), `first new migration is 0018 (found ${added[0]})`).toBe(true);
+  it("[behavioural] a NEW migration exists (0018, or 0019 when Q6's 0018_knowledge_assets_storage.sql is present), holds the generated contract block and names the new fields", () => {
+    // Q6 (storage uploads) owns 0018_knowledge_assets_storage.sql when it has landed; Q5 then takes the next free number.
+    const q6 = "0018_knowledge_assets_storage.sql";
+    const added = migrations.filter((name) => Number.parseInt(name.split("_")[0], 10) >= 18 && name !== q6);
+    expect(added.length, "exactly one Q5 migration numbered above the migrations that came before it").toBe(1);
+    const expected = migrations.includes(q6) ? "0019_" : "0018_";
+    expect(added[0].startsWith(expected), `Q5's migration is the first free number ${expected.slice(0, 4)} (found ${added[0]})`).toBe(true);
     const text = read(`supabase/migrations/${added[0]}`);
     expect(text).toContain("-- BEGIN GENERATED CONTRACT (scripts/generate-sql-contract.mjs; do not edit)");
     expect(text).toContain("-- END GENERATED CONTRACT");

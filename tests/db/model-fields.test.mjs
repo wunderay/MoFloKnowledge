@@ -110,12 +110,16 @@ before(async()=>{
 });
 after(async()=>{for(const c of sessions)await c.end().catch(()=>{});if(administrator){for(const name of databases)await administrator.query(`DROP DATABASE IF EXISTS "${name}"`);await administrator.end();}});
 
-test('C5: a new migration 0018 makes the SQL contract know the new fields, defaults and registry',async t=>{
- await t.test('0018 is a new migration file and is recorded as applied; 0001-0017 are untouched',async()=>{
+test('C5: a new migration makes the SQL contract know the new fields, defaults and registry',async t=>{
+ await t.test("the Q5 migration is new (0018, or 0019 when Q6's 0018_knowledge_assets_storage.sql is present), is recorded as applied; 0001-0017 are untouched",async()=>{
   const files=(await readdir(migrationsDirectory)).filter(x=>x.endsWith('.sql')).sort();
-  const added=files.filter(file=>migrationNumber(file)>=18);assert.ok(added.length>0,'a migration numbered 0018 or later must exist');assert.ok(added[0].startsWith('0018_'),`first new migration is 0018 (found ${added[0]})`);
+  const q6='0018_knowledge_assets_storage.sql';
+  const added=files.filter(file=>migrationNumber(file)>=18&&file!==q6);
+  assert.equal(added.length,1,'exactly one Q5 migration numbered above the migrations that came before it');
+  const expected=files.includes(q6)?'0019_':'0018_';assert.ok(added[0].startsWith(expected),`Q5's migration is the first free number ${expected.slice(0,4)} (found ${added[0]})`);
   const {rows}=await admin.query("SELECT version FROM supabase_migrations.schema_migrations ORDER BY version");
-  assert.ok(rows.map(r=>r.version).includes('0018'),'0018 is applied');
+  assert.ok(rows.map(r=>r.version).includes(expected.slice(0,4)),`${expected.slice(0,4)} is applied`);
+  assert.equal(rows.length,files.length,'every migration file is recorded as applied');
  });
  await t.test('private.contract_schema knows revenue, phone, age, nationality, portrait and images (and they are in the export schema)',async()=>{
   const schema=async kind=>(await admin.query('SELECT private.contract_schema($1) AS v',[kind])).rows[0].v;
