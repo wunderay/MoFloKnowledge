@@ -236,8 +236,8 @@ describe("C2 offering detail", () => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[2] });
     const d = detail(page);
     expect(shown(page, d, "Cost")).toContain("Free for subscribers");
-    expect(addLinksOf(page, d["Key features"])).toEqual([ADD]);
-    expect(addLinksOf(page, d["Pricing model"])).toEqual([ADD]);
+    expect(addLinksOf(page, d["Key features"])).toEqual([`${ADD}&entryId=${OFFERING_IDS[2]}`]);
+    expect(addLinksOf(page, d["Pricing model"])).toEqual([`${ADD}&entryId=${OFFERING_IDS[2]}`]);
     for (const label of ["Offering", "Type", "Description", "Cost"] as const)
       expect(addLinksOf(page, d[label]), `card "${label}" is filled`).toEqual([]);
   });
@@ -247,7 +247,7 @@ describe("C2 offering detail", () => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[3] });
     const d = detail(page);
     for (const label of ["Type", "Key features", "Cost", "Pricing model"] as const)
-      expect(addLinksOf(page, d[label]), `card "${label}"`).toEqual([ADD]);
+      expect(addLinksOf(page, d[label]), `card "${label}"`).toEqual([`${ADD}&entryId=${OFFERING_IDS[3]}`]);
     expect(shown(page, d, "Description")).toContain(GIFT!.description);
     expect(addLinksOf(page, d["Description"])).toEqual([]);
     // The name is missing: the card says so (fallback name or empty state) rather than printing nothing or 'null'.
@@ -320,7 +320,7 @@ describe("C2 offering detail", () => {
     Object.assign(b.offerings[0]!.pricing!, { raw: "", kind: "paid", amount: null, currency: null, billing_interval: null });
     const page = await openOfferings({ draft: draftFrom(b) });
     const d = detail(page);
-    expect(addLinksOf(page, d["Cost"])).toEqual([ADD]);
+    expect(addLinksOf(page, d["Cost"])).toEqual([`${ADD}&entryId=${OFFERING_IDS[0]}`]);
     expect(shown(page, d, "Cost")).not.toMatch(BAD);
   });
 });
