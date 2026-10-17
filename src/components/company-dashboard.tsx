@@ -1,5 +1,5 @@
 "use client";
-import { ArrowUpRight } from "./icons";
+import { ArrowUpRight, Icon } from "./icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, write } from "./api-client";
@@ -119,7 +119,7 @@ export function CompanyDashboard({
           disabled={!hydrated}
           onClick={() => setAdding(true)}
         >
-          ＋ Add company
+          <Icon name="plus" size={16} /> Add company
         </button>
       </div>
       <div className="summary-grid">
@@ -128,14 +128,14 @@ export function CompanyDashboard({
             <p>Active companies</p>
             <strong>{companies.filter((c) => !c.archived_at).length}</strong>
           </div>
-          <span className="summary-card__icon">▦</span>
+          <span className="summary-card__icon"><Icon name="companies" size={22} /></span>
         </div>
         <div className="summary-card">
           <div>
             <p>Companies with versions</p>
             <strong>{companies.filter((c) => c.latestVersion).length}</strong>
           </div>
-          <span className="summary-card__icon">▤</span>
+          <span className="summary-card__icon"><Icon name="profile" size={22} /></span>
         </div>
         <div className="summary-card">
           <div>
@@ -150,7 +150,7 @@ export function CompanyDashboard({
               }
             </strong>
           </div>
-          <span className="summary-card__icon">↻</span>
+          <span className="summary-card__icon"><Icon name="refresh" size={22} /></span>
         </div>
       </div>
       <div className="section-heading">
@@ -192,7 +192,7 @@ export function CompanyDashboard({
               disabled={!hydrated}
               onClick={() => setAdding(true)}
             >
-              ＋ Add company
+              <Icon name="plus" size={16} /> Add company
             </button>
           </EmptyState>
         </div>
