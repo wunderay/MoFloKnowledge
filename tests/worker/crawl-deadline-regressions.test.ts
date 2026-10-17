@@ -149,7 +149,7 @@ describe("unsatisfiable Crawl-delay fails fast with production limits", () => {
 
 describe("a deadline expiring between batches marks the job partial", () => {
   it("adds 'time' to limits_reached when the loop exits on the job deadline", async () => {
-    restore = accelerateLimits({ jobMs: 800, fetchMs: 5_000 });
+    restore = accelerateLimits({ jobMs: 2_000, fetchMs: 5_000 });
     const pageRequests: string[] = [];
     const result = await crawl(
       {
@@ -157,7 +157,7 @@ describe("a deadline expiring between batches marks the job partial", () => {
         // The root answers late, after the 800 ms job deadline has passed.
         page: async (path) => {
           if (path !== "/") return htmlPage();
-          await new Promise((resolve) => setTimeout(resolve, 1_500));
+          await new Promise((resolve) => setTimeout(resolve, 3_000));
           return htmlPage(["/a", "/b"]);
         },
       },
@@ -208,5 +208,59 @@ describe("per-fetch timeouts keep their single retry", () => {
         (e) => e.code === "capture_failed" || e.code === "deadline_exceeded",
       ),
     ).toEqual([]);
+  });
+});
+
+describe("moderate Crawl-delay is honoured across a batch of same-host siblings", () => {
+  const pages = ["/p1", "/p2", "/p3", "/p4", "/p5", "/p6", "/p7", "/p8", "/p9"];
+  const tenPageCrawl = async (seconds: number) => {
+    const pageRequests: string[] = [];
+    const promise = runCrawl(
+      makeJob("http://example.com/", 10),
+      makeRepository(),
+      new AbortController().signal,
+      undefined,
+      fetcherFor(
+        {
+          robots: `User-agent: *\nCrawl-delay: ${seconds}`,
+          page: (path) => htmlPage(path === "/" ? pages : []),
+        },
+        pageRequests,
+      ),
+    );
+    const started = Date.now();
+    let settled = false;
+    promise.then(
+      () => (settled = true),
+      () => (settled = true),
+    );
+    for (let step = 0; step < 400 && !settled; step++)
+      await vi.advanceTimersByTimeAsync(1_000);
+    const result = await promise;
+    return { result, pageRequests, elapsed: Date.now() - started };
+  };
+
+  it.each([10, 14])(
+    "Crawl-delay: %i captures all 10 pages within the job deadline",
+    async (seconds) => {
+      const { result, pageRequests, elapsed } = await tenPageCrawl(seconds);
+      expect(result.captures).toHaveLength(10);
+      expect(pageRequests).toHaveLength(10);
+      expect(
+        result.errors.filter(
+          (e) => e.code === "capture_failed" || e.code === "deadline_exceeded",
+        ),
+      ).toEqual([]);
+      expect(elapsed).toBeLessThan(300_000);
+      expect(result.progress.limits_reached).not.toContain("time");
+    },
+  );
+
+  it("Crawl-delay: 15 leaves no room for a fetch, so no page request is sent", async () => {
+    const { result, pageRequests, elapsed } = await tenPageCrawl(15);
+    expect(pageRequests).toEqual([]);
+    expect(result.captures).toHaveLength(0);
+    expect(result.errors.map((e) => e.code)).toEqual(["deadline_exceeded"]);
+    expect(elapsed).toBeLessThan(5_000);
   });
 });

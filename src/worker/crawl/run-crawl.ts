@@ -8,7 +8,7 @@ import {
   type Reservation,
   CRAWL_LIMITS,
 } from "./budgets";
-import { DeadlineError, Scheduler } from "./scheduler";
+import { DeadlineError, Scheduler, type Deadline } from "./scheduler";
 import { RobotsCache } from "./robots";
 import { fetchDocument } from "../network/pinned-transport";
 import { technicalObservations } from "../extract/observations";
@@ -70,6 +70,9 @@ export async function runCrawl(
   const scheduler = new Scheduler(signal);
   const jobDeadlineAt = Date.now() + CRAWL_LIMITS.jobMs;
   let timedOut = false;
+  // Time kept free for the request itself once pacing is done.
+  const fetchMargin = () =>
+    Math.min(1000, CRAWL_LIMITS.fetchMs / 4, CRAWL_LIMITS.jobMs / 4);
   // Job-level signal (outer cancellation + job deadline) bounds robots loads and their pacing.
   const robots = new RobotsCache(
     fetcher,
@@ -191,34 +194,47 @@ export async function runCrawl(
         });
         return;
       }
+      // A Crawl-delay that cannot leave room for a fetch is never waited out.
+      if (policy.delayMs + fetchMargin() > CRAWL_LIMITS.fetchMs)
+        throw new DeadlineError(
+          "Crawl-delay is longer than the time allowed for one fetch",
+        );
       let document: Awaited<ReturnType<typeof fetchDocument>> | undefined;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const response = await scheduler.runHttp(
             item.url,
             (taskSignal) => {
-              const deadlineAt = Math.min(
-                jobDeadlineAt,
-                Date.now() + CRAWL_LIMITS.fetchMs,
-              );
+              // The first hop was paced by runHttp under the job deadline; only redirect hops pace here.
+              let paced = false;
+              const taskAt = Date.now() + CRAWL_LIMITS.fetchMs;
+              const hopDeadline: Deadline =
+                jobDeadlineAt <= taskAt
+                  ? { at: jobDeadlineAt - fetchMargin(), scope: "job" }
+                  : { at: taskAt - fetchMargin(), scope: "task" };
               return fetcher(item.url, {
                 scope: frontier.scope,
                 signal: taskSignal,
                 onRequest: async (url) => {
                   const rule = await robots.check(url, taskSignal);
                   if (!rule.allowed) throw new Error("robots_blocked");
+                  if (!paced) {
+                    paced = true;
+                    return;
+                  }
                   await scheduler.pace(
                     url,
                     Math.max(500, rule.delayMs),
                     taskSignal,
-                    deadlineAt,
+                    hopDeadline,
                   );
                 },
               });
             },
             policy.delayMs,
             signal,
-            true,
+            false,
+            { at: jobDeadlineAt - fetchMargin(), scope: "job" },
           );
           document = response;
           if (response.status !== 429 && response.status < 500) break;
@@ -358,6 +374,8 @@ export async function runCrawl(
       if (signal.aborted) throw signal.reason;
       if (error instanceof NetworkPolicyError) throw error;
       progress.failed++;
+      if (error instanceof DeadlineError && error.scope === "job")
+        timedOut = true;
       errors.push(
         deadlineHit(error)
           ? {
