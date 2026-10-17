@@ -14,7 +14,7 @@ it('uses bounded proxy resource channel and denies unrequested frames and writes
         chunks.push(Buffer.from(raw)); const task = JSON.parse(Buffer.concat(chunks).toString()); requests.push(task); const body = task.url.endsWith('/style.css') ? 'h1 {color: rgb(1,2,3)}' : '<link rel="stylesheet" href="/style.css"><main><h1>Bounded</h1></main><iframe src="https://example.com/private"></iframe><script>fetch("/write",{method:"POST",body:"unsafe"}).catch(()=>{})</script>'; res.writeHead(200, { 'content-type': task.url.endsWith('.css') ? 'text/css' : 'text/html', 'x-moflo-status': '200' }).end(body); });
     fixture.listen(0, '127.0.0.1');
     await once(fixture, 'listening');
-    const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, chromiumSandbox: false });
+    const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium', headless: true, chromiumSandbox: false });
     try {
         const context = await browser.newContext({ serviceWorkers: 'block' });
         const policy = await installResourcePolicy(context, { url: 'https://example.com/', scope: ['example.com'], timeoutMs: 25000, maxDesignBytes: 1024 }, AbortSignal.timeout(10000), { proxyUrl: `http://127.0.0.1:${(fixture.address() as {

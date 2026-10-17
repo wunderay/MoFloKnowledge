@@ -6,7 +6,7 @@ import { captureHtml } from "../../src/worker/capture/html";
 it("captures actual JS-visible content and separate style/font/logo observations in fresh contexts", async () => {
   // Controlled network-free fixture only. This explicitly does not prove production sandbox/egress.
   const browser = await chromium.launch({
-    executablePath: "/usr/bin/chromium",
+    executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
     headless: true,
     chromiumSandbox: false,
   });
