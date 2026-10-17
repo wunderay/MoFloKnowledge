@@ -5,6 +5,7 @@ import { appOrigin } from "../lib/config/server";
 import { verifiedSession } from "../lib/supabase/server";
 import { IdSchema } from "../contracts/api-common";
 import {
+  ArchivedEntryResponseSchema,
   CompanyRowSchema,
   RevisionResponseSchema,
 } from "../contracts/api-responses";
@@ -194,6 +195,8 @@ export async function rpc(
   if (name === "create_company") return parseResponse(IdSchema, data);
   if (["update_company", "archive_company"].includes(name))
     return parseResponse(CompanyRowSchema, data);
+  if (name === "archive_entry")
+    return parseResponse(ArchivedEntryResponseSchema, data);
   if (
     [
       "create_entry",

@@ -33,7 +33,8 @@ export async function readDraft(client: Client, id: string, userId: string) {
   const entries = await checked(
     client
       .from("knowledge_entries")
-      .select("*")
+      // Deleted entries are hidden from the caller by row security; the tombstone columns are never part of a draft.
+      .select("id,company_id,kind,current_revision,created_by,created_at")
       .eq("company_id", id)
       .order("created_at")
       .order("id"),

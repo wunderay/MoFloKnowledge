@@ -32,3 +32,10 @@ export const RevertEntrySchema = z
     requestId: IdSchema,
   })
   .strict();
+/** Deleting a repeatable entry (a key person or an offering): the revision the caller saw, and one id per attempt so a retry is answered once. */
+export const DeleteEntrySchema = z
+  .object({
+    expectedRevision: z.number().int().positive(),
+    requestId: IdSchema,
+  })
+  .strict();
