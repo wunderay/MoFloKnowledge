@@ -83,6 +83,7 @@ export function KnowledgeViewer({
     snapshot?: KnowledgeBaseExport;
     draft?: {
       actorId?: string;
+      draftGeneration?: number;
       company: { role: string; archived_at: string | null };
       entries: ViewEntry[];
       citationContext?: CitationContext;
@@ -147,6 +148,8 @@ export function KnowledgeViewer({
     ),
   );
   const [actorId, setActorId] = useState(initialData?.draft?.actorId ?? "");
+  /** The draft's generation, which renaming the company must quote; null until a draft has been read. */
+  const [generation, setGeneration] = useState<number | null>(initialData?.draft?.draftGeneration ?? null);
   const [history, setHistory] = useState<ViewEntry | null>(null);
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -212,6 +215,7 @@ export function KnowledgeViewer({
       versionId === "draft"
         ? api<{
             actorId?: string;
+            draftGeneration?: number;
             company: { name: string; role: string; archived_at: string | null };
             entries: ViewEntry[];
             citationContext?: CitationContext;
@@ -219,6 +223,7 @@ export function KnowledgeViewer({
             (data) => {
               if (abort.signal.aborted || !current()) return;
               setActorId(data.actorId ?? "");
+              setGeneration(data.draftGeneration ?? null);
               setName(data.company.name);
               setCanEdit(
                 data.company.role !== "viewer" && !data.company.archived_at,
@@ -273,7 +278,8 @@ export function KnowledgeViewer({
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const request = api<{
-        company: { role: string; archived_at: string | null };
+        draftGeneration?: number;
+        company: { name?: string; role: string; archived_at: string | null };
         entries: ViewEntry[];
         citationContext?: CitationContext;
       }>(companyPath(forCompany, "/draft"), { signal: read.signal });
@@ -294,6 +300,8 @@ export function KnowledgeViewer({
       ]);
       if (!latest()) return;
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
+      setGeneration(data.draftGeneration ?? null);
+      if (data.company.name) setName(data.company.name);
       setEntries(data.entries);
       setCitationContext(data.citationContext);
       setStaleDraft(null);
@@ -568,6 +576,7 @@ export function KnowledgeViewer({
                 citationContext={citationContext}
                 canEdit={canEdit && versionId === "draft"}
                 actorId={actorId}
+                generation={generation}
                 importBlocked={staleDraft !== null}
                 onSaved={(what) => refreshDraft(what)}
                 offeringId={offeringId}

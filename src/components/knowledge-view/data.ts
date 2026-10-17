@@ -36,8 +36,8 @@ export type ViewProfile = {
   branding: BrandingAndStyle;
   evidence: { foundation: Evidence; positioning: Evidence; market: Evidence; presence: Evidence; branding: Evidence };
 };
-/** One offering entry, with what backs its values. */
-export type ViewOffering = { offering: Offering; evidence: Evidence };
+/** One offering entry, with what backs its values and, for an editable draft, the entry to revise or delete (as ViewPerson). */
+export type ViewOffering = { offering: Offering; evidence: Evidence; entryId: string; revision: number };
 
 /**
  * The single-entry sections the view reads, from a draft's entries or a saved
@@ -121,7 +121,7 @@ export function siteLinksFrom(
 
 /** The offering entries, in the order the draft or snapshot lists them, each with its own evidence. */
 export function offeringsFrom(
-  entries: { kind: EntryKind; content: BusinessEntry; provenance: EntryProvenance; review_status: ReviewStatus }[],
+  entries: { id?: string; current_revision?: number; kind: EntryKind; content: BusinessEntry; provenance: EntryProvenance; review_status: ReviewStatus }[],
   citationContext?: CitationContext,
 ): ViewOffering[] {
   return entries
@@ -129,6 +129,8 @@ export function offeringsFrom(
     .map((entry) => ({
       offering: entry.content as Offering,
       evidence: { provenance: entry.provenance, approved: entry.review_status === "approved", citationContext },
+      entryId: entry.id ?? (entry.content as Offering).id,
+      revision: entry.current_revision ?? 0,
     }));
 }
 

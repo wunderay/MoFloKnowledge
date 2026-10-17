@@ -316,6 +316,8 @@ const focusIsFree = () => {
 /** One text field of an entry: how the editor shows it, and how typed text becomes the entry's content. */
 export type TextSpec = {
   label: string;
+  /** The verb of the button that opens the field and of the field's own name; "Edit" when absent ("Add" for a field that adds an item). */
+  action?: string;
   kind: EntryKind;
   /** The field's text as the editor starts with it ("" when empty). */
   read: (content: Content) => string;
@@ -424,7 +426,8 @@ function Trigger({
   placeholder,
   heading = false,
   block = false,
-}: TriggerOptions & { label: string; blocked: boolean; onOpen: () => void; triggerRef: RefObject<HTMLElement | null> }) {
+  action = "Edit",
+}: TriggerOptions & { label: string; action?: string; blocked: boolean; onOpen: () => void; triggerRef: RefObject<HTMLElement | null> }) {
   const valueId = useId();
   const empty = shown === null || shown === undefined || shown === "";
   const className = `knowledge-view__inline${block ? " knowledge-view__inline--block" : ""}${empty ? " knowledge-view__inline--empty" : ""}`;
@@ -444,7 +447,7 @@ function Trigger({
         role="button"
         tabIndex={blocked ? -1 : 0}
         aria-disabled={blocked || undefined}
-        aria-label={`Edit ${label}`}
+        aria-label={`${action} ${label}`}
         aria-describedby={describedBy}
         title={title}
         className={className}
@@ -466,7 +469,7 @@ function Trigger({
     <button
       ref={triggerRef as RefObject<HTMLButtonElement>}
       type="button"
-      aria-label={`Edit ${label}`}
+      aria-label={`${action} ${label}`}
       aria-describedby={describedBy}
       title={title}
       className={className}
@@ -581,6 +584,7 @@ export function useTextField(spec: TextSpec, multiline = false) {
         return (
           <Trigger
             label={spec.label}
+            action={spec.action}
             blocked={env.blocked}
             onOpen={start}
             triggerRef={trigger as RefObject<HTMLElement | null>}
@@ -593,7 +597,7 @@ export function useTextField(spec: TextSpec, multiline = false) {
             ref={field as RefObject<HTMLInputElement>}
             type="text"
             className={`knowledge-view__inline-input${options.heading ? " knowledge-view__inline-input--heading" : ""}`}
-            aria-label={spec.label}
+            aria-label={spec.action ? `${spec.action} ${spec.label}` : spec.label}
             autoComplete="off"
             value={draft}
             readOnly={saving}
@@ -614,7 +618,7 @@ export function useTextField(spec: TextSpec, multiline = false) {
           <textarea
             ref={field as RefObject<HTMLTextAreaElement>}
             className="knowledge-view__inline-input knowledge-view__inline-input--area"
-            aria-label={spec.label}
+            aria-label={spec.action ? `${spec.action} ${spec.label}` : spec.label}
             rows={3}
             value={draft}
             readOnly={saving}
@@ -877,4 +881,23 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
       <Outcome problem={problem} feedback={showFeedback ? feedback : IDLE} onRetry={() => void host.retry(key)} />
     </>
   );
+}
+
+// ---- one-off changes ----------------------------------------------------------------------------------------------------
+/**
+ * A change that is not typed text (removing an item from a list of objects, say), run through the same save queue as the text
+ * fields, with its own outcome. `key` names the change's slot; it is null when the view is read-only.
+ */
+export function useEntryAction(key: string) {
+  const { state, slot } = useSlot(key);
+  const host = state?.host;
+  useEffect(() => (host ? host.mount(key) : undefined), [host, key]);
+  useSavedTimer(state, key, slot.feedback);
+  if (!state || !host) return null;
+  return {
+    /** True while a save is running or the view is older than a saved change. */
+    locked: state.env.blocked || slot.feedback.kind === "saving",
+    run: (task: { kind: EntryKind; note: string; transform: (content: Content) => Content }) => void host.submit(key, task),
+    feedback: <Outcome feedback={slot.feedback} onRetry={() => void host.retry(key)} />,
+  };
 }

@@ -1,9 +1,53 @@
+"use client";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import type { Offering } from "@/contracts";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createEmptyProvenance, createEntryDefault, type BusinessEntry, type Offering } from "@/contracts";
+import { api, companyPath, write } from "../api-client";
 import { Icon, type IconName } from "../icons";
 import { textOrNull, type ViewOffering } from "./data";
+import { EditProvider, InlineArea, InlineChips, InlineLine, plainText, useEdit, type EditEnv, type ListSpec, type TextSpec } from "./inline-edit";
 import { addHref, CoverageNote, EmptyBox, Field, ItemSource, Source } from "./parts";
+
+const UNDO_MS = 10000;
+const COST_HELP = "Enter a number, for example 49.99.";
+const FEATURES: ListSpec = { noun: "key feature", kind: "offering", key: "features" };
+
+/** Cost is a plain decimal (49.99): it is saved as a paid price with that amount, and an empty text clears the price. */
+const costSpec: TextSpec = {
+  label: "Offering cost",
+  kind: "offering",
+  read: (content) => (typeof content.pricing?.amount === "string" ? content.pricing.amount : ""),
+  apply: (content, text) => {
+    const value = text.trim();
+    if (value === "") {
+      content.pricing = null;
+      return { content };
+    }
+    if (/^-\s*\d/.test(value)) return { error: "Cost cannot be negative. Enter 0 or more." };
+    if (!/^\d+(\.\d+)?$/.test(value)) return { error: COST_HELP };
+    const amount = value.replace(/^0+(?=\d)/, "");
+    content.pricing = {
+      billing_interval: null,
+      pricing_model: null,
+      qualifications: [],
+      currency: null,
+      as_of: null,
+      ...content.pricing,
+      kind: "paid",
+      raw: amount,
+      amount,
+      min_amount: null,
+      max_amount: null,
+    };
+    return { content };
+  },
+};
+const SPECS = {
+  name: plainText("Offering name", "offering", "name"),
+  type: plainText("Offering type", "offering", "offering_type"),
+  description: plainText("Offering description", "offering", "description"),
+  cost: costSpec,
+};
 
 /** What the Cost card shows, and the field that holds it: the price wording, else amount with currency and interval, else free/contact. */
 function costOf(pricing: Offering["pricing"]): { text: string; path: string } | null {
@@ -14,7 +58,8 @@ function costOf(pricing: Offering["pricing"]): { text: string; path: string } | 
   if (amount) {
     const text = [amount, textOrNull(pricing.currency)].filter(Boolean).join(" ");
     const interval = textOrNull(pricing.billing_interval);
-    return { text: interval ? `${text} / ${interval}` : text, path: "pricing/amount" };
+    // Built from several fields, so the whole pricing is its evidence.
+    return { text: interval ? `${text} / ${interval}` : text, path: "pricing" };
   }
   if (pricing.kind === "free") return { text: "Free", path: "pricing/kind" };
   if (pricing.kind === "contact_for_pricing") return { text: "Contact for pricing", path: "pricing/kind" };
@@ -28,12 +73,18 @@ function OfferingDetail({
   companyId,
   item,
   title,
+  onDelete,
+  deleting,
 }: {
   companyId: string;
   item: ViewOffering;
   /** The name shown in the list, which also names this offering's evidence controls. */
   title: string;
+  /** Deletes this offering (an editable draft only; read-only views pass nothing). */
+  onDelete?: () => void;
+  deleting?: boolean;
 }) {
+  const edit = useEdit();
   const { offering, evidence } = item;
   // "+ Add" opens the editor on this offering; without entryId it would open the first one.
   const href = `${addHref(companyId, "offering")}&entryId=${encodeURIComponent(offering.id)}`;
@@ -59,13 +110,17 @@ function OfferingDetail({
     value: ReactNode | null,
     empty: { title: string; hint: string },
     icon?: IconName,
+    /** An editable draft's control, in place of the value and its empty state. */
+    editor?: ReactNode,
   ) => (
     <Field
       label={label}
       icon={icon}
       source={<Source evidence={evidence} path={paths[key]} filled={value !== null} name={`${NOUNS[key]} of ${title}`} />}
     >
-      {value !== null ? (
+      {editor ? (
+        editor
+      ) : value !== null ? (
         <>
           {value}
           <CoverageNote evidence={evidence} path={paths[key]} empty={false} />
@@ -81,14 +136,48 @@ function OfferingDetail({
     </Field>
   );
   const text = (value: string | null) => (value === null ? null : <p className="knowledge-view__text">{value}</p>);
+  const note = (key: keyof typeof paths, empty: boolean) => <CoverageNote evidence={evidence} path={paths[key]} empty={empty} />;
+  // An editable draft edits each value in place.
+  const line = (spec: TextSpec, key: keyof typeof paths, value: string | null, placeholder: string) =>
+    edit && (
+      <>
+        <InlineLine spec={spec} shown={value} placeholder={placeholder} />
+        {note(key, value === null)}
+      </>
+    );
   return (
     <section className="knowledge-view__offering-detail" aria-label={`Details of ${title}`}>
-      {field("Offering", "name", text(name), { title: "No name yet", hint: "Name this offering." })}
-      {field("Type", "type", text(type), { title: "No type yet", hint: "For example, a subscription or a service." })}
-      {field("Description", "description", text(description), {
-        title: "No description yet",
-        hint: "Say what this offering is.",
-      })}
+      {onDelete && (
+        <div className="knowledge-view__offering-actions">
+          <button
+            type="button"
+            className="knowledge-view__site-add knowledge-view__danger"
+            aria-label={`Delete ${title}`}
+            disabled={deleting || edit?.blocked}
+            title={edit?.blocked ? "Reload to see the latest changes before deleting." : undefined}
+            onClick={onDelete}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+      {field("Offering", "name", text(name), { title: "No name yet", hint: "Name this offering." }, undefined, line(SPECS.name, "name", name, "+ Add name"))}
+      {field("Type", "type", text(type), { title: "No type yet", hint: "For example, a subscription or a service." }, undefined, line(SPECS.type, "type", type, "+ Add type"))}
+      {field(
+        "Description",
+        "description",
+        text(description),
+        { title: "No description yet", hint: "Say what this offering is." },
+        undefined,
+        edit && (
+          <InlineArea
+            spec={SPECS.description}
+            value={description}
+            empty={{ title: "No description yet", hint: "Say what this offering is." }}
+            note={note("description", description === null)}
+          />
+        ),
+      )}
       {field(
         "Key features",
         "features",
@@ -103,9 +192,30 @@ function OfferingDetail({
           </ul>
         ) : null,
         { title: "No features yet", hint: "List what makes it worth choosing." },
+        undefined,
+        edit && (
+          <>
+            <InlineChips
+              list={FEATURES}
+              items={features.map((feature) => ({
+                id: feature.id,
+                label: feature.text.trim(),
+                mark: <ItemSource evidence={evidence} path={`${paths.features}/@${feature.id}`} name={feature.text.trim()} />,
+              }))}
+            />
+            {note("features", features.length === 0)}
+          </>
+        ),
       )}
       <div className="knowledge-view__field-pair">
-        {field("Cost", "cost", text(cost?.text ?? null), { title: "No cost yet", hint: "Add the price or how it is quoted." }, "dollar")}
+        {field(
+          "Cost",
+          "cost",
+          text(cost?.text ?? null),
+          { title: "No cost yet", hint: "Add the price or how it is quoted." },
+          "dollar",
+          line(SPECS.cost, "cost", cost?.text ?? null, "+ Add cost"),
+        )}
         {field(
           "Pricing model",
           "model",
@@ -118,23 +228,111 @@ function OfferingDetail({
   );
 }
 
-/** Business Offerings: a list of every offering and the detail of the selected one. Read only. */
+/** Business Offerings: a list of every offering and the detail of the selected one. An editable draft adds, edits and deletes offerings. */
 export function BusinessOfferings({
   companyId,
   offerings,
   selectedId,
   onSelect,
+  canEdit = false,
+  blocked = false,
+  onSaved = async () => {},
 }: {
   companyId: string;
   offerings: ViewOffering[];
   /** The `offering` URL value; one that matches no offering selects the first. */
   selectedId: string;
   onSelect: (id: string) => void;
+  canEdit?: boolean;
+  /** The view is older than a saved change: nothing is written until it is reloaded. */
+  blocked?: boolean;
+  /** Reloads the draft after a save. It resolves once the save is committed, even if the reload failed. */
+  onSaved?: () => Promise<void>;
 }) {
+  const outer = useEdit();
+  const editable = canEdit && outer !== null;
   const href = addHref(companyId, "offering");
   const found = offerings.findIndex((item) => item.offering.id === selectedId);
   const selected = found < 0 ? 0 : found;
   const titles = offerings.map((item, index) => textOrNull(item.offering.name) ?? `Untitled offering ${index + 1}`);
+  const [error, setError] = useState("");
+  const [working, setWorking] = useState(false);
+  const busy = useRef(false);
+  /** The offering just deleted, which Undo puts back. */
+  const [deleted, setDeleted] = useState<{ title: string; offering: Offering } | null>(null);
+  const rows = useRef(new Map<string, HTMLButtonElement>());
+  const [focusTo, setFocusTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focusTo) return;
+    const target = rows.current.get(focusTo);
+    if (!target) return; // the list has not caught up yet
+    target.focus();
+    setFocusTo(null);
+  }, [focusTo, offerings.length]);
+  useEffect(() => {
+    if (!deleted) return;
+    const timer = setTimeout(() => setDeleted(null), UNDO_MS);
+    return () => clearTimeout(timer);
+  }, [deleted]);
+
+  /** Runs one request; only one at a time. A failure shows the server's message. */
+  async function run(request: () => Promise<void>, failed: string) {
+    if (busy.current) return;
+    busy.current = true;
+    setWorking(true);
+    setError("");
+    try {
+      await request();
+    } catch (failure) {
+      setError((failure as Error).message || failed);
+    } finally {
+      busy.current = false;
+      setWorking(false);
+    }
+  }
+  /** Creates an offering entry, reloads the draft and selects it. */
+  const create = async (content: Offering) => {
+    await api(
+      companyPath(companyId, "/entries"),
+      write("POST", { kind: "offering", content, provenance: createEmptyProvenance(), requestId: crypto.randomUUID() }),
+    );
+    setFocusTo(content.id);
+    await onSaved();
+    onSelect(content.id);
+  };
+  const add = () => run(() => create({ ...createEntryDefault("offering", crypto.randomUUID()), name: "Untitled Offering" } as Offering), "The offering could not be added.");
+  const remove = (item: ViewOffering, title: string) =>
+    run(async () => {
+      setDeleted(null);
+      await api(companyPath(companyId, `/entries/${item.entryId}`), write("DELETE", { expectedRevision: item.revision, requestId: crypto.randomUUID() }));
+      setDeleted({ title, offering: item.offering });
+      await onSaved();
+      onSelect("");
+    }, "The offering could not be deleted.");
+  const undo = () =>
+    run(async () => {
+      if (!deleted) return;
+      await create(deleted.offering);
+      setDeleted(null);
+    }, "The offering could not be restored.");
+
+  const detail = (item: ViewOffering, title: string) => {
+    if (!editable) return <OfferingDetail companyId={companyId} item={item} title={title} />;
+    // One editing environment per offering: its fields save to this offering's own entry, and what was typed stays with it.
+    const env: EditEnv = {
+      ...outer!,
+      entry: (kind) =>
+        kind === "offering"
+          ? { id: item.entryId, revision: item.revision, content: item.offering as unknown as BusinessEntry, provenance: item.evidence.provenance }
+          : outer!.entry(kind),
+    };
+    return (
+      <EditProvider key={item.offering.id} env={env}>
+        <OfferingDetail companyId={companyId} item={item} title={title} onDelete={() => void remove(item, title)} deleting={working} />
+      </EditProvider>
+    );
+  };
   return (
     <>
       <div className="knowledge-view__section-head">
@@ -144,8 +342,30 @@ export function BusinessOfferings({
           </h2>
           <p className="knowledge-view__section-subtitle">Pick an offering on the left to see its details on the right.</p>
         </div>
-        <Link className="knowledge-view__primary-add" href={href}>+ Add Offering</Link>
+        {editable ? (
+          <button
+            type="button"
+            className="knowledge-view__primary-add"
+            onClick={() => void add()}
+            disabled={working || blocked}
+            aria-busy={working}
+            title={blocked ? "Reload to see the latest changes before adding an offering." : undefined}
+          >
+            Add offering
+          </button>
+        ) : (
+          <Link className="knowledge-view__primary-add" href={href}>+ Add Offering</Link>
+        )}
       </div>
+      {error && <p className="knowledge-view__dialog-error knowledge-view__people-error" role="alert">{error}</p>}
+      {deleted && (
+        <span className="knowledge-view__toast" role="status">
+          {`Deleted “${deleted.title}”.`}{" "}
+          <button type="button" className="knowledge-view__toast-undo" disabled={working || blocked} onClick={() => void undo()}>
+            Undo
+          </button>
+        </span>
+      )}
       {offerings.length === 0 ? (
         <EmptyBox title="No offerings yet" hint="Add the products and services you sell." href={href} />
       ) : (
@@ -160,6 +380,10 @@ export function BusinessOfferings({
                   key={offering.id}
                 >
                   <button
+                    ref={(element) => {
+                      if (element) rows.current.set(offering.id, element);
+                      else rows.current.delete(offering.id);
+                    }}
                     type="button"
                     className="knowledge-view__offering-button"
                     aria-current={index === selected ? "true" : undefined}
@@ -176,7 +400,7 @@ export function BusinessOfferings({
               );
             })}
           </ul>
-          <OfferingDetail companyId={companyId} item={offerings[selected]!} title={titles[selected]!} />
+          {detail(offerings[selected]!, titles[selected]!)}
         </div>
       )}
     </>
