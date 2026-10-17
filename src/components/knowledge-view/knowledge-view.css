@@ -315,3 +315,5 @@
   .knowledge-view__tile { width: calc(50% - 6px); }
   .knowledge-view__logo-frame, .knowledge-view .knowledge-view__tile-add { width: 100%; }
 }
+.knowledge-view__qualifier { display: block; color: var(--kv-muted); font-size: 10px; font-style: italic; line-height: 1.4; overflow-wrap: anywhere; }
+.knowledge-view__stat dd .knowledge-view__qualifier { margin-top: 4px; }
