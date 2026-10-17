@@ -1,0 +1,638 @@
+{
+  "schema_version": "1.0.0",
+  "company_id": "10000000-0000-4000-8000-000000000001",
+  "knowledge_base_version_id": "10000000-0000-4000-8000-000000000002",
+  "version": 1,
+  "saved_at": "2026-10-16T05:00:00Z",
+  "company_foundation": {
+    "overview": "Lumen Ledger provides inventory software for independent retailers.",
+    "website": "https://lumen-ledger.example/",
+    "industry": "Retail software",
+    "business_model": null,
+    "company_role": [],
+    "year_founded": null,
+    "legal_entity_type": null,
+    "employee_count": null,
+    "main_address": {
+      "id": "20000000-0000-4000-8000-000000000001",
+      "label": null,
+      "raw": "11 Market Street, Portland, OR 97205, United States",
+      "line1": "11 Market Street",
+      "line2": null,
+      "city": "Portland",
+      "region": "OR",
+      "postal_code": "97205",
+      "country": "United States"
+    },
+    "other_locations": [],
+    "service_locations": [],
+    "alternative_company_names": []
+  },
+  "positioning": {
+    "company_pitch": "Keep your independent shop organized with Lumen Ledger inventory software.",
+    "founding_story": null
+  },
+  "market_and_customers": {
+    "target_buyers": [
+      {
+        "id": "20000000-0000-4000-8000-000000000006",
+        "text": "Independent retailers"
+      }
+    ],
+    "customer_needs": [],
+    "ideal_customer_personas": [],
+    "industry_groupings": [],
+    "industry_outlook": [],
+    "channels": [],
+    "funnels": [],
+    "ctas": [
+      {
+        "id": "20000000-0000-4000-8000-000000000002",
+        "label": "See pricing",
+        "url": "https://lumen-ledger.example/pricing",
+        "purpose": null
+      }
+    ],
+    "suppliers_and_partners": []
+  },
+  "branding_and_style": {
+    "writing_style_description": "The sampled homepage uses short, direct sentences and retail vocabulary.",
+    "art_style_description": null,
+    "fonts": [
+      {
+        "id": "20000000-0000-4000-8000-000000000003",
+        "family": "Inter",
+        "apparent_use": "Body text",
+        "observations": [
+          "css_declared"
+        ],
+        "brand_confirmed": false
+      }
+    ],
+    "brand_colors": [
+      {
+        "id": "20000000-0000-4000-8000-000000000004",
+        "hex": "#2457D6",
+        "alpha": 1,
+        "apparent_role": null,
+        "classification": "observed_website_color"
+      }
+    ],
+    "logos": [
+      {
+        "id": "20000000-0000-4000-8000-000000000005",
+        "url": "https://lumen-ledger.example/assets/logo.svg",
+        "variant": null,
+        "kind": "company_logo"
+      }
+    ]
+  },
+  "online_presence": {
+    "social_media_links": []
+  },
+  "site_links": {
+    "links": [
+      {
+        "id": "a1000000-0000-4000-8000-000000000001",
+        "title": "Our story",
+        "url": "https://lumen-ledger.example/company/story",
+        "note": null
+      },
+      {
+        "id": "a1000000-0000-4000-8000-000000000002",
+        "title": "Pricing overview",
+        "url": "https://lumen-ledger.example/pricing?plan=team#compare",
+        "note": "Updated every quarter"
+      }
+    ]
+  },
+  "key_people": [
+    {
+      "id": "30000000-0000-4000-8000-000000000006",
+      "name": "Alex Chen",
+      "title": "Founder",
+      "role": "Founder of Lumen Ledger",
+      "gender": null,
+      "background_or_relevance": null
+    }
+  ],
+  "offerings": [
+    {
+      "id": "30000000-0000-4000-8000-000000000007",
+      "name": "Shop Inventory",
+      "description": "Inventory software for independent retailers.",
+      "offering_type": "Subscription",
+      "category": null,
+      "features": [],
+      "pricing": {
+        "kind": "paid",
+        "raw": "Shop Inventory subscription: USD 29 per workspace per month.",
+        "amount": "29.00",
+        "min_amount": null,
+        "max_amount": null,
+        "currency": "USD",
+        "billing_interval": "month",
+        "pricing_model": "per_workspace",
+        "qualifications": [],
+        "as_of": null
+      },
+      "url": "https://lumen-ledger.example/pricing"
+    }
+  ],
+  "provenance": {
+    "company": {
+      "name": "Lumen Ledger",
+      "website": "https://lumen-ledger.example/",
+      "snapshot_author_id": "40000000-0000-4000-8000-000000000001"
+    },
+    "entries": [
+      {
+        "entry_id": "30000000-0000-4000-8000-000000000001",
+        "kind": "company_foundation",
+        "revision": 3,
+        "review_status": "approved",
+        "author_id": "40000000-0000-4000-8000-000000000001",
+        "saved_at": "2026-10-16T04:59:00Z"
+      },
+      {
+        "entry_id": "30000000-0000-4000-8000-000000000002",
+        "kind": "positioning",
+        "revision": 2,
+        "review_status": "approved",
+        "author_id": "40000000-0000-4000-8000-000000000001",
+        "saved_at": "2026-10-16T04:59:00Z"
+      },
+      {
+        "entry_id": "30000000-0000-4000-8000-000000000003",
+        "kind": "market_and_customers",
+        "revision": 2,
+        "review_status": "approved",
+        "author_id": "40000000-0000-4000-8000-000000000001",
+        "saved_at": "2026-10-16T04:59:00Z"
+      },
+      {
+        "entry_id": "30000000-0000-4000-8000-000000000004",
+        "kind": "branding_and_style",
+        "revision": 2,
+        "review_status": "approved",
+        "author_id": "40000000-0000-4000-8000-000000000001",
+        "saved_at": "2026-10-16T04:59:00Z"
+      },
+      {
+        "entry_id": "30000000-0000-4000-8000-000000000005",
+        "kind": "online_presence",
+        "revision": 2,
+        "review_status": "approved",
+        "author_id": "40000000-0000-4000-8000-000000000001",
+        "saved_at": "2026-10-16T04:59:00Z"
+      },
+      {
+        "entry_id": "30000000-0000-4000-8000-000000000006",
+        "kind": "key_person",
+        "revision": 2,
+        "review_status": "approved",
+        "author_id": "40000000-0000-4000-8000-000000000001",
+        "saved_at": "2026-10-16T04:59:00Z"
+      },
+      {
+        "entry_id": "30000000-0000-4000-8000-000000000007",
+        "kind": "offering",
+        "revision": 2,
+        "review_status": "approved",
+        "author_id": "40000000-0000-4000-8000-000000000001",
+        "saved_at": "2026-10-16T04:59:00Z"
+      },
+      {
+        "entry_id": "30000000-0000-4000-8000-000000000008",
+        "kind": "site_links",
+        "revision": 1,
+        "review_status": "approved",
+        "author_id": "40000000-0000-4000-8000-000000000001",
+        "saved_at": "2026-10-16T04:59:00Z"
+      }
+    ],
+    "sources": [
+      {
+        "id": "50000000-0000-4000-8000-000000000001",
+        "url": "https://lumen-ledger.example/",
+        "title": "Lumen Ledger",
+        "author": "Lumen Ledger",
+        "site_name": "Lumen Ledger",
+        "published_on": null,
+        "retrieved_at": "2026-10-16T04:30:00Z"
+      },
+      {
+        "id": "50000000-0000-4000-8000-000000000002",
+        "url": "https://lumen-ledger.example/about",
+        "title": "About Lumen Ledger",
+        "author": "Lumen Ledger",
+        "site_name": "Lumen Ledger",
+        "published_on": null,
+        "retrieved_at": "2026-10-16T04:30:10Z"
+      },
+      {
+        "id": "50000000-0000-4000-8000-000000000003",
+        "url": "https://lumen-ledger.example/pricing",
+        "title": "Shop Inventory Pricing",
+        "author": "Lumen Ledger",
+        "site_name": "Lumen Ledger",
+        "published_on": null,
+        "retrieved_at": "2026-10-16T04:30:20Z"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "60000000-0000-4000-8000-000000000001",
+        "source_page_id": "50000000-0000-4000-8000-000000000001",
+        "kind": "text",
+        "excerpt": "Retail software. Lumen Ledger provides inventory software for independent retailers.",
+        "technical": null
+      },
+      {
+        "id": "60000000-0000-4000-8000-000000000002",
+        "source_page_id": "50000000-0000-4000-8000-000000000001",
+        "kind": "technical",
+        "excerpt": null,
+        "technical": {
+          "selector": null,
+          "property": "validated_final_url",
+          "value": "https://lumen-ledger.example/",
+          "asset_url": null
+        }
+      },
+      {
+        "id": "60000000-0000-4000-8000-000000000003",
+        "source_page_id": "50000000-0000-4000-8000-000000000001",
+        "kind": "technical",
+        "excerpt": "See pricing",
+        "technical": {
+          "selector": "a.pricing-link",
+          "property": "href",
+          "value": "https://lumen-ledger.example/pricing",
+          "asset_url": null
+        }
+      },
+      {
+        "id": "60000000-0000-4000-8000-000000000004",
+        "source_page_id": "50000000-0000-4000-8000-000000000001",
+        "kind": "technical",
+        "excerpt": null,
+        "technical": {
+          "selector": "body",
+          "property": "font-family",
+          "value": "Inter, sans-serif",
+          "asset_url": null
+        }
+      },
+      {
+        "id": "60000000-0000-4000-8000-000000000005",
+        "source_page_id": "50000000-0000-4000-8000-000000000001",
+        "kind": "technical",
+        "excerpt": null,
+        "technical": {
+          "selector": "button",
+          "property": "background-color",
+          "value": "rgb(36, 87, 214)",
+          "asset_url": null
+        }
+      },
+      {
+        "id": "60000000-0000-4000-8000-000000000006",
+        "source_page_id": "50000000-0000-4000-8000-000000000001",
+        "kind": "technical",
+        "excerpt": "Header image alt: Lumen Ledger",
+        "technical": {
+          "selector": "header img",
+          "property": "src",
+          "value": "/assets/logo.svg",
+          "asset_url": "https://lumen-ledger.example/assets/logo.svg"
+        }
+      },
+      {
+        "id": "60000000-0000-4000-8000-000000000007",
+        "source_page_id": "50000000-0000-4000-8000-000000000002",
+        "kind": "text",
+        "excerpt": "Alex Chen, Founder of Lumen Ledger.",
+        "technical": null
+      },
+      {
+        "id": "60000000-0000-4000-8000-000000000008",
+        "source_page_id": "50000000-0000-4000-8000-000000000003",
+        "kind": "text",
+        "excerpt": "Shop Inventory. Inventory software for independent retailers. Shop Inventory subscription: USD 29 per workspace per month.",
+        "technical": null
+      }
+    ],
+    "claims": [
+      {
+        "id": "70000000-0000-4000-8000-000000000001",
+        "entry_id": "30000000-0000-4000-8000-000000000001",
+        "targets": [
+          "/company_foundation/overview",
+          "/company_foundation/industry"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000001"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": null
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000002",
+        "entry_id": "30000000-0000-4000-8000-000000000001",
+        "targets": [
+          "/company_foundation/website"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000002"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": null
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000003",
+        "entry_id": "30000000-0000-4000-8000-000000000001",
+        "targets": [
+          "/company_foundation/main_address/raw",
+          "/company_foundation/main_address/line1",
+          "/company_foundation/main_address/city",
+          "/company_foundation/main_address/region",
+          "/company_foundation/main_address/postal_code",
+          "/company_foundation/main_address/country"
+        ],
+        "origin": "user_provided",
+        "evidence_ids": [],
+        "based_on_claim_ids": [],
+        "actor_id": "40000000-0000-4000-8000-000000000001",
+        "authored_at": "2026-10-16T04:55:00Z",
+        "note": "Reviewer corrected an earlier manual draft address from 10 Market Street to 11 Market Street; this address is not confirmed by the website."
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000004",
+        "entry_id": "30000000-0000-4000-8000-000000000002",
+        "targets": [
+          "/positioning/company_pitch"
+        ],
+        "origin": "generated",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000001"
+        ],
+        "based_on_claim_ids": [
+          "70000000-0000-4000-8000-000000000001"
+        ],
+        "actor_id": null,
+        "authored_at": "2026-10-16T04:35:00Z",
+        "note": "Generated wording explicitly approved in positioning revision 2."
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000005",
+        "entry_id": "30000000-0000-4000-8000-000000000003",
+        "targets": [
+          "/market_and_customers/ctas/@20000000-0000-4000-8000-000000000002/label",
+          "/market_and_customers/ctas/@20000000-0000-4000-8000-000000000002/url"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000003"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": null
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000006",
+        "entry_id": "30000000-0000-4000-8000-000000000004",
+        "targets": [
+          "/branding_and_style/writing_style_description"
+        ],
+        "origin": "inferred",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000001"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": "Interpretation of sampled wording, not an official voice guide."
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000007",
+        "entry_id": "30000000-0000-4000-8000-000000000004",
+        "targets": [
+          "/branding_and_style/fonts/@20000000-0000-4000-8000-000000000003/family",
+          "/branding_and_style/fonts/@20000000-0000-4000-8000-000000000003/apparent_use",
+          "/branding_and_style/fonts/@20000000-0000-4000-8000-000000000003/observations/0",
+          "/branding_and_style/fonts/@20000000-0000-4000-8000-000000000003/brand_confirmed"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000004"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": "Body declaration only; brand_confirmed=false records the absence of brand-guide confirmation, not a website assertion."
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000008",
+        "entry_id": "30000000-0000-4000-8000-000000000004",
+        "targets": [
+          "/branding_and_style/brand_colors/@20000000-0000-4000-8000-000000000004/hex",
+          "/branding_and_style/brand_colors/@20000000-0000-4000-8000-000000000004/alpha",
+          "/branding_and_style/brand_colors/@20000000-0000-4000-8000-000000000004/classification"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000005"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": "Observed opaque CSS color; classification is observation metadata, not a claim of an official brand color."
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000009",
+        "entry_id": "30000000-0000-4000-8000-000000000004",
+        "targets": [
+          "/branding_and_style/logos/@20000000-0000-4000-8000-000000000005/url",
+          "/branding_and_style/logos/@20000000-0000-4000-8000-000000000005/kind"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000006"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": null
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000010",
+        "entry_id": "30000000-0000-4000-8000-000000000006",
+        "targets": [
+          "/key_people/@30000000-0000-4000-8000-000000000006/name",
+          "/key_people/@30000000-0000-4000-8000-000000000006/title",
+          "/key_people/@30000000-0000-4000-8000-000000000006/role"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000007"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": null
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000011",
+        "entry_id": "30000000-0000-4000-8000-000000000007",
+        "targets": [
+          "/offerings/@30000000-0000-4000-8000-000000000007/name",
+          "/offerings/@30000000-0000-4000-8000-000000000007/description",
+          "/offerings/@30000000-0000-4000-8000-000000000007/offering_type",
+          "/offerings/@30000000-0000-4000-8000-000000000007/pricing/kind",
+          "/offerings/@30000000-0000-4000-8000-000000000007/pricing/raw",
+          "/offerings/@30000000-0000-4000-8000-000000000007/pricing/amount",
+          "/offerings/@30000000-0000-4000-8000-000000000007/pricing/currency",
+          "/offerings/@30000000-0000-4000-8000-000000000007/pricing/billing_interval",
+          "/offerings/@30000000-0000-4000-8000-000000000007/pricing/pricing_model",
+          "/offerings/@30000000-0000-4000-8000-000000000007/url"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000008"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": "Offering URL is the frozen source page URL; numeric price is normalized from the quoted original."
+      },
+      {
+        "id": "70000000-0000-4000-8000-000000000013",
+        "entry_id": "30000000-0000-4000-8000-000000000003",
+        "targets": [
+          "/market_and_customers/target_buyers/@20000000-0000-4000-8000-000000000006/text"
+        ],
+        "origin": "source_backed",
+        "evidence_ids": [
+          "60000000-0000-4000-8000-000000000001"
+        ],
+        "based_on_claim_ids": [],
+        "actor_id": null,
+        "authored_at": null,
+        "note": null
+      },
+      {
+        "id": "70000000-0000-4000-8000-0000000000a1",
+        "entry_id": "30000000-0000-4000-8000-000000000008",
+        "targets": [
+          "/site_links/links/@a1000000-0000-4000-8000-000000000001/title",
+          "/site_links/links/@a1000000-0000-4000-8000-000000000001/url",
+          "/site_links/links/@a1000000-0000-4000-8000-000000000002/title",
+          "/site_links/links/@a1000000-0000-4000-8000-000000000002/url",
+          "/site_links/links/@a1000000-0000-4000-8000-000000000002/note"
+        ],
+        "origin": "user_provided",
+        "evidence_ids": [],
+        "based_on_claim_ids": [],
+        "actor_id": "40000000-0000-4000-8000-000000000001",
+        "authored_at": "2026-10-16T04:55:00Z",
+        "note": "The company listed these internal site pages by hand."
+      }
+    ],
+    "coverage": [
+      {
+        "targets": [
+          "/company_foundation/overview",
+          "/company_foundation/website",
+          "/company_foundation/industry",
+          "/market_and_customers/ctas",
+          "/branding_and_style/fonts",
+          "/branding_and_style/brand_colors",
+          "/branding_and_style/logos",
+          "/key_people/@30000000-0000-4000-8000-000000000006/name",
+          "/key_people/@30000000-0000-4000-8000-000000000006/title",
+          "/key_people/@30000000-0000-4000-8000-000000000006/role",
+          "/offerings/@30000000-0000-4000-8000-000000000007/name",
+          "/offerings/@30000000-0000-4000-8000-000000000007/description",
+          "/offerings/@30000000-0000-4000-8000-000000000007/offering_type",
+          "/offerings/@30000000-0000-4000-8000-000000000007/pricing",
+          "/offerings/@30000000-0000-4000-8000-000000000007/url",
+          "/market_and_customers/target_buyers"
+        ],
+        "status": "found",
+        "job_id": "80000000-0000-4000-8000-000000000001",
+        "reason": null
+      },
+      {
+        "targets": [
+          "/branding_and_style/writing_style_description"
+        ],
+        "status": "found",
+        "job_id": "80000000-0000-4000-8000-000000000001",
+        "reason": "Labeled interpretation from sampled homepage text."
+      },
+      {
+        "targets": [
+          "/company_foundation/business_model",
+          "/company_foundation/company_role",
+          "/company_foundation/year_founded",
+          "/company_foundation/legal_entity_type",
+          "/company_foundation/employee_count",
+          "/company_foundation/main_address",
+          "/company_foundation/other_locations",
+          "/company_foundation/service_locations",
+          "/company_foundation/alternative_company_names",
+          "/positioning/company_pitch",
+          "/positioning/founding_story",
+          "/market_and_customers/customer_needs",
+          "/market_and_customers/ideal_customer_personas",
+          "/market_and_customers/industry_groupings",
+          "/market_and_customers/industry_outlook",
+          "/market_and_customers/channels",
+          "/market_and_customers/funnels",
+          "/market_and_customers/suppliers_and_partners",
+          "/online_presence/social_media_links",
+          "/key_people/@30000000-0000-4000-8000-000000000006/gender",
+          "/key_people/@30000000-0000-4000-8000-000000000006/background_or_relevance",
+          "/offerings/@30000000-0000-4000-8000-000000000007/category",
+          "/offerings/@30000000-0000-4000-8000-000000000007/features"
+        ],
+        "status": "not_found",
+        "job_id": "80000000-0000-4000-8000-000000000001",
+        "reason": "No accepted extraction for these fields in the checked pages. Address is user-supplied and pitch is generated; those origins do not change extraction coverage."
+      },
+      {
+        "targets": [
+          "/branding_and_style/art_style_description"
+        ],
+        "status": "not_checked",
+        "job_id": "80000000-0000-4000-8000-000000000001",
+        "reason": "Visual interpretation step failed; technical CSS and asset observations were captured separately."
+      },
+      {
+        "targets": [
+          "/site_links/links"
+        ],
+        "status": "not_checked",
+        "job_id": null,
+        "reason": "Entered manually; website extraction has not assessed this field."
+      }
+    ],
+    "operations": [
+      {
+        "request_id": "90000000-0000-4000-8000-000000000001",
+        "entry_id": "30000000-0000-4000-8000-000000000001",
+        "kind": "user_correction",
+        "supersedes_claim_id": "70000000-0000-4000-8000-000000000012",
+        "note": "Superseded manual address claim belongs to internal revision 2; the immutable history retains its original value. No website evidence is claimed for the correction."
+      }
+    ]
+  }
+}
