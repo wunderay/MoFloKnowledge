@@ -129,10 +129,11 @@ export function importControls(page: Page): Element[] {
 // ---- All sections -------------------------------------------------------------------------------------------
 export const ALL_ORDER = [
   "General Info",
+  "Brand Identity",
+  "Business Offerings",
   "Customers & Industry",
   "Sales & Marketing",
-  "Business Offerings",
-  "Brand Identity",
+  "Key People",
   "Site Knowledge",
 ] as const;
 /** The first visible heading of a section: its label, optionally followed by a count ("Business Offerings 4"). */

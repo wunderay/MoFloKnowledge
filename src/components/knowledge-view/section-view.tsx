@@ -3,6 +3,7 @@ import { offeringsFrom, profileFrom, siteLinksFrom } from "./data";
 import { BrandIdentity } from "./brand";
 import { CustomersIndustry } from "./customers-industry";
 import { GeneralInfo } from "./general-info";
+import { KeyPeople } from "./key-people";
 import { BusinessOfferings } from "./offerings";
 import { SalesMarketing } from "./sales-marketing";
 import { KNOWLEDGE_SECTIONS, type KnowledgeSectionId } from "./sections";
@@ -46,6 +47,7 @@ export function SectionView({
 }) {
   const profile = profileFrom(entries, citationContext);
   const one = (id: KnowledgeSectionId, level: "h2" | "h3" = "h2") => {
+    if (id === "key-people") return <KeyPeople companyId={companyId} titled={level === "h2"} />;
     if (id === "general") return <GeneralInfo companyId={companyId} name={name} profile={profile} />;
     if (id === "customers") return <CustomersIndustry companyId={companyId} profile={profile} />;
     if (id === "sales") return <SalesMarketing companyId={companyId} name={name} profile={profile} />;
@@ -72,7 +74,7 @@ export function SectionView({
     );
   };
   if (section !== "all") return one(section);
-  // Every section under its own heading, in selector order. Business Offerings carries its own heading.
+  // Every section under its own heading, in listbox order. Business Offerings carries its own heading.
   return (
     <div className="knowledge-view__all">
       {KNOWLEDGE_SECTIONS.filter((item) => item.id !== "all").map((item) => (

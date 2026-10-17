@@ -30,7 +30,7 @@ const draftPage = async (section?: string) =>
 
 describe("C1 section selector", () => {
   // behavioural
-  it("exposes a control named 'Knowledge section' listing the seven sections in order", async () => {
+  it("exposes a control named 'Knowledge section' listing the eight sections in order", async () => {
     const page = await draftPage();
     expect(sectionSelector(page), 'a control with accessible name "Knowledge section"').not.toBeNull();
     expect(selectorItems(page).map((i) => i.label)).toEqual([...SECTIONS]);

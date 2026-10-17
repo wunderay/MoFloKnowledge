@@ -127,6 +127,8 @@ const INDIVIDUAL: Record<string, SectionLabel> = {
   "Brand Identity": "Brand Identity",
   "Site Knowledge": "Site Knowledge",
 };
+/** The sections the interactive runtime can open on their own (its SECTION_IDS has no Key People; the listbox tests cover that one). */
+const SIX = ALL_ORDER.filter((label): label is Exclude<(typeof ALL_ORDER)[number], "Key People"> => label !== "Key People");
 const sectionOfKey = (key: string) => Object.keys(INDIVIDUAL).find((s) => key.startsWith(s))!;
 
 describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: Source) => {
@@ -168,6 +170,7 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
       "Sales & Marketing": card(page, "Pitch", SALES),
       "Business Offerings": offeringsList(page),
       "Brand Identity": card(page, "Logos", BRAND),
+      "Key People": page.$('a[href*="category=key_person"]').toArray()[0] ?? null,
       "Site Knowledge": siteHeading(page),
     };
     ALL_ORDER.forEach((label, i) => {
@@ -181,7 +184,7 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
   it("shows the same banners, cards and values as each section on its own", async () => {
     const all = signature((await sources[source]("All sections")).page());
     for (const [key, value] of Object.entries(all)) expect(value, `${key} is rendered in All sections`).not.toBeNull();
-    for (const label of ALL_ORDER) {
+    for (const label of SIX) {
       const alone = signature((await sources[source](label)).page());
       for (const key of Object.keys(all).filter((k) => sectionOfKey(k) === label)) {
         expect(alone[key], `${key} on its own`).not.toBeNull();
@@ -300,7 +303,7 @@ describe("C3/C4 the import control in All sections", () => {
 describe("C5 the individual sections are unchanged", () => {
   // C5 non-regression
   it("each individual section is selected alone, General Info without the Site Knowledge card", async () => {
-    for (const label of ALL_ORDER) expect(selectedSection((await sources.draft(label)).page())).toEqual([label]);
+    for (const label of SIX) expect(selectedSection((await sources.draft(label)).page())).toEqual([label]);
     expect(siteCard((await sources.draft("General Info")).page()), "General Info does not carry the Site Knowledge card").toBeNull();
     expect(card((await sources.draft("Site Knowledge")).page(), "Overview", GENERAL), "Site Knowledge does not carry General Info cards").toBeNull();
   });

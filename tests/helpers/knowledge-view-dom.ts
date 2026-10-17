@@ -25,51 +25,44 @@ export function contains(outer: AnyNode, inner: AnyNode): boolean {
 export const textOf = ({ $ }: Page, el: AnyNode) => norm($(el).text());
 
 // ---- the section selector ---------------------------------------------------
-export function sectionSelector(page: Page): Element | null {
+// The selector is a listbox whose options are rendered only while it is open, so the server markup
+// carries the trigger (a button named "Knowledge section" that shows the current section) and the
+// sections' identifiers come from this table, in the order of the listbox (Q10 navigation-listbox).
+export const SELECTOR_SECTIONS = [
+  { label: "General Info", value: "general" },
+  { label: "Brand Identity", value: "brand" },
+  { label: "Business Offerings", value: "offerings" },
+  { label: "Customers & Industry", value: "customers" },
+  { label: "Sales & Marketing", value: "sales" },
+  { label: "Key People", value: "key-people" },
+  { label: "Site Knowledge", value: "site" },
+  { label: "All sections", value: "all" },
+] as const;
+function triggerName(page: Page, el: Element): string {
   const { $ } = page;
-  const byLabel = $('[aria-label="Knowledge section"]').first();
-  if (byLabel.length) return byLabel[0] as Element;
-  for (const el of $("[aria-labelledby]").toArray()) {
-    const ids = ($(el).attr("aria-labelledby") ?? "").split(/\s+/);
-    if (norm(ids.map((id) => $(`[id="${id}"]`).text()).join(" ")) === "Knowledge section")
-      return el;
-  }
-  for (const label of $("label").toArray()) {
-    if (norm($(label).text()) !== "Knowledge section") continue;
-    const target = $(label).attr("for");
-    if (target) return $(`[id="${target}"]`)[0] as Element;
-    const inner = $(label).find("select,[role=tablist],[role=radiogroup]")[0];
-    if (inner) return inner as Element;
-  }
-  return null;
+  const label = $(el).attr("aria-label");
+  if (label) return norm(label);
+  const by = $(el).attr("aria-labelledby");
+  return by ? norm(by.split(/\s+/).map((id) => $(`[id="${id}"]`).text()).join(" ")) : norm($(el).text());
+}
+/** The trigger button of the section listbox. */
+export function selectorTrigger(page: Page): Element | null {
+  const { $ } = page;
+  const found = $('button[aria-haspopup="listbox"]').toArray().filter((el) => /^knowledge section/i.test(triggerName(page, el)));
+  return (found[0] as Element | undefined) ?? null;
+}
+/** The control that holds the section selector (the trigger's wrapper, so the whole control is skipped as page content). */
+export function sectionSelector(page: Page): Element | null {
+  const trigger = selectorTrigger(page);
+  return trigger ? ((trigger.parent as Element | null) ?? trigger) : null;
 }
 export type SelectorItem = { label: string; value: string; selected: boolean };
-/** The selector's entries in document order, with the identifier each one submits. */
+/** The selector's entries in listbox order, with the identifier each one submits; the selected one is the section the trigger shows. */
 export function selectorItems(page: Page): SelectorItem[] {
-  const { $ } = page;
-  const root = sectionSelector(page);
-  if (!root) return [];
-  const query = $(root).is("select")
-    ? $(root).find("option")
-    : $(root).find("option,[role=tab],[role=option],[role=radio],input[type=radio],a,button");
-  return query.toArray().map((el) => {
-    const $el = $(el);
-    const href = $el.attr("href");
-    const fromHref = href ? new URL(href, "http://x.test").searchParams.get("section") : null;
-    const id = $el.attr("id");
-    const labelled = id ? norm($(`label[for="${id}"]`).text()) : "";
-    return {
-      label: labelled || norm($el.text()) || ($el.attr("aria-label") ?? ""),
-      value: $el.attr("value") ?? fromHref ?? $el.attr("data-section") ?? $el.attr("data-value") ?? "",
-      selected:
-        $el.attr("selected") !== undefined ||
-        $el.attr("checked") !== undefined ||
-        ["aria-selected", "aria-current", "aria-pressed", "aria-checked"].some((a) => {
-          const v = $el.attr(a);
-          return v === "true" || v === "page" || v === "step";
-        }),
-    };
-  });
+  const trigger = selectorTrigger(page);
+  if (!trigger) return [];
+  const shown = norm(page.$(trigger).text());
+  return SELECTOR_SECTIONS.map((item) => ({ ...item, selected: item.label === shown }));
 }
 export function selectedSection(page: Page): string[] {
   return selectorItems(page).filter((i) => i.selected).map((i) => i.label);
