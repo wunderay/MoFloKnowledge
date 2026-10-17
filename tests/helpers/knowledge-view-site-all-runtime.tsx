@@ -129,7 +129,14 @@ export type HNode = {
 };
 type Inst = { hooks: any[]; cursor: number };
 type EffectRec = { create: () => void | (() => void); deps?: unknown[]; cleanup?: void | (() => void) };
-export type FakeNode = { path: string; focusCalls: number; showModalCalls: number; closeCalls: number };
+export type FakeNode = {
+  path: string;
+  focusCalls: number;
+  showModalCalls: number;
+  closeCalls: number;
+  /** The selection last set on a text control (setSelectionRange / selectionStart / select()), or null. */
+  selection: [number, number] | null;
+};
 
 const sym = (name: string) => Symbol.for(name);
 const FRAGMENT = sym("react.fragment");
@@ -338,8 +345,50 @@ class App {
     this.visitedFakes.add(node.path);
     let entry = this.fakes.get(node.path);
     if (!entry) {
-      const meta: FakeNode = { path: node.path, focusCalls: 0, showModalCalls: 0, closeCalls: 0 };
+      const meta: FakeNode = { path: node.path, focusCalls: 0, showModalCalls: 0, closeCalls: 0, selection: null };
+      const app = this;
+      // A text control's value as the browser holds it: what the user typed (see View.type), else the rendered value.
+      let typed: string | undefined;
+      const rendered = () => descendants(app.tree).find((n) => n.path === node.path)?.props;
+      let seen: unknown;
+      const currentValue = () => {
+        const props = rendered();
+        // A controlled control takes the value its component renders next, as React does.
+        if (props && props.value !== undefined && !Object.is(props.value, seen)) {
+          seen = props.value;
+          typed = undefined;
+        }
+        return typed ?? String(props?.value ?? props?.defaultValue ?? "");
+      };
       const target: any = {
+        get value() {
+          return currentValue();
+        },
+        set value(next: string) {
+          typed = String(next);
+        },
+        get selectionStart() {
+          return meta.selection?.[0] ?? currentValue().length;
+        },
+        set selectionStart(start: number) {
+          meta.selection = [start, meta.selection?.[1] ?? start];
+        },
+        get selectionEnd() {
+          return meta.selection?.[1] ?? currentValue().length;
+        },
+        set selectionEnd(end: number) {
+          meta.selection = [meta.selection?.[0] ?? end, end];
+        },
+        setSelectionRange: (start: number, end: number) => {
+          meta.selection = [start, end];
+        },
+        select: () => {
+          meta.selection = [0, currentValue().length];
+        },
+        blur: () => {
+          if (shared.focused === meta.path) shared.focused = null;
+        },
+        setRangeText: () => {},
         tagName: node.tag.toUpperCase(),
         isConnected: true,
         open: false,
