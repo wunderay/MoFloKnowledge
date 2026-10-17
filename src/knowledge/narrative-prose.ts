@@ -6,7 +6,8 @@ const quoted = (text: string) => /["“”«»‘’]/u.test(text)
 
 // Literal tokens (email, URL, www host, host/path, @handle, #hashtag) must reach the reader byte-for-byte.
 const literalShape = [/^[^\s@/]+@[^\s@/]+\.\p{L}{2,}$/u, /^\w+:\/\//u, /^www\./iu,
-  /^[^\s/@.]+(?:\.[^\s/@.]+)*\.\p{L}{2,}\/\S*$/u, /^[@#]\w+$/u];
+  /^[^\s/@.]+(?:\.[^\s/@.]+)*\.\p{L}{2,}\/\S*$/u,
+  /^[^\s/@.]+(?:\.[^\s/@.]+)*\.(?:com|org|net|io|co|ai|app|dev|edu|gov|info|biz|me|us|uk|ca|au|de|fr|jp|nz|ie|in)$/iu, /^[@#]\w+$/u];
 const literalToken = (token: string) => {
   const core = token.replace(/^.*\]\(/u, "").replace(/^[(<["']+/u, "").replace(/[.,;:!?)\]>'"]+$/u, "");
   return literalShape.some((shape) => shape.test(core));

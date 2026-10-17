@@ -9,4 +9,6 @@ it("neutralises slash-joined and dot-joined prose while keeping literal tokens",
   expect(texts("tools for our/their/our clients.")).toEqual(["tools for its/their/its clients."]);
   expect(texts("tools for our.clients today.")).toEqual(["tools for its.clients today."]);
   expect(texts("tools for our clients at example.com/our-team.")).toEqual(["tools for its clients at example.com/our-team."]);
+  expect(texts("tools for our clients at our.com today.")).toEqual(["tools for its clients at our.com today."]);
+  expect(texts("tools for our clients at our.com.")).toEqual(["tools for its clients at our.com."]);
 });
