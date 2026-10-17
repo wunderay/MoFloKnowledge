@@ -223,7 +223,7 @@ Generated values show “Generated suggestion — approved” and APA citations 
 
 ## Entry granularity and common rules
 
-Keep exactly the seven baseline tables. Five singleton entry kinds map to `company_foundation`, `positioning`, `market_and_customers`, `branding_and_style`, and `online_presence`. Each person and offering is its own `key_person` or `offering` entry. Repeatable values inside a singleton, including locations, channels and colors, also have stable UUIDs. A required field missing from an approved singleton is still present with its default. Rejected/uncreated sections assemble from schema defaults.
+Keep exactly the seven baseline tables. Five singleton entry kinds map to `company_foundation`, `positioning`, `market_and_customers`, `branding_and_style`, and `online_presence`; a sixth optional singleton, `site_links` (migration 0017), holds the company's internal site pages as `{ links: [{ id, title, url, note }] }` and is not required by the first import. Each person and offering is its own `key_person` or `offering` entry. Repeatable values inside a singleton, including locations, channels and colors, also have stable UUIDs. A required field missing from an approved singleton is still present with its default. Rejected/uncreated sections assemble from schema defaults.
 
 All UUID primary keys default to `gen_random_uuid()`. Times are `timestamptz`; all non-null timestamp defaults below are `now()`. The SQL explicitly defines nullability, defaults, checks, keys, relationships and indexes. An omitted `DEFAULT` means the application/function must supply the value, or SQL uses null when the column is nullable. All foreign keys use `ON UPDATE NO ACTION` by PostgreSQL default; all deletion behavior is explicitly `RESTRICT`. Preserve identities and historical authors by deactivating accounts rather than deleting referenced Auth users in the MVP. Archive companies; do not cascade-delete historical evidence.
 
@@ -764,13 +764,13 @@ type KnowledgeBaseExport = {
   version: number; saved_at: Instant;
   company_foundation: CompanyFoundation; positioning: Positioning;
   market_and_customers: MarketAndCustomers; branding_and_style: BrandingAndStyle;
-  online_presence: OnlinePresence; key_people: Person[]; offerings: Offering[];
+  online_presence: OnlinePresence; site_links: SiteLinks; key_people: Person[]; offerings: Offering[];
   provenance: ExportProvenance;
 };
 type EntryKind = 'company_foundation' | 'positioning' | 'market_and_customers'
-  | 'branding_and_style' | 'online_presence' | 'key_person' | 'offering';
+  | 'branding_and_style' | 'online_presence' | 'site_links' | 'key_person' | 'offering';
 type BusinessEntry = CompanyFoundation | Positioning | MarketAndCustomers
-  | BrandingAndStyle | OnlinePresence | Person | Offering;
+  | BrandingAndStyle | OnlinePresence | SiteLinks | Person | Offering;
 // EntryProvenance uses the same claims/evidence/coverage/operations shapes;
 // its internal entry state also permits review_status: 'unreviewed'.
 ```

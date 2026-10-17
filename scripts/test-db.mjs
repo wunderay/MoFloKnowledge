@@ -36,7 +36,7 @@ if (!connectionString) {
     } else {
       console.log(JSON.stringify({ status: "connected", database: rows[0].database, serverVersion: rows[0].version, testFiles: files.length }));
       await new Promise((resolveExit, reject) => {
-        const child = spawn(process.execPath, ["--test", ...files], { stdio: "inherit", env: process.env });
+        const child = spawn(process.execPath, ["--test", "--test-concurrency=1", ...files], { stdio: "inherit", env: process.env });
         child.once("error", reject);
         child.once("exit", (code) => resolveExit(code ?? 1));
       }).then((code) => { process.exitCode = code; });

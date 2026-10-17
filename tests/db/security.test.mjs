@@ -23,7 +23,7 @@ before(async()=>{
  admin=await connect();await admin.query(await readFile(new URL('./bootstrap.sql',import.meta.url),'utf8'));
  const generated=spawnSync(process.execPath,[fileURLToPath(new URL('../../scripts/generate-sql-contract.mjs',import.meta.url)),'--check',process.env.CONTRACTS_ROOT??'.'],{encoding:'utf8'});assert.equal(generated.status,0,generated.stderr);
  const migration=()=>spawnSync(process.execPath,[fileURLToPath(new URL('../../scripts/migrate.mjs',import.meta.url))],{env:{...process.env,DATABASE_URL:url.href},encoding:'utf8'});
- const initial=migration();assert.equal(initial.status,0,initial.stderr);assert.equal(initial.stdout.match(/Applied /g)?.length,16);
+ const initial=migration();assert.equal(initial.status,0,initial.stderr);assert.equal(initial.stdout.match(/Applied /g)?.length,17);
  const replay=migration();assert.equal(replay.status,0,replay.stderr);assert.equal(replay.stdout,'');
  await admin.query('RESET ROLE');await admin.query('INSERT INTO auth.users(id) VALUES($1),($2),($3)',[owner,viewer,outsider]);
 });

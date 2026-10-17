@@ -5,6 +5,16 @@ import { PDFDocument, PDFName, PDFString, type PDFFont, type PDFPage, PageSizes,
 import { canonicalStringify } from "./canonical-json";
 import { documentData, documentParagraphs, documentRuns, type DocumentInput, type DocumentParagraph } from "./document-export";
 
+/** Stored URLs are user text: only http(s), normalised, with PDF string delimiters percent-encoded so they cannot end the string. */
+function safePdfUri(href: string): string | undefined {
+  try {
+    const url = new URL(href);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    return url.href.replace(/[()\\]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+  } catch {
+    return undefined;
+  }
+}
 export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
@@ -154,11 +164,13 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
     y -= isHeading ? 6 : 7;
   }
   for (const link of links) {
+    const uri = link.href === undefined ? undefined : safePdfUri(link.href);
+    if (link.href !== undefined && !link.source && !uri) continue;
     const destination = link.source ? anchors.get(`source_${link.source}`) : undefined;
     if (link.source && !destination) throw new Error("Missing source destination");
     const annotation = pdf.context.obj({ Type: "Annot", Subtype: "Link", Rect: link.rect, Border: [0, 0, 0],
       ...(destination ? { Dest: [destination.page.ref, PDFName.of("XYZ"), margin, destination.y, null] }
-        : { A: { S: "URI", URI: PDFString.of(link.href!) } }),
+        : { A: { S: "URI", URI: PDFString.of(uri!) } }),
     });
     link.page.node.addAnnot(pdf.context.register(annotation));
   }

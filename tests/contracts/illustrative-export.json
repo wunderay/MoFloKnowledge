@@ -90,6 +90,9 @@
   "online_presence": {
     "social_media_links": []
   },
+  "site_links": {
+    "links": []
+  },
   "key_people": [
     {
       "id": "30000000-0000-4000-8000-000000000006",
@@ -574,6 +577,14 @@
         "status": "not_checked",
         "job_id": "80000000-0000-4000-8000-000000000001",
         "reason": "Visual interpretation step failed; technical CSS and asset observations were captured separately."
+      },
+      {
+        "targets": [
+          "/site_links/links"
+        ],
+        "status": "not_checked",
+        "job_id": null,
+        "reason": "No approved entry assessed this field."
       }
     ],
     "operations": [

@@ -12,7 +12,7 @@ export const GET = route(async (_r, c, { client, user }) => {
     IdSchema.parse(p.versionId),
     user!.id,
   );
-  return new Response(canonicalStringify(saved.payload), {
+  return new Response(canonicalStringify(saved.stored), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Content-Disposition": `attachment; filename="${downloadFilename(saved.payload.provenance.company.name, saved.version_number)}"`,
