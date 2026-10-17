@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { timing } from "../../src/components/knowledge-view/timing";
 import {
   ADD_PAGE,
+  FAILURE_TEXT,
+  PERSON,
   INLINE,
   STALE_NOTICE,
   SNAPSHOT_ID,
@@ -51,5 +53,77 @@ describe("a Reload that never answers", () => {
     expect(view.text(), "still stale, with the reason").toMatch(/was not read in time/i);
     const button = one(view.byRole("button", /^reload$/i), "Reload is back");
     expect(disabled(view, button)).toBe(false);
+  });
+});
+
+// A navigation load of the draft and a post-save refresh are ordered by the same epoch: the one started last wins.
+describe("a navigation load and a post-save refresh", () => {
+  async function heldSave() {
+    const opened = await openGuarded(PERSON.sectionId);
+    const { view } = opened;
+    const base = globalThis.fetch;
+    let open!: () => void;
+    const gate = new Promise<void>((resolve) => (open = resolve));
+    vi.stubGlobal("fetch", async (input: never, init?: { method?: string }) => {
+      if ((init?.method ?? "GET").toUpperCase() === "POST") await gate;
+      return (base as (i: never, n?: unknown) => Promise<unknown>)(input, init);
+    });
+    await PERSON.act(view);
+    return { ...opened, open };
+  }
+
+  it("an older navigation load released after the newer post-save refresh is ignored", async () => {
+    const { view, reads, open } = await heldSave();
+    await selectVersion(view, SNAPSHOT_ID);
+    reads.holdNext();
+    await selectVersion(view, "draft");
+    expect(reads.drafts).toHaveLength(1);
+    open();
+    await view.settle();
+    await sleep(30);
+    await view.settle();
+    expect(PERSON.shows(view), "the refresh after the save shows the new person").toBe(true);
+    reads.drafts[0]!.release();
+    await view.settle();
+    await sleep(30);
+    await view.settle();
+    expect(PERSON.shows(view), "the older navigation load did not take the person away").toBe(true);
+    expect(view.text()).not.toMatch(STALE_NOTICE);
+  });
+
+  it("an older navigation load that fails after the newer refresh leaves nothing stuck", async () => {
+    const { view, reads, open } = await heldSave();
+    await selectVersion(view, SNAPSHOT_ID);
+    reads.holdNext();
+    await selectVersion(view, "draft");
+    open();
+    await view.settle();
+    await sleep(30);
+    await view.settle();
+    reads.drafts[0]!.fail();
+    await view.settle();
+    await sleep(30);
+    await view.settle();
+    expect(PERSON.shows(view)).toBe(true);
+    expect(view.text()).not.toMatch(FAILURE_TEXT);
+    expect(PERSON.ready(view)).toBe(true);
+  });
+
+  it("a post-save refresh released after a newer navigation load is ignored", async () => {
+    const { view, reads, open } = await heldSave();
+    reads.holdNext();
+    open();
+    await view.settle();
+    await sleep(30);
+    await view.settle();
+    expect(reads.drafts).toHaveLength(1);
+    await selectVersion(view, SNAPSHOT_ID);
+    await selectVersion(view, "draft");
+    reads.drafts[0]!.fail();
+    await view.settle();
+    await sleep(30);
+    await view.settle();
+    expect(view.text(), "no stale notice from the superseded refresh").not.toMatch(STALE_NOTICE);
+    expect(PERSON.shows(view)).toBe(true);
   });
 });

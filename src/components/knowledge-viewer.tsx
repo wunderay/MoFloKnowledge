@@ -190,7 +190,8 @@ export function KnowledgeViewer({
   }, [companyId, versionId]);
   useEffect(() => {
     // Loading a view supersedes every draft read still on its way.
-    readEpoch.current++;
+    const epoch = ++readEpoch.current;
+    const current = () => readEpoch.current === epoch;
     activeRead.current?.abort();
     setRefreshing(false);
     if (initialData && !initializedView.current) {
@@ -216,7 +217,7 @@ export function KnowledgeViewer({
             citationContext?: CitationContext;
           }>(companyPath(companyId, "/draft"), { signal: abort.signal }).then(
             (data) => {
-              if (abort.signal.aborted) return;
+              if (abort.signal.aborted || !current()) return;
               setActorId(data.actorId ?? "");
               setName(data.company.name);
               setCanEdit(
@@ -230,17 +231,17 @@ export function KnowledgeViewer({
             companyPath(companyId, `/versions/${versionId}`),
             { signal: abort.signal },
           ).then((data) => {
-            if (abort.signal.aborted) return;
+            if (abort.signal.aborted || !current()) return;
             setPayload(data);
             setName(data.provenance.company.name);
             setEntries(snapshotEntries(data));
           });
     request
       .catch((error) => {
-        if (!abort.signal.aborted) setError(error.message);
+        if (!abort.signal.aborted && current()) setError(error.message);
       })
       .finally(() => {
-        if (!abort.signal.aborted) setLoading(false);
+        if (!abort.signal.aborted && current()) setLoading(false);
       });
     return () => {
       readEpoch.current++;
@@ -296,8 +297,11 @@ export function KnowledgeViewer({
       setEntries(data.entries);
       setCitationContext(data.citationContext);
       setStaleDraft(null);
+      setError("");
+      setLoading(false);
     } catch (error) {
       if (!latest()) return;
+      setLoading(false);
       setStaleWhat(userInitiated ? staleWhatNow.current : (what ?? "links"));
       setStaleDraft((error as Error).message || "The draft could not be read.");
     } finally {
