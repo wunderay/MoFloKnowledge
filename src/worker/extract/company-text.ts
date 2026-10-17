@@ -2,6 +2,7 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { structuredCandidates } from "./structured";
 import { visibleCandidates } from "./visible";
+import { exactSentences, selectExactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
 
 export const COMPANY_TEXT_FIELDS: readonly string[] = [
   "/company_foundation/overview", "/company_foundation/industry",
@@ -47,14 +48,14 @@ export function companyTextCandidates(
     }).map((s) => s.id);
   };
   const add = (field: string, value: unknown, passages: string[], priority = 70,
-    entity_key: string | null = null, observed: TechnicalObservation[] = []) => {
+    entity_key: string | null = null, observed: TechnicalObservation[] = [], note: string | null = null) => {
     if (passages.some((text) => !evidence(text).length)) return;
     const segment_ids = [...new Set(passages.flatMap(evidence))];
     if (!segment_ids.length && !observed.length) return;
     if (result.some((c) => c.field === field && c.entity_key === entity_key &&
       JSON.stringify(c.value) === JSON.stringify(value))) return;
     result.push({ field, value, entity_key, priority, origin: "source_backed",
-      segment_ids, observation_ids: observed.map((o) => o.id), supporting_fields: [], note: null });
+      segment_ids, observation_ids: observed.map((o) => o.id), supporting_fields: [], note });
   };
   const rawSections = capture.observations.contentSections;
   const sections: Section[] = Array.isArray(rawSections)
@@ -120,45 +121,56 @@ export function companyTextCandidates(
     action.test(text) && (companySubject(text) || /\b(?:about|welcome|firm background|who we are|what we do|what we offer|our company|our story|contact|get in touch)\b/i.test(section.heading ?? "") ||
       /\b(?:you can count on us|our (?:services|products)|we['’]re|we are)\b/i.test(text) ||
       (currentPractice && /\bI(?:['’]m| am)? (?:can |am able to |able to )?(?:provide|offer)\b/i.test(text))));
-  const descriptions = business.slice(0, 3).map(({ text: paragraph }) => {
-    // Drop a following form instruction while preserving the complete published description.
-    const text = paragraph.split(/(?<=[.!?])\s+(?=(?:If you|Simply|Please|Just)\b[^.!?]*(?:form|fill out|contact us))/i)[0];
-    const operating = /\b(?:provid(?:e|es|ing)|offer(?:s|ing)?|design(?:s|ing)?|manufactur(?:e|es|ing)|build(?:s|ing)?|develop(?:s|ing)?|sell(?:s|ing)?|count on us for)\b/i.test(text);
-    const priority = operating ? (currentPractice ? 93 : 88) : url.pathname === "/" ? 80 : 75;
-    return { text, priority, operating };
+  const biography = /\b(?:founder|career|years (?:of|as)|my experience|AICPA|certified|degree)\b/i;
+  const comparison = /^(?:many|other|some|larger) (?:companies|firms|providers)\b/i;
+  const offeringScope = /\b(?:services|products|planning|software|consultancy|manufacturer|practice|inspections|surveys|engineering)\b/i;
+  const providerAction = /\b(?:provid(?:e|es|ing)|offer(?:s|ing)?|specializ(?:e|es|ing)|design(?:s|ing)?|manufactur(?:e|es|ing)|build(?:s|ing)?|develop(?:s|ing)?|sell(?:s|ing)?|count on us for)\b/i;
+  const instruction = /\b(?:fill out|contact us|call us|this form|contact us today)\b/i;
+  const descriptions = business.flatMap(({ text: paragraph }) => {
+    const paragraphCompany = companySubject(paragraph) || /^Welcome to\b/i.test(paragraph);
+    const accept = (sentence: string) => {
+      if (biography.test(sentence) || comparison.test(sentence) || instruction.test(sentence)) return false;
+      const subject = companySubject(sentence) || /^(?:Welcome to|We['’]re|You can count on us)\b/i.test(sentence) ||
+        (currentPractice && /\bI(?:['’]m| am)? (?:can |am able to |able to )?(?:provide|offer)\b/i.test(sentence));
+      const continuation = (paragraphCompany || currentPractice) && /\b(?:services|support|payroll)\b/i.test(sentence) &&
+        /\b(?:available|primarily|only|as you need|as needed|without|full-time|salary|benefits)\b/i.test(sentence);
+      return (subject && (offeringScope.test(sentence) || providerAction.test(sentence))) || continuation;
+    };
+    const passages = selectExactSentences(paragraph, { accept, maxSentences: 4, maxCharacters: 1200 });
+    if (!passages.length) return [];
+    const operating = passages.filter((sentence) => providerAction.test(sentence) ||
+      /\b(?:as you need|as needed|primarily|full-time|salary|benefits|overhead|lower rate)\b/i.test(sentence));
+    const firmPage = /^\/(?:about(?:-us)?|company|firm(?:-background)?|our-story)\/?$/i.test(url.pathname);
+    const priority = profile ? 83 : firmPage ? (passages.length > 1 ? 99 : 94) : operating.length ? 88 : 80;
+    const text = normalized(paragraph).includes(normalized(passages.join(" ")))
+      ? passages.join(" ") : passages.join("\n\n");
+    return [{ text, passages, priority, operating }];
   });
   if (descriptions.length) {
     const best = Math.max(...descriptions.map((d) => d.priority));
-    const passages: string[] = [];
-    for (const { text, priority } of descriptions)
-      if (priority === best && !passages.includes(text) &&
-        [...passages, text].join("\n\n").length <= 4000) passages.push(text);
-    add("/company_foundation/overview", passages.join("\n\n"), passages, best);
-    const operations = descriptions.filter((d) => d.operating).map((d) => d.text);
+    const passages = [...new Set(descriptions.filter((d) => d.priority === best).flatMap((d) => d.passages))];
+    const overview = descriptions.filter((d) => d.priority === best).map((d) => d.text).join("\n\n");
+    if (overview.length <= 4000)
+      add("/company_foundation/overview", overview, passages, best);
+    const operations = [...new Set(descriptions.flatMap((d) => d.operating))].slice(0, 3);
     if (operations.length && operations.join("\n\n").length <= 4000)
       add("/company_foundation/business_model", operations.join("\n\n"), operations, best);
   }
-  // The catalog root explicitly groups these linked names as the company's offering range.
+  // Catalog prose describes the company; link labels remain individual offering names.
   if (/^\/(?:services|products|offerings)\/?$/i.test(url.pathname)) {
     const intro = paragraphs.find(({ text, section }) => action.test(text) &&
       /\b(?:services|products|offerings|what we offer|our solutions)\b/i.test(section.heading ?? ""));
     if (intro) {
-      const linked = new Map<string, string>();
-      for (const link of capture.links) {
-        let destination: URL;
-        try { destination = new URL(link.url); } catch { continue; }
-        if (destination.hostname === url.hostname &&
-          /^\/(?:services|products|offerings)\/[^/]+\/?$/i.test(destination.pathname) &&
-          link.label.length >= 3 && link.label.length <= 200 && evidence(link.label).length &&
-          !/^(?:learn more|read more|details|contact|get started|book now)$/i.test(link.label))
-          linked.set(link.url, link.label);
-      }
-      const passages = [intro.text, ...new Set(linked.values())].slice(0, 13);
-      if (passages.length >= 2 && passages.join("\n\n").length <= 4000) {
-        add("/company_foundation/overview", passages.join("\n\n"), passages, 96);
-        add("/company_foundation/business_model", intro.text, [intro.text], 90);
-      }
+      const passages = selectExactSentences(intro.text, { maxSentences: 2 });
+      add("/company_foundation/overview", passages.join("\n\n"), passages, 96);
     }
+  }
+  if (!profile) {
+    for (const { text: paragraph } of paragraphs)
+      for (const sentence of exactSentences(paragraph))
+        if (isExplicitServiceProviderSentence(sentence, names))
+          add("/company_foundation/company_role", [{ text: "Service provider" }], [sentence], 90, null, [],
+            "Normalized company role from an explicit current-company service statement.");
   }
   for (const [index, { text }] of descriptions.entries()) {
     // An explicit description of what the firm is, not a guessed standardized label.
@@ -168,11 +180,11 @@ export function companyTextCandidates(
       add("/company_foundation/company_role", [{ text: industry }], [text], 75);
     }
     // Keep a published service category verbatim, including its exact spelling.
-    const category = /\b(?:specializ(?:e|es|ing) in|provid(?:e|es|ing)|offer(?:s|ing)?|reliable)\s+([^.!?;]{3,90}?\b(?:services|solutions|software|products))\b/i.exec(text)?.[1];
+    const category = /\b(?:specializ(?:e|es|ing) in|provid(?:e|es|ing)|offer(?:s|ing)?|comprehensive|reliable)\s+([^.!?;]{3,90}?\b(?:services|solutions|software|products))\b/i.exec(text)?.[1];
     if (category && !/\b(?:you|your|our|other|these|this|the best)\b/i.test(category))
-      add("/company_foundation/industry", category, [text], (profile ? 60 : 70) - index);
-    const role = /\b(?:professional service|service provider|manufacturer|retailer|wholesaler|distributor|consultancy)\b/i.exec(text)?.[0];
-    if (role) add("/company_foundation/company_role", [{ text: role }], [text], 80);
+      add("/company_foundation/industry", category, [text], (profile ? 60 : /^\/(?:about(?:-us)?|company|firm(?:-background)?)\/?$/i.test(url.pathname) ? 75 : 70) - index);
+    const role = /\b(?:we are|is)\s+(?:an?\s+)?(service provider|manufacturer|retailer|wholesaler|distributor|consultancy)\b/i.exec(text)?.[1];
+    if (role && !profile) add("/company_foundation/company_role", [{ text: role }], [text], 80);
   }
 
   // Published positioning comes from an introductory heading or an explicit promise.
@@ -192,6 +204,31 @@ export function companyTextCandidates(
   for (const { text } of business.slice(0, 2))
     if (/\b(?:you can count on us|our mission|we help|committed to|our goal|we believe)\b/i.test(text))
       add("/positioning/company_pitch", text, [text], 78);
+
+  if (!profile) {
+    for (const [index, context] of paragraphs.entries()) {
+      const named = /\b(?:our|the) (?:co-)?founder,?\s+([\p{Lu}][\p{L}'’-]+(?:\s+[\p{Lu}][\p{L}'’-]+){1,3})/u.exec(context.text);
+      if (!named) continue;
+      const name = named[1], firstName = name.split(" ")[0];
+      const link = capture.links.find((item) => {
+        try { return new URL(item.url).hostname === url.hostname &&
+          /\/(?:about(?:-us)?|team|people|staff)\/[^/]+\/?$/i.test(new URL(item.url).pathname) &&
+          item.label.toLowerCase().includes(name.toLowerCase()); } catch { return false; }
+      });
+      const credential = paragraphs[index + 1]?.text;
+      if (!link || !credential) continue;
+      const sentences = selectExactSentences(credential, { maxSentences: 2, accept: (sentence) =>
+        new RegExp("^(?:" + escape(name) + "|" + escape(firstName) + ")\\s+(?:is|has|holds|earned)\\b", "i").test(sentence) &&
+        /\b(?:CPA|member|certifi|degree|licen[cs]e|treasurer|president)\b/i.test(sentence) });
+      const linkEvidence = observations.filter((o) =>
+        (o.property === "href" && o.value === link.url) ||
+        (o.property === "anchor-label" && o.value === link.label && o.asset_url === link.url));
+      if (!sentences.length || linkEvidence.length < 2) continue;
+      add("/key_people/@id/name", name, [context.text], 85, link.url, linkEvidence);
+      add("/key_people/@id/background_or_relevance", sentences.join("\n\n"),
+        [context.text, ...sentences], 90, link.url, linkEvidence, "Additional explicitly named founder background.");
+    }
+  }
 
   if (person && profile) {
     const identityEvidence = person.observation_ids.map((id) => observations.find((o) => o.id === id))

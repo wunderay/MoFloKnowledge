@@ -190,6 +190,24 @@ export function captureHtml(
             label: normalizeText($(node).text()).slice(0, 500),
           });
       });
+  // Keep the closest unambiguous local form context, including CMS div wrappers.
+  const formContext = (node: Parameters<typeof $>[0]) => {
+    let region = $(node);
+    let heading: string | null = null;
+    let context: string | null = null;
+    for (let depth = 0; depth < 5 && region.length && !region.is("body,html"); depth++, region = region.parent()) {
+      if (region.find("form").length > 1) break;
+      const headings = region.find("h1,h2,h3,h4,h5,h6");
+      if (!heading && headings.length === 1) heading = normalizeText(headings.text()).slice(0, 2000) || null;
+      const paragraphs = region.find("p").filter((_i, paragraph) => !$(paragraph).closest("form").length);
+      if (!context && paragraphs.length === 1) {
+        const text = normalizeText(paragraphs.text());
+        if (text.length <= 2000) context = text || null;
+      }
+      if (heading && context) break;
+    }
+    return { heading, context };
+  };
   const forms =
     rendered?.forms?.map(({ action, method, labels }) => ({
       action: safeLink(action),
@@ -208,9 +226,7 @@ export function captureHtml(
           .map((_j, label) => normalizeText($(label).text()).slice(0, 500))
           .get()
           .slice(0, 30),
-        heading: normalizeText(($(node).find("h1,h2,h3,h4,h5,h6").first().length
-          ? $(node).find("h1,h2,h3,h4,h5,h6").first()
-          : $(node).closest("section,article").children("h1,h2,h3,h4,h5,h6").first()).text()).slice(0, 2000) || null,
+        ...formContext(node),
         submitLabels: $(node).find('button:not([type]),button[type="submit"],input[type="submit"]')
           .slice(0, 20).map((_j, submit) => normalizeText($(submit).text() || $(submit).attr("value") || "").slice(0, 500)).get().filter(Boolean),
       }))
@@ -284,7 +300,8 @@ export function captureHtml(
     ...headings.map((item) => item.text),
     ...links.map((item) => item.label),
     ...forms.flatMap((item) => item.labels),
-    ...forms.flatMap((item) => [item.heading ?? "", ...item.submitLabels]),
+    ...forms.flatMap((item) => [item.heading ?? "", ...("context" in item ? [String(item.context ?? "")] : []), ...item.submitLabels]),
+    ...content.lists.flatMap((item) => [item.intro ?? "", ...item.items]),
     ...ctas.map((item) => item.label),
     ...addresses,
     ...priceText,
@@ -308,6 +325,8 @@ export function captureHtml(
   const observations: Record<string, unknown> = {
     headings,
     contentSections: evidencedSections(content.sections, parsed.segments),
+    contentLists: content.lists.filter((list) => list.items.every((item) => parsed.segments.some((segment) => segment.text === item)))
+      .map((list) => ({ ...list, heading: list.heading && parsed.segments.some((segment) => segment.text === list.heading) ? list.heading : null, intro: list.intro && parsed.segments.some((segment) => segment.text === list.intro) ? list.intro : null })),
     declaredStyles: declaredDesign.styles,
     declaredLogos: declaredDesign.logos,
     offeringBlocks,

@@ -10,6 +10,8 @@ export type ContentSection = {
   links: { url: string; label: string }[];
 };
 
+export type ContentList = { heading: string | null; intro: string | null; items: string[] };
+
 const excluded = 'nav,footer,aside,[role="navigation"],[role="contentinfo"],[role="complementary"],script,style,noscript,template,svg,canvas,iframe,object,embed,[hidden],[aria-hidden="true"]';
 const recommendation = /(?:^|[\s_-])(?:article[-_ ]?recommendations?|related[-_ ]?(?:articles?|posts?|stories)|recommended[-_ ]?(?:articles?|posts?|stories)|cookie[-_ ]?(?:banner|consent))(?:$|[\s_-])/i;
 const blockTags = /^(?:address|article|aside|blockquote|dd|div|dl|dt|fieldset|figure|figcaption|form|h[1-6]|header|hr|li|main|ol|p|pre|section|table|tbody|td|th|thead|tr|ul)$/;
@@ -18,7 +20,7 @@ const blockTags = /^(?:address|article|aside|blockquote|dd|div|dl|dt|fieldset|fi
 export function captureContentSections(
   $: CheerioAPI,
   safeLink: (raw: string | undefined | null) => string | null,
-): { sections: ContentSection[]; truncated: boolean } {
+): { sections: ContentSection[]; lists: ContentList[]; truncated: boolean } {
   const body = $("body").clone();
   // CMS navigation wrappers often contain phone/login/brand text beside the <nav>.
   // Stop at a content heading/main/article so this cannot swallow the page content.
@@ -46,6 +48,7 @@ export function captureContentSections(
   const root = primary.length && normalizeText(primary.text()).length >= normalizeText(body.text()).length * 0.5 ? primary : body;
   root.find("br").replaceWith("\n");
   const sections: ContentSection[] = [];
+  const lists: ContentList[] = [];
   let current: ContentSection | undefined;
   let remaining = 80000;
   let truncated = false;
@@ -92,6 +95,22 @@ export function captureContentSections(
     if (stopped) return;
     if (node.type === "text") { append(node.data); return; }
     if (node.type !== "tag") return;
+    if (/^(?:ul|ol)$/.test(node.name)) {
+      const list = $(node);
+      const ownText = (element: ReturnType<CheerioAPI>) => {
+        const copy = element.clone();
+        copy.find("ul,ol").remove();
+        return normalizeText(copy.text());
+      };
+      const previous = list.prev();
+      const intro = list.parent().is("li") ? ownText(list.parent())
+        : previous.is("p,h1,h2,h3,h4,h5,h6") ? normalizeText(previous.text()) : "";
+      const items = list.children("li").slice(0, 100).map((_i, item) => ownText($(item))).get().filter(Boolean);
+      if (lists.length < 50 && items.every((item) => item.length <= 4000) && intro.length <= 4000) {
+        if (items.length) lists.push({ heading: current?.heading ?? null, intro: intro || null, items });
+      } else truncated = true;
+      if (list.children("li").length > 100) truncated = true;
+    }
     if (/^h[1-6]$/.test(node.name)) {
       const text = normalizeText($(node).text());
       if (!text) return;
@@ -127,7 +146,7 @@ export function captureContentSections(
     flush();
   };
   root.toArray().forEach(walk);
-  return { sections, truncated };
+  return { sections, lists, truncated };
 }
 
 export function sectionParts(sections: ContentSection[]): { text: string; heading?: string }[] {
