@@ -19,6 +19,16 @@ Set resource ceilings, startup ordering, health checks, graceful stop windows, r
 7. Verify service health, queue visibility, TLS, database connection limits, restart behavior, and the deterministic extractor's controlled-fixture behavior. Capture exact runtime versions and retained evidence.
 8. Stop, restart, roll back, and redeploy by the host's exact named service IDs. Record the actual provider commands in the service contract after selection; no provider-specific command is guessed here.
 
+## Image uploads (Supabase Storage)
+
+Logos, portraits and offering images are stored in the private Supabase Storage bucket `knowledge-assets` and are only ever served through the app at `/api/companies/<companyId>/uploads/<id>` after a membership check. No public bucket URL, signed URL or redirect is handed to the browser.
+
+- Migration `0018_knowledge_assets_storage.sql` creates the bucket row (private, 10 MiB limit, PNG/JPEG/GIF/WebP/SVG only), the `storage.objects` row level security policies and the `public.uploads` metadata table. Apply it with `npm run db:migrate` as a role that may write to `storage.buckets` and create policies on `storage.objects` (the Supabase `postgres` role). If the bucket already exists it is forced back to private with these limits.
+- The web process uses the signed-in user's own session for every Storage call, so the policies (object name `<kind>/<companyId>/<uuid>.<ext>`; read for members, write and delete for owners and editors of a company that is not archived; no update, no anonymous access) apply to it. **No service-role key is needed or read by the app, and none must be added to the web process environment for uploads.**
+- Required web environment is unchanged: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `APP_ORIGIN` (uploads are same-origin writes). Confirm the project-wide Storage upload size limit (Supabase dashboard, Storage settings) is at least 10 MiB; the bucket and the API enforce 10 MiB for logos and 5 MiB for portraits and offering images.
+- Limit request bodies at the reverse proxy to a little over 10 MiB for `/api/companies/*/uploads`; the route rejects an oversized declared length but cannot stop a chunked body that never declares one.
+- Orphans: a failed cleanup after a failed metadata insert, or a metadata delete that fails after the object was removed, can leave an unreferenced object or a row whose object is gone (served as 404). Neither is readable; review `knowledge-assets` for objects without an `uploads` row during routine maintenance.
+
 ## Secrets and recovery
 
 Use server-only secret injection for `DATABASE_URL`, `WORKER_DATABASE_URL`, renderer task authentication, and proxy credentials. The browser may receive only the Supabase URL and publishable key. The renderer gets no application credentials. Do not put secrets in logs, process arguments, deployment manifests, or build artifacts.
