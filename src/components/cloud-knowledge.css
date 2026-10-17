@@ -1,0 +1,218 @@
+.cloud-knowledge {
+  --cloud-blue: #3865ff;
+  --cloud-pale: #eef4ff;
+  min-width: 0;
+  color: var(--ink, #111827);
+}
+.cloud-knowledge .breadcrumb {
+  margin-bottom: 16px;
+  font-size: 11px;
+}
+.cloud-knowledge > .page-heading {
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.cloud-knowledge > .page-heading h1 { font-size: 24px; letter-spacing: -.6px; }
+.cloud-knowledge > .page-heading p { font-size: 12px; }
+.cloud-knowledge > .page-heading .eyebrow { display: none; }
+.cloud-knowledge > .page-heading .actions { gap: 8px; }
+.cloud-knowledge > .section-heading { margin-bottom: 22px; font-size: 11px; }
+.cloud-knowledge__navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line, #e1e4ec);
+  padding-bottom: 16px;
+}
+.cloud-knowledge__tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 23px;
+  border-radius: 30px;
+  background: var(--cloud-pale);
+  color: var(--cloud-blue);
+  font-size: 13px;
+  font-weight: 600;
+}
+.cloud-knowledge__navigation-actions { display: flex; align-items: center; gap: 20px; }
+.cloud-knowledge__site-link { font-size: 12px; color: var(--muted, #7e889a); }
+.cloud-knowledge .cloud-knowledge__category-select {
+  width: 220px;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 10px 36px 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 30px;
+  background-color: var(--cloud-pale);
+  color: var(--cloud-blue);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cloud-knowledge__card {
+  min-width: 0;
+  padding: 30px;
+  border: 1px solid var(--line, #e1e4ec);
+  border-radius: 24px;
+  background: var(--white, #fff);
+  box-shadow: 0 4px 20px #172b4d03;
+}
+.cloud-knowledge .knowledge-editor__header {
+  padding-bottom: 0;
+  border: 0;
+  margin-bottom: 24px;
+}
+.cloud-knowledge .knowledge-editor__header .section-heading { margin-bottom: 8px; }
+.cloud-knowledge .knowledge-editor__header h2 { margin: 0; font-size: 20px; letter-spacing: -.35px; }
+.cloud-knowledge__coverage { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; color: var(--muted, #7e889a); font-size: 10px; line-height: 1.6; }
+.cloud-knowledge__banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 26px;
+  border: 1px solid #e5ecfc;
+  border-radius: 16px;
+  background: var(--cloud-pale);
+}
+.cloud-knowledge__banner-label { color: var(--cloud-blue); font-size: 11px; }
+.cloud-knowledge__banner h3 { margin: 9px 0 0; font-size: 30px; line-height: 1.25; font-weight: 600; letter-spacing: -.6px; overflow-wrap: anywhere; }
+.cloud-knowledge__banner > p { margin: 0; max-width: 300px; color: var(--muted, #7e889a); font-size: 11px; line-height: 1.7; }
+.cloud-knowledge__stats { display: flex; gap: 28px; margin: 0; flex-wrap: wrap; }
+.cloud-knowledge__stats > div { max-width: 180px; }
+.cloud-knowledge__stats dt { color: var(--muted, #7e889a); font-size: 10px; margin-bottom: 8px; }
+.cloud-knowledge__stats dd { margin: 0; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.cloud-knowledge .cloud-knowledge__entry { min-width: 0; margin-bottom: 26px; }
+.cloud-knowledge .cloud-knowledge__entry > .section-heading { margin: 0 0 18px; }
+.cloud-knowledge .cloud-knowledge__entry > .section-heading h3 { font-size: 13px; font-weight: 600; }
+.cloud-knowledge .cloud-knowledge__entry--company_foundation > .section-heading h3 { font-size: 12px; color: var(--muted, #7e889a); }
+.cloud-knowledge__field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cloud-knowledge__field-card {
+  min-width: 0;
+  padding: 19px;
+  border: 1px solid var(--line, #e1e4ec);
+  border-radius: 16px;
+  background: var(--white, #fff);
+}
+.cloud-knowledge__field-card--main_address { grid-column: 1; grid-row: span 2; }
+.cloud-knowledge__field-card--overview { grid-column: 2; }
+.cloud-knowledge__field-card--overview textarea { min-height: 140px; }
+.cloud-knowledge__entry--company_foundation .cloud-knowledge__field-card--main_address { order: -4; }
+.cloud-knowledge__entry--company_foundation .cloud-knowledge__field-card--alternative_company_names { order: -3; }
+.cloud-knowledge__entry--company_foundation .cloud-knowledge__field-card--overview { order: -2; }
+.cloud-knowledge__entry--company_foundation .cloud-knowledge__field-card--website { order: -1; }
+.cloud-knowledge .cloud-knowledge__field-card > .field { margin: 0; }
+.cloud-knowledge .cloud-knowledge__field-card > .knowledge-editor__group { border: 0; padding: 0; margin: 0; }
+.cloud-knowledge .cloud-knowledge__field-card > .knowledge-editor__group > legend { padding: 0; margin-bottom: 13px; font-size: 14px; line-height: 20px; text-transform: uppercase; }
+.cloud-knowledge .cloud-knowledge__field-card > .field > .field__label { font-size: 14px; line-height: 20px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px; }
+.cloud-knowledge .cloud-knowledge__field-card .field__label { font-size: 11px; font-weight: 500; }
+.cloud-knowledge .cloud-knowledge__field-card .field-grid { gap: 12px; }
+.cloud-knowledge .cloud-knowledge__field-card .field input,
+.cloud-knowledge .cloud-knowledge__field-card .field textarea,
+.cloud-knowledge .cloud-knowledge__field-card .field select { min-width: 0; border-color: #e8ebf1; border-radius: 8px; font-size: 12px; padding: 9px 10px; }
+.cloud-knowledge .cloud-knowledge__field-card .field textarea { line-height: 1.75; }
+.cloud-knowledge .cloud-knowledge__field-card .knowledge-editor__repeatable { border-left-color: #e2eaff; }
+.cloud-knowledge .cloud-knowledge__field-card .knowledge-editor__repeatable-heading { gap: 8px; flex-wrap: wrap; }
+.cloud-knowledge .cloud-knowledge__field-card .knowledge-editor__repeatable-heading .actions { gap: 3px; }
+.cloud-knowledge .cloud-knowledge__field-card .knowledge-editor__repeatable-heading .button { padding: 5px 7px; }
+.cloud-knowledge .cloud-knowledge__field-card .knowledge-editor__group { border-radius: 10px; }
+.cloud-knowledge .cloud-knowledge__field-card .button { font-size: 10px; }
+.cloud-knowledge__entry--market_and_customers .cloud-knowledge__field-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cloud-knowledge__entry--online_presence .cloud-knowledge__field-card { background: var(--cloud-pale); grid-column: 1 / -1; }
+.cloud-knowledge__entry--online_presence .cloud-knowledge__field-card > .knowledge-editor__group > legend { color: var(--cloud-blue); }
+.cloud-knowledge__entry--online_presence .cloud-knowledge__field-grid { grid-template-columns: minmax(0, 1fr); }
+.cloud-knowledge__save-scope { color: var(--muted, #7e889a); font-size: 11px; line-height: 1.7; margin: -4px 0 18px; }
+.cloud-knowledge .knowledge-editor__toolbar { margin-top: 22px; padding-top: 18px; gap: 8px; }
+.cloud-knowledge .knowledge-editor__toolbar .button { font-size: 11px; }
+.cloud-knowledge .knowledge-editor__toolbar > .field__hint { margin-left: auto; }
+.cloud-knowledge__offerings { display: grid; grid-template-columns: 235px minmax(0, 1fr); gap: 26px; align-items: start; }
+.cloud-knowledge__offering-list { border-right: 1px solid var(--line, #e1e4ec); padding-right: 20px; min-width: 0; }
+.cloud-knowledge__list-label { display: flex; justify-content: space-between; margin: 0 0 14px; font-size: 11px; color: var(--muted, #7e889a); }
+.cloud-knowledge__offering { display: flex; align-items: center; gap: 11px; width: 100%; padding: 14px 12px; margin-bottom: 8px; border: 1px solid transparent; border-radius: 12px; background: transparent; text-align: left; color: var(--ink, #111827); cursor: pointer; }
+.cloud-knowledge__offering > span:nth-child(2) { flex: 1; min-width: 0; }
+.cloud-knowledge__offering strong { display: block; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+.cloud-knowledge__offering small { display: block; margin-top: 5px; font-size: 10px; color: var(--muted, #7e889a); }
+.cloud-knowledge__offering-icon { color: var(--cloud-blue); background: #fff; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line, #e1e4ec); border-radius: 8px; flex-shrink: 0; }
+.cloud-knowledge__offering--selected { background: var(--cloud-pale); border-color: #dce6ff; color: var(--cloud-blue); }
+.cloud-knowledge__offering:hover { background: #f5f7fc; }
+.cloud-knowledge__offering--selected:hover { background: var(--cloud-pale); }
+.cloud-knowledge__entry--offering .cloud-knowledge__field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cloud-knowledge__entry--offering .cloud-knowledge__field-card--description,
+.cloud-knowledge__entry--offering .cloud-knowledge__field-card--features,
+.cloud-knowledge__entry--offering .cloud-knowledge__field-card--pricing { grid-column: 1 / -1; }
+.cloud-knowledge__entry--offering .cloud-knowledge__field-card--name { order: -3; }
+.cloud-knowledge__entry--offering .cloud-knowledge__field-card--offering_type { order: -2; }
+.cloud-knowledge__entry--offering .cloud-knowledge__field-card--description { order: -1; }
+.cloud-knowledge__tip { display: flex; align-items: baseline; gap: 10px; margin: 20px 8px 30px; color: var(--muted, #7e889a); font-size: 11px; line-height: 1.7; }
+.cloud-knowledge__tip > span { color: var(--cloud-blue); font-size: 15px; }
+.cloud-knowledge__capture { margin-top: 30px; }
+.cloud-knowledge__capture > h2 { font-size: 15px; margin-bottom: 7px; }
+.cloud-knowledge__capture > p { font-size: 11px; margin-bottom: 16px; }
+.cloud-knowledge__capture .scrape-progress { border-radius: 16px; }
+.cloud-knowledge :is(button, select, a):focus-visible { outline: 2px solid var(--cloud-blue); outline-offset: 3px; }
+.cloud-knowledge__entry--market_and_customers .cloud-knowledge__field-card .field-grid { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1150px) {
+  .cloud-knowledge__entry--market_and_customers .cloud-knowledge__field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cloud-knowledge__offerings { grid-template-columns: 190px minmax(0, 1fr); gap: 18px; }
+  .cloud-knowledge__entry--offering .cloud-knowledge__field-card .field-grid { grid-template-columns: minmax(0, 1fr); }
+  .cloud-knowledge__banner { flex-wrap: wrap; }
+}
+@media (max-width: 780px) {
+  .cloud-knowledge__card { padding: 20px; border-radius: 18px; }
+  .cloud-knowledge > .page-heading { align-items: flex-start; }
+  .cloud-knowledge > .page-heading .actions { flex-wrap: wrap; }
+  .cloud-knowledge__field-grid,
+  .cloud-knowledge__entry--market_and_customers .cloud-knowledge__field-grid { grid-template-columns: minmax(0, 1fr); }
+  .cloud-knowledge__field-card--main_address,
+  .cloud-knowledge__field-card--overview { grid-column: auto; grid-row: auto; }
+  .cloud-knowledge__offerings { grid-template-columns: minmax(0, 1fr); }
+  .cloud-knowledge__offering-list { border-right: 0; border-bottom: 1px solid var(--line, #e1e4ec); padding: 0 0 12px; }
+  .cloud-knowledge__offering-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cloud-knowledge__list-label { grid-column: 1 / -1; }
+  .cloud-knowledge__offering { margin: 0; }
+  .cloud-knowledge__navigation-actions { gap: 12px; }
+  .cloud-knowledge__stats { gap: 24px; }
+}
+@media (max-width: 480px) {
+  .cloud-knowledge__navigation { gap: 8px; align-items: flex-start; }
+  .cloud-knowledge__navigation-actions { align-items: flex-end; flex-direction: column-reverse; gap: 10px; min-width: 0; }
+  .cloud-knowledge .cloud-knowledge__category-select { width: 180px; }
+  .cloud-knowledge__site-link { font-size: 11px; }
+  .cloud-knowledge__tab { padding: 11px 16px; }
+  .cloud-knowledge__card { padding: 16px; }
+  .cloud-knowledge__banner { padding: 20px; gap: 20px; }
+  .cloud-knowledge__banner h3 { font-size: 22px; }
+  .cloud-knowledge__stats { gap: 18px; }
+  .cloud-knowledge__field-card { padding: 15px; }
+  .cloud-knowledge__entry--offering .cloud-knowledge__field-grid,
+  .cloud-knowledge__field-card .field-grid,
+  .cloud-knowledge__offering-list { grid-template-columns: minmax(0, 1fr); }
+  .cloud-knowledge .knowledge-editor__toolbar > .field__hint { margin-left: 0; }
+}
+.cloud-knowledge__navigation-context { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.cloud-knowledge__company-name { color: var(--muted, #7e889a); font-size: 12px; overflow-wrap: anywhere; }
+.cloud-knowledge__card--company_foundation .knowledge-editor__header > .section-heading,
+.cloud-knowledge__card--company_foundation .knowledge-editor__header > p { display: none; }
+.cloud-knowledge__card--company_foundation .knowledge-editor__header { margin-bottom: 16px; }
+.cloud-knowledge__workspace-controls { display: flex; gap: 10px 16px; flex-wrap: wrap; align-items: center; padding: 14px 0 18px; margin: 0 0 22px; border-bottom: 1px solid var(--line, #e1e4ec); }
+.cloud-knowledge__workspace-context { font-size: 11px; color: var(--muted, #7e889a); margin-right: auto; }
+.cloud-knowledge__workspace-controls .actions { gap: 7px; flex-wrap: wrap; }
+.cloud-knowledge__workspace-controls .button { font-size: 10px; padding: 9px 11px; }
+.cloud-knowledge__workspace-controls .company-switcher { max-width: 150px; border-radius: 8px; font-size: 11px; }
+.cloud-knowledge__draft-status { display: flex; align-items: center; gap: 14px; font-size: 10px; }
+.cloud-knowledge__draft-status .actions { gap: 6px; }
+@media (max-width: 780px) {
+  .cloud-knowledge__workspace-controls { align-items: flex-start; }
+  .cloud-knowledge__workspace-context { width: 100%; }
+}
+@media (max-width: 480px) {
+  .cloud-knowledge__navigation-context { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .cloud-knowledge__company-name { font-size: 10px; max-width: 100px; }
+  .cloud-knowledge__workspace-controls .actions { width: 100%; }
+  .cloud-knowledge__draft-status { flex-wrap: wrap; gap: 8px; }
+}

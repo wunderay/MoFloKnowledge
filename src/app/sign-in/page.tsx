@@ -1,10 +1,11 @@
+import { CloudBrand } from "@/components/icons";
 import { SignInForm } from "@/components/sign-in-form";
 export default function SignInPage() {
   return (
     <main className="sign-in">
       <section className="sign-in__story">
-        <a className="brand" href="/">
-          ◈ <span>MoFloKnowledge</span>
+        <a href="/" aria-label="MoFlo Cloud home">
+          <CloudBrand />
         </a>
         <div>
           <p className="eyebrow">A shared source of truth</p>
