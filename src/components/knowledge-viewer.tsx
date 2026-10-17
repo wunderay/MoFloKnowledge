@@ -13,6 +13,7 @@ import {
   type Assessment,
 } from "@/contracts";
 import { api, companyPath, write } from "./api-client";
+import { timing } from "./knowledge-view/timing";
 import { CATEGORY_SPECS, labelOf } from "./business-fields";
 import { ValueView } from "./entry-value";
 import { SourceCoverage } from "./source-coverage";
@@ -240,11 +241,22 @@ export function KnowledgeViewer({
   async function refreshDraft(what?: "changes") {
     setRefreshing(true);
     try {
-      const data = await api<{
-        company: { role: string; archived_at: string | null };
-        entries: ViewEntry[];
-        citationContext?: CitationContext;
-      }>(companyPath(companyId, "/draft"));
+      // A read that does not settle in time leaves the view stale (the save stands, and is never sent again).
+      const read = new AbortController();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const data = await Promise.race([
+        api<{
+          company: { role: string; archived_at: string | null };
+          entries: ViewEntry[];
+          citationContext?: CitationContext;
+        }>(companyPath(companyId, "/draft"), { signal: read.signal }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            read.abort();
+            reject(new Error("The draft was not read in time."));
+          }, timing.reread);
+        }),
+      ]).finally(() => clearTimeout(timer));
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
       setEntries(data.entries);
       setCitationContext(data.citationContext);

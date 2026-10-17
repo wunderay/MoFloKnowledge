@@ -41,8 +41,10 @@ export function prepareEntrySave(input: {
   entry: StoredEntry | null;
   content: BusinessEntry;
   note: string;
+  /** Put these list items back as the earlier revision had them (an Undo); the server checks and carries their claims over. */
+  restoreFrom?: { revision: number; itemIds: string[] };
 }): PreparedSave {
-  const { companyId, actorId, kind, entry, content, note } = input;
+  const { companyId, actorId, kind, entry, content, note, restoreFrom } = input;
   const requestId = crypto.randomUUID();
   const savedAt = new Date().toISOString();
   if (!entry || entry.revision === 0) {
@@ -96,6 +98,7 @@ export function prepareEntrySave(input: {
       provenance,
       reviewStatus: "unreviewed",
       reason: note,
+      ...(restoreFrom ? { restoreFrom } : {}),
       requestId,
     }),
   };

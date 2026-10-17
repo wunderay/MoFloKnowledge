@@ -7,9 +7,10 @@
 //  - the "Edit <Field>" button keeps its name and is described by the value it shows;
 //  - focus is not taken back after a save when the person has moved on.
 // Undo is a new revision of the list (a revert would need the revert endpoint, which the locked tests do not allow).
-import { describe, expect, it, vi } from "vitest";
-import { buildEmptyDraft } from "../helpers/knowledge-view-fixtures";
-import { focusPath, focusedPath, type View } from "../helpers/knowledge-view-site-all-runtime";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { SNAPSHOT_ID, VERSIONS, buildEmptyDraft } from "../helpers/knowledge-view-fixtures";
+import { focusPath, focusedPath, type FakeServer, type View } from "../helpers/knowledge-view-site-all-runtime";
+import { timing } from "../../src/components/knowledge-view/timing";
 import {
   BUYERS,
   INDUSTRY,
@@ -38,9 +39,31 @@ import {
   undoButtons,
   valueOf,
   creationWrite,
+  disabled,
 } from "../helpers/knowledge-view-inline-edit";
 
 vi.setConfig({ testTimeout: 60_000 });
+afterEach(() => {
+  timing.reread = 8000;
+  timing.fresh = 12000;
+});
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** After the first successful write, GET /draft never answers. */
+function hangDraftReadsAfterWrite(server: FakeServer) {
+  let written = false;
+  const original = server.fetch;
+  server.fetch = (async (input: unknown, init?: { method?: string; body?: unknown }) => {
+    const method = (init?.method ?? "GET").toUpperCase();
+    const path = String(input).split("?")[0]!;
+    if (method === "GET" && /\/draft$/.test(path) && written) {
+      server.requests.push({ method, path, body: undefined });
+      return new Promise(() => {});
+    }
+    const reply = await original(input, init);
+    if (method !== "GET" && reply.ok) written = true;
+    return reply;
+  }) as typeof server.fetch;
+}
 
 /** Chooses a section in the "Knowledge section" listbox, as a person does. */
 async function switchTo(view: View, label: string) {
@@ -194,5 +217,58 @@ describe("focus after a save", () => {
     view.server.release();
     await view.settle();
     expect(focusedPath(), "focus stays where the person put it").toBe(elsewhere.path);
+  });
+});
+
+describe("saves stop when the sections are gone", () => {
+  it("a save queued behind one in flight is never sent once the provider is disposed", async () => {
+    const view = await open("All sections", { versions: VERSIONS });
+    view.server.hold();
+    await editAndEnter(view, LEGAL, "Cooperative");
+    await editAndEnter(view, INDUSTRY, "Tea trading");
+    expect(view.server.writes, "the second waits for the first").toHaveLength(1);
+    // Leaving the draft takes the sections, and what runs their saves, away.
+    const select = one(view.byRole("combobox", "Knowledge version"), "the version selector");
+    select.props.onChange({ target: { value: SNAPSHOT_ID } });
+    view.app.flushSync();
+    await view.settle();
+    expect(view.byRole("button", /^edit /i), "the editors are gone").toHaveLength(0);
+    view.server.writeFailure = { status: 503, message: "Draft store is down." };
+    view.server.release();
+    await view.settle();
+    await sleep(50);
+    await view.settle();
+    expect(view.server.writes, "the queued save never goes out").toHaveLength(1);
+  });
+});
+
+describe("a re-read that does not settle", () => {
+  it("leaves the view stale: 'Saved. Reload…', editing blocked, the save not sent again, the queued save not sent", async () => {
+    timing.reread = 150;
+    timing.fresh = 600;
+    const view = await open("All sections", { server: hangDraftReadsAfterWrite });
+    await editAndEnter(view, LEGAL, "Cooperative");
+    await editAndEnter(view, INDUSTRY, "Tea trading");
+    expect(view.text(), "still waiting for the read").not.toMatch(/saved\. reload/i);
+    expect(view.server.writes).toHaveLength(1);
+    await sleep(400);
+    await view.settle();
+    expect(view.text()).toMatch(/saved\. reload to see the latest changes\./i);
+    for (const button of view.byRole("button", /^edit /i)) expect(disabled(view, button), `${view.nameOf(button)} is disabled`).toBe(true);
+    expect(view.server.writes, "the committed save is not sent again and the queued one is held back").toHaveLength(1);
+    expect(alertText(view), "the queued change says why it was not made").toMatch(/out of date|reload/i);
+    expect(view.byRole("button", /^retry$/i), "nothing to retry").toHaveLength(0);
+  });
+});
+
+describe("Undo", () => {
+  it("asks the server to put the item back as the revision before the removal had it", async () => {
+    const view = await open("Customers & Industry");
+    const before = stored(view, BUYERS.kind);
+    const target = itemsOf(before, BUYERS.path)[1]!;
+    await removeChip(view, target.text);
+    await click(view, one(undoButtons(view), "Undo"));
+    expect(view.server.writes[0]!.body.restoreFrom, "the removal is an ordinary save").toBeUndefined();
+    expect(view.server.writes[1]!.body.restoreFrom).toEqual({ revision: before.current_revision, itemIds: [target.id] });
   });
 });

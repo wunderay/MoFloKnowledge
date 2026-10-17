@@ -17,6 +17,7 @@ import { canonicalStringify } from "@/knowledge/canonical-json";
 import { ApiError } from "../api-client";
 import { Icon } from "../icons";
 import { prepareEntrySave, sendEntrySave, type PreparedSave, type StoredEntry } from "./save-entry";
+import { timing } from "./timing";
 
 // ---- what an editable view offers its fields ------------------------------------------------------------------------
 
@@ -35,8 +36,6 @@ export type EditEnv = {
 const MAX_ITEMS = 500;
 const SAVED_MS = 3000;
 const UNDO_MS = 10000;
-/** How long a save waits for the view to show the revision it just wrote before the next save goes on regardless. */
-const FRESH_MS = 8000;
 const CONFLICT = "This value changed since the page was loaded. Reload the page to get the latest, then try again.";
 const STALE = "The view is out of date. Reload to see the latest, then make this change again.";
 const TOO_LONG = `Keep this to ${MAX_TEXT_LENGTH.toLocaleString("en-US")} characters or fewer.`;
@@ -59,7 +58,7 @@ function failure(error: unknown): Feedback {
 }
 
 /** Parses `content` as the entry of `kind` and prepares its save (a new entry or a new revision). */
-function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: string): PreparedSave {
+function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: string, restoreFrom?: Task["restoreFrom"]): PreparedSave {
   return prepareEntrySave({
     companyId: env.companyId,
     actorId: env.actorId,
@@ -67,6 +66,7 @@ function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: s
     entry: env.entry(kind),
     content: parseBusinessEntry(kind, content),
     note,
+    restoreFrom,
   });
 }
 /** A copy of the stored content of `kind` (the defaults when the company has no such entry yet). */
@@ -86,7 +86,7 @@ type Slot = {
   problem: string;
   feedback: Feedback;
   /** The last removal of a chip list, which Undo takes back. */
-  toast: { text: string; previous: IdentifiedText[]; id: string } | null;
+  toast: { text: string; previous: IdentifiedText[]; id: string; revision: number } | null;
   /** Focus goes back to the field's button once its editor has closed (text fields). */
   refocus: boolean;
   /** Where a chip list puts focus next: a chip's id, or "add". `n` makes a repeated request new. */
@@ -99,6 +99,10 @@ type Task = {
   kind: EntryKind;
   note: string;
   transform: (content: Content) => Content;
+  /** An Undo: put these items back as this earlier revision had them (the server carries their claims over). */
+  restoreFrom?: { revision: number; itemIds: string[] };
+  /** The revision this change was made on, set when it is built. */
+  baseRevision?: number;
   /** Runs once the change is committed (and again after a retry). */
   then?: () => void;
   prepared?: PreparedSave;
@@ -137,10 +141,23 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
   latest.current.env = env;
   const waiting = useRef<(() => void)[]>([]);
   const hostRef = useRef<Host | null>(null);
+  /** False once the provider is gone: saves that have not started are dropped and nothing continues after one that had. */
+  const alive = useRef(true);
+  /** Set when the view did not show a save's revision in time: the saves of that kind behind it stop until it does. */
+  const halted = useRef<{ kind: EntryKind; revision: number } | null>(null);
   // Resolves the saves that wait for the view to show a revision (after every render).
   useEffect(() => {
+    const stop = halted.current;
+    if (stop && (latest.current.env.entry(stop.kind)?.revision ?? 0) >= stop.revision) halted.current = null;
     for (const check of [...waiting.current]) check();
   });
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      for (const check of [...waiting.current]) check();
+    };
+  }, []);
   if (!hostRef.current) {
     const busy = new Set<string>();
     const tasks = new Map<string, Task>();
@@ -152,18 +169,18 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
       setSlots(latest.current.slots);
     };
     const slot = (key: string) => latest.current.slots[key] ?? EMPTY;
-    /** Resolves once the view shows `revision` of the entry of `kind` (or is blocked, or a while has passed). */
+    /** Resolves true once the view shows `revision` of the entry of `kind` (or is blocked, or the provider is gone), false if a while passed first. */
     const fresh = (kind: EntryKind, revision: number) =>
-      new Promise<void>((resolve) => {
-        const ready = () => latest.current.env.blocked || (latest.current.env.entry(kind)?.revision ?? 0) >= revision;
-        if (ready()) return resolve();
-        const done = () => {
+      new Promise<boolean>((resolve) => {
+        const ready = () => !alive.current || latest.current.env.blocked || (latest.current.env.entry(kind)?.revision ?? 0) >= revision;
+        if (ready()) return resolve(true);
+        const done = (shown: boolean) => {
           clearTimeout(timer);
           waiting.current = waiting.current.filter((check) => check !== poll);
-          resolve();
+          resolve(shown);
         };
-        const poll = () => ready() && done();
-        const timer = setTimeout(done, FRESH_MS);
+        const poll = () => ready() && done(true);
+        const timer = setTimeout(() => done(false), timing.fresh);
         waiting.current.push(poll);
       });
     const execute = async (key: string, task: Task): Promise<boolean> => {
@@ -172,8 +189,10 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
         patch(key, { feedback });
         return false;
       };
+      // A save that has not started when the provider goes is dropped (the queue is not released against a view that is gone).
+      if (!alive.current) return false;
       const env = latest.current.env;
-      if (env.blocked) return settle({ kind: "failed", message: STALE, retry: false });
+      if (env.blocked || halted.current?.kind === task.kind) return settle({ kind: "failed", message: STALE, retry: false });
       if (!task.prepared) {
         try {
           const base = baseOf(env, task.kind);
@@ -186,7 +205,8 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
             patch(key, { feedback: IDLE });
             return true;
           }
-          task.prepared = prepareContent(env, task.kind, content, task.note);
+          task.baseRevision = env.entry(task.kind)?.revision ?? 0;
+          task.prepared = prepareContent(env, task.kind, content, task.note, task.restoreFrom);
         } catch (error) {
           return settle({ kind: "failed", message: messageOf(error), retry: false });
         }
@@ -195,15 +215,18 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
       try {
         await sendEntrySave(task.prepared);
       } catch (error) {
-        return settle(failure(error));
+        return alive.current ? settle(failure(error)) : false;
       }
       tasks.delete(key);
+      if (!alive.current) return false;
       try {
         await latest.current.env.onSaved();
       } catch {
         // The save is committed; the view marks itself stale and offers a reload.
       }
-      await fresh(task.kind, revision);
+      const shown = await fresh(task.kind, revision);
+      if (!alive.current) return false;
+      if (!shown) halted.current = { kind: task.kind, revision };
       busy.delete(key);
       task.then?.();
       patch(key, { feedback: { kind: "saved" } });
@@ -739,7 +762,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
     // Focus goes to the next chip, or to the Add control when there is none.
     const next = items[index + 1]?.id ?? "add";
     host.patch(key, { problem: "" });
-    void host.submit(key, {
+    const task: Task = {
       kind: list.kind,
       note: `Removed ${noun} from the knowledge view.`,
       transform: (content) => {
@@ -747,10 +770,11 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
         return content;
       },
       then: () => {
-        host.patch(key, { toast: { text: item.label, previous, id: item.id } });
+        host.patch(key, { toast: { text: item.label, previous, id: item.id, revision: task.baseRevision ?? 0 } });
         host.requestFocus(key, next);
       },
-    });
+    };
+    void host.submit(key, task);
   };
   const undo = () => {
     const taken = host.slot(key).toast;
@@ -758,6 +782,8 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
     void host.submit(key, {
       kind: list.kind,
       note: `Restored the ${noun} list after a removal.`,
+      // The item goes back with the claims and evidence it had before the removal (the server checks and carries them over).
+      restoreFrom: taken.revision > 0 ? { revision: taken.revision, itemIds: [taken.id] } : undefined,
       transform: (content) => {
         content[list.key] = taken.previous;
         return content;
