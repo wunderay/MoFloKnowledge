@@ -38,7 +38,7 @@ export function SectionView({
   /** The `offering` URL value and how a click on the offering list changes it. */
   offeringId?: string;
   onSelectOffering?: (id: string) => void;
-  /** An editable draft offers "Import from website"; `onSaved` reloads the draft after it saved. */
+  /** An editable draft offers "+ Add page" and "Import from website"; `onSaved` reloads the draft after it saved. */
   canEdit?: boolean;
   actorId?: string;
   /** True while the view is older than a saved import: the picker would work from stale entries. */
@@ -67,6 +67,7 @@ export function SectionView({
         site={siteLinksFrom(entries, citationContext)}
         canEdit={canEdit}
         actorId={actorId}
+        website={profile.foundation.website}
         importBlocked={importBlocked}
         onSaved={onSaved}
         level={level}

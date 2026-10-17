@@ -52,6 +52,20 @@ const open = {
   snapshot: (draft = siteDraft()) => openView({ section: "Site Knowledge", snapshot: siteSnapshot(draft) }),
 };
 const ADD = siteAddHref(COMPANY_ID);
+/**
+ * The "+ Add page" control of a card: a link to the editor in a saved snapshot, a button that opens the
+ * add-page dialog on an editable draft (Quest add-page-modal). The link must not exist on a draft.
+ */
+function expectAddPage(page: Page, card: Parameters<typeof addPageLinks>[1], source: Source) {
+  const buttons = page.$(card as never).find("button").toArray().filter((b) => /^\+\s*add page$/i.test(norm(page.$(b).text())));
+  if (source === "draft") {
+    expect(addPageLinks(page, card), "no link to the editor on an editable draft").toEqual([]);
+    expect(buttons, 'one "+ Add page" button').toHaveLength(1);
+  } else {
+    expect(addPageLinks(page, card)).toEqual([ADD]);
+    expect(buttons).toHaveLength(0);
+  }
+}
 
 function cardOf(view: View) {
   const page = view.page();
@@ -122,16 +136,16 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
   });
 
   // C1 behavioural
-  it("ends with a \"+ Add page\" link to the editor on the site_links entry", async () => {
+  it("ends with a \"+ Add page\" link to the editor (a button on an editable draft)", async () => {
     const { page, card } = cardOf(await open[source]());
-    expect(addPageLinks(page, card)).toEqual([ADD]);
+    expectAddPage(page, card, source);
   });
 
   // C2 behavioural
   it("Edge case: an entry with an empty links list shows the empty state and still offers \"+ Add page\"", async () => {
     const { page, card } = cardOf(await open[source](emptySiteDraft()));
     expect(siteCardText(page, card)).toMatch(/no (internal )?(links|pages)/i);
-    expect(addPageLinks(page, card)).toEqual([ADD]);
+    expectAddPage(page, card, source);
     expect(anchorsIn(page, card).filter((a) => /^https?:/.test(a.href))).toEqual([]);
     expect(siteCardText(page, card)).not.toMatch(BAD);
   });
@@ -140,7 +154,7 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
   it("Edge case: a company with no site_links entry shows the same empty state and \"+ Add page\"", async () => {
     const { page, card } = cardOf(await open[source](noSiteDraft()));
     expect(siteCardText(page, card)).toMatch(/no (internal )?(links|pages)/i);
-    expect(addPageLinks(page, card)).toEqual([ADD]);
+    expectAddPage(page, card, source);
     expect(siteCardText(page, card)).not.toMatch(BAD);
   });
 
@@ -289,7 +303,9 @@ describe("C8 saved snapshots", () => {
       const b = cardOf(await openView({ section: "Site Knowledge", snapshot: fx.snapshot() }));
       expect(siteCardText(a.page, a.card).length, "the draft card has content").toBeGreaterThan(20);
       expect(strip(siteCardText(b.page, b.card))).toBe(strip(siteCardText(a.page, a.card)));
-      expect(anchorsIn(b.page, b.card).map((x) => x.href)).toEqual(anchorsIn(a.page, a.card).map((x) => x.href));
+      // The draft's "+ Add page" is a button and the snapshot's a link to the editor: compare the other anchors.
+      const others = (x: { href: string }) => x.href !== ADD;
+      expect(anchorsIn(b.page, b.card).filter(others).map((x) => x.href)).toEqual(anchorsIn(a.page, a.card).filter(others).map((x) => x.href));
     }
     const plain = noSiteDraft();
     const a = cardOf(await open.draft(plain));
