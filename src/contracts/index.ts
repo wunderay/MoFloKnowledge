@@ -1,5 +1,6 @@
 export * from "./primitives";
 export * from "./value-types";
+export * from "./storage-ref";
 export * from "./numeric-values";
 export * from "./company-foundation";
 export * from "./positioning";

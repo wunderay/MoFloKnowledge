@@ -1,6 +1,7 @@
 {
   "company_foundation": {
     "overview": null,
+    "revenue": null,
     "website": null,
     "industry": null,
     "business_model": null,
@@ -36,7 +37,8 @@
     "logos": []
   },
   "online_presence": {
-    "social_media_links": []
+    "social_media_links": [],
+    "phone": null
   },
   "site_links": {
     "links": []

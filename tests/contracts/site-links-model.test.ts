@@ -312,9 +312,11 @@ describe("C4 [behavioural] field registry, provenance and coverage accept /site_
   });
 
   it("[non-regression] the original 41 registry fields are still present", () => {
-    const original = FIELD_REGISTRY.filter((item) => (item.kind as string) !== "site_links");
+    // The six model fields (revenue, phone, age, nationality, portrait, images) came later and have their own tests.
+    const later = ["/company_foundation/revenue", "/online_presence/phone", "/key_people/@id/age", "/key_people/@id/nationality", "/key_people/@id/portrait", "/offerings/@id/images"];
+    const original = FIELD_REGISTRY.filter((item) => (item.kind as string) !== "site_links" && !later.includes(item.path));
     expect(original).toHaveLength(41);
-    expect(requiredCoverageTargets(createEmptyBusiness()).filter((target) => !target.startsWith("/site_links"))).toHaveLength(31);
+    expect(requiredCoverageTargets(createEmptyBusiness()).filter((target) => !target.startsWith("/site_links") && !later.includes(target))).toHaveLength(31);
   });
 });
 

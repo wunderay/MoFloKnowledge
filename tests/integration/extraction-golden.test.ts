@@ -11,7 +11,7 @@ import { extractAndFinish } from "../../src/worker/extract/pipeline";
 import { captureHtml } from "../../src/worker/capture/html";
 import type { Job, JobRepository } from "../../src/worker/job-repository";
 const observations = technicalObservations(page);
-it("validates all41 required assessments, stable IDs, exact evidence and explicit address conflicts", () => {
+it("validates all 47 required assessments, stable IDs, exact evidence and explicit address conflicts", () => {
   const candidates = validateCandidates(
     deterministicCandidates(page, observations),
     page,
@@ -28,7 +28,7 @@ it("validates all41 required assessments, stable IDs, exact evidence and explici
   expect(proposals).toHaveLength(7);
   expect(
     proposals.flatMap((p) => p.provenance.coverage.flatMap((c) => c.targets)),
-  ).toHaveLength(41);
+  ).toHaveLength(47);
   const claims = proposals.flatMap((p) => p.provenance.claims);
   for (const p of proposals)
     expect(

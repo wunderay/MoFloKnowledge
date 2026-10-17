@@ -7,6 +7,7 @@ import {
 } from "./primitives";
 import { IdentifiedTextSchema } from "./value-types";
 import { PricingSchema } from "./numeric-values";
+import { OfferingImageSchema, MAX_OFFERING_IMAGES } from "./storage-ref";
 export const OfferingSchema = z
   .object({
     id: UUIDSchema,
@@ -17,6 +18,7 @@ export const OfferingSchema = z
     features: collection(IdentifiedTextSchema),
     pricing: PricingSchema.nullable(),
     url: URLSchema.nullable(),
+    images: collection(OfferingImageSchema, MAX_OFFERING_IMAGES),
   })
   .strict()
   .refine(
@@ -27,7 +29,8 @@ export const OfferingSchema = z
       v.category !== null ||
       v.features.length > 0 ||
       v.pricing !== null ||
-      v.url !== null,
+      v.url !== null ||
+      v.images.length > 0,
     "Cannot create wholly empty offering",
   );
 export type Offering = z.infer<typeof OfferingSchema>;

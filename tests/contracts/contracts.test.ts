@@ -53,11 +53,11 @@ describe("canonical business contracts", () => {
     ])
       expect(URLSchema.safeParse(url).success).toBe(false);
   });
-  it("preserves all 42 exact field defaults and rejects missing or unknown nested keys", () => {
+  it("preserves all 48 exact field defaults and rejects missing or unknown nested keys", () => {
     const empty = createEmptyBusiness();
-    expect(FIELD_REGISTRY).toHaveLength(42);
+    expect(FIELD_REGISTRY).toHaveLength(48);
     expect(BusinessSchema.parse(empty)).toEqual(empty);
-    expect(requiredCoverageTargets(empty)).toHaveLength(32);
+    expect(requiredCoverageTargets(empty)).toHaveLength(34);
     const missing = clone();
     delete (
       missing.company_foundation as Partial<typeof missing.company_foundation>

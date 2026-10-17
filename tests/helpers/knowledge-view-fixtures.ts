@@ -163,6 +163,9 @@ export function buildBusiness(): Business {
     role: "Leads sourcing and strategy.",
     gender: null,
     background_or_relevance: "Ten years buying green coffee.",
+    age: null,
+    nationality: null,
+    portrait: null,
   } as Business["key_people"][number]);
   b.offerings.push({
     id: uid(),
@@ -173,6 +176,7 @@ export function buildBusiness(): Business {
     features: ts("Roasted to order"),
     pricing: null,
     url: `${SITE}/subscribe`,
+    images: [],
   } as Business["offerings"][number]);
   return b;
 }

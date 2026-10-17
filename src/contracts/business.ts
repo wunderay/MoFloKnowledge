@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { collection } from "./primitives";
+import { createEntryDefault } from "./defaults";
 import { CompanyFoundationSchema } from "./company-foundation";
 import { PositioningSchema } from "./positioning";
 import { MarketAndCustomersSchema } from "./market-and-customers";
@@ -45,6 +46,17 @@ export function parseBusinessEntry(
   content: unknown,
 ): BusinessEntry {
   return businessEntrySchemas[kind].parse(content);
+}
+/**
+ * Reads stored content. Revisions are immutable history, so one saved before a field existed omits it: the missing
+ * fields read as their defaults. New writes use parseBusinessEntry, which stays strict.
+ */
+export function parseStoredEntry(kind: EntryKind, content: unknown): BusinessEntry {
+  const complete =
+    content && typeof content === "object" && !Array.isArray(content)
+      ? { ...createEntryDefault(kind), ...content }
+      : content;
+  return parseBusinessEntry(kind, complete);
 }
 export const BusinessSchema = z
   .object({

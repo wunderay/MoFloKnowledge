@@ -15,6 +15,19 @@
           }
         ]
       },
+      "revenue": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "website": {
         "anyOf": [
           {
@@ -487,6 +500,7 @@
     },
     "required": [
       "overview",
+      "revenue",
       "website",
       "industry",
       "business_model",
@@ -1257,10 +1271,22 @@
           "additionalProperties": false
         },
         "maxItems": 500
+      },
+      "phone": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^[0-9]{10}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
       }
     },
     "required": [
-      "social_media_links"
+      "social_media_links",
+      "phone"
     ],
     "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1390,6 +1416,228 @@
             "type": "null"
           }
         ]
+      },
+      "age": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 150
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "nationality": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "portrait": {
+        "anyOf": [
+          {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.png$"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "enum": [
+                      "image/png"
+                    ]
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5242880
+                  }
+                },
+                "required": [
+                  "id",
+                  "path",
+                  "content_type",
+                  "size_bytes"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpg$"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "enum": [
+                      "image/jpeg"
+                    ]
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5242880
+                  }
+                },
+                "required": [
+                  "id",
+                  "path",
+                  "content_type",
+                  "size_bytes"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpeg$"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "enum": [
+                      "image/jpeg"
+                    ]
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5242880
+                  }
+                },
+                "required": [
+                  "id",
+                  "path",
+                  "content_type",
+                  "size_bytes"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.gif$"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "enum": [
+                      "image/gif"
+                    ]
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5242880
+                  }
+                },
+                "required": [
+                  "id",
+                  "path",
+                  "content_type",
+                  "size_bytes"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp$"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "enum": [
+                      "image/webp"
+                    ]
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5242880
+                  }
+                },
+                "required": [
+                  "id",
+                  "path",
+                  "content_type",
+                  "size_bytes"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.svg$"
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "enum": [
+                      "image/svg+xml"
+                    ]
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5242880
+                  }
+                },
+                "required": [
+                  "id",
+                  "path",
+                  "content_type",
+                  "size_bytes"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
       }
     },
     "required": [
@@ -1398,7 +1646,10 @@
       "title",
       "role",
       "gender",
-      "background_or_relevance"
+      "background_or_relevance",
+      "age",
+      "nationality",
+      "portrait"
     ],
     "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
@@ -1644,6 +1895,200 @@
             "type": "null"
           }
         ]
+      },
+      "images": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.png$"
+                },
+                "content_type": {
+                  "type": "string",
+                  "enum": [
+                    "image/png"
+                  ]
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5242880
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "content_type",
+                "size_bytes"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpg$"
+                },
+                "content_type": {
+                  "type": "string",
+                  "enum": [
+                    "image/jpeg"
+                  ]
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5242880
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "content_type",
+                "size_bytes"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpeg$"
+                },
+                "content_type": {
+                  "type": "string",
+                  "enum": [
+                    "image/jpeg"
+                  ]
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5242880
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "content_type",
+                "size_bytes"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.gif$"
+                },
+                "content_type": {
+                  "type": "string",
+                  "enum": [
+                    "image/gif"
+                  ]
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5242880
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "content_type",
+                "size_bytes"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp$"
+                },
+                "content_type": {
+                  "type": "string",
+                  "enum": [
+                    "image/webp"
+                  ]
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5242880
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "content_type",
+                "size_bytes"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.svg$"
+                },
+                "content_type": {
+                  "type": "string",
+                  "enum": [
+                    "image/svg+xml"
+                  ]
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5242880
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "content_type",
+                "size_bytes"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "maxItems": 20
       }
     },
     "required": [
@@ -1654,7 +2099,8 @@
       "category",
       "features",
       "pricing",
-      "url"
+      "url",
+      "images"
     ],
     "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
@@ -2701,7 +3147,7 @@
           ],
           "additionalProperties": false
         },
-        "maxItems": 1001
+        "maxItems": 4033
       },
       "operations": {
         "type": "array",
@@ -2784,6 +3230,19 @@
         "type": "object",
         "properties": {
           "overview": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revenue": {
             "anyOf": [
               {
                 "type": "string",
@@ -3268,6 +3727,7 @@
         },
         "required": [
           "overview",
+          "revenue",
           "website",
           "industry",
           "business_model",
@@ -4034,10 +4494,22 @@
               "additionalProperties": false
             },
             "maxItems": 500
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{10}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
-          "social_media_links"
+          "social_media_links",
+          "phone"
         ],
         "additionalProperties": false
       },
@@ -4167,6 +4639,228 @@
                   "type": "null"
                 }
               ]
+            },
+            "age": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 150
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "nationality": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000,
+                  "pattern": "\\S"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "portrait": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "path": {
+                          "type": "string",
+                          "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.png$"
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "enum": [
+                            "image/png"
+                          ]
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5242880
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "path",
+                        "content_type",
+                        "size_bytes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "path": {
+                          "type": "string",
+                          "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpg$"
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "enum": [
+                            "image/jpeg"
+                          ]
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5242880
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "path",
+                        "content_type",
+                        "size_bytes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "path": {
+                          "type": "string",
+                          "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpeg$"
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "enum": [
+                            "image/jpeg"
+                          ]
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5242880
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "path",
+                        "content_type",
+                        "size_bytes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "path": {
+                          "type": "string",
+                          "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.gif$"
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "enum": [
+                            "image/gif"
+                          ]
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5242880
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "path",
+                        "content_type",
+                        "size_bytes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "path": {
+                          "type": "string",
+                          "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp$"
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "enum": [
+                            "image/webp"
+                          ]
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5242880
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "path",
+                        "content_type",
+                        "size_bytes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "path": {
+                          "type": "string",
+                          "pattern": "^portraits/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.svg$"
+                        },
+                        "content_type": {
+                          "type": "string",
+                          "enum": [
+                            "image/svg+xml"
+                          ]
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5242880
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "path",
+                        "content_type",
+                        "size_bytes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -4175,7 +4869,10 @@
             "title",
             "role",
             "gender",
-            "background_or_relevance"
+            "background_or_relevance",
+            "age",
+            "nationality",
+            "portrait"
           ],
           "additionalProperties": false
         },
@@ -4424,6 +5121,200 @@
                   "type": "null"
                 }
               ]
+            },
+            "images": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "path": {
+                        "type": "string",
+                        "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.png$"
+                      },
+                      "content_type": {
+                        "type": "string",
+                        "enum": [
+                          "image/png"
+                        ]
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5242880
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "path",
+                      "content_type",
+                      "size_bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "path": {
+                        "type": "string",
+                        "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpg$"
+                      },
+                      "content_type": {
+                        "type": "string",
+                        "enum": [
+                          "image/jpeg"
+                        ]
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5242880
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "path",
+                      "content_type",
+                      "size_bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "path": {
+                        "type": "string",
+                        "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpeg$"
+                      },
+                      "content_type": {
+                        "type": "string",
+                        "enum": [
+                          "image/jpeg"
+                        ]
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5242880
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "path",
+                      "content_type",
+                      "size_bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "path": {
+                        "type": "string",
+                        "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.gif$"
+                      },
+                      "content_type": {
+                        "type": "string",
+                        "enum": [
+                          "image/gif"
+                        ]
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5242880
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "path",
+                      "content_type",
+                      "size_bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "path": {
+                        "type": "string",
+                        "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp$"
+                      },
+                      "content_type": {
+                        "type": "string",
+                        "enum": [
+                          "image/webp"
+                        ]
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5242880
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "path",
+                      "content_type",
+                      "size_bytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "path": {
+                        "type": "string",
+                        "pattern": "^offering-images/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.svg$"
+                      },
+                      "content_type": {
+                        "type": "string",
+                        "enum": [
+                          "image/svg+xml"
+                        ]
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5242880
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "path",
+                      "content_type",
+                      "size_bytes"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "maxItems": 20
             }
           },
           "required": [
@@ -4434,7 +5325,8 @@
             "category",
             "features",
             "pricing",
-            "url"
+            "url",
+            "images"
           ],
           "additionalProperties": false
         },
@@ -4901,7 +5793,7 @@
               ],
               "additionalProperties": false
             },
-            "maxItems": 1001
+            "maxItems": 4033
           },
           "operations": {
             "type": "array",
