@@ -8,7 +8,7 @@ The implementation is partitioned by source rule:
 | --- | --- |
 | Reusable primitives and nested structures, 635–680 | `primitives.ts`, `value-types.ts` |
 | Employee/pricing semantics, 646–649, 685–691, 770 | `numeric-values.ts` |
-| Seven categories, 106–184, 697–716 | category schemas and `field-registry.json` |
+| Seven categories, 106–184, 697–716, plus the optional `site_links` singleton (`site-links.ts`) | category schemas and `field-registry.json` |
 | Source/claim/export shapes, 717–767 | `provenance.ts`, `knowledge-base.ts` |
 | Stable identity and pointers, 623–631 | `stable-pointer.ts` |
 | Compatible factual leaf claims, complete coverage and support graph, 770–774 | `validate-provenance.ts` |

@@ -363,6 +363,18 @@
     "coverageRequired": true
   },
   {
+    "path": "/site_links/links",
+    "kind": "site_links",
+    "field": "links",
+    "type": "SiteLink[]",
+    "default": [],
+    "allowedOrigins": [
+      "source_backed",
+      "user_provided"
+    ],
+    "coverageRequired": true
+  },
+  {
     "path": "/key_people/@id/name",
     "kind": "key_person",
     "field": "name",

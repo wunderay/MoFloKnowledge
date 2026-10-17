@@ -1265,6 +1265,60 @@
     "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
+  "site_links": {
+    "type": "object",
+    "properties": {
+      "links": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000,
+              "pattern": "\\S"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 4096,
+              "format": "uri"
+            },
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000,
+                  "pattern": "\\S"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "url",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 500
+      }
+    },
+    "required": [
+      "links"
+    ],
+    "additionalProperties": false,
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
   "key_person": {
     "type": "object",
     "properties": {
@@ -2254,6 +2308,7 @@
                 "market_and_customers",
                 "branding_and_style",
                 "online_presence",
+                "site_links",
                 "key_person",
                 "offering"
               ]
@@ -3986,6 +4041,59 @@
         ],
         "additionalProperties": false
       },
+      "site_links": {
+        "type": "object",
+        "properties": {
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000,
+                  "pattern": "\\S"
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 4096,
+                  "format": "uri"
+                },
+                "note": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 20000,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "url",
+                "note"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "links"
+        ],
+        "additionalProperties": false
+      },
       "key_people": {
         "type": "array",
         "items": {
@@ -4400,6 +4508,7 @@
                     "market_and_customers",
                     "branding_and_style",
                     "online_presence",
+                    "site_links",
                     "key_person",
                     "offering"
                   ]
@@ -4874,6 +4983,7 @@
       "market_and_customers",
       "branding_and_style",
       "online_presence",
+      "site_links",
       "key_people",
       "offerings",
       "schema_version",

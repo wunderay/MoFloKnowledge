@@ -36,6 +36,7 @@ const VIEW_SPECS = {
   market_and_customers: { label: "Customers & Industry", description: "Who you serve, the industries they work in, and what they need." },
   branding_and_style: { label: "Branding & Style", description: CATEGORY_SPECS.branding_and_style!.description },
   key_person: { label: "Key People", description: CATEGORY_SPECS.key_person!.description },
+  site_links: { label: "Site links", description: CATEGORY_SPECS.site_links!.description },
 };
 const MARKETING_FIELDS = new Set(["channels", "funnels", "ctas"]);
 const SHARED_CUSTOMER_FIELDS = new Set(["target_buyers", "customer_needs", "ideal_customer_personas"]);

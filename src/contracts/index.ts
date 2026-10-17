@@ -6,6 +6,7 @@ export * from "./positioning";
 export * from "./market-and-customers";
 export * from "./branding-and-style";
 export * from "./online-presence";
+export * from "./site-links";
 export * from "./person";
 export * from "./offering";
 export * from "./business";

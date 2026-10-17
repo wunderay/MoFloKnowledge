@@ -33,7 +33,7 @@ export function documentRuns(paragraph: DocumentParagraph): DocumentTextRun[] {
 const LABELS: Record<string, string> = {
   company_foundation: "Company details", positioning: "Pitch & story",
   market_and_customers: "Market & customers", branding_and_style: "Branding & style",
-  online_presence: "Online presence", key_people: "Key people", offerings: "Offerings",
+  online_presence: "Online presence", site_links: "Site links", key_people: "Key people", offerings: "Offerings",
   ctas: "Calls to action", alternative_company_names: "Also known as",
   background_or_relevance: "Background", raw: "Original wording", url: "Website",
   profile_url: "Profile URL", line1: "Address line 1", line2: "Address line 2",
@@ -134,7 +134,10 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       if (key !== "id") collect(child, `${path}/${pointer(key)}`, `${title} / ${label(key)}`);
     });
   };
-  for (const key of ["company_foundation", "positioning", "market_and_customers", "branding_and_style", "online_presence", "key_people", "offerings"] as const) collect(business[key], `/${key}`, label(key));
+  for (const key of ["company_foundation", "positioning", "market_and_customers", "branding_and_style", "online_presence", "site_links", "key_people", "offerings"] as const) {
+    // Snapshots saved before site links existed have no such section.
+    if (business[key] !== undefined) collect(business[key], `/${key}`, label(key));
+  }
   const fact = (text: string, path: string): DocumentTextRun => ({ text, citations: citations(path) });
   const sentence = (text: string) => /[.!?]$/.test(text.trim()) ? text : `${text}.`;
   const normalized = (text: string) => text.replace(/\s+/g, " ").trim();
@@ -355,6 +358,16 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   section("Branding & style", business.branding_and_style, "/branding_and_style");
   if (populated(business.branding_and_style.fonts) || populated(business.branding_and_style.brand_colors)) add("Website observations are not confirmed brand guidelines unless explicitly marked as confirmed.", { muted: true });
   section("Online presence", business.online_presence, "/online_presence");
+  const siteLinks = business.site_links?.links ?? [];
+  if (siteLinks.length) {
+    heading("Site links");
+    for (const item of siteLinks) {
+      const root = `/site_links/links/@${item.id}`;
+      const link = fact(item.url, `${root}/url`);
+      prose([fact(`${item.title}: `, `${root}/title`), /^https?:\/\//i.test(item.url) ? { ...link, href: item.url } : link]);
+      if (item.note) add(item.note, { label: "Note", depth: 1, citations: citations(`${root}/note`) });
+    }
+  }
   for (const [key, title] of [["key_people", "Key people"], ["offerings", "Offerings"]] as const) {
     if (!business[key].length) continue;
     heading(title);
