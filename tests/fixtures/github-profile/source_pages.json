@@ -1,0 +1,1335 @@
+[
+ {
+  "normalized_url": "https://github.com/wunderay",
+  "final_url": "https://github.com/wunderay",
+  "title": "wunderay (Raymond Wu) · GitHub",
+  "capture_status": "captured",
+  "observations": {
+   "ctas": [
+    {
+     "label": "",
+     "destination": null
+    },
+    {
+     "label": "",
+     "destination": null
+    },
+    {
+     "label": "",
+     "destination": null
+    },
+    {
+     "label": "Platform",
+     "destination": null
+    },
+    {
+     "label": "Solutions",
+     "destination": null
+    },
+    {
+     "label": "Resources",
+     "destination": null
+    },
+    {
+     "label": "Open Source",
+     "destination": null
+    },
+    {
+     "label": "Enterprise",
+     "destination": null
+    },
+    {
+     "label": "Search",
+     "destination": null
+    },
+    {
+     "label": "",
+     "destination": null
+    },
+    {
+     "label": "Block or report user",
+     "destination": null
+    },
+    {
+     "label": "",
+     "destination": null
+    },
+    {
+     "label": "Block user",
+     "destination": null
+    },
+    {
+     "label": "Manage cookies",
+     "destination": null
+    },
+    {
+     "label": "Do not share my personal information",
+     "destination": null
+    }
+   ],
+   "forms": [
+    {
+     "action": "https://github.com/settings/blocked_users",
+     "labels": [
+      "Close all issues, pull requests, and discussions opened by this user",
+      "Add an optional note"
+     ],
+     "method": "POST",
+     "context": "Contact GitHub support about this user’s behavior.\nLearn more about reporting abuse.",
+     "heading": "Block or report wunderay",
+     "submitLabels": [
+      "Block user"
+     ]
+    }
+   ],
+   "links": [
+    {
+     "url": "https://github.com/wunderay",
+     "label": "Skip to content"
+    },
+    {
+     "url": "https://github.com/",
+     "label": ""
+    },
+    {
+     "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fwunderay",
+     "label": "Sign in"
+    },
+    {
+     "url": "https://github.com/features/copilot",
+     "label": "GitHub CopilotWrite better code with AI"
+    },
+    {
+     "url": "https://github.com/features/ai/github-app",
+     "label": "GitHub Copilot appDirect agents from issue to merge"
+    },
+    {
+     "url": "https://github.com/mcp",
+     "label": "MCP RegistryIntegrate external tools"
+    },
+    {
+     "url": "https://github.com/features/actions",
+     "label": "ActionsAutomate any workflow"
+    },
+    {
+     "url": "https://github.com/features/codespaces",
+     "label": "CodespacesInstant dev environments"
+    },
+    {
+     "url": "https://github.com/features/issues",
+     "label": "IssuesPlan and track work"
+    },
+    {
+     "url": "https://github.com/features/code-review",
+     "label": "Code ReviewManage code changes"
+    },
+    {
+     "url": "https://github.com/features/code-quality",
+     "label": "Code QualityEnforce quality at merge"
+    },
+    {
+     "url": "https://github.com/security/advanced-security",
+     "label": "GitHub Advanced SecurityFind and fix vulnerabilities"
+    },
+    {
+     "url": "https://github.com/security/advanced-security/code-security",
+     "label": "Code securitySecure your code as you build"
+    },
+    {
+     "url": "https://github.com/security/advanced-security/secret-protection",
+     "label": "Secret protectionStop leaks before they start"
+    },
+    {
+     "url": "https://github.com/why-github",
+     "label": "Why GitHub"
+    },
+    {
+     "url": "https://docs.github.com/",
+     "label": "Documentation"
+    },
+    {
+     "url": "https://github.blog/",
+     "label": "Blog"
+    },
+    {
+     "url": "https://github.blog/changelog",
+     "label": "Changelog"
+    },
+    {
+     "url": "https://github.com/marketplace",
+     "label": "Marketplace"
+    },
+    {
+     "url": "https://github.com/features",
+     "label": "View all features"
+    },
+    {
+     "url": "https://github.com/enterprise",
+     "label": "Enterprises"
+    },
+    {
+     "url": "https://github.com/team",
+     "label": "Small and medium teams"
+    },
+    {
+     "url": "https://github.com/enterprise/startups",
+     "label": "Startups"
+    },
+    {
+     "url": "https://github.com/solutions/industry/nonprofits",
+     "label": "Nonprofits"
+    },
+    {
+     "url": "https://github.com/solutions/use-case/app-modernization",
+     "label": "App Modernization"
+    },
+    {
+     "url": "https://github.com/solutions/use-case/devsecops",
+     "label": "DevSecOps"
+    },
+    {
+     "url": "https://github.com/solutions/use-case/devops",
+     "label": "DevOps"
+    },
+    {
+     "url": "https://github.com/solutions/use-case/ci-cd",
+     "label": "CI/CD"
+    },
+    {
+     "url": "https://github.com/solutions/use-case",
+     "label": "View all use cases"
+    },
+    {
+     "url": "https://github.com/solutions/industry/healthcare",
+     "label": "Healthcare"
+    },
+    {
+     "url": "https://github.com/solutions/industry/financial-services",
+     "label": "Financial services"
+    },
+    {
+     "url": "https://github.com/solutions/industry/manufacturing",
+     "label": "Manufacturing"
+    },
+    {
+     "url": "https://github.com/solutions/industry/government",
+     "label": "Government"
+    },
+    {
+     "url": "https://github.com/solutions/industry",
+     "label": "View all industries"
+    },
+    {
+     "url": "https://github.com/solutions",
+     "label": "View all solutions"
+    },
+    {
+     "url": "https://github.com/resources/articles?topic=ai",
+     "label": "AI"
+    },
+    {
+     "url": "https://github.com/resources/articles?topic=software-development",
+     "label": "Software Development"
+    },
+    {
+     "url": "https://github.com/resources/articles?topic=devops",
+     "label": "DevOps"
+    },
+    {
+     "url": "https://github.com/resources/articles?topic=security",
+     "label": "Security"
+    },
+    {
+     "url": "https://github.com/resources/articles",
+     "label": "View all topics"
+    },
+    {
+     "url": "https://github.com/customer-stories",
+     "label": "Customer stories"
+    },
+    {
+     "url": "https://github.com/resources/events",
+     "label": "Events & webinars"
+    },
+    {
+     "url": "https://github.com/resources/whitepapers",
+     "label": "Ebooks & reports"
+    },
+    {
+     "url": "https://github.com/solutions/executive-insights",
+     "label": "Business insights"
+    },
+    {
+     "url": "https://skills.github.com/",
+     "label": "GitHub Skills"
+    },
+    {
+     "url": "https://docs.github.com/",
+     "label": "Documentation"
+    },
+    {
+     "url": "https://support.github.com/",
+     "label": "Customer support"
+    },
+    {
+     "url": "https://github.com/orgs/community/discussions",
+     "label": "Community forum"
+    },
+    {
+     "url": "https://github.com/trust-center",
+     "label": "Trust center"
+    },
+    {
+     "url": "https://github.com/partners",
+     "label": "Partners"
+    },
+    {
+     "url": "https://github.com/resources",
+     "label": "View all resources"
+    },
+    {
+     "url": "https://github.com/open-source/sponsors",
+     "label": "GitHub SponsorsFund open source developers"
+    },
+    {
+     "url": "https://securitylab.github.com/",
+     "label": "Security Lab"
+    },
+    {
+     "url": "https://maintainers.github.com/",
+     "label": "Maintainer Community"
+    },
+    {
+     "url": "https://stars.github.com/",
+     "label": "GitHub Stars"
+    },
+    {
+     "url": "https://archiveprogram.github.com/",
+     "label": "Archive Program"
+    },
+    {
+     "url": "https://github.com/topics",
+     "label": "Topics"
+    },
+    {
+     "url": "https://github.com/trending",
+     "label": "Trending"
+    },
+    {
+     "url": "https://github.com/collections",
+     "label": "Collections"
+    },
+    {
+     "url": "https://github.com/enterprise",
+     "label": "Enterprise platformAI-powered developer platform"
+    },
+    {
+     "url": "https://github.com/security/advanced-security",
+     "label": "GitHub Advanced SecurityEnterprise-grade security features"
+    },
+    {
+     "url": "https://github.com/features/copilot/copilot-business",
+     "label": "Copilot for BusinessEnterprise-grade AI features"
+    },
+    {
+     "url": "https://github.com/enterprise/premium-support",
+     "label": "Premium SupportEnterprise-grade 24/7 support"
+    },
+    {
+     "url": "https://github.com/pricing",
+     "label": "Pricing"
+    },
+    {
+     "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fwunderay",
+     "label": "Sign in"
+    },
+    {
+     "url": "https://github.com/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F%3Cuser-name%3E&source=header",
+     "label": "Sign up"
+    },
+    {
+     "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fwunderay",
+     "label": "Follow"
+    },
+    {
+     "url": "https://github.com/wunderay",
+     "label": "Overview"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=repositories",
+     "label": "Repositories\n18"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=projects",
+     "label": "Projects"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=packages",
+     "label": "Packages"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=stars",
+     "label": "Stars"
+    },
+    {
+     "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fwunderay",
+     "label": "Follow"
+    },
+    {
+     "url": "https://avatars.githubusercontent.com/u/60483832?v=4",
+     "label": ""
+    },
+    {
+     "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fwunderay",
+     "label": "Follow"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=followers",
+     "label": "2\nfollowers"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=following",
+     "label": "1\nfollowing"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=achievements",
+     "label": "Achievements"
+    },
+    {
+     "url": "https://github.com/wunderay?achievement=pull-shark&tab=achievements",
+     "label": "x3"
+    },
+    {
+     "url": "https://github.com/wunderay?achievement=quickdraw&tab=achievements",
+     "label": ""
+    },
+    {
+     "url": "https://github.com/wunderay?achievement=yolo&tab=achievements",
+     "label": ""
+    },
+    {
+     "url": "https://github.com/wunderay?tab=achievements",
+     "label": "Achievements"
+    },
+    {
+     "url": "https://github.com/wunderay?achievement=pull-shark&tab=achievements",
+     "label": "x3"
+    },
+    {
+     "url": "https://github.com/wunderay?achievement=quickdraw&tab=achievements",
+     "label": ""
+    },
+    {
+     "url": "https://github.com/wunderay?achievement=yolo&tab=achievements",
+     "label": ""
+    },
+    {
+     "url": "https://docs.github.com/articles/blocking-a-user-from-your-personal-account",
+     "label": "blocking users"
+    },
+    {
+     "url": "https://docs.github.com/articles/reporting-abuse-or-spam",
+     "label": "reporting abuse"
+    },
+    {
+     "url": "https://github.com/contact/report-abuse?report=wunderay+%28user%29",
+     "label": "Report abuse"
+    },
+    {
+     "url": "https://github.com/wunderay",
+     "label": "Overview"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=repositories",
+     "label": "Repositories\n18"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=projects",
+     "label": "Projects"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=packages",
+     "label": "Packages"
+    },
+    {
+     "url": "https://github.com/wunderay?tab=stars",
+     "label": "Stars"
+    },
+    {
+     "url": "https://github.com/ContactTracingCU/StopTheSpread",
+     "label": "ContactTracingCU/StopTheSpread"
+    },
+    {
+     "url": "https://github.com/ContactTracingCU/StopTheSpread/forks",
+     "label": "1"
+    },
+    {
+     "url": "https://github.com/wunderay/chattr",
+     "label": "chattr"
+    },
+    {
+     "url": "https://github.com/wunderay/blogRam",
+     "label": "blogRam"
+    },
+    {
+     "url": "https://github.com/wunderay/raymondwu",
+     "label": "raymondwu"
+    },
+    {
+     "url": "https://github.com/",
+     "label": ""
+    },
+    {
+     "url": "https://docs.github.com/site-policy/github-terms/github-terms-of-service",
+     "label": "Terms"
+    },
+    {
+     "url": "https://docs.github.com/site-policy/privacy-policies/github-privacy-statement",
+     "label": "Privacy"
+    },
+    {
+     "url": "https://github.com/security",
+     "label": "Security"
+    },
+    {
+     "url": "https://www.githubstatus.com/",
+     "label": "Status"
+    },
+    {
+     "url": "https://github.community/",
+     "label": "Community"
+    },
+    {
+     "url": "https://docs.github.com/",
+     "label": "Docs"
+    },
+    {
+     "url": "https://support.github.com/?tags=dotcom-footer",
+     "label": "Contact"
+    }
+   ],
+   "jsonLd": [],
+   "headings": [
+    {
+     "text": "Navigation Menu",
+     "level": 2
+    },
+    {
+     "text": "Raymond Wu\n\nwunderay",
+     "level": 1
+    },
+    {
+     "text": "Achievements",
+     "level": 2
+    },
+    {
+     "text": "Achievements",
+     "level": 2
+    },
+    {
+     "text": "Highlights",
+     "level": 2
+    },
+    {
+     "text": "Block or report wunderay",
+     "level": 1
+    },
+    {
+     "text": "Pinned\n\nLoading",
+     "level": 2
+    },
+    {
+     "text": "Footer",
+     "level": 2
+    },
+    {
+     "text": "Footer navigation",
+     "level": 3
+    }
+   ],
+   "segments": [
+    {
+     "id": "s1",
+     "text": "wunderay\n\nFollow"
+    },
+    {
+     "id": "s2",
+     "text": "Follow"
+    },
+    {
+     "id": "s3",
+     "text": "Raymond Wu\n\nwunderay"
+    },
+    {
+     "id": "s4",
+     "text": "Software Engineer",
+     "heading": "Raymond Wu\n\nwunderay"
+    },
+    {
+     "id": "s5",
+     "text": "2\nfollowers\n·\n1\nfollowing",
+     "heading": "Raymond Wu\n\nwunderay"
+    },
+    {
+     "id": "s6",
+     "text": "University of Colorado, Denver",
+     "heading": "Raymond Wu\n\nwunderay"
+    },
+    {
+     "id": "s7",
+     "text": "raymond.wu@ucdenver.edu",
+     "heading": "Raymond Wu\n\nwunderay"
+    },
+    {
+     "id": "s8",
+     "text": "2\nfollowers",
+     "heading": "Raymond Wu\n\nwunderay"
+    },
+    {
+     "id": "s9",
+     "text": "1\nfollowing",
+     "heading": "Raymond Wu\n\nwunderay"
+    },
+    {
+     "id": "s10",
+     "text": "Achievements"
+    },
+    {
+     "id": "s11",
+     "text": "x3",
+     "heading": "Achievements"
+    },
+    {
+     "id": "s12",
+     "text": "Highlights"
+    },
+    {
+     "id": "s13",
+     "text": "Block or report user\n\nBlock or report wunderay\n\nBlock user\n\nPrevent this user from interacting with your repositories and sending you notifications.\nLearn more about blocking users.\n\nYou must be logged in to block users.\n\nClose all issues, pull requests, and discussions opened by this user\n\nContent in all repositories owned by your account will be closed.\n\nAdd an optional note\n\nMaximum 250 characters. Please don’t include any personal information such as legal names or email addresses. Markdown is supported. This note will only be visible to you.\n\nBlock user\n\nReport abuse\n\nContact GitHub support about this user’s behavior.\nLearn more about reporting abuse.\n\nReport abuse",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s14",
+     "text": "Pinned\n\nLoading\n\nContactTracingCU/StopTheSpread ContactTracingCU/StopTheSpread Public\n\nA cross-platform mobile application for COVID-19 contact tracing using React Native.\n\nJava\n\n1\n\nchattr chattr Public\n\nEJS\n\nblogRam blogRam Public\n\nEJS\n\nraymondwu raymondwu Public\n\nTypeScript",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s15",
+     "text": "Pro",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s16",
+     "text": "blocking users",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s17",
+     "text": "reporting abuse",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s18",
+     "text": "Report abuse",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s19",
+     "text": "ContactTracingCU/StopTheSpread",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s20",
+     "text": "1",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s21",
+     "text": "chattr",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s22",
+     "text": "blogRam",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s23",
+     "text": "raymondwu",
+     "heading": "Highlights"
+    },
+    {
+     "id": "s24",
+     "text": "wunderay"
+    },
+    {
+     "id": "s25",
+     "text": "Raymond Wu"
+    },
+    {
+     "id": "s26",
+     "text": "2"
+    },
+    {
+     "id": "s27",
+     "text": "followers"
+    },
+    {
+     "id": "s28",
+     "text": "·"
+    },
+    {
+     "id": "s29",
+     "text": "following"
+    },
+    {
+     "id": "s30",
+     "text": "Block or report user"
+    },
+    {
+     "id": "s31",
+     "text": "Block or report wunderay"
+    },
+    {
+     "id": "s32",
+     "text": "Block user"
+    },
+    {
+     "id": "s33",
+     "text": "Prevent this user from interacting with your repositories and sending you notifications."
+    },
+    {
+     "id": "s34",
+     "text": "Learn more about blocking users."
+    },
+    {
+     "id": "s35",
+     "text": "You must be logged in to block users."
+    },
+    {
+     "id": "s36",
+     "text": "Close all issues, pull requests, and discussions opened by this user"
+    },
+    {
+     "id": "s37",
+     "text": "Content in all repositories owned by your account will be closed."
+    },
+    {
+     "id": "s38",
+     "text": "Add an optional note"
+    },
+    {
+     "id": "s39",
+     "text": "Maximum 250 characters. Please don’t include any personal information such as legal names or email addresses. Markdown is supported. This note will only be visible to you."
+    },
+    {
+     "id": "s40",
+     "text": "Contact GitHub support about this user’s behavior."
+    },
+    {
+     "id": "s41",
+     "text": "Learn more about reporting abuse."
+    },
+    {
+     "id": "s42",
+     "text": "Pinned"
+    },
+    {
+     "id": "s43",
+     "text": "Loading"
+    },
+    {
+     "id": "s44",
+     "text": "ContactTracingCU/StopTheSpread ContactTracingCU/StopTheSpread Public"
+    },
+    {
+     "id": "s45",
+     "text": "A cross-platform mobile application for COVID-19 contact tracing using React Native."
+    },
+    {
+     "id": "s46",
+     "text": "Java"
+    },
+    {
+     "id": "s47",
+     "text": "chattr chattr Public"
+    },
+    {
+     "id": "s48",
+     "text": "EJS"
+    },
+    {
+     "id": "s49",
+     "text": "blogRam blogRam Public"
+    },
+    {
+     "id": "s50",
+     "text": "raymondwu raymondwu Public"
+    },
+    {
+     "id": "s51",
+     "text": "TypeScript"
+    },
+    {
+     "id": "s52",
+     "text": "Navigation Menu"
+    },
+    {
+     "id": "s53",
+     "text": "Pinned\n\nLoading"
+    },
+    {
+     "id": "s54",
+     "text": "Footer"
+    },
+    {
+     "id": "s55",
+     "text": "Footer navigation"
+    },
+    {
+     "id": "s56",
+     "text": "Skip to content"
+    },
+    {
+     "id": "s57",
+     "text": "Sign in"
+    },
+    {
+     "id": "s58",
+     "text": "GitHub CopilotWrite better code with AI"
+    },
+    {
+     "id": "s59",
+     "text": "GitHub Copilot appDirect agents from issue to merge"
+    },
+    {
+     "id": "s60",
+     "text": "MCP RegistryIntegrate external tools"
+    },
+    {
+     "id": "s61",
+     "text": "ActionsAutomate any workflow"
+    },
+    {
+     "id": "s62",
+     "text": "CodespacesInstant dev environments"
+    },
+    {
+     "id": "s63",
+     "text": "IssuesPlan and track work"
+    },
+    {
+     "id": "s64",
+     "text": "Code ReviewManage code changes"
+    },
+    {
+     "id": "s65",
+     "text": "Code QualityEnforce quality at merge"
+    },
+    {
+     "id": "s66",
+     "text": "GitHub Advanced SecurityFind and fix vulnerabilities"
+    },
+    {
+     "id": "s67",
+     "text": "Code securitySecure your code as you build"
+    },
+    {
+     "id": "s68",
+     "text": "Secret protectionStop leaks before they start"
+    },
+    {
+     "id": "s69",
+     "text": "Why GitHub"
+    },
+    {
+     "id": "s70",
+     "text": "Documentation"
+    },
+    {
+     "id": "s71",
+     "text": "Blog"
+    },
+    {
+     "id": "s72",
+     "text": "Changelog"
+    },
+    {
+     "id": "s73",
+     "text": "Marketplace"
+    },
+    {
+     "id": "s74",
+     "text": "View all features"
+    },
+    {
+     "id": "s75",
+     "text": "Enterprises"
+    },
+    {
+     "id": "s76",
+     "text": "Small and medium teams"
+    },
+    {
+     "id": "s77",
+     "text": "Startups"
+    },
+    {
+     "id": "s78",
+     "text": "Nonprofits"
+    },
+    {
+     "id": "s79",
+     "text": "App Modernization"
+    },
+    {
+     "id": "s80",
+     "text": "DevSecOps"
+    },
+    {
+     "id": "s81",
+     "text": "DevOps"
+    },
+    {
+     "id": "s82",
+     "text": "CI/CD"
+    },
+    {
+     "id": "s83",
+     "text": "View all use cases"
+    },
+    {
+     "id": "s84",
+     "text": "Healthcare"
+    },
+    {
+     "id": "s85",
+     "text": "Financial services"
+    },
+    {
+     "id": "s86",
+     "text": "Manufacturing"
+    },
+    {
+     "id": "s87",
+     "text": "Government"
+    },
+    {
+     "id": "s88",
+     "text": "View all industries"
+    },
+    {
+     "id": "s89",
+     "text": "View all solutions"
+    },
+    {
+     "id": "s90",
+     "text": "AI"
+    },
+    {
+     "id": "s91",
+     "text": "Software Development"
+    },
+    {
+     "id": "s92",
+     "text": "Security"
+    },
+    {
+     "id": "s93",
+     "text": "View all topics"
+    },
+    {
+     "id": "s94",
+     "text": "Customer stories"
+    },
+    {
+     "id": "s95",
+     "text": "Events & webinars"
+    },
+    {
+     "id": "s96",
+     "text": "Ebooks & reports"
+    },
+    {
+     "id": "s97",
+     "text": "Business insights"
+    },
+    {
+     "id": "s98",
+     "text": "GitHub Skills"
+    },
+    {
+     "id": "s99",
+     "text": "Customer support"
+    },
+    {
+     "id": "s100",
+     "text": "Community forum"
+    },
+    {
+     "id": "s101",
+     "text": "Trust center"
+    },
+    {
+     "id": "s102",
+     "text": "Partners"
+    },
+    {
+     "id": "s103",
+     "text": "View all resources"
+    },
+    {
+     "id": "s104",
+     "text": "GitHub SponsorsFund open source developers"
+    },
+    {
+     "id": "s105",
+     "text": "Security Lab"
+    },
+    {
+     "id": "s106",
+     "text": "Maintainer Community"
+    },
+    {
+     "id": "s107",
+     "text": "GitHub Stars"
+    },
+    {
+     "id": "s108",
+     "text": "Archive Program"
+    },
+    {
+     "id": "s109",
+     "text": "Topics"
+    },
+    {
+     "id": "s110",
+     "text": "Trending"
+    },
+    {
+     "id": "s111",
+     "text": "Collections"
+    },
+    {
+     "id": "s112",
+     "text": "Enterprise platformAI-powered developer platform"
+    },
+    {
+     "id": "s113",
+     "text": "GitHub Advanced SecurityEnterprise-grade security features"
+    },
+    {
+     "id": "s114",
+     "text": "Copilot for BusinessEnterprise-grade AI features"
+    },
+    {
+     "id": "s115",
+     "text": "Premium SupportEnterprise-grade 24/7 support"
+    },
+    {
+     "id": "s116",
+     "text": "Pricing"
+    },
+    {
+     "id": "s117",
+     "text": "Sign up"
+    },
+    {
+     "id": "s118",
+     "text": "Overview"
+    },
+    {
+     "id": "s119",
+     "text": "Repositories\n18"
+    },
+    {
+     "id": "s120",
+     "text": "Projects"
+    },
+    {
+     "id": "s121",
+     "text": "Packages"
+    },
+    {
+     "id": "s122",
+     "text": "Stars"
+    },
+    {
+     "id": "s123",
+     "text": "Terms"
+    },
+    {
+     "id": "s124",
+     "text": "Privacy"
+    },
+    {
+     "id": "s125",
+     "text": "Status"
+    },
+    {
+     "id": "s126",
+     "text": "Community"
+    },
+    {
+     "id": "s127",
+     "text": "Docs"
+    },
+    {
+     "id": "s128",
+     "text": "Contact"
+    },
+    {
+     "id": "s129",
+     "text": "Contact GitHub support about this user’s behavior.\nLearn more about reporting abuse."
+    },
+    {
+     "id": "s130",
+     "text": "Platform"
+    },
+    {
+     "id": "s131",
+     "text": "Solutions"
+    },
+    {
+     "id": "s132",
+     "text": "Resources"
+    },
+    {
+     "id": "s133",
+     "text": "Open Source"
+    },
+    {
+     "id": "s134",
+     "text": "Enterprise"
+    },
+    {
+     "id": "s135",
+     "text": "Search"
+    },
+    {
+     "id": "s136",
+     "text": "Manage cookies"
+    },
+    {
+     "id": "s137",
+     "text": "Do not share my personal information"
+    }
+   ],
+   "addresses": [],
+   "canonical": "https://github.com/wunderay",
+   "priceText": [],
+   "redirects": [],
+   "truncated": false,
+   "html_bytes": 201522,
+   "limitations": [],
+   "socialLinks": [],
+   "contentLists": [
+    {
+     "intro": null,
+     "items": [
+      "University of Colorado, Denver",
+      "raymond.wu@ucdenver.edu"
+     ],
+     "heading": "Raymond Wu\n\nwunderay"
+    },
+    {
+     "intro": "Highlights",
+     "items": [
+      "Pro"
+     ],
+     "heading": "Highlights"
+    }
+   ],
+   "declaredLogos": [],
+   "declaredStyles": [
+    {
+     "colors": [
+      {
+       "value": "var(--color-icon-primary)",
+       "property": "color"
+      }
+     ],
+     "selector": "svg[style]",
+     "declarations": "color: var(--color-icon-primary);"
+    },
+    {
+     "colors": [
+      {
+       "value": "#b07219",
+       "property": "background-color"
+      }
+     ],
+     "selector": "span[style]",
+     "declarations": "background-color: #b07219;"
+    },
+    {
+     "colors": [
+      {
+       "value": "#a91e50",
+       "property": "background-color"
+      }
+     ],
+     "selector": "span[style]",
+     "declarations": "background-color: #a91e50;"
+    },
+    {
+     "colors": [
+      {
+       "value": "#a91e50",
+       "property": "background-color"
+      }
+     ],
+     "selector": "span[style]",
+     "declarations": "background-color: #a91e50;"
+    },
+    {
+     "colors": [
+      {
+       "value": "#3178c6",
+       "property": "background-color"
+      }
+     ],
+     "selector": "span[style]",
+     "declarations": "background-color: #3178c6;"
+    },
+    {
+     "colors": [
+      {
+       "value": "var(--color-icon-primary)",
+       "property": "color"
+      }
+     ],
+     "selector": "svg[style]",
+     "declarations": "color: var(--color-icon-primary);"
+    }
+   ],
+   "offeringBlocks": [],
+   "contentSections": [
+    {
+     "level": 0,
+     "links": [
+      {
+       "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fwunderay",
+       "label": "Follow"
+      }
+     ],
+     "heading": null,
+     "listItems": [],
+     "paragraphs": [
+      "wunderay\n\nFollow"
+     ]
+    },
+    {
+     "level": 1,
+     "links": [
+      {
+       "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fwunderay",
+       "label": "Follow"
+      },
+      {
+       "url": "https://github.com/wunderay?tab=followers",
+       "label": "2\nfollowers"
+      },
+      {
+       "url": "https://github.com/wunderay?tab=following",
+       "label": "1\nfollowing"
+      }
+     ],
+     "heading": "Raymond Wu\n\nwunderay",
+     "listItems": [
+      "University of Colorado, Denver",
+      "raymond.wu@ucdenver.edu"
+     ],
+     "paragraphs": [
+      "Follow",
+      "Software Engineer",
+      "2\nfollowers\n·\n1\nfollowing"
+     ]
+    },
+    {
+     "level": 2,
+     "links": [
+      {
+       "url": "https://github.com/wunderay?tab=achievements",
+       "label": "Achievements"
+      },
+      {
+       "url": "https://github.com/wunderay?achievement=pull-shark&tab=achievements",
+       "label": "x3"
+      }
+     ],
+     "heading": "Achievements",
+     "listItems": [],
+     "paragraphs": [
+      "x3"
+     ]
+    },
+    {
+     "level": 2,
+     "links": [
+      {
+       "url": "https://github.com/wunderay?tab=achievements",
+       "label": "Achievements"
+      },
+      {
+       "url": "https://github.com/wunderay?achievement=pull-shark&tab=achievements",
+       "label": "x3"
+      }
+     ],
+     "heading": "Achievements",
+     "listItems": [],
+     "paragraphs": [
+      "x3"
+     ]
+    },
+    {
+     "level": 2,
+     "links": [
+      {
+       "url": "https://docs.github.com/articles/blocking-a-user-from-your-personal-account",
+       "label": "blocking users"
+      },
+      {
+       "url": "https://docs.github.com/articles/reporting-abuse-or-spam",
+       "label": "reporting abuse"
+      },
+      {
+       "url": "https://github.com/contact/report-abuse?report=wunderay+%28user%29",
+       "label": "Report abuse"
+      },
+      {
+       "url": "https://github.com/ContactTracingCU/StopTheSpread",
+       "label": "ContactTracingCU/StopTheSpread"
+      },
+      {
+       "url": "https://github.com/ContactTracingCU/StopTheSpread/forks",
+       "label": "1"
+      },
+      {
+       "url": "https://github.com/wunderay/chattr",
+       "label": "chattr"
+      },
+      {
+       "url": "https://github.com/wunderay/blogRam",
+       "label": "blogRam"
+      },
+      {
+       "url": "https://github.com/wunderay/raymondwu",
+       "label": "raymondwu"
+      }
+     ],
+     "heading": "Highlights",
+     "listItems": [
+      "Pro"
+     ],
+     "paragraphs": [
+      "Block or report user\n\nBlock or report wunderay\n\nBlock user\n\nPrevent this user from interacting with your repositories and sending you notifications.\nLearn more about blocking users.\n\nYou must be logged in to block users.\n\nClose all issues, pull requests, and discussions opened by this user\n\nContent in all repositories owned by your account will be closed.\n\nAdd an optional note\n\nMaximum 250 characters. Please don’t include any personal information such as legal names or email addresses. Markdown is supported. This note will only be visible to you.\n\nBlock user\n\nReport abuse\n\nContact GitHub support about this user’s behavior.\nLearn more about reporting abuse.\n\nReport abuse",
+      "Pinned\n\nLoading\n\nContactTracingCU/StopTheSpread ContactTracingCU/StopTheSpread Public\n\nA cross-platform mobile application for COVID-19 contact tracing using React Native.\n\nJava\n\n1\n\nchattr chattr Public\n\nEJS\n\nblogRam blogRam Public\n\nEJS\n\nraymondwu raymondwu Public\n\nTypeScript"
+     ]
+    }
+   ],
+   "metaDescription": "Software Engineer. wunderay has 18 repositories available. Follow their code on GitHub.",
+   "clientSectionDetected": false
+  }
+ }
+]
