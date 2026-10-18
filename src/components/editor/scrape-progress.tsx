@@ -10,21 +10,33 @@ interface Job {
   progress: Partial<Progress>;
   errors?: SafeJobError[];
 }
+/** Configured capture limits; a null maximum means no maximum. */
+export interface CaptureLimits {
+  maxPages: number | null;
+  maxDepth: number | null;
+  defaultPages: number;
+  defaultDepth: number;
+}
+const DEFAULT_LIMITS: CaptureLimits = { maxPages: 25, maxDepth: 3, defaultPages: 10, defaultDepth: 2 };
 const active = ["queued", "validating", "crawling", "extracting"];
 export function ScrapeProgress({
   companyId,
   website,
   canEdit,
   onComplete,
+  limits = DEFAULT_LIMITS,
 }: {
   companyId: string;
   website: string;
   canEdit: boolean;
   onComplete: () => void;
+  limits?: CaptureLimits;
 }) {
+  const maxPages = limits.maxPages ?? Number.POSITIVE_INFINITY;
+  const maxDepth = limits.maxDepth ?? Number.POSITIVE_INFINITY;
   const [url, setUrl] = useState(website);
-  const [documentLimit, setDocumentLimit] = useState(10);
-  const [depthLimit, setDepthLimit] = useState(2);
+  const [documentLimit, setDocumentLimit] = useState(limits.defaultPages);
+  const [depthLimit, setDepthLimit] = useState(limits.defaultDepth);
   const pendingRequest = useRef<{ key: string; id: string } | null>(null);
   const [jobId, setJobId] = useState(() =>
     typeof window === "undefined"
@@ -76,13 +88,13 @@ export function ScrapeProgress({
     if (
       !Number.isInteger(documentLimit) ||
       documentLimit < 1 ||
-      documentLimit > 25 ||
+      documentLimit > maxPages ||
       !Number.isInteger(depthLimit) ||
       depthLimit < 0 ||
-      depthLimit > 3
+      depthLimit > maxDepth
     ) {
       setError(
-        "Choose a document limit from 1 to 25 and a depth limit from 0 to 3.",
+        `Choose a document limit from 1${limits.maxPages === null ? "" : ` to ${String(limits.maxPages)}`} and a depth limit from 0${limits.maxDepth === null ? "" : ` to ${String(limits.maxDepth)}`}.`,
       );
       return;
     }
@@ -170,7 +182,7 @@ export function ScrapeProgress({
             <input
               type="number"
               min={1}
-              max={25}
+              max={limits.maxPages ?? undefined}
               value={documentLimit}
               disabled={
                 !canEdit || busy || Boolean(job && active.includes(job.status))
@@ -183,7 +195,7 @@ export function ScrapeProgress({
             <input
               type="number"
               min={0}
-              max={3}
+              max={limits.maxDepth ?? undefined}
               value={depthLimit}
               disabled={
                 !canEdit || busy || Boolean(job && active.includes(job.status))

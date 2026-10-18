@@ -1,3 +1,4 @@
+import { crawlLimits } from "@/lib/config/crawl-limits";
 import { KnowledgeEditor } from "@/components/editor/knowledge-editor";
 import { verifiedSession } from "@/lib/supabase/server";
 import { readDraft } from "@/server/read-model";
@@ -29,6 +30,7 @@ export default async function KnowledgePage({
         key={id.data}
         companyId={id.data}
         initialDraft={initialDraft}
+        captureLimits={captureLimits()}
       />
     );
   } catch {
@@ -39,4 +41,16 @@ export default async function KnowledgePage({
       </Notice>
     );
   }
+}
+
+/** The configured capture limits for the client form; null means no maximum. */
+function captureLimits() {
+  const limits = crawlLimits();
+  const finite = (value: number) => (Number.isFinite(value) ? value : null);
+  return {
+    maxPages: finite(limits.maxPages),
+    maxDepth: finite(limits.maxDepth),
+    defaultPages: limits.defaultPages,
+    defaultDepth: limits.defaultDepth,
+  };
 }

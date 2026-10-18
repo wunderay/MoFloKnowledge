@@ -1,6 +1,9 @@
-export const CRAWL_LIMITS = { fetchMs: 15000, renderMs: 25000, jobMs: 300000, htmlBytes: 2 * 1024 * 1024, designBytes: 15 * 1024 * 1024 } as const;
-export const clampDocumentLimit = (value?: number): number => Math.min(25, Math.max(1, value ?? 10));
-export const clampDepthLimit = (value?: number): number => Math.min(3, Math.max(0, value ?? 2));
+import { crawlLimits } from '../../lib/config/crawl-limits';
+const configured = crawlLimits();
+/** Time (ms) and byte limits for one crawl, from the crawl-limits settings. */
+export const CRAWL_LIMITS = { fetchMs: configured.fetchMs, renderMs: configured.renderMs, jobMs: configured.timeBudgetMs, htmlBytes: configured.maxHtmlBytes, designBytes: configured.maxDesignBytes };
+export const clampDocumentLimit = (value?: number): number => { const limits = crawlLimits(); return Math.min(limits.maxPages, Math.max(1, value ?? limits.defaultPages)); };
+export const clampDepthLimit = (value?: number): number => { const limits = crawlLimits(); return Math.min(limits.maxDepth, Math.max(0, value ?? limits.defaultDepth)); };
 export interface BudgetSnapshot {
     documents: number;
     htmlBytes: number;

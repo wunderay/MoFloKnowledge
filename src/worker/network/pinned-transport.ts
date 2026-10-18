@@ -3,6 +3,7 @@ import https from 'node:https';
 import tls from 'node:tls';
 import type { Readable } from 'node:stream';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
+import { crawlLimits } from '../../lib/config/crawl-limits';
 import { approveDestination, type Address } from './destination-policy';
 import { assertDocumentScope, normalizeUrl, NetworkPolicyError } from './url-scope';
 const BOT_USER_AGENT = 'MoFloKnowledgeBot/1.0';
@@ -34,8 +35,8 @@ export function createPinnedFetcher(approve: DestinationApprover) {
         const requestedUrl = normalizeUrl(input);
         let current = requestedUrl;
         const redirects: string[] = [];
-        const signal = AbortSignal.any([...(options.signal ? [options.signal] : []), AbortSignal.timeout(options.timeoutMs ?? 15000)]);
-        const maxBytes = Math.min(options.maxBytes ?? 2 * 1024 * 1024, 15 * 1024 * 1024);
+        const signal = AbortSignal.any([...(options.signal ? [options.signal] : []), AbortSignal.timeout(options.timeoutMs ?? crawlLimits().fetchMs)]);
+        const maxBytes = Math.min(options.maxBytes ?? crawlLimits().maxHtmlBytes, Math.max(crawlLimits().maxHtmlBytes, crawlLimits().maxDesignBytes));
         for (;;) {
             if (options.scope) {
               assertDocumentScope(current, options.scope, options.pathPrefix);
