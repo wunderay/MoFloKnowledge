@@ -1,6 +1,8 @@
 // One JSON line per event on stderr. Callers pass ids and an error only: never request bodies, headers, cookies or tokens.
 // Any scheme://… is redacted except file:// stack frames, so stack traces keep their locations.
 const CONNECTION_STRING = /\b(?!file:\/\/)[a-z][a-z0-9+.-]*:\/\/[^\s"']*/gi;
+const SECRET_PAIR = /\b([a-z_]*(?:password|passwd|pwd|secret|token|apikey|api_key|authorization))["']?\s*[=:]\s*["']?(?:(?:Bearer|Basic)\s+)?[^\s"',;&]+["']?/gi;
+const BEARER = /\b(Bearer|Basic)\s+[^\s"',;&]+/gi;
 
 function describeError(error: unknown) {
   if (!(error instanceof Error)) {
@@ -16,7 +18,10 @@ function describeError(error: unknown) {
 }
 
 function redact(text: string) {
-  return text.replace(CONNECTION_STRING, "[redacted-url]");
+  return text
+    .replace(CONNECTION_STRING, "[redacted-url]")
+    .replace(SECRET_PAIR, "$1=[redacted]")
+    .replace(BEARER, "$1 [redacted]");
 }
 
 export function logError(msg: string, context: { requestId?: string; jobId?: string; error?: unknown } = {}) {
