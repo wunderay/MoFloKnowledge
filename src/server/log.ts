@@ -1,5 +1,6 @@
 // One JSON line per event on stderr. Callers pass ids and an error only: never request bodies, headers, cookies or tokens.
-const CONNECTION_STRING = /\b[a-z][a-z0-9+.-]*:\/\/[^\s"']*/gi;
+// Any scheme://… is redacted except file:// stack frames, so stack traces keep their locations.
+const CONNECTION_STRING = /\b(?!file:\/\/)[a-z][a-z0-9+.-]*:\/\/[^\s"']*/gi;
 
 function describeError(error: unknown) {
   if (!(error instanceof Error)) {
