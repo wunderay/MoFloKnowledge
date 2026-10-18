@@ -243,8 +243,11 @@ export async function runCrawl(
     const wanted = linkedStylesheetUrls(page.body, page.finalUrl)
       .filter((url) => sameSite(url, page.finalUrl) && !claimedSheets.has(url))
       .slice(0, Math.min(MAX_PAGE_SHEETS, Math.max(0, MAX_CRAWL_SHEETS - claimedSheets.size)));
+    // Claimed before any await so concurrent pages never fetch the same sheet or exceed the crawl cap.
     for (const url of wanted) {
       claimedSheets.add(url);
+    }
+    for (const url of wanted) {
       try {
         const policy = await robots.check(url, scheduler.signal);
         // A Crawl-delay that cannot leave room for a fetch is never waited out.

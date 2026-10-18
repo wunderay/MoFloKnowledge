@@ -277,18 +277,24 @@ export function captureDeclaredDesign($: CheerioAPI, safeLink: (raw: string | un
     }
     inputs.push(css.slice(0, 100000));
   });
-  const rules = [...inputs, ...sheets].flatMap((css) => cssRules(css.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, "")));
-  for (const [, body] of rules) {
+  const strip = (css: string) => cssRules(css.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, ""));
+  const inlineRules = inputs.flatMap(strip);
+  const sheetRules = sheets.flatMap(strip);
+  for (const [, body] of [...inlineRules, ...sheetRules]) {
     for (const match of body.matchAll(/(?:^|;)\s*(--[\w-]+)\s*:\s*([^;{}]+)(?=;|$)/g)) {
       if (custom.size < 500) {
         custom.set(match[1], match[2].trim());
       }
     }
   }
-  for (const [selector, body] of rules) {
+  // The page's own declarations come first; linked stylesheets use the budget that remains.
+  for (const [selector, body] of inlineRules) {
     addStyle(selector, body);
   }
   $("[style]").slice(0, 200).each((_i, node) => { addStyle(`${node.tagName}[style]`, $(node).attr("style") ?? ""); });
+  for (const [selector, body] of sheetRules) {
+    addStyle(selector, body);
+  }
   $("img").slice(0, 300).each((_i, node) => {
     if (logos.length >= 20) { truncated = true; return; }
     const el = $(node);

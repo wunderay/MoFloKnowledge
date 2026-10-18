@@ -84,9 +84,14 @@ export function createPinnedFetcher(approve: DestinationApprover) {
                     }
                     const chunks: Buffer[] = [];
                     let bytes = 0;
-                    decoded.on('data', (chunk: Buffer) => { bytes += chunk.length; if (bytes > maxBytes && options.truncate) {
-                        chunks.push(chunk.subarray(0, Math.max(0, chunk.length - (bytes - maxBytes))));
+                    let done = false;
+                    decoded.on('data', (chunk: Buffer) => { if (done) {
+                        return;
+                    } bytes += chunk.length; if (bytes > maxBytes && options.truncate) {
+                        done = true;
+                        chunks.push(chunk.subarray(0, chunk.length - (bytes - maxBytes)));
                         resolve({ requestedUrl, finalUrl: current, status: response.statusCode ?? 0, headers, body: Buffer.concat(chunks), redirects: [...redirects] });
+                        decoded.destroy();
                         request.destroy();
                     }
                     else if (bytes > maxBytes) {
