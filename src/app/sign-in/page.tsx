@@ -1,10 +1,11 @@
+import { APP_NAME } from "../../lib/brand";
 import { Brand } from "@/components/icons";
 import { SignInForm } from "@/components/sign-in-form";
 export default function SignInPage() {
   return (
     <main className="sign-in">
       <section className="sign-in__story">
-        <a href="/" aria-label="MoFlo Knowledge home">
+        <a href="/" aria-label={`${APP_NAME} home`}>
           <Brand />
         </a>
         <div>

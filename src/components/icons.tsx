@@ -1,3 +1,4 @@
+import { APP_NAME_PRIMARY, APP_NAME_SECONDARY } from "../lib/brand";
 import type { ReactNode } from "react";
 
 export type IconName =
@@ -72,5 +73,5 @@ export function MoFloMark() {
 }
 
 export function Brand() {
-  return <span className="brand"><MoFloMark /><span>MoFlo<span className="brand__light"> Knowledge</span></span></span>;
+  return <span className="brand"><MoFloMark /><span>{APP_NAME_PRIMARY}<span className="brand__light">{" "}{APP_NAME_SECONDARY}</span></span></span>;
 }
