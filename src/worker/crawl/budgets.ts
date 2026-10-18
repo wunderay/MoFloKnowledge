@@ -1,9 +1,19 @@
 import { crawlLimits } from '../../lib/config/crawl-limits';
+import { MAX_CRAWL_DELAY_MS } from './robots';
 const configured = crawlLimits();
 /** Time (ms) and byte limits for one crawl, from the crawl-limits settings. */
 export const CRAWL_LIMITS = { fetchMs: configured.fetchMs, renderMs: configured.renderMs, jobMs: configured.timeBudgetMs, htmlBytes: configured.maxHtmlBytes, designBytes: configured.maxDesignBytes };
 export const clampDocumentLimit = (value?: number): number => { const limits = crawlLimits(); return Math.min(limits.maxPages, Math.max(1, value ?? limits.defaultPages)); };
 export const clampDepthLimit = (value?: number): number => { const limits = crawlLimits(); return Math.min(limits.maxDepth, Math.max(0, value ?? limits.defaultDepth)); };
+const TIME_BUDGET_MARGIN_MS = 60_000;
+/**
+ * The crawl time budget, grown when a Crawl-delay makes the document limit unreachable in the base budget:
+ * delay x documents + 60 s, but never past the job timeout minus 60 s (and never below the base budget).
+ */
+export function effectiveTimeBudgetMs(baseMs: number, crawlDelayMs: number, documents: number, jobTimeoutMs: number): number {
+    const paced = Math.min(crawlDelayMs, MAX_CRAWL_DELAY_MS) * documents;
+    return paced <= baseMs ? baseMs : Math.max(baseMs, Math.min(paced + TIME_BUDGET_MARGIN_MS, jobTimeoutMs - TIME_BUDGET_MARGIN_MS));
+}
 export interface BudgetSnapshot {
     documents: number;
     htmlBytes: number;
@@ -25,6 +35,8 @@ export class CrawlBudgets {
     private counter = 0;
     private active = new Map<number, Reservation>();
     readonly startedAt: number;
+    /** Time budget for this crawl; the configured one unless a Crawl-delay grew it. */
+    timeBudgetMs: number = CRAWL_LIMITS.jobMs;
     readonly documentLimit: number;
     readonly depthLimit: number;
     constructor(options: {
@@ -40,7 +52,7 @@ export class CrawlBudgets {
     } }
     reserve(depth: number, designBytes = 0): Reservation {
         const fail = (limit: string): never => { this.limitsReached.add(limit); throw new Error('Crawl budget exceeded: ' + limit); };
-        if (Date.now() - this.startedAt >= CRAWL_LIMITS.jobMs) {
+        if (Date.now() - this.startedAt >= this.timeBudgetMs) {
           fail('time');
         }
         if (depth > this.depthLimit) {
