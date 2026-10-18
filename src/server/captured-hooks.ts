@@ -12,8 +12,8 @@ export interface CapturedHooks { headlines: Headline[]; ctas: Cta[]; leadMagnets
 interface PageRow { normalized_url: string; title: string | null; cleaned_content: string | null; observations: unknown }
 
 const LIMIT = 50;
-const LEAD = /newsletter|subscribe|ebook|guide|download|webinar|book|schedule|consult|free/i;
-const HOURS_LABEL = /(?:opening hours|hours)\s*:?\s*([^\n]{3,120})/gi;
+const LEAD = /\b(?:newsletter|subscribe|ebook|guide|download|webinar|book|schedule|consult|free)\b/i;
+const HOURS_LABEL = /(?:opening hours|hours)\s*:\s*([^\n]{3,120})/gi;
 
 const record = (value: unknown): Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
