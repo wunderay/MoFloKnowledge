@@ -10,8 +10,12 @@
       "command": "npm run web",
       "minimumInstances": 1,
       "scaleToZero": false,
-      "secretNames": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "APP_ORIGIN"],
-      "network": ["Supabase Auth", "PostgreSQL"]
+      "secretNames": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "APP_ORIGIN", "CRON_SECRET", "WORKER_DATABASE_URL"],
+      "secretUse": {
+        "CRON_SECRET": "bearer for /api/worker/run, and for the call that starts it after a scrape is queued",
+        "WORKER_DATABASE_URL": "read only by /api/worker/run; the restricted moflo_worker login, never a service-role key"
+      },
+      "network": ["Supabase Auth", "PostgreSQL", "Vercel cron: GET /api/worker/run with the CRON_SECRET bearer"]
     },
     {
       "id": "worker",
