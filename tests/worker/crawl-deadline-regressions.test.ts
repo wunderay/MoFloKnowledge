@@ -123,10 +123,13 @@ async function crawl(
   return promise;
 }
 
-describe("unsatisfiable Crawl-delay fails fast with production limits", () => {
-  it.each(["86400", "120"])(
-    "Crawl-delay: %s makes no page request and records deadline_exceeded",
-    async (seconds) => {
+describe("a Crawl-delay longer than the fetch timeout does not fail the crawl", () => {
+  it.each([
+    ["120", 60_000],
+    ["86400", 60_000],
+  ])(
+    "Crawl-delay: %s is capped at 60 s and the page is fetched after that gap",
+    async (seconds, gapMs) => {
       const pageRequests: string[] = [];
       const started = Date.now();
       const promise = runCrawl(
@@ -139,15 +142,18 @@ describe("unsatisfiable Crawl-delay fails fast with production limits", () => {
           pageRequests,
         ),
       );
-      // The wait cannot fit the 15 s task deadline, so nothing should need to sleep for it.
+      await vi.advanceTimersByTimeAsync(gapMs - 1_000);
+      expect(pageRequests, "the page was fetched before the capped gap").toEqual([]);
       await vi.advanceTimersByTimeAsync(2_000);
       const result = await promise;
-      expect(Date.now() - started).toBeLessThan(5_000);
-      expect(pageRequests).toEqual([]);
-      expect(result.captures).toHaveLength(0);
-      expect(result.errors.map((e) => [e.code, e.url])).toEqual([
-        ["deadline_exceeded", "http://example.com/"],
-      ]);
+      expect(Date.now() - started).toBeGreaterThanOrEqual(gapMs);
+      expect(pageRequests).toEqual(["/"]);
+      expect(result.captures).toHaveLength(1);
+      expect(
+        result.errors.filter(
+          (e) => e.code === "capture_failed" || e.code === "deadline_exceeded",
+        ),
+      ).toEqual([]);
     },
   );
 });
@@ -248,7 +254,7 @@ describe("moderate Crawl-delay is honoured across a batch of same-host siblings"
     return { result, pageRequests, elapsed: Date.now() - started };
   };
 
-  it.each([10, 14])(
+  it.each([10, 14, 15])(
     "Crawl-delay: %i captures all 10 pages within the job deadline",
     async (seconds) => {
       const { result, pageRequests, elapsed } = await tenPageCrawl(seconds);
@@ -263,14 +269,6 @@ describe("moderate Crawl-delay is honoured across a batch of same-host siblings"
       expect(result.progress.limits_reached).not.toContain("time");
     },
   );
-
-  it("Crawl-delay: 15 leaves no room for a fetch, so no page request is sent", async () => {
-    const { result, pageRequests, elapsed } = await tenPageCrawl(15);
-    expect(pageRequests).toEqual([]);
-    expect(result.captures).toHaveLength(0);
-    expect(result.errors.map((e) => e.code)).toEqual(["deadline_exceeded"]);
-    expect(elapsed).toBeLessThan(5_000);
-  });
 });
 
 describe("redirect hops under a moderate Crawl-delay", () => {
