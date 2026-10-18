@@ -22,12 +22,8 @@ function relevance(url: string, label: string, pathPrefix = ''): number {
     const path = parsed.pathname.toLowerCase();
     const words = `${path.replace(/[^a-z]+/g, ' ')} ${label.toLowerCase()}`;
     // Specific destinations take precedence over an inherited parent-path keyword.
-    if (/\b(?:privacy|terms|legal|login|sign in|client hub|portal|hub|careers?|jobs?|cart|checkout|videos?|media|gallery|diagrams?)\b/.test(words)) {
+    if (/\b(?:privacy|terms|legal|login|sign in|client hub|cart|checkout)\b/.test(words)) {
       return 5;
-    }
-    // Utility pages with little content of their own.
-    if (/\b(?:troubleshooting|sitemap|search)\b/.test(words)) {
-      return 3;
     }
     if (/^\/(?:blog|news|articles?|learning-center)(?:\/|$)/.test(path)) {
       return 10;
@@ -36,7 +32,7 @@ function relevance(url: string, label: string, pathPrefix = ''): number {
     if (/\b(?:referrals?|appointment|schedule|booking|book(?: a)?)\b/.test(words)) {
       return 88;
     }
-    if (/\b(?:quote|estimate|request)\b/.test(words)) {
+    if (/\b(?:quote|estimate)\b/.test(words)) {
       return 92;
     }
     if (/\b(?:testimonials?|reviews?)\b/.test(words)) {
@@ -57,9 +53,13 @@ function relevance(url: string, label: string, pathPrefix = ''): number {
     if (/\b(?:services?|products?|offerings?|solutions?|pricing)\b/.test(words)) {
       return path.split('/').filter(Boolean).length <= 1 ? 95 : 80;
     }
-    // Service detail pages named by their path words or menu labels.
-    if (/\b(?:drilling|pumps?|pumping|installation|installations|repairs?|inspections?|maintenance|replacement|treatment|testing)\b/.test(words)) {
-      return 75;
+    // Pages that are rarely useful; checked after the funnel and service rules so a service named
+    // with one of these words is not demoted.
+    if (/\b(?:portal|hub|careers?|jobs?|videos?|media|gallery|diagrams?)\b/.test(words)) {
+      return 5;
+    }
+    if (/\b(?:troubleshooting|sitemap|search)\b/.test(words)) {
+      return 3;
     }
     if (/\b(?:faq|brand)\b/.test(words)) {
       return 65;
@@ -68,6 +68,10 @@ function relevance(url: string, label: string, pathPrefix = ''): number {
     const prefixDepth = pathPrefix.split('/').filter(Boolean).length;
     if (prefixDepth > 0 && path.split('/').filter(Boolean).length === prefixDepth + 1) {
       return 70;
+    }
+    // An unknown top-level page of the site gets a neutral middle score.
+    if (path.split('/').filter(Boolean).length === 1) {
+      return 50;
     }
     // Lowest plain-path score; stays above VARIANT_SCORE so checkpoint scores are never negative.
     return 1;
@@ -203,6 +207,6 @@ export class Frontier {
     }
     alias(from: string, to: string) { const normalized = assertDocumentScope(to, this.scope, this.pathPrefix); if (from !== normalized) {
       this.aliases.set(normalizeUrl(from), normalized);
-    } this.seen.add(normalized); this.seenKeys.add(slashKey(normalized)); this.pending = this.pending.filter(item => item.url !== normalized); }
+    } this.seen.add(normalized); this.seenKeys.add(slashKey(normalized)); this.pending = this.pending.filter(item => slashKey(item.url) !== slashKey(normalized)); }
     snapshot(): FrontierSnapshot { return { root: this.root, pending: [...this.pending], seen: [...this.seen], aliases: [...this.aliases], selected: this.selected, limitsReached: [...this.limitsReached] }; }
 }
