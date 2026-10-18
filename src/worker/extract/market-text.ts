@@ -17,6 +17,8 @@ interface Section {
 const problem = /\b(?:stress(?:ful)?|difficult|complex(?:ities)?|headaches?|burden|costly mistakes|delays|problems?|worry|overlook(?:ing)?|struggl\w*)\b/i;
 const benefit = /\b(?:save|saving|reduce|reducing|minimi[sz]e|maximi[sz]e|simplify|improve|resolve|ensur(?:e|ing)|protect|secure|focus on|comp[l]?iant|compliance|peace of mind|keep you)\b/i;
 const customer = /\b(?:you|your|clients?|customers?|business(?:es)?|companies|individuals|start-ups)\b/i;
+/** A label with no object ("Read more") says nothing about what it offers. */
+const bareMore = /^(?:read|learn|see|view)\s+(?:more|all)$/i;
 const actionable = /^(?:get started|schedule\b|book\b|make an appointment\b|contact\b|request\b|sign up\b|subscribe\b|notify me\b|submit\b|send\b|start (?:a|your)\b|join\b|buy\b|shop\b|order\b|try\b|download\b|refer\b|call\b|(?:view|read|learn|explore|browse|see|find|meet|visit|watch)\b)/i;
 const buyerNoun = /\b(?:(?:(?:brand[- ]new|small and (?:mid|medium)[- ]sized|small(?:er)?|mid[- ]sized|medium[- ]sized|large|growing|established|start[- ]up|mature|local)\s+){0,3}(?:businesses|business owners|business|companies|corporations|corporation|individuals|entrepreneurs|start-ups|families|homeowners|nonprofits|retirees))(?:\s+(?:with\s+\d+\s*(?:to|[-–—])\s*\d+\s+employees|nearing retirement))?\b/gi;
 /** Identity normalization only: the displayed audience always remains an exact source phrase. */
@@ -257,10 +259,12 @@ export function marketTextCandidates(
     texts.forEach((text) => item.texts.add(text));
     channels.set(key, item);
   };
+  const seenLabels = new Set<string>();
   const conversion = (label: string, url: string | null, ids: string[]) => {
-    if (!actionable.test(label) || label.length > 500 || !ids.length) {
+    if (!actionable.test(label) || label.length > 500 || !ids.length || bareMore.test(label) || seenLabels.has(label.toLowerCase())) {
       return;
     }
+    seenLabels.add(label.toLowerCase());
     add("ctas", [{ label, url, purpose: null }], [], ids);
   };
   for (const link of page.capture.links) {

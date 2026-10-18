@@ -14,14 +14,17 @@ export function metadataCandidates(page: StoredCapture, observations: TechnicalO
   const emails = new Set<string>();
   // The title's leading segment is the brand when the footer, a logo's alt text or the H1 repeats it.
   const headings = Array.isArray(page.capture.observations.headings) ? page.capture.observations.headings as { level?: number; text?: string }[] : [];
+  const phrase = (text: string) => " " + text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ";
   const siteText = [
     ...observations.filter((o) => ["logo", "footer-text"].includes(o.property ?? "")).map((o) => o.value ?? ""),
     ...headings.filter((h) => h.level === 1).map((h) => h.text ?? ""),
-  ].map(key);
-  const repeated = (name: string) => siteText.some((text) => text.includes(key(name)));
+  ].map(phrase);
+  const repeated = (name: string) => phrase(name).trim() !== "" && siteText.some((text) => text.includes(phrase(name)));
   const titleObservation = observations.find((o) => o.property === "page-title");
-  const lead = titleObservation?.value?.split(/\s+[|\-–]\s+|\s*[|:]\s+/)[0].trim();
-  const brand = lead && key(lead) && repeated(lead) ? lead : null;
+  // A page or navigation label such as "Home" names the page, not the site.
+  const pageLabel = /^(?:home|welcome|about|about us|contact|contact us|services|blog)$/i;
+  const brand = titleObservation?.value?.split(/\s+[|\-–]\s+|\s*[|:]\s+/).map((part) => part.trim())
+    .find((part) => key(part) && !pageLabel.test(part) && repeated(part)) ?? null;
   if (brand && titleObservation) {
     add("/company_foundation/alternative_company_names", [{ text: brand }], titleObservation);
   }

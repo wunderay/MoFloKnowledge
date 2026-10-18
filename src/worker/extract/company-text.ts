@@ -354,13 +354,18 @@ export function companyTextCandidates(
   if (url.pathname === "/" && !result.some((c) => c.field === INDUSTRY)) {
     const known = [...result.filter((c) => c.field === "/company_foundation/service_locations").map((c) => JSON.stringify(c.value)),
       ...(Array.isArray(capture.observations.addresses) ? capture.observations.addresses as string[] : [])].join(" ").toLowerCase();
+    const organisation = /^(?:team|company|group|services|experts|specialists|agency|firm|studio|partners|co|associates)$/i;
+    const notIndustry = /^(?:welcome|get|our|your|my|we|to|today|home|story|start|started)$/i;
     const praise = /^(?:premier|best|leading|top|#1|award-winning)$/i;
     const headings = Array.isArray(capture.observations.headings) ? capture.observations.headings as { level?: number; text?: string }[] : [];
     for (const heading of headings.filter((h) => h.level === 1 && h.text).slice(0, 1)) {
       const words = (heading.text ?? "").split(/\s+/).filter((word) =>
         !praise.test(word) && !/['’]s$/.test(word) && !(word.length > 2 && known.includes(word.toLowerCase())));
-      // Only a short run of capitalised words reads as a noun phrase rather than a sentence.
-      if (words.length >= 2 && words.length <= 4 && words.every((word) => /^\p{Lu}[\p{L}-]*$/u.test(word))) {
+      const lead = normalized(capture.title ?? "").split(/\s+[|\-–]\s+|\s*[|:]\s+/)[0].toLowerCase();
+      // Only a short capitalised run ending in a business-structure noun reads as an industry and role.
+      if (words.length >= 2 && words.length <= 4 && words.every((word) => /^\p{Lu}[\p{L}-]*$/u.test(word)) &&
+        organisation.test(words[words.length - 1]) && !words.some((word) => notIndustry.test(word)) &&
+        words.join(" ").toLowerCase() !== lead) {
         add(INDUSTRY, words.slice(0, -1).join(" "), [heading.text ?? ""], 60);
         add(COMPANY_ROLE, [{ text: words.join(" ") }], [heading.text ?? ""], 60);
       }
