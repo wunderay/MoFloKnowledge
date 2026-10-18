@@ -15,10 +15,7 @@ Either way the app calls `enqueue_scrape`, which records a job in `scrape_jobs`.
 
 A worker claims one job at a time (`claim_job`). The claim gives the worker a lease that lasts 60 seconds. The worker renews it every 15 seconds and passes the company, job and lease token with every write, so a worker that has lost its lease cannot overwrite a newer attempt. A cancel request stops the job at the next renewal. A job is failed after 3 attempts.
 
-There are two ways to run the worker:
-
-- **Always-on worker** (`npm run worker`, `src/worker/main.ts`): a long-running process that loops, claiming the next job whenever one is waiting.
-- **Vercel runs** (`/api/worker/run`, `src/worker/run-once.ts`): each call processes one job for up to 4 minutes. If the job is not done, it saves its progress, releases the lease (`release_job`) and calls the endpoint again, and the next run continues where the last one stopped. The endpoint needs a secret bearer token (`CRON_SECRET`). A daily cron call picks up anything left behind. See [deploy-vercel.md](deploy-vercel.md).
+The worker is an always-on process (`npm run worker`, `src/worker/main.ts`). It loops, claiming the next job whenever one is waiting. A job is stopped if it runs too long.
 
 ## 3. Safety rules for every request
 
@@ -59,7 +56,7 @@ When a limit is reached, the crawl records which one and finishes with what it h
 
 **Browser rendering** is optional. If a renderer is configured (`RENDERER_URL`, `RENDERER_TOKEN`), the starting page and any page that looks client-rendered can be rendered in an isolated browser service (`src/renderer/`) to capture their content and computed styles. Without one, the crawler uses plain fetches, records `render_not_configured` for those pages and reports partial coverage. Rendering arbitrary sites stays off until the renderer host is qualified ([renderer-host-qualification.md](renderer-host-qualification.md)).
 
-**Optional crawl agent** (off by default). With `CRAWL_AGENT_ENABLED=true` plus an API key, model, base URL and prompt file, a language model may order or narrow the links found on each captured page before they join the frontier (`src/worker/agent/`, called from `src/worker/crawl/run-crawl.ts`). Both `npm run worker` and the Vercel route use the same crawl code, so the agent works in both.
+**Optional crawl agent** (off by default). With `CRAWL_AGENT_ENABLED=true` plus an API key, model, base URL and prompt file, a language model may order or narrow the links found on each captured page before they join the frontier (`src/worker/agent/`, called from `src/worker/crawl/run-crawl.ts`).
 
 - It sees the page address, the number of pages still allowed and the new same-site links on that page. It is asked for an ordered list of the links worth visiting.
 - Only links it was offered are used. Anything else it returns is ignored, and a reply with no usable link leaves the normal order unchanged. The links it picks still go through the same scope, depth, page-limit, robots and network rules as any other link.
@@ -69,7 +66,7 @@ When a limit is reached, the crawl records which one and finishes with what it h
 
 ## 5. Captures and checkpoints
 
-Each fetched or rendered page is stored as a source capture (`insert_source_capture`). The capture holds the page's text, structure and technical observations. As the crawl goes on, the worker saves a checkpoint (`checkpoint_job`) holding the frontier, the budgets used so far, safe error messages, the ids of finished sources and compact validated candidates. Page bodies stay in the source rows. A crawl that is resumed after a restart, a lost lease or a Vercel pause starts again from that checkpoint, using the sources already captured.
+Each fetched or rendered page is stored as a source capture (`insert_source_capture`). The capture holds the page's text, structure and technical observations. As the crawl goes on, the worker saves a checkpoint (`checkpoint_job`) holding the frontier, the budgets used so far, safe error messages, the ids of finished sources and compact validated candidates. Page bodies stay in the source rows. A crawl that is resumed after a restart, or a lost lease starts again from that checkpoint, using the sources already captured.
 
 ## 6. Extraction rules
 

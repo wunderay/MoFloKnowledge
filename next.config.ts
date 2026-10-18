@@ -25,7 +25,6 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   outputFileTracingIncludes: {
-    "/api/worker/run": ["./prompts/**/*"],
     "/api/companies/*/document": ["./public/fonts/NotoSans-Regular.ttf", "./public/fonts/NotoSans-Bold.ttf", "./public/fonts/OFL.txt"],
   },
   async headers() {

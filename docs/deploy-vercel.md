@@ -52,8 +52,6 @@ Import the repository (framework: Next.js) and set these environment variables f
 
 `WORKER_DATABASE_URL` and `CRON_SECRET` are read only by `/api/worker/run` (and `CRON_SECRET` by the call that starts it). Never expose them with a `NEXT_PUBLIC_` prefix. Do not set a service-role key.
 
-Optional crawl agent (off by default): set `CRAWL_AGENT_ENABLED=true` together with `CRAWL_AGENT_API_KEY`, `CRAWL_AGENT_MODEL`, `CRAWL_AGENT_BASE_URL` (an OpenAI-compatible endpoint, for example `https://openrouter.ai/api/v1`) and `CRAWL_AGENT_PROMPT` (a file name inside `prompts/`, which ships empty and is included in the worker route's bundle). The agent only chooses which pages to visit next; it never writes facts. With any setting missing the crawl logs one error and runs in its normal order. See [how the crawler works](crawler.md).
-
 Deploy. The cron appears under Project, Settings, Cron Jobs.
 
 ## Limits
