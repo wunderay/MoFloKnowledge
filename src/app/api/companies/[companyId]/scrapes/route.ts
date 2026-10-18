@@ -2,7 +2,6 @@ import { route, readJson, rpc, HttpError } from "../../../../../server/http";
 import { IdSchema } from "../../../../../contracts/api-common";
 export const runtime = "nodejs";
 import { EnqueueSchema } from "../../../../../contracts/api-scrapes";
-import { kickWorker } from "../../../../../server/kick-worker";
 import { normalizeUrl } from "../../../../../worker/network/url-scope";
 export const POST = route(async (r, c, { client }) => {
   const b = await readJson(r, EnqueueSchema);
@@ -25,6 +24,5 @@ export const POST = route(async (r, c, { client }) => {
     },
     p_request: b.requestId,
   })) as { id: string; status: string };
-  kickWorker();
   return { jobId: job.id, status: job.status };
 }, 202);
