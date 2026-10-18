@@ -1,5 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
+import { collapseWhitespace as clean } from "./text";
 import { exactSentences, hasNegation } from "./source-excerpts";
 
 const root = "/market_and_customers/";
@@ -13,7 +14,6 @@ interface Section {
   paragraphs: string[];
   listItems: string[];
 }
-const clean = (text: string) => text.replace(/\s+/g, " ").trim();
 const problem = /\b(?:stress(?:ful)?|difficult|complex(?:ities)?|headaches?|burden|costly mistakes|delays|problems?|worry|overlook(?:ing)?|struggl\w*)\b/i;
 const benefit = /\b(?:save|saving|reduce|reducing|minimi[sz]e|maximi[sz]e|simplify|improve|resolve|ensur(?:e|ing)|protect|secure|focus on|comp[l]?iant|compliance|peace of mind|keep you)\b/i;
 const customer = /\b(?:you|your|clients?|customers?|business(?:es)?|companies|individuals|start-ups)\b/i;
