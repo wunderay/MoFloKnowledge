@@ -214,6 +214,7 @@ These rules do not run on blog, article, news, learning-center, privacy or terms
 | A list under "Suppliers", "Partners" or "Vendors"; "our suppliers include ..." | `market_and_customers/suppliers_and_partners` | Items are kept as written, with the heading or sentence as the relationship. |
 | Links, buttons and form submit buttons whose label begins with an action such as "Get started", "Schedule", "Book", "Contact", "Request", "Sign up", "Subscribe", "Buy", "Call" | `market_and_customers/ctas` | Label is 500 characters or fewer; a button's first line is used. |
 | The same action links, plus forms with a submit button that sit under a contact, newsletter or action heading | `market_and_customers/channels` | A form is recorded as an observed entry point; it is never submitted. |
+| A form with a message or inquiry field; a newsletter or subscribe form; a page whose path or heading is appointment, schedule or booking; a referrals page | `market_and_customers/funnels` ("Contact form", "Newsletter signup", "Appointment scheduler", "Client referrals") | Named only from that explicit evidence, with the form or page as the source; steps are not inferred. |
 
 **Design and online presence (`deterministic.ts`, `capture/sections.ts`, `observations.ts`, `colors.ts`)**
 

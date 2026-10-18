@@ -13,7 +13,7 @@ import { normalizeColor } from "./colors";
 import { documentScope } from "../network/url-scope";
 import { canonicalStringify } from "../../knowledge/canonical-json";
 import { exactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
-import { buyerIdentityKey } from "./market-text";
+import { buyerIdentityKey, FUNNEL_NAMES, funnelHeadingMatch, funnelPathMatch, messageField, subscribeText } from "./market-text";
 import { FOUNDER_STATEMENT_NOTE, founderStatement } from "./text";
 export type ValidatedCandidate = FieldCandidate & {
   id: string;
@@ -38,6 +38,9 @@ function itemIdentity(value: unknown, fieldPath = "", note: string | null = null
   }
   if (fieldPath === "/market_and_customers/channels" && item.url && !note?.startsWith("Observed form")) {
     return "channel:" + String(item.url);
+  }
+  if (fieldPath === "/market_and_customers/funnels" && item.name) {
+    return "funnel:" + String(item.name);
   }
   if (item.family) {
     return "family:" + normalizeIdentity(String(item.family));
@@ -478,6 +481,18 @@ export function validateCandidates(
         c.note === "Normalized company role from an explicit current-company service statement." &&
         !/\/(?:articles?|blog|news|resources?)(?:\/|$)/i.test(new URL(page.capture.finalUrl).pathname) &&
         segments.some((segment) => exactSentences(segment.text).some((sentence) => isExplicitServiceProviderSentence(sentence, roleCompanyNames)));
+      if (field.field === "funnels") {
+        // Each funnel name needs the matching kind of cited evidence.
+        const supported = (name: string) => name === "Contact form"
+          ? selected.some((o) => o.property === "form-label" && messageField.test(o.value ?? ""))
+          : name === "Newsletter signup"
+            ? selected.some((o) => ["form-submit-label", "form-heading"].includes(o.property ?? "") && subscribeText.test(o.value ?? ""))
+            : selected.some((o) => (o.property === "heading" && funnelHeadingMatch(name, o.value ?? "")) ||
+              (o.property === "url" && funnelPathMatch(name, o.value ?? "")));
+        if (!(c.value as { name: string }[]).every((funnel) => FUNNEL_NAMES.includes(funnel.name) && supported(funnel.name))) {
+          throw new Error("funnel_not_supported");
+        }
+      }
       if (c.origin === "source_backed") {
         const haystack = [quotes, ...selected.map((o) => o.value ?? "")]
           .join(" ")
@@ -505,6 +520,10 @@ export function validateCandidates(
             // Fixed names for an observed newsletter or contact form; the form itself is the cited evidence.
             if (field.field === "channels" && key === "label" && c.note?.startsWith("Observed form") &&
               ["Email newsletter", "Website contact form"].includes(value)) {
+              return;
+            }
+            // Fixed funnel names; the cited form field, heading or page address is the evidence.
+            if (field.field === "funnels" && key === "name" && FUNNEL_NAMES.includes(value)) {
               return;
             }
             if (/^https?:/.test(value)) {
