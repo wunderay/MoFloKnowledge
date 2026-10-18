@@ -1,6 +1,7 @@
 // Tiny single-origin gateway for the all-in-one local image.
 //   /auth/v1  -> GoTrue        /rest/v1 -> PostgREST        everything else -> the Next.js app
-// The browser and the Next server both use this origin as the Supabase URL, so "localhost" means the same thing to both.
+// It always listens on 8080 inside the container; the host port it is published on (MOFLO_PORT) is only docker-compose's concern.
+// The Next server reaches Supabase through it, and the browser reaches the app and the auth links through it, on the same origin.
 import http from "node:http";
 
 const port = Number(process.env.GATEWAY_PORT ?? 8080);
