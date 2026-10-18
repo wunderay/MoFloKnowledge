@@ -1,6 +1,6 @@
 # MoFloKnowledge
 
-MoFloKnowledge turns a public company website into a source-backed knowledge base. Deterministic extraction records supported facts with evidence; people review and edit them, resolve conflicts, and publish immutable, cited snapshots for their company. Fields the extractor cannot establish remain unknown for human review. The app includes scoped membership roles, crawl progress and history, re-scrape proposals, JSON preview, and download. See [the no-AI product scope](docs/no-ai-redesign.md).
+MoFloKnowledge turns a public company website into a source-backed knowledge base. Deterministic extraction records supported facts with evidence; people review and edit them, resolve conflicts, and publish immutable, cited snapshots for their company. Fields the extractor cannot establish remain unknown for human review. The app includes scoped membership roles, crawl progress and history, re-scrape proposals, JSON preview, and download. See [how the crawler works](docs/crawler.md) for the supported sources and extraction rules.
 
 In **View knowledge**, choose **Current draft** or a saved version, pick **JSON**, **Word (.docx)** or **PDF**, then click **Export**. Exporting never approves, publishes or changes knowledge. See [document export](docs/interface-design.md#document-export) for what the documents contain.
 

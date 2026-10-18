@@ -10,7 +10,7 @@ Configure Auth method(s), allowed redirect URLs, cookie domain/security settings
 
 ## Deterministic extraction
 
-Product extraction uses deterministic rules over captured source and technical evidence. It requires no AI provider, model selection, model credentials, or external data-processing terms. See [the no-AI product scope](no-ai-redesign.md) for supported evidence and unknown-field behavior.
+Product extraction uses deterministic rules over captured source and technical evidence. It needs no language-model provider, model selection or model credentials: the optional crawl agent is off by default and only chooses which pages to visit (see [how the crawler works](crawler.md)). See that document for supported evidence and unknown-field behavior.
 
 ## Backups and recovery
 
