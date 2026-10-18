@@ -55,6 +55,14 @@ export class CrawlBudgets {
         this.active.set(reservation.id, reservation);
         return reservation;
     }
+    /** Gives back a reservation for a page that was refused before any fetch. */
+    release(reservation: Reservation) {
+        if (!this.active.delete(reservation.id)) {
+          throw new Error('Unknown or finished reservation');
+        }
+        this.reservedDesign -= reservation.designBytes;
+        this.documents = Math.max(0, this.documents - 1);
+    }
     finish(reservation: Reservation, htmlBytes: number, designBytes = 0) {
         if (!this.active.delete(reservation.id)) {
           throw new Error('Unknown or finished reservation');

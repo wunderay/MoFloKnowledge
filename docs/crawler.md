@@ -35,17 +35,19 @@ The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It
 | 95 / 80 | services, products, offerings, solutions and pricing pages (95 when one path segment deep, otherwise 80) |
 | 90 | contact and location pages |
 | 65 | FAQ and brand pages |
-| 55 | appointment, scheduling and booking pages |
-| 45 | referral, newsletter and subscribe pages |
+| 88 | appointment, scheduling, booking and referral pages |
+| 70 | direct children of the start path (for example a repository under a profile address), when nothing above matches |
+| 45 | newsletter and subscribe pages |
 | 10 | blog, news, articles and learning-center pages |
 | 5 | privacy, terms, legal and login pages |
 | 0 | everything else |
+| -1 | a link with a query string (`?tab=…`); only the first such variant of a path is kept, the rest are dropped |
 
 The limits are in `src/worker/crawl/budgets.ts`:
 
 | Limit | Value |
 |---|---|
-| Pages | 1-25 (default 10) |
+| Pages | 1-25 (default 10); counts pages actually captured, so a page refused by robots.txt does not use up the limit |
 | Depth | 0-3 links from the starting page (default 2) |
 | Pages discovered | at most 200 |
 | Time per page | 15 s per fetch, 25 s per browser render |
