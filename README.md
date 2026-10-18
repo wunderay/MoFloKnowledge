@@ -27,7 +27,7 @@ Run the web app with `npm run dev`. For a production build, use `npm run typeche
 Apply migrations to an explicitly disposable PostgreSQL database first:
 
 ```sh
-DATABASE_URL='postgresql://migration_user:REPLACE_ME@127.0.0.1:5432/moflo_test' npm run db:migrate
+DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@127.0.0.1:5432/moflo_test" npm run db:migrate
 ```
 
 The migration runner refuses database names without the `_test` suffix unless an operator explicitly passes `--allow-production` to the script. Supabase Auth roles and functions must exist before applying migrations. See [database operations](docs/database-operations.md) for the schema, migration ownership, and role setup.
@@ -42,7 +42,7 @@ See [worker behavior](src/worker/README.md), [runtime support](docs/runtime-supp
 npm run lint
 npx knip
 npm run unit
-TEST_DATABASE_URL='postgresql://migration_user:REPLACE_ME@127.0.0.1:5432/moflo_test' npm run db:test
+TEST_DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@127.0.0.1:5432/moflo_test" npm run db:test
 npm run typecheck
 npm run build
 npm run e2e
