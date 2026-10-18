@@ -1,5 +1,5 @@
 # One command, no host tools but Docker:  docker compose up --build   then open http://localhost:8080
-# The login is printed in the log ("Open http://localhost:8080 — log in as ..."). Data and secrets live in the named volume.
+# The login is printed in the log ("Open http://localhost:8080 - log in as ..."). Data and secrets live in the named volume.
 name: moflo-local
 services:
   app:
