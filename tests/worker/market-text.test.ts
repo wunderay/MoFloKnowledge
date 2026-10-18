@@ -56,6 +56,13 @@ describe("literal market and conversion extraction", () => {
     expect(candidates.some((candidate) => candidate.field.endsWith("/employee_count"))).toBe(false);
   });
 
+  it("does not read a tax schedule or a fee schedule as an appointment funnel", () => {
+    expect(extract("<main><h2>Schedule K-1 Preparation</h2><p>We prepare partnership returns.</p></main>", "/services/tax").values("funnels")).toEqual([]);
+    expect(extract("<main><h1>Fee schedule</h1><p>Our rates.</p></main>", "/fee-schedule").values("funnels")).toEqual([]);
+    expect(extract("<main><h1>Appointments</h1><p>Pick a time.</p></main>", "/schedule").values("funnels"))
+      .toEqual([{ name: "Appointment scheduler", steps: [] }]);
+  });
+
   it("copies observed CTAs and channels and names a funnel only from an explicit message field", () => {
     const { values, page, observations } = extract(`<main><a href="/appointment">Schedule Appointment</a><a href="/contact">Get started</a><a href="/contact">Contact</a>
       <a href="/privacy">Privacy Policy</a><button>Open menu</button><button>2</button>
