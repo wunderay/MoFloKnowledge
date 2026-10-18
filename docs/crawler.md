@@ -4,12 +4,9 @@ The crawler turns a company's public website into source-backed knowledge. It vi
 
 ## 1. Starting a crawl
 
-A crawl starts in one of two ways:
+Crawls start only when a member asks for one: they press crawl on the company and can choose a page limit (1–25) and a depth limit (0–3). Creating a company does not start a crawl.
 
-- **Company creation.** When someone creates a company and enters its website, the app queues a crawl of that website with the default limits (10 pages, depth 2) and opens the company with the crawl's progress showing. If queueing fails, the company is still created and the crawl can be started by hand.
-- **By hand.** A member presses crawl on the company and can choose a page limit (1–25) and a depth limit (0–3).
-
-Either way the app calls `enqueue_scrape`, which records a job in `scrape_jobs`. The database limits crawls to 10 per company and 30 per user per hour, and a retry with the same request id returns the same job.
+The app calls `enqueue_scrape`, which records a job in `scrape_jobs`. The database limits crawls to 10 per company and 30 per user per hour, and a retry with the same request id returns the same job.
 
 ## 2. Running the job
 
