@@ -20,6 +20,8 @@ export interface FetchOptions {
     pathPrefix?: string;
     signal?: AbortSignal;
     maxBytes?: number;
+    /** Keep the first `maxBytes` of a longer body instead of failing the request. */
+    truncate?: boolean;
     timeoutMs?: number;
     method?: 'GET' | 'HEAD';
     redirect?: 'manual';
@@ -82,7 +84,12 @@ export function createPinnedFetcher(approve: DestinationApprover) {
                     }
                     const chunks: Buffer[] = [];
                     let bytes = 0;
-                    decoded.on('data', (chunk: Buffer) => { bytes += chunk.length; if (bytes > maxBytes) {
+                    decoded.on('data', (chunk: Buffer) => { bytes += chunk.length; if (bytes > maxBytes && options.truncate) {
+                        chunks.push(chunk.subarray(0, Math.max(0, chunk.length - (bytes - maxBytes))));
+                        resolve({ requestedUrl, finalUrl: current, status: response.statusCode ?? 0, headers, body: Buffer.concat(chunks), redirects: [...redirects] });
+                        request.destroy();
+                    }
+                    else if (bytes > maxBytes) {
                         const error = new NetworkPolicyError('Decoded response byte budget exceeded');
                         decoded.destroy(error);
                         request.destroy(error);

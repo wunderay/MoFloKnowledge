@@ -1,5 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { NetworkPolicyError } from "../network/url-scope";
+import { NetworkPolicyError, sameSite } from "../network/url-scope";
 import { createHash } from "node:crypto";
 import { Frontier, type FrontierSnapshot, type FrontierItem } from "./frontier";
 import {
@@ -12,16 +12,21 @@ import { DeadlineError, Scheduler, type Deadline } from "./scheduler";
 import { RobotsCache } from "./robots";
 import { crawlLimits } from "../../lib/config/crawl-limits";
 import { createLinkPicker } from "../agent/client";
-import { fetchDocument } from "../network/pinned-transport";
+import { fetchDocument, type FetchOptions } from "../network/pinned-transport";
 import { technicalObservations } from "../extract/observations";
 import {
   captureHtml,
+  linkedStylesheetUrls,
   shouldRenderPage,
   type PageCapture,
 } from "../capture/html";
 import type { RenderResult, RenderTask } from "../../contracts/render-task";
 import type { Job, JobRepository } from "../job-repository";
 import type { Progress, SafeJobError } from "../../contracts";
+// Linked stylesheets are read for fonts and colours only; they never count against the document limit.
+const MAX_PAGE_SHEETS = 3;
+const MAX_CRAWL_SHEETS = 6;
+const MAX_SHEET_BYTES = 300 * 1024;
 export interface StoredCapture {
   id: string;
   retrievedAt: string;
@@ -188,6 +193,80 @@ export async function runCrawl(
     ];
     await repository.checkpoint(job, checkpoint(), progress);
   }
+  // Pages and linked stylesheets share the pinned transport, the robots rules and the per-host pacing.
+  const fetchPaced = (url: string, delayMs: number, options: FetchOptions) =>
+    scheduler.runHttp(
+      url,
+      (taskSignal) => {
+        // The first hop was paced by runHttp under the job deadline; only redirect hops pace here.
+        let paced = false;
+        const taskAt = Date.now() + CRAWL_LIMITS.fetchMs;
+        const hopDeadline: Deadline =
+          jobDeadlineAt <= taskAt
+            ? { at: jobDeadlineAt - fetchMargin(), scope: "job" }
+            : { at: taskAt - fetchMargin(), scope: "task" };
+        return fetcher(url, {
+          ...options,
+          signal: taskSignal,
+          onRequest: async (hop) => {
+            const rule = await robots.check(hop, taskSignal);
+            if (!rule.allowed) {
+              throw new Error("robots_blocked");
+            }
+            if (!paced) {
+              paced = true;
+              return;
+            }
+            await scheduler.pace(
+              hop,
+              Math.max(crawlLimits().hostGapMs, rule.delayMs),
+              taskSignal,
+              hopDeadline,
+            );
+          },
+        });
+      },
+      delayMs,
+      signal,
+      false,
+      { at: jobDeadlineAt - fetchMargin(), scope: "job" },
+    );
+  // Same-site stylesheets a page links, at most MAX_PAGE_SHEETS per page and MAX_CRAWL_SHEETS per crawl.
+  // Text only; a stylesheet that cannot be read is skipped and never fails the page.
+  const claimedSheets = new Set<string>();
+  async function fetchStylesheets(page: { body: Buffer; finalUrl: string }) {
+    const texts: string[] = [];
+    // On a shared platform the page design belongs to the platform, not the profile owner.
+    if (frontier.pathPrefix) {
+      return texts;
+    }
+    const wanted = linkedStylesheetUrls(page.body, page.finalUrl)
+      .filter((url) => sameSite(url, page.finalUrl) && !claimedSheets.has(url))
+      .slice(0, Math.min(MAX_PAGE_SHEETS, Math.max(0, MAX_CRAWL_SHEETS - claimedSheets.size)));
+    for (const url of wanted) {
+      claimedSheets.add(url);
+      try {
+        const policy = await robots.check(url, scheduler.signal);
+        // A Crawl-delay that cannot leave room for a fetch is never waited out.
+        if (!policy.allowed || policy.delayMs + fetchMargin() > CRAWL_LIMITS.fetchMs) {
+          continue;
+        }
+        const response = await fetchPaced(url, policy.delayMs, {
+          scope: [new URL(url).hostname],
+          maxBytes: MAX_SHEET_BYTES,
+          truncate: true,
+        });
+        if (response.status >= 200 && response.status < 300) {
+          texts.push(response.body.toString("utf8"));
+        }
+      } catch (error) {
+        if (signal.aborted) {
+          throw error;
+        }
+      }
+    }
+    return texts;
+  }
   async function processItem(item: FrontierItem, reservation: Reservation) {
     let finished = false;
     try {
@@ -215,43 +294,10 @@ export async function runCrawl(
       let document: Awaited<ReturnType<typeof fetchDocument>> | undefined;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const response = await scheduler.runHttp(
-            item.url,
-            (taskSignal) => {
-              // The first hop was paced by runHttp under the job deadline; only redirect hops pace here.
-              let paced = false;
-              const taskAt = Date.now() + CRAWL_LIMITS.fetchMs;
-              const hopDeadline: Deadline =
-                jobDeadlineAt <= taskAt
-                  ? { at: jobDeadlineAt - fetchMargin(), scope: "job" }
-                  : { at: taskAt - fetchMargin(), scope: "task" };
-              return fetcher(item.url, {
-                scope: frontier.scope,
-                pathPrefix: frontier.pathPrefix,
-                signal: taskSignal,
-                onRequest: async (url) => {
-                  const rule = await robots.check(url, taskSignal);
-                  if (!rule.allowed) {
-                    throw new Error("robots_blocked");
-                  }
-                  if (!paced) {
-                    paced = true;
-                    return;
-                  }
-                  await scheduler.pace(
-                    url,
-                    Math.max(crawlLimits().hostGapMs, rule.delayMs),
-                    taskSignal,
-                    hopDeadline,
-                  );
-                },
-              });
-            },
-            policy.delayMs,
-            signal,
-            false,
-            { at: jobDeadlineAt - fetchMargin(), scope: "job" },
-          );
+          const response = await fetchPaced(item.url, policy.delayMs, {
+            scope: frontier.scope,
+            pathPrefix: frontier.pathPrefix,
+          });
           document = response;
           if (response.status !== 429 && response.status < 500) {
             break;
@@ -303,7 +349,8 @@ export async function runCrawl(
       ) {
         throw new Error("unsupported_content");
       }
-      let capture = captureHtml(document);
+      const stylesheets = await fetchStylesheets(document);
+      let capture = captureHtml({ ...document, stylesheets });
       let designBytes = 0;
       if (shouldRenderPage(capture, item.depth === 0)) {
         if (render) {
@@ -335,7 +382,7 @@ export async function runCrawl(
               });
             }, signal);
             designBytes = rendered.resourceBytes;
-            capture = captureHtml(document, rendered);
+            capture = captureHtml({ ...document, stylesheets }, rendered);
           } catch {
             // A failed remote render may have consumed its full allowance.
             designUsed = CRAWL_LIMITS.designBytes;

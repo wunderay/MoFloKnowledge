@@ -31,6 +31,8 @@ export function captureHtml(
     finalUrl: string;
     body: Buffer | string;
     redirects?: string[];
+    /** Text of the page's linked stylesheets, read for declared fonts and colours. */
+    stylesheets?: string[];
   },
   rendered?: RenderResult,
 ): PageCapture {
@@ -109,7 +111,7 @@ export function captureHtml(
   const canonical = rendered?.metadata
     ? safeLink(rendered.metadata.canonical)
     : safeLink($('link[rel="canonical"]').first().attr("href"));
-  const declaredDesign = captureDeclaredDesign($, safeLink, jsonLd);
+  const declaredDesign = captureDeclaredDesign($, safeLink, jsonLd, input.stylesheets);
   const content = captureContentSections($, safeLink);
   // Read before page chrome and embeds are stripped below; identical for fetched and rendered pages.
   const pageMetadata = capturePageMetadata($, safeLink, jsonLd);
@@ -422,6 +424,22 @@ export function captureHtml(
       /enable javascript|javascript is required/i.test(parsed.text),
   };
   return { ...finalized, contentHash: hashCapture(finalized) };
+}
+/** Addresses of the stylesheets a page links with <link rel="stylesheet">, in document order. */
+export function linkedStylesheetUrls(body: Buffer | string, finalUrl: string): string[] {
+  const $ = load(Buffer.isBuffer(body) ? body.toString("utf8") : body);
+  const urls = new Set<string>();
+  $("link[href]").each((_i, node) => {
+    const rel = ($(node).attr("rel") ?? "").toLowerCase().split(/\s+/);
+    if (rel.includes("stylesheet") && !rel.includes("alternate")) {
+      try {
+        urls.add(normalizeUrl($(node).attr("href") ?? "", finalUrl));
+      } catch {
+        // An address the crawler cannot fetch is skipped.
+      }
+    }
+  });
+  return [...urls];
 }
 export function shouldRenderPage(
   capture: PageCapture,

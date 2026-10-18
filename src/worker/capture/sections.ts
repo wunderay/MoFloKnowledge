@@ -206,19 +206,54 @@ export function evidencedSections(sections: ContentSection[], segments: TextSegm
 export interface DeclaredStyle { selector: string; declarations: string; colors: { property: string; value: string }[] }
 export interface DeclaredLogo { selector: string; alt: string; url: string }
 
-/** Source declarations only: this does not resolve the cascade, load assets, or claim rendering. */
-export function captureDeclaredDesign($: CheerioAPI, safeLink: (raw: string | undefined | null) => string | null, jsonLd: unknown[] = []) {
+/** Flat (selector, body) pairs of a stylesheet in one pass; a block holding other blocks yields only its inner rules. */
+function cssRules(css: string): [string, string][] {
+  const rules: [string, string][] = [];
+  let start = 0;
+  let open = -1;
+  let selector = "";
+  for (let i = 0; i < css.length; i++) {
+    if (css[i] === "{") {
+      selector = css.slice(start, i);
+      open = i;
+      start = i + 1;
+    } else if (css[i] === "}") {
+      if (open >= 0) {
+        rules.push([selector.trim(), css.slice(open + 1, i)]);
+      }
+      open = -1;
+      start = i + 1;
+    }
+  }
+  return rules;
+}
+
+const CSS_COLOR = /^(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\([^()]*\))$/i;
+const CSS_VAR = /var\(\s*(--[\w-]+)\s*(?:,((?:[^()]|\([^()]*\))*))?\)/gi;
+
+/** Source declarations only: this does not resolve the cascade, load assets, or claim rendering. `sheets` holds the text of linked stylesheets. */
+export function captureDeclaredDesign($: CheerioAPI, safeLink: (raw: string | undefined | null) => string | null, jsonLd: unknown[] = [], sheets: string[] = []) {
   const styles: DeclaredStyle[] = [];
   const logos: DeclaredLogo[] = [];
   let remaining = 30000;
   let truncated = false;
+  // Custom properties are read from every stylesheet first; var(--x) and var(--x, fallback) resolve one level, wherever --x is declared.
+  const custom = new Map<string, string>();
+  const resolve = (value: string) => value.replace(CSS_VAR, (all, name: string, fallback?: string) => custom.get(name) ?? fallback?.trim() ?? all);
   const addStyle = (selector: string, raw: string) => {
     const declarations: string[] = [];
     const colors: DeclaredStyle["colors"] = [];
-    for (const match of raw.matchAll(/(?:^|;)\s*(font-family|color|background-color)\s*:\s*([^;{}]+)(?=;|$)/gi)) {
+    for (const match of raw.matchAll(/(?:^|;)\s*(font-family|color|background-color|--[\w-]+)\s*:\s*([^;{}]+)(?=;|$)/gi)) {
       const property = match[1].toLowerCase();
-      const value = match[2].trim();
-      if (!value || value.length > 500 || /url\s*\(|expression\s*\(/i.test(value)) {
+      const value = resolve(match[2].trim());
+      if (!value || value.length > 500 || /url\s*\(|expression\s*\(|var\(/i.test(value)) {
+        continue;
+      }
+      if (property.startsWith("--")) {
+        if (CSS_COLOR.test(value)) {
+          declarations.push(`${property}: ${value};`);
+          colors.push({ property: "custom-property", value });
+        }
         continue;
       }
       declarations.push(`${property}: ${value};`);
@@ -234,15 +269,25 @@ export function captureDeclaredDesign($: CheerioAPI, safeLink: (raw: string | un
     remaining -= text.length + selector.length;
     styles.push({ selector: selector.slice(0, 500), declarations: text, colors });
   };
+  const inputs: string[] = [];
   $("style").slice(0, 40).each((_i, node) => {
     const css = $(node).text();
     if (css.length > 100000) {
       truncated = true;
     }
-    for (const rule of css.slice(0, 100000).replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      addStyle(rule[1].trim(), rule[2]);
-    }
+    inputs.push(css.slice(0, 100000));
   });
+  const rules = [...inputs, ...sheets].flatMap((css) => cssRules(css.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, "")));
+  for (const [, body] of rules) {
+    for (const match of body.matchAll(/(?:^|;)\s*(--[\w-]+)\s*:\s*([^;{}]+)(?=;|$)/g)) {
+      if (custom.size < 500) {
+        custom.set(match[1], match[2].trim());
+      }
+    }
+  }
+  for (const [selector, body] of rules) {
+    addStyle(selector, body);
+  }
   $("[style]").slice(0, 200).each((_i, node) => { addStyle(`${node.tagName}[style]`, $(node).attr("style") ?? ""); });
   $("img").slice(0, 300).each((_i, node) => {
     if (logos.length >= 20) { truncated = true; return; }
