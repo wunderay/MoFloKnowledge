@@ -22,7 +22,7 @@ function relevance(url: string, label: string, pathPrefix = ''): number {
     const path = parsed.pathname.toLowerCase();
     const words = `${path.replace(/[^a-z]+/g, ' ')} ${label.toLowerCase()}`;
     // Specific destinations take precedence over an inherited parent-path keyword.
-    if (/\b(?:privacy|terms|legal|login|sign in|client hub)\b/.test(words)) {
+    if (/\b(?:privacy|terms|legal|login|sign in|client hub|cart|checkout)\b/.test(words)) {
       return 5;
     }
     if (/^\/(?:blog|news|articles?|learning-center)(?:\/|$)/.test(path)) {
@@ -32,17 +32,34 @@ function relevance(url: string, label: string, pathPrefix = ''): number {
     if (/\b(?:referrals?|appointment|schedule|booking|book(?: a)?)\b/.test(words)) {
       return 88;
     }
+    if (/\b(?:quote|estimate)\b/.test(words)) {
+      return 92;
+    }
+    if (/\b(?:testimonials?|reviews?)\b/.test(words)) {
+      return 91;
+    }
+    if (/\b(?:financing|finance|payments?)\b/.test(words)) {
+      return 89;
+    }
     if (/\b(?:newsletter|subscribe)\b/.test(words)) {
       return 45;
     }
     if (/\b(?:contact|locations?)\b/.test(words)) {
       return 90;
     }
-    if (/\b(?:about|company|firm|background|team|leadership|founder)\b/.test(words)) {
+    if (/\b(?:about|company|firm|background|team|staff|bios?|people|employees?|leadership|founder)\b/.test(words)) {
       return path.split('/').filter(Boolean).length <= 1 ? 100 : 85;
     }
     if (/\b(?:services?|products?|offerings?|solutions?|pricing)\b/.test(words)) {
       return path.split('/').filter(Boolean).length <= 1 ? 95 : 80;
+    }
+    // Pages that are rarely useful; checked after the funnel and service rules so a service named
+    // with one of these words is not demoted.
+    if (/\b(?:portal|hub|careers?|jobs?|videos?|media|gallery|diagrams?)\b/.test(words)) {
+      return 5;
+    }
+    if (/\b(?:troubleshooting|sitemap|search)\b/.test(words)) {
+      return 3;
     }
     if (/\b(?:faq|brand)\b/.test(words)) {
       return 65;
@@ -52,8 +69,18 @@ function relevance(url: string, label: string, pathPrefix = ''): number {
     if (prefixDepth > 0 && path.split('/').filter(Boolean).length === prefixDepth + 1) {
       return 70;
     }
+    // An unknown top-level page of the site gets a neutral middle score.
+    if (path.split('/').filter(Boolean).length === 1) {
+      return 50;
+    }
     // Lowest plain-path score; stays above VARIANT_SCORE so checkpoint scores are never negative.
     return 1;
+}
+/** Url identity for seen checks: a trailing slash on a non-root path is ignored. */
+function slashKey(url: string): string {
+    const parsed = new URL(url);
+    const path = parsed.pathname.length > 1 ? parsed.pathname.replace(/\/+$/, '') : parsed.pathname;
+    return parsed.origin + path + parsed.search;
 }
 /** Query-string variants of a path rank below every plain path (0 keeps scores non-negative). */
 const VARIANT_SCORE = 0;
@@ -64,6 +91,8 @@ export class Frontier {
     private pending: FrontierItem[] = [];
     private seen = new Set<string>();
     private aliases = new Map<string, string>();
+    /** Seen urls with the trailing slash dropped, so /contact and /contact/ count once. */
+    private seenKeys = new Set<string>();
     private selected = 0;
     readonly documentLimit: number;
     readonly depthLimit: number;
@@ -78,6 +107,7 @@ export class Frontier {
         if (snapshot) {
             this.pending = [...snapshot.pending];
             this.seen = new Set(snapshot.seen);
+            this.seenKeys = new Set(snapshot.seen.map(slashKey));
             this.aliases = new Map(snapshot.aliases);
             this.selected = snapshot.selected;
             for (const limit of snapshot.limitsReached) {
@@ -93,7 +123,7 @@ export class Frontier {
     isNew(input: string): boolean {
         try {
             const url = assertDocumentScope(normalizeUrl(input, this.root), this.scope, this.pathPrefix);
-            return !this.seen.has(url) && !this.aliases.has(url);
+            return !this.isKnown(url);
         }
         catch {
             return false;
@@ -109,7 +139,7 @@ export class Frontier {
         catch {
             return false;
         }
-        if (this.seen.has(url) || this.aliases.has(url)) {
+        if (this.isKnown(url)) {
           return false;
         }
         if (isUtilitySubpage(new URL(url).pathname, this.pathPrefix)) {
@@ -128,9 +158,13 @@ export class Frontier {
             return false;
         }
         this.seen.add(url);
+        this.seenKeys.add(slashKey(url));
         const score = rank !== undefined ? 200 - Math.min(rank, 99) : isVariant ? VARIANT_SCORE : relevance(url, label, this.pathPrefix);
         this.pending.push({ url, depth, score });
         return true;
+    }
+    private isKnown(url: string): boolean {
+        return this.seen.has(url) || this.aliases.has(url) || this.seenKeys.has(slashKey(url));
     }
     /** True when another query-string variant of the same path was already queued or seen. */
     private hasVariant(url: string): boolean {
@@ -173,6 +207,6 @@ export class Frontier {
     }
     alias(from: string, to: string) { const normalized = assertDocumentScope(to, this.scope, this.pathPrefix); if (from !== normalized) {
       this.aliases.set(normalizeUrl(from), normalized);
-    } this.seen.add(normalized); this.pending = this.pending.filter(item => item.url !== normalized); }
+    } this.seen.add(normalized); this.seenKeys.add(slashKey(normalized)); this.pending = this.pending.filter(item => slashKey(item.url) !== slashKey(normalized)); }
     snapshot(): FrontierSnapshot { return { root: this.root, pending: [...this.pending], seen: [...this.seen], aliases: [...this.aliases], selected: this.selected, limitsReached: [...this.limitsReached] }; }
 }
