@@ -18,5 +18,5 @@ export function stripTrackingParams(raw: string): string {
 /** The stored phone is exactly ten digits; a leading country code 1 is dropped, anything else is refused. */
 export function bareTenDigitPhone(raw: string): string | null {
   const digits = raw.replace(/[\s().-]/g, "").replace(/^\+?1(?=\d{10}$)/, "");
-  return /^\d{10}$/.test(digits) ? digits : null;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(digits) ? digits : null;
 }

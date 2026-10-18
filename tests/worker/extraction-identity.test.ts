@@ -32,6 +32,13 @@ describe("identity extraction from a captured business page", () => {
     expect(values("/company_foundation/alternative_company_names"))
       .toEqual([{ text: "Account-it Consulting Services, LLC" }]);
   });
+  it("skips a declared name that is only the site's own name", () => {
+    const jsonLd = [{ "@type": "LocalBusiness", url: "https://account-it.net", name: "Account-it, LLC", telephone: "02 9374 4000" }];
+    const own = { ...page, capture: { ...page.capture, observations: { ...observations, jsonLd } } };
+    const found = deterministicCandidates(own, technicalObservations(own));
+    expect(found.filter((c) => c.field === "/company_foundation/alternative_company_names")).toEqual([]);
+    expect(found.filter((c) => c.field === "/online_presence/phone")).toEqual([]);
+  });
   it("takes the declared telephone as the company phone", () => {
     expect(values("/online_presence/phone")).toEqual(["9545928630"]);
   });
