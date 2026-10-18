@@ -420,10 +420,10 @@ export async function runCrawl(
       if (pickLinks) {
         const candidates = capture.links.filter((link) => frontier.isNew(link.url));
         const ordered = await pickLinks(item.url, candidates, frontier.remaining, scheduler.signal);
-        ordered.forEach((link, rank) => frontier.add(link.url, link.label, item.depth + 1, rank));
+        ordered.forEach((link, rank) => frontier.add(link.url, link.label, item.depth + 1, rank, link.nav));
       } else {
         for (const link of capture.links) {
-          frontier.add(link.url, link.label, item.depth + 1);
+          frontier.add(link.url, link.label, item.depth + 1, undefined, link.nav);
         }
       }
       if (capture.truncated) {
@@ -495,7 +495,7 @@ export async function runCrawl(
             c.capture.finalUrl === item.url,
         );
         for (const link of done?.capture.links ?? []) {
-          frontier.add(link.url, link.label, item.depth + 1);
+          frontier.add(link.url, link.label, item.depth + 1, undefined, link.nav);
         }
         continue;
       }

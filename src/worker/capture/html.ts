@@ -21,7 +21,7 @@ export interface PageCapture {
   text: string;
   contentHash: string;
   observations: Record<string, unknown>;
-  links: { url: string; label: string }[];
+  links: { url: string; label: string; nav?: boolean }[];
   requiresRender: boolean;
   truncated: boolean;
 }
@@ -180,7 +180,7 @@ export function captureHtml(
         text: normalizeText($(node).text()).slice(0, 2000),
       }))
       .get();
-  const links: { url: string; label: string }[] = [];
+  const links: { url: string; label: string; nav?: boolean }[] = [];
   if (rendered?.links) {
     for (const link of rendered.links) {
       const url = safeLink(link.url);
@@ -197,6 +197,7 @@ export function captureHtml(
           links.push({
             url,
             label: normalizeText($(node).text()).slice(0, 500),
+            ...($(node).closest("nav, header").length > 0 && { nav: true }),
           });
         }
       });
