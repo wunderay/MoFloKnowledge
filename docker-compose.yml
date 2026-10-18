@@ -1,0 +1,18 @@
+# One command, no host tools but Docker:  docker compose up --build   then open http://localhost:8080
+# The login is printed in the log ("Open http://localhost:8080 — log in as ..."). Data and secrets live in the named volume.
+name: moflo-local
+services:
+  app:
+    build:
+      context: .
+      dockerfile: deploy/local/Dockerfile
+    image: moflo-local:latest
+    init: true
+    ports:
+      - "127.0.0.1:8080:8080" # this machine only
+    volumes:
+      - moflo-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    stop_grace_period: 60s
+volumes:
+  moflo-data:

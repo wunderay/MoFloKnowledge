@@ -1,0 +1,75 @@
+name: Local run
+
+# Proves the one-command local setup on a real runner: the all-in-one image builds, starts, and serves the app.
+on:
+  pull_request:
+    paths:
+      - docker-compose.yml
+      - deploy/local/**
+      - scripts/local.mjs
+      - start.sh
+      - start.cmd
+      - package.json
+      - package-lock.json
+      - supabase/migrations/**
+      - src/**
+      - .github/workflows/local-run.yml
+  push:
+    branches: [main]
+    paths:
+      - docker-compose.yml
+      - deploy/local/**
+      - scripts/local.mjs
+      - start.sh
+      - start.cmd
+      - package.json
+      - package-lock.json
+      - supabase/migrations/**
+      - src/**
+      - .github/workflows/local-run.yml
+  workflow_dispatch:
+
+concurrency:
+  group: local-run-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Build, start, sign in, create a company
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Build and start
+        run: docker compose up --build -d
+      - name: Wait for the app on localhost:8080
+        run: |
+          deadline=$((SECONDS + 600))
+          until [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/sign-in)" = 200 ]; do
+            if [ "$SECONDS" -ge "$deadline" ]; then echo "the app did not come up in 10 minutes"; exit 1; fi
+            sleep 5
+          done
+          echo "the app is up after about $SECONDS s"
+      - name: Read the demo login
+        run: |
+          deadline=$((SECONDS + 120))
+          until docker compose logs --no-log-prefix app | grep -q "log in as"; do
+            if [ "$SECONDS" -ge "$deadline" ]; then echo "no demo login in the log"; exit 1; fi
+            sleep 5
+          done
+          docker compose logs --no-log-prefix app > app.log
+          grep "Open http" app.log | sed 's#/ .*#/ ***#'
+      - name: Smoke test (sign in, create a company, crawl claimed)
+        run: node deploy/local/smoke.mjs --log app.log
+      - name: Logs
+        if: always()
+        run: docker compose logs --tail 200
+      - name: Clean up
+        if: always()
+        run: docker compose down -v
