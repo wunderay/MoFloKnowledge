@@ -15,7 +15,7 @@ it("keeps today's limits when no setting is given", async () => {
   const limits = (await reader())({});
   expect(limits).toMatchObject({
     maxPages: 25,
-    defaultPages: 10,
+    defaultPages: 15,
     maxDepth: 3,
     defaultDepth: 2,
     maxDiscovered: 200,

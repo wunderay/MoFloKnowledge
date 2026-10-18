@@ -17,7 +17,7 @@ export interface CaptureLimits {
   defaultPages: number;
   defaultDepth: number;
 }
-const DEFAULT_LIMITS: CaptureLimits = { maxPages: 25, maxDepth: 3, defaultPages: 10, defaultDepth: 2 };
+const DEFAULT_LIMITS: CaptureLimits = { maxPages: 25, maxDepth: 3, defaultPages: 15, defaultDepth: 2 };
 const active = ["queued", "validating", "crawling", "extracting"];
 export function ScrapeProgress({
   companyId,

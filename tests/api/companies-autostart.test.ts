@@ -34,7 +34,7 @@ it("enqueues a default scrape of the website after creating the company and retu
     expect.objectContaining({
       p_company: "33333333-3333-4333-8333-333333333333",
       p_url: expect.stringContaining("acme.example") as unknown,
-      p_options: { max_pages: 10, max_depth: 2 },
+      p_options: { max_pages: 15, max_depth: 2 },
     }),
   );
   expect((await response.json()).data.jobId).toBe("44444444-4444-4444-8444-444444444444");

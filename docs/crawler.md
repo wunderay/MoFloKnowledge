@@ -6,7 +6,7 @@ The crawler turns a company's public website into source-backed knowledge. It vi
 
 Crawls start only from a member's action, never on a schedule or in the background:
 
-- **Creating a company.** When a member creates a company and enters its website, the app queues a crawl of that website with the default limits (10 pages, depth 2) and opens the company with the crawl's progress showing. If queueing fails, the company is still created and the crawl can be started by hand.
+- **Creating a company.** When a member creates a company and enters its website, the app queues a crawl of that website with the default limits (15 pages, depth 2) and opens the company with the crawl's progress showing. If queueing fails, the company is still created and the crawl can be started by hand.
 - **Pressing crawl.** A member presses crawl on the company and can choose a page limit (1–25 by default) and a depth limit (0–3 by default); see Crawl limits below.
 
 The app calls `enqueue_scrape`, which records a job in `scrape_jobs`. The database limits crawls to 10 per company and 30 per user per hour, and a retry with the same request id returns the same job.
@@ -18,7 +18,7 @@ The limits below live in one shared module (`src/lib/config/crawl-limits.ts`) re
 | Variable | Default | `none` | Risk |
 |---|---|---|---|
 | `CRAWL_MAX_PAGES` | 25 | No ceiling on the page limit a member may choose | Large crawls use more worker time, storage and model quota |
-| `CRAWL_DEFAULT_PAGES` | 10 | Not removable (a number is needed) | Used when no page limit is chosen |
+| `CRAWL_DEFAULT_PAGES` | 15 | Not removable (a number is needed) | Used when no page limit is chosen |
 | `CRAWL_MAX_DEPTH` | 3 | No ceiling on link depth | Deep crawls wander far from the pages that matter |
 | `CRAWL_DEFAULT_DEPTH` | 2 | Not removable | Used when no depth is chosen |
 | `CRAWL_MAX_DISCOVERED` | 200 | No cap on links remembered per crawl | More memory and a larger saved checkpoint |
@@ -229,6 +229,8 @@ Fields not listed here (for example gender and most other registered fields) hav
 ### Other captured content
 
 Page text, headings, forms and other observations that no registered field uses stay attached to the source capture as evidence. They are not presented as extracted business fields.
+
+The knowledge view lists captured headlines (H1/H2 headings, page titles and meta descriptions), calls to action, lead magnets (offers such as newsletters, guides and consultations) and opening hours as read-only sub-sections under "Captured from the website". They are derived when the page is read, merged by text across pages, and never become knowledge fields.
 
 ### Controlled field values
 
