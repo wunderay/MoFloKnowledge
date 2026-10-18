@@ -2,8 +2,10 @@
 //   npm run local            build, start, wait until healthy, print the demo login, open the browser
 //   npm run local -- --stop  stop it (the data stays)
 //   npm run local -- --reset stop it and delete its data volume
-// Works on Windows, macOS and Linux. start.sh and start.cmd do the same without Node.
+// Works on Windows, macOS and Linux; starts Docker Desktop first if it is installed but not running. start.sh and start.cmd do the same without Node.
 import { spawn, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const url = "http://localhost:8080";
@@ -35,6 +37,66 @@ export function findLogin(logText) {
   return line ? line.slice(line.indexOf("Open ")) : null;
 }
 
+/** Polls `probe` every `intervalMs` until it is true or `timeoutMs` has passed; resolves true when ready. */
+export async function waitForDocker({ probe, sleep, timeoutMs = 180000, intervalMs = 3000, onWait = () => {} }) {
+  for (let waited = 0; ; waited += intervalMs) {
+    if (probe()) {
+      return true;
+    }
+    if (waited >= timeoutMs) {
+      return false;
+    }
+    onWait();
+    await sleep(intervalMs);
+  }
+}
+
+function dockerReady() {
+  return spawnSync("docker", ["info"], { stdio: "ignore" }).status === 0;
+}
+
+/** Starts Docker Desktop where it can be started without elevated rights; false when there is nothing to start. */
+function startDockerDesktop() {
+  if (process.platform === "darwin") {
+    return spawnSync("open", ["-a", "Docker"], { stdio: "ignore" }).status === 0;
+  }
+  const exe = join(process.env.ProgramFiles ?? "C:\\Program Files", "Docker", "Docker", "Docker Desktop.exe");
+  if (process.platform !== "win32" || !existsSync(exe)) {
+    return false;
+  }
+  spawn(exe, [], { stdio: "ignore", detached: true }).on("error", () => {}).unref();
+  return true;
+}
+
+async function ensureDocker() {
+  if (spawnSync("docker", ["--version"], { stdio: "ignore" }).status !== 0) {
+    console.error("Docker is not installed. Install Docker Desktop (Windows, macOS) or Docker Engine (Linux): https://docs.docker.com/get-started/get-docker/");
+    process.exit(1);
+  }
+  if (dockerReady()) {
+    return;
+  }
+  if (process.platform === "linux") {
+    console.error("Docker is not running. Start Docker (for example: sudo systemctl start docker) and run this again.");
+    process.exit(1);
+  }
+  console.log("Docker is not running - starting Docker Desktop...");
+  if (!startDockerDesktop()) {
+    console.error("Docker Desktop was not found. Start Docker and run this again.");
+    process.exit(1);
+  }
+  const ready = await waitForDocker({
+    probe: dockerReady,
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    onWait: () => process.stdout.write("."),
+  });
+  console.log("");
+  if (!ready) {
+    console.error("Docker did not start within 3 minutes. Open Docker Desktop, wait until it says Engine running, then run this again.");
+    process.exit(1);
+  }
+}
+
 function openBrowser(target) {
   const [command, args] =
     process.platform === "win32" ? ["cmd", ["/c", "start", "", target]] : process.platform === "darwin" ? ["open", [target]] : ["xdg-open", [target]];
@@ -49,10 +111,11 @@ function docker(args, options = {}) {
   return spawnSync("docker", args, { stdio: "inherit", ...options });
 }
 
-function main() {
+async function main() {
   const { mode, open } = parseArgs(process.argv.slice(2));
+  await ensureDocker();
   if (spawnSync("docker", ["compose", "version"], { stdio: "ignore" }).status !== 0) {
-    console.error("Docker with Compose is required. Install Docker Desktop (Windows, macOS) or Docker Engine (Linux), start it, and run this again.");
+    console.error("Docker with Compose is required. Update Docker Desktop (Windows, macOS) or install the Docker Compose plugin (Linux), and run this again.");
     process.exit(1);
   }
   const result = docker(composeArgs(mode));
@@ -73,7 +136,7 @@ function main() {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
-    main();
+    await main();
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

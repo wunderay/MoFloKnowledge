@@ -17,6 +17,7 @@ interface LocalModule {
   parseArgs(argv: string[]): { mode: string; open: boolean };
   composeArgs(mode: string): string[];
   findLogin(logText: string): string | null;
+  waitForDocker(options: { probe: () => boolean; sleep: (ms: number) => Promise<void>; timeoutMs?: number; intervalMs?: number }): Promise<boolean>;
 }
 // Plain .mjs scripts have no type declarations, so they are loaded by URL.
 const load = async <T>(path: string) => (await import(pathToFileURL(join(process.cwd(), path)).href)) as T;
@@ -96,5 +97,19 @@ describe("one-command wrapper (scripts/local.mjs)", () => {
     const log = ["[local] ready", "[local] Open http://localhost:8080 - log in as demo@local.test / old", "[local] Open http://localhost:8080 - log in as demo@local.test / pw123"].join("\n");
     expect(findLogin(log)).toBe("Open http://localhost:8080 - log in as demo@local.test / pw123");
     expect(findLogin("nothing here")).toBeNull();
+  });
+
+  it("waits for the Docker daemon until it answers or the time is up", async () => {
+    const { waitForDocker } = await load<LocalModule>("scripts/local.mjs");
+    const waits: number[] = [];
+    const sleep = async (ms: number) => void waits.push(ms);
+    expect(await waitForDocker({ probe: () => true, sleep })).toBe(true);
+    expect(waits).toEqual([]);
+    const answers = [false, false, true];
+    expect(await waitForDocker({ probe: () => answers.shift() ?? true, sleep, intervalMs: 3000 })).toBe(true);
+    expect(waits).toEqual([3000, 3000]);
+    waits.length = 0;
+    expect(await waitForDocker({ probe: () => false, sleep, timeoutMs: 9000, intervalMs: 3000 })).toBe(false);
+    expect(waits).toEqual([3000, 3000, 3000]);
   });
 });
