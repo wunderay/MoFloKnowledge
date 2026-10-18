@@ -6,6 +6,7 @@ import { structuredCandidates } from "./structured";
 import { visibleCandidates } from "./visible";
 import { companyTextCandidates, COMPANY_TEXT_FIELDS } from "./company-text";
 import { marketTextCandidates, MARKET_TEXT_SUPPORTED_FIELDS } from "./market-text";
+import { inProfileScope, platformProfileCandidates, profileScope } from "./platform-profile";
 const FONTS_FIELD = "/branding_and_style/fonts";
 export const SUPPORTED_FIELDS: readonly string[] = [
   ...COMPANY_TEXT_FIELDS, ...MARKET_TEXT_SUPPORTED_FIELDS,
@@ -21,15 +22,23 @@ export const SUPPORTED_FIELDS: readonly string[] = [
   "/online_presence/social_media_links", "/online_presence/phone", FONTS_FIELD,
   "/branding_and_style/brand_colors", "/branding_and_style/logos",
 ];
+/** `startUrl` is the crawl's start URL; with a path prefix the site is a profile on a shared platform. */
 export function deterministicCandidates(
   page: StoredCapture,
   observations: TechnicalObservation[],
+  startUrl?: string,
 ): FieldCandidate[] {
+  const scope = profileScope(startUrl);
   const result: FieldCandidate[] = [
     ...structuredCandidates(page, observations),
     ...visibleCandidates(page, observations),
     ...companyTextCandidates(page, observations),
-    ...marketTextCandidates(page, observations),
+    // The platform's own header and footer links are not the profile owner's calls to action or channels.
+    ...marketTextCandidates(page, observations).filter((c) => {
+      const link = /\/(?:ctas|channels)$/.test(c.field) && Array.isArray(c.value) ? (c.value[0] as { url?: string | null } | undefined)?.url : null;
+      return !scope || !link || inProfileScope(scope, link);
+    }),
+    ...(scope ? platformProfileCandidates(page, observations, scope) : []),
   ];
   const add = (
     field: string,
@@ -64,7 +73,8 @@ export function deterministicCandidates(
     add("/company_foundation/website", page.capture.finalUrl, [urlObservation.id]);
   }
   const seenColors: { hex: string }[] = [];
-  for (const o of observations) {
+  // On a shared platform the page design (fonts, colours, logos) belongs to the platform, not the profile owner.
+  for (const o of scope ? [] : observations) {
     if (o.property === "font-family" && o.value) {
       add(
         FONTS_FIELD,

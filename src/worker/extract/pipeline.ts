@@ -6,7 +6,7 @@ import { deterministicCandidates } from "./deterministic";
 import { technicalObservations } from "./observations";
 import { reduceCandidates } from "./reduce";
 // Change this version when deterministic rules or checkpoint candidate formats change.
-export const EXTRACTOR_VERSION = "deterministic-v7";
+export const EXTRACTOR_VERSION = "deterministic-v8";
 export async function extractAndFinish(
   job: Job,
   repository: JobRepository,
@@ -80,6 +80,8 @@ export async function extractAndFinish(
     },
     crawl.progress,
   );
+  // The crawl's effective root is the start URL after redirects; a path prefix marks a platform profile.
+  const startUrl = (crawl.checkpoint.effectiveRoot as string | undefined) ?? job.requested_url;
   for (const page of crawl.captures) {
     if (completed.has(page.id)) {
       continue;
@@ -101,7 +103,7 @@ export async function extractAndFinish(
           "Some captured text or design observations were unavailable or truncated.",
       });
     }
-    let proposed = deterministicCandidates(page, observations);
+    let proposed = deterministicCandidates(page, observations, startUrl);
     if (page.id !== crawl.captures[0]?.id) {
       proposed = proposed.filter(
         (c) => c.field !== "/company_foundation/website",
