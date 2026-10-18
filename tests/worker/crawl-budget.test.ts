@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { runCrawl } from "../../src/worker/crawl/run-crawl";
 import { Frontier } from "../../src/worker/crawl/frontier";
-import { CheckpointSchema } from "../../src/contracts/jobs";
+import { CrawlCheckpointSchema } from "../../src/contracts/jobs";
 import { stableId } from "../../src/lib/identity";
 import type { Job, JobRepository } from "../../src/worker/job-repository";
 import type { fetchDocument } from "../../src/worker/network/pinned-transport";
@@ -84,7 +84,7 @@ it("saves a checkpoint whose frontier holds a query-variant link", () => {
     captured_source_ids: [],
     errors: [],
   };
-  expect(() => CheckpointSchema.parse(checkpoint)).not.toThrow();
+  expect(() => CrawlCheckpointSchema.parse(checkpoint)).not.toThrow();
   const selected = [frontier.next(), frontier.next()].map((item) => item?.url);
   expect(selected).toEqual(["https://github.com/wunderay/chattr", "https://github.com/wunderay?tab=repositories"]);
 });
