@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   createEmptyProvenance,
   type BusinessEntry,
@@ -71,12 +71,15 @@ export function KnowledgeViewer({
   initialOffering,
   initialPerson,
   initialData,
+  capturedExtras,
 }: {
   companyId: string;
   initialVersionId?: string;
   initialSection?: KnowledgeSectionId;
   initialOffering?: string;
   initialPerson?: string;
+  /** Server-rendered captured-evidence section; belongs to the company the page was opened for. */
+  capturedExtras?: ReactNode;
   initialData?: {
     companyName: string;
     versions: Version[];
@@ -117,6 +120,7 @@ export function KnowledgeViewer({
   );
   const [offeringId, setOfferingId] = useState(initialOffering ?? "");
   const [personId, setPersonId] = useState(initialPerson ?? "");
+  const [openedCompanyId] = useState(companyId);
   const [exportFormat, setExportFormat] = useState("docx");
   const [query, setQuery] = useState("");
   const [section, setSection] = useState("");
@@ -636,6 +640,7 @@ export function KnowledgeViewer({
             <span aria-hidden="true">ⓘ</span> Tip: keep company facts specific and evidence based. Anything missing can be filled in from the editor.
           </p>
           <SourceCoverage key={companyId} companyId={companyId} viewingSnapshot={versionId !== "draft"} />
+          {companyId === openedCompanyId && capturedExtras}
           {versionId === "draft" && !loading && entries.length > 0 && (
             <details className="knowledge-view__review">
               <summary>Review draft entries ({entries.length})</summary>
