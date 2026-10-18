@@ -70,7 +70,25 @@ Each fetched or rendered page is stored as a source capture (`insert_source_capt
 
 ## 6. Extraction rules
 
-Extraction (`src/worker/extract/`) maps explicit website evidence to registered fields with fixed rules. Page capture (`src/worker/capture/`) first keeps the page's text as exact segments, plus structured observations: headings, content sections and lists, links, forms, buttons, addresses, price text, JSON-LD, the meta description, declared styles and logos. Navigation, footers, site banners, hidden elements, cookie banners and related-article blocks are left out of the content sections. A candidate is kept only if it cites those segments or observations. The extractor never guesses a field from nearby wording, infers missing facts or writes new copy.
+Extraction (`src/worker/extract/`) maps explicit website evidence to registered fields with fixed rules. Page capture (`src/worker/capture/`) first keeps the page's text as exact segments, plus structured observations: headings, content sections and lists, links, forms, buttons, addresses, price text, JSON-LD, the meta description, declared styles and logos.
+
+Capture also records bounded, verbatim page metadata under these observation keys (read from the page's own HTML, for fetched and rendered pages alike; every list is capped and anything cut adds a limitation note; the new keys together are held to 200,000 characters, and values that look like secrets or token-named meta tags are skipped; script contents are never kept):
+
+| Key | Content | Cap |
+| --- | --- | --- |
+| `htmlLang` | the `<html lang>` value | 35 characters |
+| `metaTags` | every `<meta>` `name`, `property`, `itemprop` and `http-equiv` pair as `{attribute, name, content}` | 200 tags, 1000 characters per value |
+| `linkRels` | `<link>` of rel `canonical`, `alternate` (with `hreflang`), `icon`, `apple-touch-icon`, `manifest`, `me`, `author` as `{rel, href, hreflang?, type?, sizes?}` | 100 |
+| `microdata` | each `itemscope` flattened to `{type, props}` (props own only their direct `itemprop`s; nested scopes are their own entries) | 50 items, 40 props, 10 values per prop |
+| `rdfa` | each `typeof` element as `{type, vocab?, props}` from its `property` descendants | 50 items, 40 props, 10 values per prop |
+| `mailtoLinks`, `telLinks` | `{value, text}` for `mailto:` and `tel:` links (query strings dropped). Observations only; these links are never added to the frontier | 20 each |
+| `breadcrumbs` | trails from `BreadcrumbList` JSON-LD or a breadcrumb `nav`/list, as `{source, items: [{name, url}]}` | 5 trails, 20 items |
+| `labelValuePairs` | `{label, value, source}` from main-content `<dl>` and two-column tables | 100 pairs, 200 characters per label |
+| `times` | main-content `time[datetime]` as `{datetime, text}` | 50 |
+| `images` | main-content `<img>` as `{src, alt}` | 50 |
+| `embeds` | YouTube and Vimeo `iframe`/`embed`/`video` URLs as `{provider, url}` | 20 |
+
+`<address>` blocks continue to be recorded under `addresses`. Navigation, footers, site banners, hidden elements, cookie banners and related-article blocks are left out of the content sections. A candidate is kept only if it cites those segments or observations. The extractor never guesses a field from nearby wording, infers missing facts or writes new copy.
 
 ### Supported sources
 
