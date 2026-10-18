@@ -23,7 +23,7 @@ const buyerNoun = /\b(?:(?:(?:brand[- ]new|small and (?:mid|medium)[- ]sized|sma
 export const buyerIdentityKey = (text: string) => clean(text).toLowerCase()
   .replace(/\bbusinesses\b/g, "business").replace(/\bcompanies\b/g, "company")
   .replace(/\bcorporations\b/g, "corporation").replace(/\bindividuals\b/g, "individual")
-  .replace(/\bstart-ups\b/g, "start-up").replace(/[^\p{L}\p{N}]+/gu, "");
+  .replace(/\bstart-ups\b/g, "start-up").replace(/\bstart-up (?:business|company)\b/g, "start-up").replace(/[^\p{L}\p{N}]+/gu, "");
 const needText = (text: string) => text.length >= 35 && text.length <= 500 &&
   /\b(?:you|your|clients?|customers?)\b/i.test(text) && (problem.test(text) || benefit.test(text)) &&
   !/:$|^(?:copyright|terms|privacy|before you|it is important|these |this |perhaps most importantly)|\b(?:cookie|advertis(?:ing|ement)|third[- ]party|our (?:staff|employees|team)|top[- ]rated|expertise|our knowledge)|(?:with problem areas|tackle the burden)\.?$/i.test(text) &&
@@ -192,6 +192,11 @@ export function marketTextCandidates(
       const lifecycle = buyerDeclaration && /\bfrom\s+([^.!?]*\bbusinesses\s+to\s+those nearing retirement[^.!?]*)/i.exec(paragraph);
       if (lifecycle) {
         const buyer = lifecycle[1].trim();
+        // The lifecycle's far end is a buyer in its own right, quoted as written.
+        const farEnd = /\bto (those nearing retirement)\b/i.exec(lifecycle[1])?.[1];
+        if (farEnd) {
+          textItem("target_buyers", farEnd, paragraph);
+        }
         personas.set(buyerIdentityKey(buyer), { buyer, goals: new Set(), pains: new Set(), passages: new Set([paragraph]) });
       }
       // Copy a complete source sentence, retaining the benefit/problem wording and its qualifications.
