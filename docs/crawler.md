@@ -163,6 +163,8 @@ Every source the extractor reads is listed here. "Field" is the registered field
 | `<address>` and `itemprop="address"` elements (or the renderer's address list) | `company_foundation/main_address` (raw text) | Up to 30 elements. |
 | Person profile page: page address ends `/team/<slug>`, `/people/<slug>`, `/staff/<slug>`, `/about-us/<slug>` or `/about/<slug>` | `key_people/@id/name`, `title` | The title reads "Name - Role" (or "Name | Role") with Role one of Co-Founder, Founder, CEO, Chief Executive Officer, Owner, President or Director, or the slug matches the name and exactly one heading is such a role. A visible heading must equal the name. The page must not also carry JSON-LD `Person` data. |
 
+On a shared-platform profile (start URL with a path prefix), item utility pages (`/<prefix>/<item>/actions`, `issues`, `pulls`, `security`, `blob`, `tree`, `commits`, `releases`, `wiki`, `settings` and the like, and anything deeper) are neither crawled nor extracted. A repository page takes the first paragraph after its README heading word for word as the offering description, even when that heading is the repository name; a microdata `Person` whose name is the first line of the profile heading is a key person (name, `jobTitle`, `description` verbatim).
+
 **Offerings (`services-text.ts`, `capture/html.ts`)**
 
 | Source | Field(s) | Conditions |

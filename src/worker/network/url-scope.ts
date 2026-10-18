@@ -43,3 +43,14 @@ export function assertDocumentScope(input: string, scope: readonly string[], pat
     }
     return url;
 }
+const UTILITY_SUBPAGES = new Set(['actions', 'issues', 'pulls', 'security', 'blob', 'tree', 'commits', 'branches', 'tags',
+  'releases', 'projects', 'wiki', 'pulse', 'graphs', 'network', 'settings', 'stargazers', 'watchers', 'forks']);
+/** True for a platform utility page of an item under a profile prefix: /<prefix>/<item>/<utility>[/...]. */
+export function isUtilitySubpage(pathname: string, pathPrefix: string): boolean {
+    const depth = pathPrefix.split('/').filter(Boolean).length;
+    if (depth === 0) {
+      return false;
+    }
+    const segments = pathname.split('/').filter(Boolean);
+    return segments.length > depth + 1 && UTILITY_SUBPAGES.has(segments[depth + 1].toLowerCase());
+}
