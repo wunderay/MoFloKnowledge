@@ -12,7 +12,7 @@ export interface CapturedHooks { headlines: Headline[]; ctas: Cta[]; leadMagnets
 interface PageRow { normalized_url: string; title: string | null; cleaned_content: string | null; observations: unknown }
 
 const LIMIT = 50;
-const LEAD = /\b(?:newsletter|subscribe|ebook|guide|download|webinar|book|schedule|consult|free)\b/i;
+const LEAD = /\b(?:newsletters?|subscri(?:be|bed|bes|ption)|e-?books?|guides?|downloads?|webinars?|book(?:ing|ings)?|schedul(?:e|ing)|consult(?:s|ation|ations|ing)?|free)\b/i;
 const HOURS_LABEL = /(?:opening hours|hours)\s*:\s*([^\n]{3,120})/gi;
 
 const record = (value: unknown): Record<string, unknown> =>
