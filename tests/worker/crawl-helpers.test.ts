@@ -62,7 +62,9 @@ it('uses destination relevance without letting repeated services crowd out compa
     expect(selected).toContain('https://example.com/company-background');
     expect(selected).toContain('https://example.com/contact');
     expect(selected).toContain('https://example.com/about/team-member');
-    expect(selected.filter((url) => url?.includes('/services/detail-'))).toHaveLength(5);
+    expect(selected).toContain('https://example.com/appointment');
+    expect(selected).toContain('https://example.com/company-background/referrals');
+    expect(selected.filter((url) => url?.includes('/services/detail-'))).toHaveLength(3);
     expect(frontier.next()).toBeUndefined();
     expect([...frontier.limitsReached]).toContain('documents');
     expect(frontier.snapshot().pending).toHaveLength(4);

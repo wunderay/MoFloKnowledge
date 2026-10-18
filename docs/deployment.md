@@ -1,5 +1,7 @@
 # Native persistent deployment runbook
 
+For the Supabase, Vercel and Oracle VM setup deployed by GitHub Actions, use the [deploy checklist](deploy.md).
+
 The deployment provider and project have not been selected. This runbook defines service behavior and release steps; it does not claim a service has been created or that a firewall is configured. Fill `deploy/service-contract.json` with the approved provider, region, process supervisor, service identifiers, resource limits, secret references, network rules, Auth redirects, and database connection details before deployment.
 
 ## Services and process behavior
