@@ -6,7 +6,7 @@ import { exactSentences, hasNegation } from "./source-excerpts";
 const root = "/market_and_customers/";
 export const MARKET_TEXT_SUPPORTED_FIELDS = [
   "target_buyers", "customer_needs", "ideal_customer_personas",
-  "industry_groupings", "channels", "ctas", "suppliers_and_partners",
+  "industry_groupings", "channels", "ctas", "suppliers_and_partners", "funnels",
 ].map((field) => root + field);
 
 interface Section {
@@ -44,6 +44,24 @@ const sentenceAt = (paragraph: string, index: number): string => {
     }
   }
   return paragraph;
+};
+
+export const FUNNEL_NAMES = ["Contact form", "Newsletter signup", "Appointment scheduler", "Client referrals"];
+export const messageField = /\b(?:message|inquiry|enquiry|comments?|questions?)\b/i;
+export const subscribeText = /\b(?:newsletter|subscribe|subscription|notify me|weekly articles|email updates)\b/i;
+/** Scheduling counts only as an action or a whole heading, never a tax schedule or fee schedule. */
+const appointmentText = /\b(?:appointments?|book online|book (?:an?|your) (?:appointment|consultation|call)|schedule (?:an?|your) (?:appointment|consultation|call|meeting|inspection|service))\b|^(?:schedule|booking)$/i;
+const referralText = /\breferrals?\b/i;
+const pageFunnelPattern = { "Appointment scheduler": appointmentText, "Client referrals": referralText } as const;
+/** Whether a page-based funnel is named by a heading, or by a path segment (bare words only as a whole segment). */
+export const funnelHeadingMatch = (name: string, heading: string) =>
+  name in pageFunnelPattern && pageFunnelPattern[name as keyof typeof pageFunnelPattern].test(heading.trim());
+export const funnelPathMatch = (name: string, url: string) => {
+  try {
+    return new URL(url).pathname.split("/").some((part) => funnelHeadingMatch(name, part.replace(/[-_]+/g, " ")));
+  } catch {
+    return false;
+  }
 };
 
 /** Literal passages and observed controls only. These rules never invent a buyer or a conversion step. */
@@ -285,6 +303,34 @@ export function marketTextCandidates(
           90, form.action ? "Observed form entrypoint; submission was not performed." :
             "Observed form location; its submission destination was unavailable. Submission was not performed.");
       }
+    }
+  }
+  // Funnels come only from an explicit form field or a page whose path or heading names the funnel.
+  const funnel = (name: string, ids: string[]) => {
+    if (ids.length) {
+      add("funnels", [{ name, steps: [] }], [], ids);
+    }
+  };
+  if (Array.isArray(raw.forms)) {
+    for (const form of raw.forms as { selector?: string; action?: string | null; labels?: string[]; heading?: string | null; submitLabels?: string[] }[]) {
+      // Observations belong to their own form by selector, else by action, so another form's fields never count.
+      const own = (item: TechnicalObservation) => form.selector ? item.selector === form.selector : !form.action || item.asset_url === form.action;
+      const formIds = (properties: string[], values: string[]) => observations.filter((item) => properties.includes(item.property ?? "") &&
+        values.includes(item.value ?? "") && own(item)).map((item) => item.id);
+      funnel("Contact form", formIds(["form-label"], (form.labels ?? []).filter((label) => messageField.test(label))));
+      const subscribes = [...(form.submitLabels ?? []), ...(form.heading ? [form.heading] : [])].filter((text) => subscribeText.test(text));
+      funnel("Newsletter signup", formIds(["form-submit-label", "form-heading"], subscribes));
+    }
+  }
+  if (marketing) {
+    const headings = (Array.isArray(raw.headings) ? raw.headings as { text?: unknown; level?: number }[] : [])
+      .flatMap((item) => typeof item.text === "string" && (item.level ?? 6) <= 2 ? [item.text] : []);
+    const urlIds = observations.filter((item) => item.property === "url" && item.value === page.capture.finalUrl).map((item) => item.id);
+    for (const name of ["Appointment scheduler", "Client referrals"]) {
+      funnel(name, [
+        ...(funnelPathMatch(name, page.capture.finalUrl) ? urlIds : []),
+        ...observations.filter((item) => item.property === "heading" && headings.includes(item.value ?? "") && funnelHeadingMatch(name, item.value ?? "")).map((item) => item.id),
+      ]);
     }
   }
   for (const item of channels.values()) {
