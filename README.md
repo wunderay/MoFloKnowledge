@@ -17,7 +17,7 @@ The application is a Next.js 15 web app, a persistent Node.js worker, PostgreSQL
 ## Run locally
 
 1. Install [Docker](https://docs.docker.com/get-started/get-docker/) (Docker Desktop, or Docker Engine on Linux). Nothing else is needed.
-2. Run `docker compose up --build` (or `./start.sh` on macOS/Linux, `start.cmd` on Windows, `npm run local` if you have Node).
+2. Run `docker compose up --build` (or `./start.sh` on macOS/Linux, `start.cmd` on Windows, `npm run local` if you have Node). The scripts start Docker Desktop for you if it is installed but not running.
 3. Open http://localhost:8080 and log in with the demo login printed in the log: `Open http://localhost:8080 - log in as demo@local.test / <password>`. The wrappers print it for you and open the browser.
 
 The first start builds the image, which takes a few minutes; later starts take seconds. Your data and the generated secrets live in the `moflo-data` Docker volume and are reused on every start. To stop, run `docker compose down` (or `./start.sh --stop`, `start.cmd --stop`, `npm run local -- --stop`). To start fresh, delete the data with `docker compose down --volumes` (or the same wrappers with `--reset`).
