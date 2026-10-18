@@ -35,17 +35,19 @@ The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It
 | 95 / 80 | services, products, offerings, solutions and pricing pages (95 when one path segment deep, otherwise 80) |
 | 90 | contact and location pages |
 | 65 | FAQ and brand pages |
-| 55 | appointment, scheduling and booking pages |
-| 45 | referral, newsletter and subscribe pages |
+| 88 | appointment, scheduling, booking and referral pages |
+| 70 | direct children of the start path (for example a repository under a profile address), when nothing above matches |
+| 45 | newsletter and subscribe pages |
 | 10 | blog, news, articles and learning-center pages |
 | 5 | privacy, terms, legal and login pages |
 | 0 | everything else |
+| -1 | a link with a query string (`?tab=…`); only the first such variant of a path is kept, the rest are dropped |
 
 The limits are in `src/worker/crawl/budgets.ts`:
 
 | Limit | Value |
 |---|---|
-| Pages | 1-25 (default 10) |
+| Pages | 1-25 (default 10); counts pages actually captured, so a page refused by robots.txt does not use up the limit |
 | Depth | 0-3 links from the starting page (default 2) |
 | Pages discovered | at most 200 |
 | Time per page | 15 s per fetch, 25 s per browser render |
@@ -152,7 +154,7 @@ These rules run only on pages at `/`, `/services`, `/products`, `/offerings` (th
 | "We are a ... firm/agency/consultancy/manufacturer/retailer/studio/practice/service provider", and "specializes in / provides ... services" | `company_foundation/industry`, `company_role` | The phrase is copied as written; phrases containing "you", "your", "our", "other" or "another" are skipped. |
 | An introductory level-1 heading pair, a heading of 25-400 characters that addresses the reader ("you", "help", "together"...), or a statement such as "you can count on us", "our mission", "we help", "we believe" | `positioning/company_pitch` | Within the first five sections; headings about contact or testimonials are skipped. |
 | "Our firm was founded in 1998", "we were established ...", "founded ... in YYYY" with the company as subject | `company_foundation/year_founded`, `positioning/founding_story` | Year between 1000 and the current year; text about a former or sold practice is ignored. |
-| "Since 2005, I have run my own practice", "I founded my own firm in ..." | `positioning/founding_story` only | Describes the founder's history, so it never sets the year. |
+| A founder's first-person sentence on that founder's own profile page: "since 2003, my own accounting practice in South Florida", "I founded/started/established the firm in 2003" | `company_foundation/year_founded`; the "in <place>" of the "since ..." form also adds `company_foundation/service_locations`; the sentence is also kept as `positioning/founding_story` | Used only when the site has no explicit company founding statement, which always wins. Year between 1000 and the current year; text about a former or sold practice is ignored. The claim note reads "From the founder's statement" and the exact sentence is the evidence.
 | A paragraph in a section headed "our story", "firm background" or "company history" with words such as began, started, founded, mission | `positioning/founding_story` | Exact paragraph. |
 | "also known as", "trading as", "d/b/a" | `company_foundation/alternative_company_names` | The company must be the subject. |
 | "We serve / operate in / work across ..." | `company_foundation/service_locations` | Skipped if the phrase names customer groups such as businesses, clients or individuals. |
@@ -213,7 +215,7 @@ An offering's description is built the same way from its own detail page. A pare
 
 ### Evidence rules checked after extraction (`validate-candidates.ts`)
 
-- **Founding year:** a founder's statement that they have run "my own accounting practice" since a given year describes the founder's history, not the company's founding year. `year_founded` needs an explicit "founded" or "established" statement or a line reading "Since YYYY". An unrelated copyright date is not evidence of founding.
+- **Founding year:** `year_founded` needs an explicit "founded" or "established" statement, a line reading "Since YYYY", or a founder's first-person sentence about starting their own practice or firm in that year, which is accepted only when the claim carries the note "From the founder's statement". An explicit company statement always replaces the founder's. An unrelated copyright date is not evidence of founding.
 - **Employee counts:** the raw wording must appear in the cited text, and a stated exact number or range must match it.
 - **Legal entity type:** the suffix must appear in the cited text, the JSON-LD name or the page title.
 - **Gender:** it needs an explicit self-description such as "I identify as" or a "Gender:" label. It is never inferred from a name, pronouns or images, and no extraction rule currently reads it.

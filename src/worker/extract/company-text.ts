@@ -2,7 +2,7 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { structuredCandidates } from "./structured";
 import { visibleCandidates } from "./visible";
-import { collapseWhitespace as normalized } from "./text";
+import { collapseWhitespace as normalized, founderStatement, FOUNDER_STATEMENT_NOTE } from "./text";
 import { exactSentences, selectExactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
 
 export const COMPANY_TEXT_FIELDS: readonly string[] = [
@@ -305,6 +305,17 @@ export function companyTextCandidates(
   }
 
   for (const { text, section } of paragraphs) {
+    if (profile) {
+      for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+        const stated = founderStatement(sentence);
+        if (stated) {
+          add("/company_foundation/year_founded", stated.year, [sentence], 60, null, [], FOUNDER_STATEMENT_NOTE);
+          if (stated.place) {
+            add("/company_foundation/service_locations", [{ text: stated.place }], [sentence], 60, null, [], FOUNDER_STATEMENT_NOTE);
+          }
+        }
+      }
+    }
     const firmContext = companySubject(text) || profile || /\b(?:our story|firm background|company history)\b/i.test(section.heading ?? "");
     if (!firmContext) {
       continue;

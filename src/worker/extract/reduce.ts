@@ -17,6 +17,7 @@ import { stableId } from "./identity";
 import type { ValidatedCandidate } from "./validate-candidates";
 import { SUPPORTED_FIELDS } from "./deterministic";
 import { buyerIdentityKey } from "./market-text";
+import { FOUNDER_STATEMENT_NOTE } from "./text";
 // Narrative wording differs naturally across pages; factual scalar values still conflict.
 const narrativeFields = new Set([
   "overview", "industry", "business_model", "company_pitch", "founding_story",
@@ -108,7 +109,11 @@ export function reduceCandidates(
     const sourceMap = new Map<string, (typeof provenance.sources)[number]>();
     const evidenceMap = new Map<string, (typeof provenance.evidence)[number]>();
     for (const field of FIELD_REGISTRY.filter((f) => f.kind === group.kind)) {
-      const all = group.candidates.filter((c) => c.field === field.path).sort(rankCandidates);
+      let all = group.candidates.filter((c) => c.field === field.path).sort(rankCandidates);
+      if (field.path === "/company_foundation/year_founded" && all.some((c) => c.note !== FOUNDER_STATEMENT_NOTE)) {
+        // An explicit company founding statement always wins over a founder's own history.
+        all = all.filter((c) => c.note !== FOUNDER_STATEMENT_NOTE);
+      }
       const collection = Array.isArray(content[field.field]);
       const unique = new Map<string, ValidatedCandidate>();
       for (const c of all) {

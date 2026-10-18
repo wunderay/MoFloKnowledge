@@ -100,7 +100,7 @@ describe("extractive company and person passages", () => {
     expect(candidates.find((c) => c.field.endsWith("/legal_entity_type"))?.value).toBe("LLC");
   });
 
-  it("retains a founder's practice start as history without assigning it to the company's founding year", () => {
+  it("retains a founder's practice start as history and offers it as a marked founder statement", () => {
     const experience = "My experience includes hospital work and, since 2011, my own medical practice in North Bay.";
     const qualification = "I am a board-certified physician with 18 years of clinical experience.";
     const practice = "I provide part-time medical services, with appointments available on weekends.";
@@ -109,12 +109,14 @@ describe("extractive company and person passages", () => {
       { heading: "Maya Patel, MD", level: 1, paragraphs: [] },
       { heading: "Founder and Medical Director", level: 2, paragraphs: [experience, practice, qualification] },
     ], "/about-us/maya-patel");
-    expect(candidates.some((c) => c.field.endsWith("/year_founded"))).toBe(false);
-    expect(candidates.some((c) => c.field.endsWith("/service_locations"))).toBe(false);
+    const stated = candidates.find((c) => c.field.endsWith("/year_founded"))!;
+    expect(stated.value).toBe(2011);
+    expect(stated.note).toBe("From the founder's statement");
+    expect(candidates.find((c) => c.field.endsWith("/service_locations"))?.value).toEqual([{ text: "North Bay" }]);
     const history = candidates.find((c) => c.field.endsWith("/founding_story"))!;
     expect(history.value).toBe(experience);
     expect(validateCandidates([history], page, observations, "11111111-1111-4111-8111-111111111111")).toHaveLength(1);
-    expect(() => validateCandidates([{ ...history, field: "/company_foundation/year_founded", value: 2011 }],
+    expect(() => validateCandidates([{ ...history, field: "/company_foundation/year_founded", value: 2011, note: null }],
       page, observations, "11111111-1111-4111-8111-111111111111")).toThrow("founding_not_explicit");
     expect(candidates.find((c) => c.field.endsWith("/background_or_relevance"))?.value)
       .toBe(experience + "\n\n" + qualification);

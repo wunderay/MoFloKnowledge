@@ -192,6 +192,10 @@ export async function runCrawl(
     try {
       const policy = await robots.check(item.url, scheduler.signal);
       if (!policy.allowed) {
+        // A refused page is not a captured page: give its slot back.
+        budgets.release(reservation);
+        frontier.release();
+        finished = true;
         progress.blocked++;
         errors.push({
           code: "robots_blocked",
