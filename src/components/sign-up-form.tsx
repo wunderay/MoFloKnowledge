@@ -2,6 +2,7 @@
 import { useState } from "react";
 export function SignUpForm() {
   const [message, setMessage] = useState("");
+  const ok = message.startsWith("Check your email");
   const [busy, setBusy] = useState(false);
   return (
     <form
@@ -62,7 +63,7 @@ export function SignUpForm() {
       <button className="button button--primary" disabled={busy}>
         {busy ? "Creating account…" : "Create account"}
       </button>
-      <p role="status">{message}</p>
+      <p role="status" className={ok ? "sign-in__status--success" : undefined}>{message}</p>
     </form>
   );
 }

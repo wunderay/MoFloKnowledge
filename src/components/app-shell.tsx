@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { UnsavedNavigationProvider } from "./unsaved-navigation";
-import { CloudBrand, Icon, type IconName } from "./icons";
+import { Brand, Icon, type IconName } from "./icons";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <UnsavedNavigationProvider>
       <div className="app-shell">
         <header className="app-shell__topbar">
-          <Link href="/dashboard" aria-label="MoFlo Cloud home"><CloudBrand /></Link>
+          <Link href="/dashboard" aria-label="MoFlo Knowledge home"><Brand /></Link>
           <div className="app-shell__account">
             <span className="app-shell__privacy"><Icon name="lock" size={14} /> Private workspace</span>
             <span className="app-shell__account-divider" aria-hidden="true" />

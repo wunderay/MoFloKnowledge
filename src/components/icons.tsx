@@ -71,6 +71,6 @@ export function MoFloMark() {
   );
 }
 
-export function CloudBrand() {
-  return <span className="brand"><MoFloMark /><span>MoFlo<span className="brand__light"> Cloud</span></span></span>;
+export function Brand() {
+  return <span className="brand"><MoFloMark /><span>MoFlo<span className="brand__light"> Knowledge</span></span></span>;
 }
