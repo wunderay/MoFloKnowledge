@@ -20,4 +20,13 @@ describe("logError", () => {
     });
     expect(line).not.toContain("hunter2");
   });
+
+  it("redacts key=value secrets and bearer tokens", () => {
+    const write = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    logError("failed", { error: new Error("connection failed password=secret Authorization: Bearer abc123") });
+    const line = String(write.mock.calls[0][0]);
+    expect(line).toContain("password=[redacted]");
+    expect(line).not.toContain("secret\"");
+    expect(line).not.toContain("abc123");
+  });
 });
