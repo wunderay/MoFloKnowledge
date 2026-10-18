@@ -526,6 +526,10 @@ export function validateCandidates(
             if (field.field === "funnels" && key === "name" && FUNNEL_NAMES.includes(value)) {
               return;
             }
+            // Fixed category names for structurally detected offerings; the cited name is the evidence.
+            if (field.kind === "offering" && field.field === "category" && ["Service", "Listing"].includes(value)) {
+              return;
+            }
             if (/^https?:/.test(value)) {
               if (
                 value !== page.capture.finalUrl &&

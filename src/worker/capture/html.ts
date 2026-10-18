@@ -325,9 +325,12 @@ export function captureHtml(
       });
     });
   }
-  const navGroups = (rendered ? [] : captureNavGroups($)).map((group) => group.flatMap((item) => {
-    const url = safeLink(item.url);
-    return url ? [{ url, label: item.label }] : [];
+  const navGroups = (rendered ? [] : captureNavGroups($)).map((group) => ({
+    parent: group.parent,
+    links: group.links.flatMap((item) => {
+      const url = safeLink(item.url);
+      return url ? [{ url, label: item.label }] : [];
+    }),
   }));
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
