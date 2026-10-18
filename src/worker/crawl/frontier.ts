@@ -76,7 +76,19 @@ export class Frontier {
         }
     }
     get size() { return this.pending.length; }
-    add(input: string, label: string, depth: number): boolean {
+    /** True when the link is in scope and has not been seen yet. */
+    isNew(input: string): boolean {
+        try {
+            const url = assertDocumentScope(normalizeUrl(input, this.root), this.scope);
+            return !this.seen.has(url) && !this.aliases.has(url);
+        }
+        catch {
+            return false;
+        }
+    }
+    get remaining() { return Math.max(0, this.documentLimit - this.selected); }
+    /** `rank` (0 = first) puts a link ahead of the usual relevance order at its depth. */
+    add(input: string, label: string, depth: number, rank?: number): boolean {
         let url: string;
         try {
             url = assertDocumentScope(normalizeUrl(input, this.root), this.scope);
@@ -96,7 +108,7 @@ export class Frontier {
             return false;
         }
         this.seen.add(url);
-        const score = relevance(url, label);
+        const score = rank === undefined ? relevance(url, label) : 200 - Math.min(rank, 99);
         this.pending.push({ url, depth, score });
         return true;
     }
