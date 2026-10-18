@@ -1,6 +1,6 @@
 // OWASP Top 10:2025 A09 Security Logging & Alerting Failures.
-// The app has no logging framework: the worker is the one component that emits events (JSON lines on stdout, see
-// src/worker/main.ts) and the web tier returns a requestId with every response. These tests check that the events
+// The worker emits events as JSON lines on stdout (src/worker/main.ts), unexpected server errors are written as JSON
+// lines on stderr by src/server/log.ts, and the web tier returns a requestId with every response. These tests check that the events
 // that exist are structured, say what happened to which job, and never carry the error text or secrets.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -52,13 +52,13 @@ describe("worker events", () => {
 });
 
 describe("source tree", () => {
-  it("has no ad-hoc console logging that could print request data or secrets", () => {
+  it("has no ad-hoc console logging outside src/server/log.ts that could print request data or secrets", () => {
     const sources = (dir: string): string[] =>
       readdirSync(dir).flatMap((name) => {
         const path = join(dir, name);
         return statSync(path).isDirectory() ? sources(path) : /\.tsx?$/.test(name) ? [path] : [];
       });
-    for (const path of sources(join(ROOT, "src"))) {
+    for (const path of sources(join(ROOT, "src")).filter((file) => !file.endsWith(join("server", "log.ts")))) {
       expect(readFileSync(path, "utf8"), path.slice(ROOT.length + 1)).not.toMatch(/console\.(log|info|debug|warn|error)\(/);
     }
   });
