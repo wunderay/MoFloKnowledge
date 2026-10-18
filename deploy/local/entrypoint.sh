@@ -173,7 +173,7 @@ launch worker "${AS_SVC[@]}" "$(command -v env)" -i "PATH=$PATH" "HOME=$RUN_DIR/
 # 8. the demo login, through the gateway like a real sign-up
 PUBLIC_URL=$PUBLIC_URL ANON_KEY=$ANON_KEY DEMO_EMAIL=$DEMO_EMAIL DEMO_PASSWORD=$DEMO_PASSWORD node "$LIB_DIR/demo-user.mjs"
 touch "$RUN_DIR/ready"
-log "Open $PUBLIC_URL — log in as $DEMO_EMAIL / $DEMO_PASSWORD"
+log "Open $PUBLIC_URL - log in as $DEMO_EMAIL / $DEMO_PASSWORD"
 wait -n "${PIDS[@]}" || true
 for i in "${!PIDS[@]}"; do
   if ! kill -0 "${PIDS[i]}" 2>/dev/null; then

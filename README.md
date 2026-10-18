@@ -6,6 +6,8 @@
 2. Run `docker compose up --build` (or `./start.sh` / `start.cmd`).
 3. Open http://localhost:8080 and log in with the demo login printed in the log. More under [Run locally](#run-locally).
 
+Needs Docker Compose v2.17 or newer (current Docker Desktop has it). If Safari will not keep you signed in on http://localhost, use Chrome or Firefox.
+
 MoFloKnowledge turns a public company website into a source-backed knowledge base. Deterministic extraction records supported facts with evidence; people review and edit them, resolve conflicts, and publish immutable, cited snapshots for their company. Fields the extractor cannot establish remain unknown for human review. The app includes scoped membership roles, crawl progress and history, re-scrape proposals, JSON preview, and download. See [how the crawler works](docs/crawler.md) for the supported sources and extraction rules.
 
 In **View knowledge**, choose **Current draft** or a saved version, pick **JSON**, **Word (.docx)** or **PDF**, then click **Export**. Exporting never approves, publishes or changes knowledge. See [document export](docs/interface-design.md#document-export) for what the documents contain.
@@ -16,7 +18,7 @@ The application is a Next.js 15 web app, a persistent Node.js worker, PostgreSQL
 
 1. Install [Docker](https://docs.docker.com/get-started/get-docker/) (Docker Desktop, or Docker Engine on Linux). Nothing else is needed.
 2. Run `docker compose up --build` (or `./start.sh` on macOS/Linux, `start.cmd` on Windows, `npm run local` if you have Node).
-3. Open http://localhost:8080 and log in with the demo login printed in the log: `Open http://localhost:8080 — log in as demo@local.test / <password>`. The wrappers print it for you and open the browser.
+3. Open http://localhost:8080 and log in with the demo login printed in the log: `Open http://localhost:8080 - log in as demo@local.test / <password>`. The wrappers print it for you and open the browser.
 
 The first start builds the image, which takes a few minutes; later starts take seconds. Your data and the generated secrets live in the `moflo-data` Docker volume and are reused on every start. To stop, run `docker compose down` (or `./start.sh --stop`, `start.cmd --stop`, `npm run local -- --stop`). To start fresh, delete the data with `docker compose down --volumes` (or the same wrappers with `--reset`).
 

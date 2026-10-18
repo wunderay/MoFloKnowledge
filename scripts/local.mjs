@@ -28,7 +28,7 @@ export function composeArgs(mode) {
   return ["compose", "up", "--build", "--detach", "--wait", "--wait-timeout", "900"];
 }
 
-/** The last "Open <url> — log in as <email> / <password>" line the container printed. */
+/** The last "Open <url> - log in as <email> / <password>" line the container printed. */
 export function findLogin(logText) {
   const lines = logText.split(/\r?\n/).filter((line) => /Open http\S+ .{1,3} log in as /.test(line));
   const line = lines.at(-1);

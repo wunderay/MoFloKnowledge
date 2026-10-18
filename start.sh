@@ -14,7 +14,9 @@ docker compose up --build --detach --wait --wait-timeout 900 || { echo "Docker C
 echo
 docker compose logs --no-log-prefix app | grep 'Open http' | tail -n 1 | sed 's/^.*Open http/Open http/'
 echo
-if command -v open >/dev/null 2>&1; then open http://localhost:8080
+# `open` is openvt on some Linux systems, so it is used on macOS only.
+if [ "$(uname)" = Darwin ]; then open http://localhost:8080
 elif command -v xdg-open >/dev/null 2>&1; then xdg-open http://localhost:8080 >/dev/null 2>&1 &
+else echo "Open http://localhost:8080 in your browser."
 fi
 exit 0

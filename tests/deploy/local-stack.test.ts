@@ -93,8 +93,8 @@ describe("one-command wrapper (scripts/local.mjs)", () => {
 
   it("finds the last printed login in the container log", async () => {
     const { findLogin } = await load<LocalModule>("scripts/local.mjs");
-    const log = ["[local] ready", "[local] Open http://localhost:8080 — log in as demo@local.test / old", "[local] Open http://localhost:8080 — log in as demo@local.test / pw123"].join("\n");
-    expect(findLogin(log)).toBe("Open http://localhost:8080 — log in as demo@local.test / pw123");
+    const log = ["[local] ready", "[local] Open http://localhost:8080 - log in as demo@local.test / old", "[local] Open http://localhost:8080 - log in as demo@local.test / pw123"].join("\n");
+    expect(findLogin(log)).toBe("Open http://localhost:8080 - log in as demo@local.test / pw123");
     expect(findLogin("nothing here")).toBeNull();
   });
 });
