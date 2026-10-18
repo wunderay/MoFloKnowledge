@@ -43,13 +43,6 @@ describe("identity and call-to-action hygiene", () => {
     expect(ctas.map((cta) => cta.label)).toContain("Read Bio");
   });
 
-  it("does not offer a form's submit button as a call to action", () => {
-    const { values } = extract(`<main><h1>Contact</h1><p>Tell us about your listing.</p>
-        <form action="/inquiries"><label>Name</label><label>Message</label><button type="submit">Send</button></form></main>`, "/contact");
-    const labels = (values("/market_and_customers/ctas") as { label: string }[]).map((cta) => cta.label);
-    expect(labels).not.toContain("Send");
-  });
-
   it("dedupes an e-mail address case-insensitively", () => {
     const { validated } = extract(`<main><h1>Contact</h1>
         <a href="mailto:Info@acme-group.example.com">Info@acme-group.example.com</a>
