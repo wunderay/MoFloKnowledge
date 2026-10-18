@@ -1,6 +1,53 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { logError } from "../server/log";
+import type { SafeJobError } from "../contracts";
 import type { Job, JobRepository } from "./job-repository";
+
+/** Keeps the lease alive while a job runs; stops the attempt when the job is cancelled or the lease is lost. */
+export function startHeartbeat(repository: JobRepository, job: Job, attempt: AbortController) {
+  let heartbeating = false;
+  let leaseLost = false;
+  const timer = setInterval(() => {
+    if (heartbeating || attempt.signal.aborted) {
+      return;
+    }
+    heartbeating = true;
+    repository
+      .heartbeat(job)
+      .then((current) => {
+        if (current.cancel_requested_at || current.status === "cancelled") {
+          attempt.abort("cancelled");
+        }
+      })
+      .catch(() => {
+        leaseLost = true;
+        attempt.abort("lease_lost");
+      })
+      .finally(() => {
+        heartbeating = false;
+      });
+  }, 15000);
+  return { leaseLost: () => leaseLost, stop: () => { clearInterval(timer); } };
+}
+
+/** The fixed, safe failure recorded for a job whose attempt threw. */
+export function recordFailure(repository: JobRepository, job: Job, error: unknown, cancelled: boolean) {
+  const policy = (error as { code?: string } | null)?.code === "NETWORK_POLICY";
+  const safe: SafeJobError = {
+    code: cancelled ? "cancelled" : policy ? "website_policy" : "worker_failure",
+    url: null,
+    retryable: false,
+    message: cancelled
+      ? "Job was cancelled."
+      : policy
+        ? "The website or redirect did not pass the public website policy."
+        : "The worker could not complete the job.",
+  };
+  return repository.fail(job, safe).catch((failError: unknown) => {
+    logError("could not record job failure", { jobId: job.id, error: failError });
+  });
+}
+
 export async function runWorker(
   repository: JobRepository,
   work: (job: Job, signal: AbortSignal) => Promise<void>,
@@ -32,60 +79,22 @@ export async function runWorker(
     const attempt = new AbortController();
     const stop = () => { attempt.abort(options.signal.reason); };
     options.signal.addEventListener("abort", stop, { once: true });
-    let heartbeating = false;
-    let leaseLost = false;
-    const timer = setInterval(() => {
-      if (heartbeating || attempt.signal.aborted) {
-        return;
-      }
-      heartbeating = true;
-      repository
-        .heartbeat(job)
-        .then((current) => {
-          if (current.cancel_requested_at || current.status === "cancelled") {
-            attempt.abort("cancelled");
-          }
-        })
-        .catch(() => {
-          leaseLost = true;
-          attempt.abort("lease_lost");
-        })
-        .finally(() => {
-          heartbeating = false;
-        });
-    }, 15000);
+    const heartbeat = startHeartbeat(repository, job, attempt);
     try {
       options.onEvent?.({ event: "job_started", jobId: job.id });
       await work(job, attempt.signal);
       options.onEvent?.({ event: "job_finished", jobId: job.id });
     } catch (error) {
       logError("job failed", { jobId: job.id, error });
-      if (!leaseLost && !options.signal.aborted) {
-        await repository
-          .fail(job, {
-            code: attempt.signal.aborted
-              ? "cancelled"
-              : (error as { code?: string })?.code === "NETWORK_POLICY"
-                ? "website_policy"
-                : "worker_failure",
-            url: null,
-            retryable: false,
-            message: attempt.signal.aborted
-              ? "Job was cancelled."
-              : (error as { code?: string })?.code === "NETWORK_POLICY"
-                ? "The website or redirect did not pass the public website policy."
-                : "The worker could not complete the job.",
-          })
-          .catch((failError: unknown) => {
-            logError("could not record job failure", { jobId: job.id, error: failError });
-          });
+      if (!heartbeat.leaseLost() && !options.signal.aborted) {
+        await recordFailure(repository, job, error, attempt.signal.aborted);
       }
       options.onEvent?.({
-        event: leaseLost ? "lease_lost" : "job_stopped",
+        event: heartbeat.leaseLost() ? "lease_lost" : "job_stopped",
         jobId: job.id,
       });
     } finally {
-      clearInterval(timer);
+      heartbeat.stop();
       options.signal.removeEventListener("abort", stop);
     }
   }
