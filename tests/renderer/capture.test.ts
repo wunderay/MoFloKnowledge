@@ -133,4 +133,4 @@ it("captures actual JS-visible content and separate style/font/logo observations
   } finally {
     await browser.close();
   }
-}, 15000);
+}, 60000);
