@@ -829,6 +829,15 @@ small {
   font-size: 12px;
   line-height: 1.6;
 }
+.sign-in-fields > [role="status"]:empty {
+  display: none;
+}
+.sign-in-fields > [role="status"].sign-in__status--success {
+  color: var(--green);
+}
+.sign-in__alt {
+  margin-top: 24px;
+}
 .breadcrumb {
   display: flex;
   gap: 8px;
@@ -1015,20 +1024,6 @@ small {
   .dialog {
     padding: 22px;
   }
-  .sign-in {
-    display: block;
-  }
-  .sign-in__story {
-    padding: 25px;
-  }
-  .sign-in__story > div,
-  .sign-in__story > small {
-    display: none;
-  }
-  .sign-in__form {
-    min-height: 80vh;
-    padding: 30px;
-  }
   .detail-list {
     grid-template-columns: 100px 1fr;
   }
@@ -1042,6 +1037,27 @@ small {
   .data-table {
     display: block;
     overflow: auto;
+  }
+}
+@media (max-width: 640px) {
+  .sign-in {
+    display: flex;
+    flex-direction: column;
+  }
+  .sign-in__story {
+    padding: 25px;
+    gap: 20px;
+  }
+  .sign-in__story h1 {
+    font-size: 30px;
+  }
+  .sign-in__story p:not(.eyebrow),
+  .sign-in__story > small {
+    display: none;
+  }
+  .sign-in__form {
+    flex: 1;
+    padding: 30px;
   }
 }
 @media (max-width: 480px) {

@@ -1,11 +1,11 @@
-import { CloudBrand } from "@/components/icons";
+import { Brand } from "@/components/icons";
 import { SignUpForm } from "@/components/sign-up-form";
 export default function SignUpPage() {
   return (
     <main className="sign-in">
       <section className="sign-in__story">
-        <a href="/" aria-label="MoFlo Cloud home">
-          <CloudBrand />
+        <a href="/" aria-label="MoFlo Knowledge home">
+          <Brand />
         </a>
         <div>
           <p className="eyebrow">A shared source of truth</p>
@@ -27,7 +27,7 @@ export default function SignUpPage() {
           <h2>Create your account</h2>
           <p className="muted">Sign up to start your company knowledge.</p>
           <SignUpForm />
-          <p className="muted">
+          <p className="muted sign-in__alt">
             Already have an account? <a href="/sign-in">Sign in</a>
           </p>
         </div>
