@@ -26,7 +26,8 @@ export const GET = route(async (_r, c, { client, user }) => {
           .select("*")
           .eq("company_id", company)
           .eq("entry_id", IdSchema.parse(p.entryId))
-          .order("revision", { ascending: false }),
+          .order("revision", { ascending: false })
+          .limit(50),
       )
     : [];
   return parseResponse(

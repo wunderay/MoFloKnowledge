@@ -14,15 +14,19 @@ export const POST = route(async (request, _context, { client }) => {
   };
 }, 201);
 import { z } from "zod";
-import { readCompanySummaries } from "../../../server/company-summaries";
+import { readCompanyNames, readCompanySummaries } from "../../../server/company-summaries";
 export const GET = route(async (request, _context, { client, user }) => {
   const query = z
     .object({
       cursor: IdSchema.optional(),
       archived: z.enum(["true", "false"]).optional(),
+      fields: z.literal("min").optional(),
     })
     .strict()
     .parse(Object.fromEntries(new URL(request.url).searchParams));
+  if (query.fields === "min") {
+    return readCompanyNames(client);
+  }
   return readCompanySummaries(client, user.id, {
     cursor: query.cursor,
     archived: query.archived === "true",

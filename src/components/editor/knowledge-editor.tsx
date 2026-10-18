@@ -127,7 +127,7 @@ function KnowledgeEditorContent({
     if (!initialDraft) {
       void refresh();
     }
-    api<{ companies: { id: string; name: string }[] }>("/api/companies")
+    api<{ companies: { id: string; name: string }[] }>("/api/companies?fields=min")
       .then((data) => { setCompanies(data.companies); })
       .catch(() => undefined);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- initialDraft only decides whether the first load is needed; changing it must not refetch
