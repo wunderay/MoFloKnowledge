@@ -7,7 +7,6 @@ import { readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ getAll: () => [], set: vi.fn() }),
 }));

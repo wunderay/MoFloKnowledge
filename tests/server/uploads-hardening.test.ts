@@ -22,7 +22,6 @@ import {
 } from "../helpers/uploads-world";
 import { config } from "../../src/middleware";
 
-vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ getAll: () => [], get: () => undefined, set: () => undefined }),
   headers: async () => new Headers(),

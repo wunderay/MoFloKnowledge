@@ -13,9 +13,6 @@
 // RLS is NOT simulated here: the route layer must itself check membership (public.company_members), the write role
 // and companies.archived_at, as src/server/authorize.ts does. Database policies are proven in tests/db instead.
 import { randomUUID, createHash } from "node:crypto";
-import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { expect } from "vitest";
 
 import { crc32, deflateSync } from "node:zlib";
@@ -24,7 +21,6 @@ export const BUCKET = "knowledge-assets";
 export const APP_ORIGIN = "https://app.example";
 export const SUPABASE_URL = "https://proj.supabase.co";
 export const SIGNED_SECRET = "SIGNED_SECRET_TOKEN_9f3a7c";
-export const SERVICE_SECRET = "SERVICE_ROLE_SECRET_VALUE_b81d";
 /** Anything matching this in a response, header or log line leaks the storage backend. */
 export const LEAK = /supabase\.co|\/storage\/v1|SIGNED_SECRET|SERVICE_ROLE_SECRET|[?&]token=|X-Amz-/i;
 
@@ -523,9 +519,10 @@ export async function readBody(response: Response): Promise<{ text: string; json
   }
 }
 
-/** The success payload, whether the route answers with the API envelope { data } or a bare object. */
+/** The success payload: the API envelope's `data`. */
 export function payload(json: any): any {
-  return json && typeof json === "object" && "data" in json && json.data && typeof json.data === "object" ? json.data : json;
+  expect(json, "success bodies use the API envelope { data }").toHaveProperty("data");
+  return json.data;
 }
 
 export function bytesOf(object: StoredObject | undefined): Buffer | undefined {
@@ -536,29 +533,12 @@ export function bytesOf(object: StoredObject | undefined): Buffer | undefined {
 
 type Handler = (request: Request, context: { params: Promise<Record<string, string>> }) => Promise<Response>;
 
-/**
- * The collection route is src/app/api/companies/[companyId]/uploads/route.ts (POST) and
- * the item route is the single dynamic-segment folder below it (GET and DELETE); the segment name is not fixed.
- */
 export async function needCollection(): Promise<{ POST: Handler }> {
-  const base = fileURLToPath(new URL("../../src/app/api/companies/[companyId]/uploads", import.meta.url));
-  const file = join(base, "route.ts");
-  expect(existsSync(file), "POST /api/companies/[companyId]/uploads must exist: src/app/api/companies/[companyId]/uploads/route.ts").toBe(true);
-  const mod = await import(/* @vite-ignore */ file);
-  expect(typeof mod.POST, "uploads/route.ts must export POST").toBe("function");
-  return mod as { POST: Handler };
+  return import("@/app/api/companies/[companyId]/uploads/route");
 }
 
 export async function needItem(): Promise<{ GET: Handler; DELETE: Handler }> {
-  const base = fileURLToPath(new URL("../../src/app/api/companies/[companyId]/uploads", import.meta.url));
-  const folders = existsSync(base)
-    ? readdirSync(base, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(join(base, e.name, "route.ts")))
-    : [];
-  expect(folders.length, "GET/DELETE /api/companies/[companyId]/uploads/<id> must exist: uploads/[uploadId]/route.ts").toBe(1);
-  const mod = await import(/* @vite-ignore */ join(base, folders[0].name, "route.ts"));
-  expect(typeof mod.GET, "the item route must export GET").toBe("function");
-  expect(typeof mod.DELETE, "the item route must export DELETE").toBe("function");
-  return mod as { GET: Handler; DELETE: Handler };
+  return import("@/app/api/companies/[companyId]/uploads/[uploadId]/route");
 }
 
 export const IDS = {
@@ -573,12 +553,6 @@ export const IDS = {
 export function arrange() {
   world.reset();
   process.env.APP_ORIGIN = APP_ORIGIN;
-  process.env.NEXT_PUBLIC_SUPABASE_URL = SUPABASE_URL;
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "publishable-key";
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "publishable-key";
-  process.env.SUPABASE_SERVICE_ROLE_KEY = SERVICE_SECRET;
-  process.env.SUPABASE_SECRET_KEY = SERVICE_SECRET;
-  process.env.SUPABASE_SERVICE_KEY = SERVICE_SECRET;
   const a = world.seedCompany({ members: { [IDS.owner]: "owner", [IDS.editor]: "editor", [IDS.viewer]: "viewer" } });
   const b = world.seedCompany({ members: { [IDS.rival]: "owner" } });
   world.user = { id: IDS.owner };

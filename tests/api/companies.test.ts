@@ -1,5 +1,4 @@
 import { expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
 const state = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn() }));
 vi.mock("../../src/lib/supabase/server", () => ({
   verifiedSession: async () => ({

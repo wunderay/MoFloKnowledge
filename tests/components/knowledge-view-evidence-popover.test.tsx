@@ -2,10 +2,6 @@
 // URL, the historical-origin explanation and the coverage reason. The popover
 // is forced open so its content can be read from static markup. Entries come
 // from the viewer's own draft and snapshot paths.
-import { readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
-import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { buildEmptyDraft } from "../helpers/knowledge-view-fixtures";
@@ -31,26 +27,6 @@ vi.mock("react", async (original) => {
   };
 });
 
-// vitest.config.ts has no "@/" alias, so point every "@/..." module at its file.
-const SRC = fileURLToPath(new URL("../../src/", import.meta.url));
-const sourceFiles = (dir: string): string[] =>
-  readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-    entry.isDirectory()
-      ? sourceFiles(join(dir, entry.name))
-      : /\.tsx?$/.test(entry.name) && !entry.name.endsWith(".d.ts")
-        ? [join(dir, entry.name)]
-        : [],
-  );
-for (const file of sourceFiles(SRC)) {
-  const id = "@/" + relative(SRC, file).replace(/\.tsx?$/, "").split(sep).join("/");
-  for (const each of id.endsWith("/index") ? [id, id.slice(0, -"/index".length)] : [id]) {
-    vi.doMock(each, () => import(/* @vite-ignore */ file));
-  }
-}
-vi.doMock("next/link", () => ({
-  default: ({ href, children, ...rest }: { href: string; children?: React.ReactNode }) =>
-    React.createElement("a", { href, ...rest }, children),
-}));
 const { SectionView } = await import("../../src/components/knowledge-view/section-view");
 const { snapshotEntries } = await import("../../src/components/shared/knowledge-viewer");
 

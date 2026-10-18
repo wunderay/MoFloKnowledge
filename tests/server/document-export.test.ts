@@ -4,7 +4,6 @@ import { load } from "cheerio";
 import fixture from "../contracts/illustrative-export.json";
 import { canonicalStringify } from "../../src/knowledge/canonical-json";
 import { PDFDocument } from "pdf-lib";
-vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
 import { verifiedSession } from "../../src/lib/supabase/server";
 import { GET } from "../../src/app/api/companies/[companyId]/document/route";

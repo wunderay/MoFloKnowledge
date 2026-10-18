@@ -1,5 +1,5 @@
 BEGIN;
--- Quest Q6 storage-uploads: private Supabase Storage bucket `knowledge-assets` (logos, portraits, offering images)
+-- Private Supabase Storage bucket `knowledge-assets` (logos, portraits, offering images)
 -- and the `uploads` metadata the app serves them by. Object names are <kind>/<company uuid>/<uuid>.<ext>; access
 -- is decided by the company in the second path segment, through the same membership data as the rest of the schema.
 SET ROLE moflo_owner;

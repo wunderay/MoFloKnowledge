@@ -2,8 +2,8 @@
 // HTTP interface with the Supabase client replaced by the in-memory world in tests/helpers/uploads-world.ts.
 //
 // Behaviour assumed:
-//  - Routes: POST src/app/api/companies/[companyId]/uploads/route.ts. Success bodies may be the API envelope
-//    { data, error, requestId } (project convention) or the bare object; tests read either.
+//  - Routes: POST src/app/api/companies/[companyId]/uploads/route.ts. Success bodies are the API envelope
+//    { data, error, requestId } (project convention).
 //  - A file whose real bytes disagree with its filename/MIME is either stored under its REAL type/extension or
 //    rejected; storing it as the claimed type is never acceptable.
 //  - The stored filename never comes from the client: the path is exactly <kind>/<companyId>/<uuid>.<ext>.
@@ -34,7 +34,6 @@ import {
   world,
 } from "../helpers/uploads-world";
 
-vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ getAll: () => [], get: () => undefined, set: () => undefined }),
   headers: async () => new Headers(),

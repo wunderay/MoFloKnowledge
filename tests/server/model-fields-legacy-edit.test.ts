@@ -1,7 +1,6 @@
 // Editing an entry saved before the model fields existed: its stored provenance has no coverage for age, nationality or
 // portrait, yet every registered field needs exactly one coverage row in the next revision.
-import { expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
+import { expect, it } from "vitest";
 import { prepareRevision } from "../../src/server/revisions";
 import { createEmptyProvenance, entryBusiness, validateProvenance, type BusinessEntry } from "../../src/contracts";
 

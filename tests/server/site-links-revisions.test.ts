@@ -1,6 +1,5 @@
 // The save path (manual creation provenance) accepts site_links.
 import { describe, expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
 import { prepareManualCreation } from "../../src/server/revisions";
 import { entryBusiness, validateProvenance, type EntryKind } from "../../src/contracts";

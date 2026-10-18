@@ -1,12 +1,10 @@
 // Renders /knowledge/view the way a visitor receives it: the server page runs
 // (with its data layer replaced by fixtures) and the element it returns is
 // rendered to static HTML. The selected section is supplied BOTH as the page's
-// `section` search parameter and through next/navigation's useSearchParams, so
-// an implementation may read the URL parameter on either side of the boundary.
-import React from "react";
-import { readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+// `section` search parameter (and, when given, `offering` / `person`) and through
+// next/navigation's useSearchParams, so an implementation may read a URL parameter
+// on either side of the boundary.
+import type React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { vi } from "vitest";
 import type { Draft } from "./knowledge-view-fixtures";
@@ -40,14 +38,11 @@ vi.mock("next/navigation", () => ({
     throw new Error(`redirect:${to}`);
   },
 }));
-vi.mock("next/link", () => ({
-  default: ({ href, children, ...rest }: { href: string; children?: React.ReactNode }) =>
-    React.createElement("a", { href, ...rest }, children),
-}));
 vi.mock("@/lib/supabase/server", () => ({
   verifiedSession: async () => ({ client: {}, user: { id: "user-1" } }),
 }));
-vi.mock("@/server/read-model", () => ({
+vi.mock("@/server/read-model", async (original) => ({
+  ...(await original<typeof import("@/server/read-model")>()),
   readDraft: async () => state.draft,
 }));
 vi.mock("@/server/snapshots", () => ({
@@ -55,32 +50,6 @@ vi.mock("@/server/snapshots", () => ({
   readSnapshot: async () => ({ payload: state.snapshot }),
 }));
 vi.mock("@/server/authorize", () => ({}));
-vi.mock("server-only", () => ({}));
-
-// vitest.config.ts defines no "@/" alias, so every "@/..." specifier the page
-// graph uses is pointed at its real file under src/. Registering the whole
-// tree (not a hand-picked list) keeps the tests independent of which modules
-// an implementation chooses to import.
-const SRC = fileURLToPath(new URL("../../src/", import.meta.url));
-function sourceFiles(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-    entry.isDirectory()
-      ? sourceFiles(join(dir, entry.name))
-      : /\.(ts|tsx)$/.test(entry.name) && !entry.name.endsWith(".d.ts")
-        ? [join(dir, entry.name)]
-        : [],
-  );
-}
-const PROVIDED = new Set(["@/lib/supabase/server", "@/server/read-model", "@/server/snapshots", "@/server/authorize"]);
-for (const file of sourceFiles(SRC)) {
-  const id = "@/" + relative(SRC, file).replace(/\.(ts|tsx)$/, "").split(sep).join("/");
-  const ids = id.endsWith("/index") ? [id, id.slice(0, -"/index".length)] : [id];
-  for (const each of ids) {
-    if (!PROVIDED.has(each)) {
-      vi.doMock(each, () => import(/* @vite-ignore */ file));
-    }
-  }
-}
 
 export interface RenderOptions {
   /** Value for the `section` URL parameter; omitted when undefined. */
@@ -89,13 +58,26 @@ export interface RenderOptions {
   draft?: Draft;
   snapshot?: { payload: KnowledgeBaseExport; versionId: string };
   mode?: "json" | "table";
+  /** Value for the `offering` URL parameter; omitted when undefined. */
+  offering?: string;
+  /** Value for the `person` URL parameter; omitted when undefined. */
+  person?: string;
+  /** Render the draft as a viewer sees it (no editing controls). */
+  asViewer?: boolean;
 }
 
 /** The full /knowledge/view page markup for the given URL state and data. */
 export async function renderViewPage(opts: RenderOptions): Promise<string> {
   const companyId = (opts.snapshot?.payload.company_id ?? opts.draft?.company.id)!;
-  state.search = opts.section === undefined ? "" : `section=${encodeURIComponent(opts.section)}`;
-  state.draft = opts.draft ?? null;
+  const query = new URLSearchParams();
+  for (const key of ["section", "offering", "person"] as const) {
+    if (opts[key] !== undefined) {
+      query.set(key, opts[key]);
+    }
+  }
+  state.search = query.toString();
+  state.draft =
+    opts.draft && opts.asViewer ? { ...opts.draft, company: { ...opts.draft.company, role: "viewer" } } : (opts.draft ?? null);
   state.snapshot = opts.snapshot?.payload ?? null;
   state.versions = opts.versions ?? [];
   state.forcedMode = opts.mode ?? null;
@@ -107,6 +89,8 @@ export async function renderViewPage(opts: RenderOptions): Promise<string> {
       companyId,
       versionId: opts.snapshot ? opts.snapshot.versionId : "draft",
       ...(opts.section === undefined ? {} : { section: opts.section }),
+      ...(opts.offering === undefined ? {} : { offering: opts.offering }),
+      ...(opts.person === undefined ? {} : { person: opts.person }),
     }),
   } as never);
   return renderToStaticMarkup(element as React.ReactElement);

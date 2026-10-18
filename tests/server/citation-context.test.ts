@@ -1,5 +1,4 @@
 import { expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
 import { readCitationContext } from "../../src/server/citation-context";
 import { createEmptyProvenance } from "../../src/contracts";
