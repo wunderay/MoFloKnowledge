@@ -7,6 +7,7 @@ import {
   type TextSegment,
 } from "./segments";
 import type { RenderResult } from "../../contracts/render-task";
+import { capturePageMetadata } from "./metadata";
 import { captureContentSections, captureDeclaredDesign, evidencedSections, sectionParts } from "./sections";
 export interface PageCapture {
   normalizedUrl: string;
@@ -110,6 +111,8 @@ export function captureHtml(
     : safeLink($('link[rel="canonical"]').first().attr("href"));
   const declaredDesign = captureDeclaredDesign($, safeLink, jsonLd);
   const content = captureContentSections($, safeLink);
+  // Read before page chrome and embeds are stripped below; identical for fetched and rendered pages.
+  const pageMetadata = capturePageMetadata($, safeLink, jsonLd);
   $(
     'script,style,noscript,template,svg,canvas,iframe,object,embed,[hidden],[aria-hidden="true"],input[type="hidden"]',
   ).remove();
@@ -360,6 +363,12 @@ export function captureHtml(
   if (declaredDesign.truncated) {
     limitations.push("HTML design declarations exceeded the capture limit.");
   }
+  if (pageMetadata.truncated) {
+    limitations.push("Structured page metadata exceeded a capture limit.");
+  }
+  if (pageMetadata.oversized) {
+    limitations.push("Structured page metadata exceeded the capture size limit and was truncated.");
+  }
   if (
     parsed.truncated &&
     !limitations.includes("Captured text exceeded the source segment limit.")
@@ -376,6 +385,7 @@ export function captureHtml(
     offeringBlocks,
     clientSectionDetected: requiresClientSection,
     jsonLd,
+    ...pageMetadata.metadata,
     metaDescription: meta("description") ?? meta("og:description"),
     canonical,
     redirects: input.redirects ?? [],

@@ -134,3 +134,88 @@ it("does not borrow form purpose from sibling chrome or uncaptured text", () => 
   expect(exhausted.observations.forms).toContainEqual(expect.objectContaining({ heading: null, context: null }));
   expect(exhausted.observations.limitations).toContain("Captured text exceeded the source segment limit.");
 });
+
+it("captures structured page metadata groups with caps and without secrets or script text", () => {
+  const filler = Array.from({ length: 80 }, (_v, i) => `<img src="/p${i}.png" alt="Photo ${i}">`).join("");
+  const capture = captureHtml({
+    requestedUrl: "https://example.com",
+    finalUrl: "https://example.com/about/",
+    body: `<!doctype html><html lang="en-US"><head><title>Acme</title>
+<meta name="description" content="We build things."><meta property="og:site_name" content="Acme Inc"><meta name="twitter:card" content="summary"><meta itemprop="name" content="Acme"><meta name="theme-color" content="#112233"><meta name="geo.region" content="US-CA"><meta name="csrf-token" content="abc123secret"><meta name="note" content="sk_live_abcdefghijklmnop">
+<link rel="canonical" href="https://example.com/about"><link rel="alternate" hreflang="fr" href="/fr/about"><link rel="shortcut icon" href="/favicon.ico"><link rel="apple-touch-icon" sizes="180x180" href="/a.png"><link rel="manifest" href="/site.webmanifest"><link rel="me" href="https://mastodon.example.org/@acme"><link rel="author" href="/team"><link rel="stylesheet" href="/s.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":2,"name":"About","item":"https://example.com/about"},{"@type":"ListItem","position":1,"name":"Home","item":"https://example.com/"}]}</script>
+<script>var inlineSecret = "do-not-capture";</script></head>
+<body><nav aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li><a href="/company">Company</a></li><li>About</li></ol></nav>
+<main><h1>About</h1>
+<div itemscope itemtype="https://schema.org/Organization"><span itemprop="name">Acme Inc</span><a itemprop="url" href="https://example.com/">site</a><div itemprop="address" itemscope itemtype="https://schema.org/PostalAddress"><span itemprop="streetAddress">42 Main St</span></div></div>
+<div vocab="https://schema.org/" typeof="Person"><span property="name">Ada Lovelace</span><a property="sameAs" href="https://example.org/ada">profile</a></div>
+<p>Email <a href="mailto:hello@example.com?subject=Hi">hello@example.com</a> or call <a href="tel:+1-555-010-2000">555-010-2000</a>.</p>
+<address>42 Main St, Springfield</address>
+<dl><dt>Founded</dt><dd>1999</dd><dt>Employees</dt><dd>50</dd></dl>
+<table><tr><th>Hours</th><td>9-5</td></tr><tr><th>Phone</th><td>555-010-2000</td></tr></table>
+<table><tr><th>A</th><th>B</th><th>C</th></tr></table>
+<p>Updated <time datetime="2024-05-01">May 1</time></p>
+<iframe src="https://www.youtube.com/embed/abc123"></iframe><iframe src="https://player.vimeo.com/video/42"></iframe><iframe src="https://ads.example.net/x"></iframe>
+${filler}</main>
+<footer><a href="mailto:footer@example.com">Footer mail</a><dl><dt>Footer</dt><dd>skip</dd></dl></footer></body></html>`,
+  });
+  const o = capture.observations as Record<string, any>;
+  expect(o.htmlLang).toBe("en-US");
+  expect(o.metaTags).toEqual(expect.arrayContaining([
+    { attribute: "name", name: "description", content: "We build things." },
+    { attribute: "property", name: "og:site_name", content: "Acme Inc" },
+    { attribute: "name", name: "twitter:card", content: "summary" },
+    { attribute: "itemprop", name: "name", content: "Acme" },
+    { attribute: "name", name: "theme-color", content: "#112233" },
+    { attribute: "name", name: "geo.region", content: "US-CA" },
+  ]));
+  expect(JSON.stringify(o)).not.toMatch(/abc123secret|sk_live_|do-not-capture/);
+  expect(o.linkRels).toEqual(expect.arrayContaining([
+    { rel: "canonical", href: "https://example.com/about" },
+    { rel: "alternate", href: "https://example.com/fr/about", hreflang: "fr" },
+    { rel: "icon", href: "https://example.com/favicon.ico" },
+    { rel: "apple-touch-icon", href: "https://example.com/a.png", sizes: "180x180" },
+    { rel: "manifest", href: "https://example.com/site.webmanifest" },
+    { rel: "me", href: "https://mastodon.example.org/@acme" },
+    { rel: "author", href: "https://example.com/team" },
+  ]));
+  expect(o.linkRels.some((l: { href: string }) => l.href.endsWith("s.css"))).toBe(false);
+  expect(o.microdata).toContainEqual({ type: "https://schema.org/Organization", props: { name: ["Acme Inc"], url: ["https://example.com/"], address: ["42 Main St"] } });
+  expect(o.microdata).toContainEqual({ type: "https://schema.org/PostalAddress", props: { streetAddress: ["42 Main St"] } });
+  expect(o.rdfa).toEqual([{ type: "Person", vocab: "https://schema.org/", props: { name: ["Ada Lovelace"], sameAs: ["profile"] } }]);
+  expect(o.mailtoLinks).toEqual([{ value: "hello@example.com", text: "hello@example.com" }, { value: "footer@example.com", text: "Footer mail" }]);
+  expect(o.telLinks).toEqual([{ value: "+1-555-010-2000", text: "555-010-2000" }]);
+  expect(capture.links.some((l) => /mailto|tel:/.test(l.url))).toBe(false);
+  expect(o.addresses).toContain("42 Main St, Springfield");
+  expect(o.breadcrumbs).toEqual([
+    { source: "json-ld", items: [{ name: "Home", url: "https://example.com/" }, { name: "About", url: "https://example.com/about" }] },
+    { source: "html", items: [{ name: "Home", url: "https://example.com/" }, { name: "Company", url: "https://example.com/company" }, { name: "About", url: null }] },
+  ]);
+  expect(o.labelValuePairs).toEqual([
+    { label: "Founded", value: "1999", source: "dl" },
+    { label: "Employees", value: "50", source: "dl" },
+    { label: "Hours", value: "9-5", source: "table" },
+    { label: "Phone", value: "555-010-2000", source: "table" },
+  ]);
+  expect(o.times).toEqual([{ datetime: "2024-05-01", text: "May 1" }]);
+  expect(o.images).toHaveLength(50);
+  expect(o.images[0]).toEqual({ src: "https://example.com/p0.png", alt: "Photo 0" });
+  expect(o.embeds).toEqual([
+    { provider: "youtube", url: "https://www.youtube.com/embed/abc123" },
+    { provider: "vimeo", url: "https://player.vimeo.com/video/42" },
+  ]);
+  expect(o.limitations).toContain("Structured page metadata exceeded a capture limit.");
+});
+
+it("strips signed query parameters and bounds metadata by bytes", () => {
+  const capture = captureHtml({
+    requestedUrl: "https://example.com", finalUrl: "https://example.com/",
+    body: `<main><p>Hello</p><img src="/a.png?w=10&X-Amz-Signature=deadbeef&token=abc" alt="A"><a itemscope itemtype="https://schema.org/Thing" href="ftp://x.example.com/f"><span itemprop="url"><a href="javascript:alert(1)">x</a></span></a>${Array.from({ length: 50 }, (_v, i) => `<dl><dt>${"語".repeat(190)}${i}</dt><dd>${"語".repeat(900)}</dd></dl>`).join("")}</main>`,
+  });
+  const o = capture.observations as Record<string, any>;
+  expect(o.images).toEqual([{ src: "https://example.com/a.png?w=10", alt: "A" }]);
+  expect(JSON.stringify(o)).not.toMatch(/deadbeef|javascript:/);
+  const bytes = Buffer.byteLength(JSON.stringify({ labelValuePairs: o.labelValuePairs, images: o.images }), "utf8");
+  expect(bytes).toBeLessThanOrEqual(150000);
+  expect(o.limitations).toContain("Structured page metadata exceeded the capture size limit and was truncated.");
+});
