@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { APP_NAME, TAGLINE } from "../lib/brand";
 export const metadata: Metadata = {
-  title: { default: "MoFlo Knowledge", template: "%s · MoFlo Knowledge" },
-  description: "Company knowledge, grounded in evidence.",
+  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
+  description: TAGLINE,
 };
 export default function RootLayout({
   children,
