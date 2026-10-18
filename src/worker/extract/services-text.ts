@@ -1,5 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
+import { nameKey as normalizeName } from "./text";
 import { exactSentences, hasNegation, selectExactSentences } from "./source-excerpts";
 
 interface Section {
@@ -9,8 +10,6 @@ interface Section {
   listItems: string[];
   links: { url: string; label: string }[];
 }
-const normalizeName = (value: string) => value.toLowerCase().replace(/&/g, " and ")
-  .replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
 const generic = /^(?:(?:(?:our|all|professional|business|tax)\s+)?(?:services|products|offerings)|what we offer)$/i;
 const utility = /^(?:learn more|read more|view|details|contact|click here|get started|book now)$/i;
 const categoryLabel = /^(?:[\p{L}\p{N}-]+\s+){0,2}(?:services|products|representation|consulting)$/iu;

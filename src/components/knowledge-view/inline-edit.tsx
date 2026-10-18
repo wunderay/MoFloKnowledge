@@ -15,7 +15,7 @@ import { ZodError } from "zod";
 import { createEntryDefault, parseBusinessEntry, type BusinessEntry, type EntryKind, type IdentifiedText } from "@/contracts";
 import { MAX_TEXT_LENGTH } from "@/contracts/primitives";
 import { canonicalStringify } from "@/knowledge/canonical-json";
-import { ApiError } from "../shared/api-client";
+import { ApiError, errorMessage } from "../shared/api-client";
 import { Icon } from "../shared/icons";
 import { prepareEntrySave, sendEntrySave, type PreparedSave, type StoredEntry } from "./save-entry";
 import { timing } from "./timing";
@@ -44,7 +44,6 @@ const realKind = (kind: EntryKind) => kind.split("@")[0] as EntryKind;
 const MAX_ITEMS = 500;
 const SAVED_MS = 3000;
 const UNDO_MS = 10000;
-const CONFLICT = "This value changed since the page was loaded. Reload the page to get the latest, then try again.";
 const STALE = "The view is out of date. Reload to see the latest, then make this change again.";
 const TOO_LONG = `Keep this to ${MAX_TEXT_LENGTH.toLocaleString("en-US")} characters or fewer.`;
 
@@ -61,12 +60,12 @@ const IDLE: Feedback = { kind: "idle" };
 /** A failed save in words. A stale revision (409) cannot be repeated; any other failure can. */
 function failure(error: unknown): Feedback {
   if (error instanceof ApiError && error.status === 409) {
-    return { kind: "failed", message: CONFLICT, retry: false };
+    return { kind: "failed", message: errorMessage(error), retry: false };
   }
   if (error instanceof ZodError) {
     return { kind: "failed", message: error.issues.map((issue) => issue.message).join("; "), retry: false };
   }
-  return { kind: "failed", message: (error as Error)?.message || "The change could not be saved.", retry: true };
+  return { kind: "failed", message: errorMessage(error, "The change could not be saved."), retry: true };
 }
 
 /** Parses `content` as the entry of `kind` and prepares its save (a new entry or a new revision). */
@@ -84,7 +83,7 @@ function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: s
 /** A copy of the stored content of `kind` (the defaults when the company has no such entry yet). */
 const baseOf = (env: EditEnv, kind: EntryKind): Content => structuredClone((env.entry(kind)?.content ?? createEntryDefault(realKind(kind))) as Content);
 const messageOf = (error: unknown) =>
-  error instanceof ZodError ? error.issues.map((issue) => issue.message).join("; ") : ((error as Error)?.message ?? "The change could not be saved.");
+  error instanceof ZodError ? error.issues.map((issue) => issue.message).join("; ") : errorMessage(error, "The change could not be saved.");
 
 /**
  * What one field shows, kept above the sections so that switching section neither drops what was typed nor loses

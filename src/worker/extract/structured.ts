@@ -1,5 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
+import { nameKey as normalizedName } from "./text";
 import { serviceEntityKey } from "./services-text";
 
 type ObjectValue = Record<string, unknown>;
@@ -198,8 +199,6 @@ export function structuredCandidates(
     // A single Service can identify the current detail page even when its metadata URL is stale.
     // Require an observed self-link whose exact label is also a heading, and that whole heading
     // appears in the declared service name. Catalog entries and products keep their own identities.
-    const normalizedName = (raw: string) => raw.toLowerCase().replace(/&/g, " and ")
-      .replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
     const primaryLink = offering && kind.includes("Service") && services.length === 1
       ? page.capture.links.find((link) => link.url === page.capture.finalUrl &&
         link.label.length >= 3 && observations.some((o) =>
