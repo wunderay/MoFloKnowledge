@@ -1,6 +1,6 @@
 import { clampDepthLimit, clampDocumentLimit } from './budgets';
 import { crawlLimits } from '../../lib/config/crawl-limits';
-import { assertDocumentScope, documentPathPrefix, documentScope, normalizeUrl } from '../network/url-scope';
+import { assertDocumentScope, documentPathPrefix, documentScope, isUtilitySubpage, normalizeUrl } from '../network/url-scope';
 export interface FrontierItem {
     url: string;
     depth: number;
@@ -111,6 +111,9 @@ export class Frontier {
         }
         if (this.seen.has(url) || this.aliases.has(url)) {
           return false;
+        }
+        if (isUtilitySubpage(new URL(url).pathname, this.pathPrefix)) {
+            return false;
         }
         if (depth > this.depthLimit) {
             this.limitsReached.add('depth');
