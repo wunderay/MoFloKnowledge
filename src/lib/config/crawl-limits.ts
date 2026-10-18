@@ -28,6 +28,7 @@ function read(env: Env, name: string, fallback: number, kind: Kind, min = 1, rem
   return fallback;
 }
 
+/** @public Also read by the tests through a dynamic import. */
 export function readCrawlLimits(env: Env = process.env) {
   return {
     maxPages: read(env, "CRAWL_MAX_PAGES", 25, "count"),
