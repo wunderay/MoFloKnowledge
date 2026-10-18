@@ -324,6 +324,7 @@ export function captureHtml(
       });
     });
   }
+  const footerText = $("footer").slice(0, 3).map((_i, node) => normalizeText($(node).text()).slice(0, 1000)).get().filter(Boolean);
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
   const root = $("main").first().length
@@ -382,6 +383,7 @@ export function captureHtml(
       .map((list) => ({ ...list, heading: list.heading && parsed.segments.some((segment) => segment.text === list.heading) ? list.heading : null, intro: list.intro && parsed.segments.some((segment) => segment.text === list.intro) ? list.intro : null })),
     declaredStyles: declaredDesign.styles,
     declaredLogos: declaredDesign.logos,
+    footerText,
     offeringBlocks,
     clientSectionDetected: requiresClientSection,
     jsonLd,
