@@ -20,7 +20,11 @@
       "scaleToZero": false,
       "independentOfWeb": true,
       "secretNames": ["WORKER_DATABASE_URL"],
-      "network": ["PostgreSQL", "validated public HTTP/HTTPS destinations", "private renderer task channel"]
+      "optionalSettings": ["CRAWL_AGENT_ENABLED", "CRAWL_AGENT_API_KEY", "CRAWL_AGENT_MODEL", "CRAWL_AGENT_BASE_URL", "CRAWL_AGENT_PROMPT"],
+      "secretUse": {
+        "CRAWL_AGENT_API_KEY": "optional; used only when CRAWL_AGENT_ENABLED is exactly true (off by default); the agent only chooses which pages to visit"
+      },
+      "network": ["PostgreSQL", "validated public HTTP/HTTPS destinations", "private renderer task channel", "optional crawl agent endpoint (only when enabled)"]
     },
     {
       "id": "renderer",
