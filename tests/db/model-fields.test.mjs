@@ -113,11 +113,11 @@ after(async()=>{for(const c of sessions)await c.end().catch(()=>{});if(administr
 test('a new migration makes the SQL contract know the new fields, defaults and registry',async t=>{
  await t.test("the model-fields migration is new (0018, or 0019 when 0018_knowledge_assets_storage.sql is present), is recorded as applied; 0001-0017 are untouched",async()=>{
   const files=(await readdir(migrationsDirectory)).filter(x=>x.endsWith('.sql')).sort();
-  const q6='0018_knowledge_assets_storage.sql';
+  const storageMigration='0018_knowledge_assets_storage.sql';
   // Later migrations (0020 archives entries) are ignored; only the two numbers this migration could take count here.
-  const added=files.filter(file=>migrationNumber(file)>=18&&migrationNumber(file)<=19&&file!==q6);
+  const added=files.filter(file=>migrationNumber(file)>=18&&migrationNumber(file)<=19&&file!==storageMigration);
   assert.equal(added.length,1,'exactly one model-fields migration numbered above the migrations that came before it');
-  const expected=files.includes(q6)?'0019_':'0018_';assert.ok(added[0].startsWith(expected),`the model-fields migration is the first free number ${expected.slice(0,4)} (found ${added[0]})`);
+  const expected=files.includes(storageMigration)?'0019_':'0018_';assert.ok(added[0].startsWith(expected),`the model-fields migration is the first free number ${expected.slice(0,4)} (found ${added[0]})`);
   const {rows}=await admin.query("SELECT version FROM supabase_migrations.schema_migrations ORDER BY version");
   assert.ok(rows.map(r=>r.version).includes(expected.slice(0,4)),`${expected.slice(0,4)} is applied`);
   assert.equal(rows.length,files.length,'every migration file is recorded as applied');

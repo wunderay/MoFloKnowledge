@@ -13,9 +13,6 @@
 // sent. Import this helper OR the older knowledge-view render helpers, never both in one test file
 // (both replace "react" hooks and next/* modules).
 import React from "react";
-import { readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, vi } from "vitest";
 import { parse, norm, type Page } from "./knowledge-view-dom";
@@ -75,14 +72,11 @@ vi.mock("next/navigation", () => ({
     throw new Error(`redirect:${to}`);
   },
 }));
-vi.mock("next/link", () => ({
-  default: ({ href, children, ...rest }: { href: string; children?: React.ReactNode }) =>
-    React.createElement("a", { href, ...rest }, children),
-}));
 vi.mock("@/lib/supabase/server", () => ({
   verifiedSession: async () => ({ client: {}, user: { id: "user-1" } }),
 }));
-vi.mock("@/server/read-model", () => ({
+vi.mock("@/server/read-model", async (original) => ({
+  ...(await original<typeof import("@/server/read-model")>()),
   readDraft: async () => structuredClone(shared.server!.draft),
 }));
 vi.mock("@/server/snapshots", async () => {
@@ -95,29 +89,6 @@ vi.mock("@/server/snapshots", async () => {
   };
 });
 vi.mock("@/server/authorize", () => ({}));
-vi.mock("server-only", () => ({}));
-
-// vitest.config.ts defines no "@/" alias: every "@/..." specifier is pointed at its real file.
-const SRC = fileURLToPath(new URL("../../src/", import.meta.url));
-function sourceFiles(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-    entry.isDirectory()
-      ? sourceFiles(join(dir, entry.name))
-      : /\.(ts|tsx)$/.test(entry.name) && !entry.name.endsWith(".d.ts")
-        ? [join(dir, entry.name)]
-        : [],
-  );
-}
-const PROVIDED = new Set(["@/lib/supabase/server", "@/server/read-model", "@/server/snapshots", "@/server/authorize"]);
-for (const file of sourceFiles(SRC)) {
-  const id = "@/" + relative(SRC, file).replace(/\.(ts|tsx)$/, "").split(sep).join("/");
-  const ids = id.endsWith("/index") ? [id, id.slice(0, -"/index".length)] : [id];
-  for (const each of ids) {
-    if (!PROVIDED.has(each)) {
-      vi.doMock(each, () => import(/* @vite-ignore */ file));
-    }
-  }
-}
 
 // ---- the rendered tree --------------------------------------------------------------------------
 export interface HNode {

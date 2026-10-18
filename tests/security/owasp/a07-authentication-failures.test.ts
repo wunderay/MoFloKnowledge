@@ -5,7 +5,6 @@
 // existing account looks like a normal pending sign-up, and the password rules are enforced before the provider.
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: vi.fn() }) }));
 const state = vi.hoisted(() => ({ signIn: vi.fn(), signUp: vi.fn() }));
 vi.mock("../../../src/lib/supabase/server", () => ({

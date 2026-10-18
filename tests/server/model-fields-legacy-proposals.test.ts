@@ -1,7 +1,6 @@
 // A scrape finished before 0019 stores proposal candidates without the model fields. Reading the job (and the dismiss and
 // cancel routes, which answer with the job) must still work, the candidates reading the missing fields as defaults.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
 import { verifiedSession } from "../../src/lib/supabase/server";
 import { createEmptyProvenance } from "../../src/contracts";

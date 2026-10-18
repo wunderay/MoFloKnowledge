@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
 const signUp = vi.fn();
 vi.mock("../../src/lib/supabase/server", () => ({
   createClient: async () => ({ auth: { signUp } }),

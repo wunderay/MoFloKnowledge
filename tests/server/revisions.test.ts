@@ -1,5 +1,4 @@
 import { expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
 import { prepareManualCreation } from "../../src/server/revisions";
 import {

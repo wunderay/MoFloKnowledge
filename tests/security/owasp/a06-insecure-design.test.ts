@@ -6,7 +6,6 @@
 import { once } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("server-only", () => ({}));
 const state = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("../../../src/lib/supabase/server", () => ({
   verifiedSession: async () => ({

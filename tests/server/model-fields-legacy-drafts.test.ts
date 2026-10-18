@@ -4,7 +4,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import JSZip from "jszip";
 import { load } from "cheerio";
-vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
 import { verifiedSession } from "../../src/lib/supabase/server";
 import { GET as draft } from "../../src/app/api/companies/[companyId]/draft/route";

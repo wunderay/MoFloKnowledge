@@ -32,7 +32,6 @@ import {
   world,
 } from "../helpers/uploads-world";
 
-vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ getAll: () => [], get: () => undefined, set: () => undefined }),
   headers: async () => new Headers(),

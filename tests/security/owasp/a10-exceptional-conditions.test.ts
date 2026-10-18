@@ -6,7 +6,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: vi.fn() }) }));
 const state = vi.hoisted(() => ({ verified: vi.fn(), createClient: vi.fn() }));
 vi.mock("../../../src/lib/supabase/server", () => ({

@@ -1,4 +1,4 @@
--- Provenance origin hardening (Quest Q20). A member who calls create_entry or save_entry_revision directly (as PostgREST
+-- Provenance origin hardening. A member who calls create_entry or save_entry_revision directly (as PostgREST
 -- does) must not be able to label any value as source_backed, inferred or generated. Only the trusted paths (finish_job,
 -- apply_proposal, prepare_proposal, merge_saved_proposal, revert_entry) store extracted values; a member's write may carry
 -- a non-person-authored claim only when it is exactly the claim that already supported that value in the entry's history

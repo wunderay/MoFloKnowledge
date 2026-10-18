@@ -2,7 +2,6 @@
 // Deleting is a soft delete done by the database (public.archive_entry, migration 0020, proven in
 // tests/db/entry-delete.test.mjs). This file proves the route in front of it: origin, session, role, body and error mapping.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
 import { verifiedSession } from "../../src/lib/supabase/server";
 import { DELETE } from "../../src/app/api/companies/[companyId]/entries/[entryId]/route";

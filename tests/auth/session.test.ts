@@ -1,6 +1,5 @@
 import { expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ getAll: () => [], set: vi.fn() }),
 }));

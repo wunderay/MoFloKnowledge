@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
-vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({
   verifiedSession: vi.fn(async () => ({ user: null, client: {} })),
 }));

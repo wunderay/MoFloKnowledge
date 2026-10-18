@@ -1,8 +1,7 @@
 // Undo of a removed list item: the real prepareRevision puts the item back with the claims and
 // evidence it had in the earlier revision it is restored from, instead of recording the person as its author, and falls
 // back to an ordinary edit for anything that does not match. The browser's own provenance is never used.
-import { describe, expect, it, vi } from "vitest";
-vi.mock("server-only", () => ({}));
+import { describe, expect, it } from "vitest";
 import { prepareRevision } from "../../src/server/revisions";
 import { SaveEntrySchema } from "../../src/contracts/api-entries";
 import { createEmptyBusiness, createEmptyProvenance, entryBusiness, validateProvenance, type BusinessEntry, type EntryProvenance } from "../../src/contracts";

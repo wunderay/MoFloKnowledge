@@ -552,14 +552,14 @@ describe("contract sources and migration files for the SQL contract", () => {
 
   it("a NEW migration exists (0018, or 0019 when 0018_knowledge_assets_storage.sql is present), holds the generated contract block and names the new fields", () => {
     // The storage uploads migration owns 0018_knowledge_assets_storage.sql when present; the model-fields migration then takes the next free number.
-    const q6 = "0018_knowledge_assets_storage.sql";
+    const storageMigration = "0018_knowledge_assets_storage.sql";
     // Later migrations (0020 archives entries) are ignored; only the two numbers this migration could take count here.
     const added = migrations.filter((name) => {
       const number = Number.parseInt(name.split("_")[0], 10);
-      return number >= 18 && number <= 19 && name !== q6;
+      return number >= 18 && number <= 19 && name !== storageMigration;
     });
     expect(added.length, "exactly one model-fields migration numbered above the migrations that came before it").toBe(1);
-    const expected = migrations.includes(q6) ? "0019_" : "0018_";
+    const expected = migrations.includes(storageMigration) ? "0019_" : "0018_";
     expect(added[0].startsWith(expected), `the model-fields migration is the first free number ${expected.slice(0, 4)} (found ${added[0]})`).toBe(true);
     const text = read(`supabase/migrations/${added[0]}`);
     expect(text).toContain("-- BEGIN GENERATED CONTRACT (scripts/generate-sql-contract.mjs; do not edit)");

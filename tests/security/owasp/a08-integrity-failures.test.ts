@@ -5,7 +5,6 @@
 // This file adds: file type comes from the bytes, and a client cannot choose who or what authored an entry.
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("server-only", () => ({}));
 const state = vi.hoisted(() => ({ rpc: vi.fn() }));
 const USER = "11111111-1111-4111-8111-111111111111";
 vi.mock("../../../src/lib/supabase/server", () => ({

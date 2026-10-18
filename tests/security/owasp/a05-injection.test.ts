@@ -8,7 +8,6 @@ import { join, resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: vi.fn() }) }));
 const state = vi.hoisted(() => ({ rpc: vi.fn(), signIn: vi.fn() }));
 vi.mock("../../../src/lib/supabase/server", () => ({
