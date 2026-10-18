@@ -2,6 +2,7 @@ import { KnowledgeViewer } from "@/components/shared/knowledge-viewer";
 import { verifiedSession } from "@/lib/supabase/server";
 import { readDraft } from "@/server/read-model";
 import { readCapturedExtras } from "@/server/captured-extras";
+import { readCapturedHooks } from "@/server/captured-hooks";
 import { CapturedExtrasSection } from "@/components/knowledge-view/captured-extras";
 import { readSnapshot, readVersionSummaries } from "@/server/snapshots";
 import { UUIDSchema } from "@/contracts";
@@ -52,6 +53,12 @@ export default async function ViewPage({
       faqs: [],
       contacts: [],
     }));
+    const hooks = await readCapturedHooks(client, id.data).catch(() => ({
+      headlines: [],
+      ctas: [],
+      leadMagnets: [],
+      hours: [],
+    }));
     if (versionId === "draft") {
       const draft = await readDraft(client, id.data, user.id);
       return (
@@ -62,7 +69,7 @@ export default async function ViewPage({
           initialSection={section}
           initialOffering={offering}
           initialPerson={person}
-          capturedExtras={<CapturedExtrasSection extras={extras} />}
+          capturedExtras={<CapturedExtrasSection extras={extras} hooks={hooks} />}
           initialData={{ companyName: draft.company.name, versions, draft }}
         />
       );
@@ -77,7 +84,7 @@ export default async function ViewPage({
         initialSection={section}
         initialOffering={offering}
         initialPerson={person}
-        capturedExtras={<CapturedExtrasSection extras={extras} />}
+        capturedExtras={<CapturedExtrasSection extras={extras} hooks={hooks} />}
         initialData={{
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
           companyName: saved.payload.provenance.company.name,

@@ -230,6 +230,8 @@ Fields not listed here (for example gender and most other registered fields) hav
 
 Page text, headings, forms and other observations that no registered field uses stay attached to the source capture as evidence. They are not presented as extracted business fields.
 
+The knowledge view lists captured headlines (H1/H2 headings, page titles and meta descriptions), calls to action, lead magnets (offers such as newsletters, guides and consultations) and opening hours as read-only sub-sections under "Captured from the website". They are derived when the page is read, merged by text across pages, and never become knowledge fields.
+
 ### Controlled field values
 
 A categorical field may turn an explicit relation into a short label only when one source sentence names the company as its subject and states the current relation. For example, "we provide ... services" or "we offer ... services" can support `Service provider` (`isExplicitServiceProviderSentence` in `source-excerpts.ts`). The exact sentence, its URL and a note about the mapping are kept.
