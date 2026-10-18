@@ -43,7 +43,7 @@ export function isStorageNotFound(error: unknown) {
   return (
     Number(value?.status) === 404 ||
     Number(value?.statusCode) === 404 ||
-    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on a loosely typed storage error message is intentional
     /^object not found$/i.test(String(value?.message ?? ""))
   );
 }
