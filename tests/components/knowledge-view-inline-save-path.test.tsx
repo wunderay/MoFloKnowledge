@@ -54,8 +54,9 @@ import type { View } from "../helpers/knowledge-view-site-all-runtime";
 vi.setConfig({ testTimeout: 60_000 });
 
 async function setText(view: View, field: TextField, text: string) {
-  if (field.shape === "single") await editAndEnter(view, field, text);
-  else {
+  if (field.shape === "single") {
+    await editAndEnter(view, field, text);
+  } else {
     const area = await startEdit(view, field);
     await type(view, area, text);
     await key(view, area, "Enter");
@@ -96,10 +97,10 @@ describe("C5 a revision of an existing entry", () => {
 
     const afterAdd = stored(view, field.kind);
     expect(afterAdd.current_revision, "the page re-read the entry it just saved").toBe(before.current_revision + 1);
-    await removeChip(view, items[0]!.text);
+    await removeChip(view, items[0].text);
     const removed = revisionWrite(view, afterAdd, 1, afterAdd.current_revision);
     const out2 = await serverAcceptsRevision(afterAdd, removed.body);
-    expect(getAt(out2.content, field.path).map((i: { text: string }) => i.text)).not.toContain(items[0]!.text);
+    expect(getAt(out2.content, field.path).map((i: { text: string }) => i.text)).not.toContain(items[0].text);
   });
 
   it("each save has its own request id", async () => {
@@ -107,9 +108,9 @@ describe("C5 a revision of an existing entry", () => {
     await setText(view, LEGAL, "Limited partnership");
     await setText(view, OVERVIEW_F, "A second edit");
     const [first, second] = view.server.writes;
-    expect(first!.body.requestId).toMatch(UUID);
-    expect(second!.body.requestId).toMatch(UUID);
-    expect(first!.body.requestId).not.toBe(second!.body.requestId);
+    expect(first.body.requestId).toMatch(UUID);
+    expect(second.body.requestId).toMatch(UUID);
+    expect(first.body.requestId).not.toBe(second.body.requestId);
   });
 
   it("Pitch and Founding story are saved to the Positioning entry, Overview to the Company Foundation entry", async () => {
@@ -141,16 +142,16 @@ describe("C5 a revision of an existing entry", () => {
     expect(second.content).toEqual({ ...before.content, legal_entity_type: "Cooperative", industry: "Tea trading" });
     // Buyers live in another entry: its first revision
     const market = stored(view, "market_and_customers");
-    expect(view.server.writes[2]!.path).toBe(`/api/companies/${COMPANY_ID}/entries/${market.id}/revisions`);
-    expect(view.server.writes[2]!.body.expectedRevision).toBe(market.current_revision - 1);
+    expect(view.server.writes[2].path).toBe(`/api/companies/${COMPANY_ID}/entries/${market.id}/revisions`);
+    expect(view.server.writes[2].body.expectedRevision).toBe(market.current_revision - 1);
   });
 
   it("the page re-reads the draft after a save and shows what the server holds", async () => {
     const view = await open(LEGAL.section);
-    const draftReads = () => view.server.gets.filter((r) => /\/draft$/.test(r.path)).length;
+    const draftReads = () => view.server.gets.filter((r) => r.path.endsWith("/draft")).length;
     await setText(view, LEGAL, "Trust");
     expect(draftReads(), "at least one read of the draft after the write").toBeGreaterThanOrEqual(1);
-    const methods = view.server.requests.map((r) => (r.method === "GET" && /\/draft$/.test(r.path) ? "read" : r.method));
+    const methods = view.server.requests.map((r) => (r.method === "GET" && r.path.endsWith("/draft") ? "read" : r.method));
     expect(methods.indexOf("POST"), "the draft was read again after the write").toBeLessThan(methods.lastIndexOf("read"));
   });
 
@@ -167,8 +168,9 @@ describe("C5 a revision of an existing entry", () => {
 describe("C5 the same editors in 'All sections'", () => {
   it("every inline editor of the three sections is offered once, with unique ids, and saves", async () => {
     const view = await open("All sections");
-    for (const field of [LEGAL, INDUSTRY, OVERVIEW_F, STORY, MODEL, PITCH_F, FOUNDED, EMPLOYEES])
+    for (const field of [LEGAL, INDUSTRY, OVERVIEW_F, STORY, MODEL, PITCH_F, FOUNDED, EMPLOYEES]) {
       expect(editButtons(view, field.label), `Edit ${field.label}`).toHaveLength(1);
+    }
     expect(duplicateIds(view)).toEqual([]);
     const before = stored(view, "company_foundation");
     await setText(view, LEGAL, "Sole proprietorship");
@@ -220,7 +222,7 @@ describe("C5 an entry the company does not have yet is created", () => {
     expect(view.server.writesTo("entries")).toHaveLength(1);
     const created = entryOf(view.server.draft, "market_and_customers");
     expect(created.current_revision).toBe(2);
-    expect(view.server.writes[1]!.body.expectedRevision).toBe(1);
+    expect(view.server.writes[1].body.expectedRevision).toBe(1);
   });
 
   it("a company that has Company Foundation but no Positioning revises the one and creates the other", async () => {

@@ -4,11 +4,11 @@ import type {
   Claim,
   CoverageAssessment,
 } from "../contracts/provenance";
-export type APACitation = {
+export interface APACitation {
   citation: string;
   reference: string;
   retrievedAt: string;
-};
+}
 const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 function suffix(index: number): string {
   let result = "";
@@ -81,7 +81,7 @@ export function formatAPACitations(
   }
   return result;
 }
-export function originLabel(
+function originLabel(
   origin: Origin | undefined,
   approved = false,
 ): string {
@@ -109,7 +109,7 @@ export function attributionDetails(
   authoredAt: string | null;
   evidenceIds: string[];
 } {
-  if (!claim)
+  if (!claim) {
     return {
       label: "Unknown",
       note:
@@ -118,6 +118,7 @@ export function attributionDetails(
       authoredAt: null,
       evidenceIds: [],
     };
+  }
   return {
     label: originLabel(claim.origin, approved),
     note:

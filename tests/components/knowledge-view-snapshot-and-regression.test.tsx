@@ -113,7 +113,9 @@ describe("C6 draft and saved snapshot", () => {
       snapshot: { payload: snapshotFrom(draft, { rejected: ["market_and_customers"] }), versionId: SNAPSHOT_ID },
     });
     const titles = titlesOf("Customers & Industry");
-    for (const t of titles) expect(card(page, t, titles), `card "${t}"`).not.toBeNull();
+    for (const t of titles) {
+      expect(card(page, t, titles), `card "${t}"`).not.toBeNull();
+    }
     expect(cardText(page, card(page, "Business model", titles)!)).toContain(buildBusiness().company_foundation.business_model);
     expect(cardText(page, card(page, "Buyers", titles)!)).not.toContain("Home coffee enthusiasts");
   });
@@ -140,9 +142,9 @@ describe("C7 existing viewer capabilities stay reachable", () => {
       text: norm(page.$(o).text()), value: page.$(o).attr("value"), selected: page.$(o).attr("selected") !== undefined,
     }));
     expect(options.map((o) => o.value)).toEqual(["draft", SNAPSHOT_ID, OLDER_SNAPSHOT_ID]);
-    expect(options[0]!.text).toBe("Current draft");
-    expect(options[1]!.text).toMatch(/^Version 2\b/);
-    expect(options[2]!.text).toMatch(/^Version 1\b/);
+    expect(options[0].text).toBe("Current draft");
+    expect(options[1].text).toMatch(/^Version 2\b/);
+    expect(options[2].text).toMatch(/^Version 1\b/);
     expect(options.filter((o) => o.selected).map((o) => o.value)).toEqual(["draft"]);
   });
 
@@ -180,7 +182,9 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     const page = await draftPage();
     const edits = page.$("a").toArray().filter((a) => norm(page.$(a).text()) === "Edit draft").map((a) => page.$(a).attr("href")!);
     expect(edits.length).toBeGreaterThan(0);
-    for (const href of edits) expect(href).toMatch(new RegExp(`^/knowledge\\?companyId=${COMPANY_ID}&category=[a-z_]+&entryId=[0-9a-f-]{36}$`));
+    for (const href of edits) {
+      expect(href).toMatch(new RegExp(`^/knowledge\\?companyId=${COMPANY_ID}&category=[a-z_]+&entryId=[0-9a-f-]{36}$`));
+    }
     const buttons = page.$("button").toArray().map((b) => norm(page.$(b).text()));
     expect(buttons).toContain("History");
     expect(buttons).toContain("Remove from future versions");
@@ -200,7 +204,9 @@ describe("C7 existing viewer capabilities stay reachable", () => {
   it("a saved snapshot offers no draft review actions", async () => {
     const page = await snapshotPage();
     const labels = page.$("a,button").toArray().map((a) => norm(page.$(a).text()));
-    for (const draftOnly of ["Edit draft", "View draft", "Remove from future versions"]) expect(labels).not.toContain(draftOnly);
+    for (const draftOnly of ["Edit draft", "View draft", "Remove from future versions"]) {
+      expect(labels).not.toContain(draftOnly);
+    }
   });
 
   // non-regression

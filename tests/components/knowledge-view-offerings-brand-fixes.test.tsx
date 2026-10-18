@@ -37,7 +37,7 @@ describe("C1 unusable colors and fonts stay visible", () => {
     ["draft", "#12"],
   ] as const)("(%s) a color with the hex %s keeps its tile, says 'unavailable' and is never painted", async (mode, bad) => {
     const colors = structuredClone(COLORS);
-    colors[1] = { ...colors[1]!, hex: bad, apparent_role: "Accent" };
+    colors[1] = { ...colors[1], hex: bad, apparent_role: "Accent" };
     const page = await openBrand(mode, { brand_colors: colors });
     const text = textOf(page, cardOf(page, "Colors"));
     expect(text, "a tile named by position or role").toMatch(/Color 2|Accent/);
@@ -50,7 +50,7 @@ describe("C1 unusable colors and fonts stay visible", () => {
 
   it.each(["viewer", "draft"] as const)("(%s) a font with a blank family keeps its row as 'Font 2' and says 'unavailable'", async (mode) => {
     const fonts = structuredClone(FONTS);
-    fonts[1] = { ...fonts[1]!, family: "   " };
+    fonts[1] = { ...fonts[1], family: "   " };
     const page = await openBrand(mode, { fonts });
     const text = textOf(page, cardOf(page, "Fonts"));
     expect(text).toContain("Font 2");
@@ -67,16 +67,16 @@ describe("C2 logos", () => {
     ["viewer", "ftp://x/y.png"],
   ] as const)("(%s) a logo at %s shows no image and says the address is not http(s)", async (mode, url) => {
     const logos = structuredClone(LOGOS);
-    logos[1] = { ...logos[1]!, url };
+    logos[1] = { ...logos[1], url };
     const page = await openBrand(mode, { logos });
     const logosCard = cardOf(page, "Logos");
-    const tile = page.$(deepestContaining(page, logosCard, "Stacked lockup")[0]!).closest("li");
+    const tile = page.$(deepestContaining(page, logosCard, "Stacked lockup")[0]).closest("li");
     expect(tile.length, "the tile keeps its variant caption").toBe(1);
     expect(tile.find("img").length, "no image").toBe(0);
     const text = norm(tile.text());
     expect(text).toContain("Image unavailable");
     expect(text).toContain("http");
-    expect(imagesIn(page, logosCard).map((i) => i.src)).toEqual([LOGOS[0]!.url, LOGOS[2]!.url]);
+    expect(imagesIn(page, logosCard).map((i) => i.src)).toEqual([LOGOS[0].url, LOGOS[2].url]);
   });
 });
 
@@ -86,10 +86,10 @@ describe("C3 Cost evidence follows the cost text's own field", () => {
       marks: [],
       coverage: () => [],
       business: (b) => {
-        b.offerings[0]!.pricing!.raw = "   ";
+        b.offerings[0].pricing!.raw = "   ";
       },
     });
-    const first = OFFERINGS[0]!;
+    const first = OFFERINGS[0];
     const claim = {
       id: "00000000-0000-4000-8000-0000000a7001",
       entry_id: first.id,

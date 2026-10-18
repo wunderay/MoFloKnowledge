@@ -33,9 +33,10 @@ describe.each(["draft", "snapshot"] as const)("offering add links (%s)", (source
     const page = await open[source](OFFERING_IDS[3]);
     const adds = detailAdds(page);
     // The unnamed offering has no name, type, features, cost or pricing model; only its description is filled.
-    for (const label of ["Offering", "Type", "Key features", "Cost", "Pricing model"])
+    for (const label of ["Offering", "Type", "Key features", "Cost", "Pricing model"]) {
       expect(adds[label], `card "${label}"`).toEqual([scoped(OFFERING_IDS[3])]);
-    expect(adds["Description"]).toEqual([]);
+    }
+    expect(adds.Description).toEqual([]);
     expect(JSON.stringify(adds)).not.toContain(OFFERING_IDS[0]);
   });
 
@@ -58,8 +59,9 @@ describe.each(["draft", "snapshot"] as const)("offering add links (%s)", (source
 
   // behavioural
   it("the section-level Add offering link stays unscoped", async () => {
-    for (const offering of [undefined, OFFERING_IDS[3]])
+    for (const offering of [undefined, OFFERING_IDS[3]]) {
       expect(addOffering(await open[source](offering))).toEqual([ADD]);
+    }
   });
 
   // behavioural
@@ -67,6 +69,8 @@ describe.each(["draft", "snapshot"] as const)("offering add links (%s)", (source
     const page = await open[source](OFFERING_IDS[3]);
     const hrefs = page.$(".knowledge-view__panel a[href]").toArray().map((a) => page.$(a).attr("href")!).filter((h) => h.includes("category=offering"));
     expect(hrefs.length).toBeGreaterThan(5);
-    for (const href of hrefs) expect([ADD, scoped(OFFERING_IDS[3])]).toContain(href);
+    for (const href of hrefs) {
+      expect([ADD, scoped(OFFERING_IDS[3])]).toContain(href);
+    }
   });
 });

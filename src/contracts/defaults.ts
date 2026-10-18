@@ -9,7 +9,7 @@ export function createEntryDefault(
   kind: EntryKind,
   id?: string,
 ): BusinessEntry {
-  if (kind === "key_person")
+  if (kind === "key_person") {
     return {
       id: id ?? crypto.randomUUID(),
       name: null,
@@ -21,7 +21,8 @@ export function createEntryDefault(
       nationality: null,
       portrait: null,
     };
-  if (kind === "offering")
+  }
+  if (kind === "offering") {
     return {
       id: id ?? crypto.randomUUID(),
       name: null,
@@ -33,6 +34,7 @@ export function createEntryDefault(
       url: null,
       images: [],
     };
+  }
   return createEmptyBusiness()[kind];
 }
 export function createEmptyProvenance(): EntryProvenance {

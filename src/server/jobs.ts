@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use */
 import "server-only";
 import { authorizeCompany } from "./authorize";
 import { checked } from "./read-model";
@@ -22,7 +23,9 @@ export async function readJob(
       .eq("id", id)
       .maybeSingle(),
   );
-  if (!job) throw new HttpError(404, "unavailable", "Resource unavailable.");
+  if (!job) {
+    throw new HttpError(404, "unavailable", "Resource unavailable.");
+  }
   const { options, ...safeJob } = job;
   const proposals = job.proposals ?? {};
   return parseResponse(JobResponseSchema, {

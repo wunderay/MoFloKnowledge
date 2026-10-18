@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { ZodError } from "zod";
 import { parseBusinessEntry, type SiteLink } from "@/contracts";
 import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
@@ -24,14 +24,18 @@ export function importRoom(site: ViewSiteLinks): { room: number; limit: "links" 
   const claimRoom = MAX_ENTRY_CLAIMS - (provenance?.claims.length ?? 0);
   // The most links k with claimsForLeaves(LEAVES_PER_LINK * k) <= claimRoom.
   const byClaims = claimRoom <= 0 ? 0 : Math.floor((claimRoom * MAX_CLAIM_TARGETS) / LEAVES_PER_LINK);
-  if (provenance && provenance.operations.length + OPERATIONS_PER_SAVE > MAX_ENTRY_OPERATIONS) return { room: 0, limit: "operations" };
-  if (byClaims < linkRoom) return { room: byClaims, limit: "claims" };
+  if (provenance && provenance.operations.length + OPERATIONS_PER_SAVE > MAX_ENTRY_OPERATIONS) {
+    return { room: 0, limit: "operations" };
+  }
+  if (byClaims < linkRoom) {
+    return { room: byClaims, limit: "claims" };
+  }
   return { room: linkRoom, limit: linkRoom === 0 ? "links" : null };
 }
 /** A new link names its title and its address; its note is empty. */
 const LEAVES_PER_LINK = 2;
 
-export type Candidate = { key: string; label: string; url: string };
+export interface Candidate { key: string; label: string; url: string }
 /** The address with its hash and trailing slashes dropped, so "/visit/#map" and "/visit" are one page; the query stays. */
 export function pageKey(url: string): string {
   try {
@@ -52,9 +56,13 @@ export function importCandidates(pages: SourceCoverage["pages"], stored: SiteLin
   const seen = new Set(stored.map((link) => pageKey(link.url)));
   const out: Candidate[] = [];
   for (const page of pages) {
-    if (page.state !== "captured" || !URLSchema.safeParse(page.url).success) continue;
+    if (page.state !== "captured" || !URLSchema.safeParse(page.url).success) {
+      continue;
+    }
     const key = pageKey(page.url);
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      continue;
+    }
     seen.add(key);
     out.push({ key, label: page.title?.trim() || page.url, url: page.url });
   }
@@ -128,18 +136,34 @@ export function SiteImport({
   // The native dialog is modal: it takes focus, traps it, and returns it to the button when it closes.
   useEffect(() => {
     const element = dialog.current;
-    if (!element) return;
-    if (open && !element.open) element.showModal();
-    if (!open && element.open) element.close();
+    if (!element) {
+      return;
+    }
+    if (open && !element.open) {
+      element.showModal();
+    }
+    if (!open && element.open) {
+      element.close();
+    }
   }, [open]);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     let current = true;
     setPages(null);
     setLoadError("");
     api<SourceCoverage>(companyPath(companyId, "/sources"))
-      .then((data) => current && setPages(data.pages))
-      .catch((error: Error) => current && setLoadError(error.message));
+      .then((data) => {
+        if (current) {
+          setPages(data.pages);
+        }
+      })
+      .catch((error: unknown) => {
+        if (current) {
+          setLoadError((error as Error).message);
+        }
+      });
     return () => {
       current = false;
     };
@@ -155,14 +179,18 @@ export function SiteImport({
     setOpen(true);
   }
   function close() {
-    if (!saving.current) setOpen(false);
+    if (!saving.current) {
+      setOpen(false);
+    }
   }
   function choose(key: string, checked: boolean) {
     setSelected((now) => (checked ? (now.length >= remaining ? now : [...now.filter((k) => k !== key), key]) : now.filter((k) => k !== key)));
   }
-  async function submit(event: FormEvent) {
+  async function submit(event: SyntheticEvent) {
     event.preventDefault();
-    if (saving.current || chosen.length === 0) return;
+    if (saving.current || chosen.length === 0) {
+      return;
+    }
     saving.current = true;
     setBusy(true);
     setSaveError("");
@@ -198,7 +226,7 @@ export function SiteImport({
           event.preventDefault();
           close();
         }}
-        onClose={() => setOpen(false)}
+        onClose={() => { setOpen(false); }}
       >
         {open && (
           <form onSubmit={submit}>
@@ -233,7 +261,7 @@ export function SiteImport({
                             type="checkbox"
                             checked={checked}
                             disabled={busy || (!checked && full)}
-                            onChange={(event) => choose(page.key, event.target.checked)}
+                            onChange={(event) => { choose(page.key, event.target.checked); }}
                           />
                           <span className="knowledge-view__dialog-text">
                             <strong>{page.label}</strong>

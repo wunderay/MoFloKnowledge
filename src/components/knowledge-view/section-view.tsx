@@ -18,14 +18,14 @@ export function SectionView({
   entries,
   citationContext,
   offeringId = "",
-  onSelectOffering = () => {},
+  onSelectOffering = () => undefined,
   personId = "",
-  onSelectPerson = () => {},
+  onSelectPerson = () => undefined,
   canEdit = false,
   actorId = "",
   generation = null,
   importBlocked = false,
-  onSaved = async () => {},
+  onSaved = () => Promise.resolve(),
 }: {
   section: KnowledgeSectionId;
   companyId: string;
@@ -67,14 +67,14 @@ export function SectionView({
             // An offering (or any entry that is one of many) is asked for as "<kind>@<entry id>"; the others by their kind.
             const [base, id] = kind.split("@");
             const found = entries.find((item) => (id === undefined ? item.kind === kind : item.kind === base && item.id === id));
-            return found && found.id !== undefined
+            return found?.id !== undefined
               ? { id: found.id, revision: found.current_revision ?? 0, content: found.content, provenance: found.provenance }
               : null;
           },
         }
       : null;
   const one = (id: KnowledgeSectionId, level: "h2" | "h3" = "h2") => {
-    if (id === "key-people")
+    if (id === "key-people") {
       return (
         <KeyPeople
           companyId={companyId}
@@ -86,10 +86,17 @@ export function SectionView({
           onSaved={onSaved}
         />
       );
-    if (id === "general") return <GeneralInfo companyId={companyId} name={name} profile={profile} />;
-    if (id === "customers") return <CustomersIndustry companyId={companyId} profile={profile} />;
-    if (id === "sales") return <SalesMarketing companyId={companyId} name={name} profile={profile} />;
-    if (id === "offerings")
+    }
+    if (id === "general") {
+      return <GeneralInfo companyId={companyId} name={name} profile={profile} />;
+    }
+    if (id === "customers") {
+      return <CustomersIndustry companyId={companyId} profile={profile} />;
+    }
+    if (id === "sales") {
+      return <SalesMarketing companyId={companyId} name={name} profile={profile} />;
+    }
+    if (id === "offerings") {
       return (
         <BusinessOfferings
           companyId={companyId}
@@ -101,7 +108,8 @@ export function SectionView({
           onSelect={onSelectOffering}
         />
       );
-    if (id === "brand")
+    }
+    if (id === "brand") {
       return (
         <BrandIdentity
           companyId={companyId}
@@ -110,6 +118,7 @@ export function SectionView({
           rename={edit && generation !== null ? { generation, blocked: importBlocked, onRenamed: () => onSaved("changes") } : undefined}
         />
       );
+    }
     return (
       <SiteKnowledge
         companyId={companyId}

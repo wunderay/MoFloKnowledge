@@ -53,6 +53,7 @@ const offering = (over: Json = {}): Json => ({ ...base("offering", uid(2)), name
 const folderOf = { portrait: "portraits", image: "offering-images" } as const;
 const path = (folder: string, ext = "png", co = CO, object = OBJ) => `${folder}/${co}/${object}.${ext}`;
 const ref = (folder: string, over: Json = {}): Json => ({ id: OBJ, path: path(folder), content_type: "image/png", size_bytes: 2048, ...over });
+// eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- test removes a caller-chosen key from a scratch object
 const without = (value: Json, key: string): Json => { const copy = { ...value }; delete copy[key]; return copy; };
 
 function parses(kind: EntryKind, value: unknown): boolean {
@@ -84,8 +85,9 @@ describe("C1 [behavioural] company_foundation.revenue: nullable non-blank text, 
   });
 
   it("accepts free-text amounts and null", () => {
-    for (const revenue of ["$1M ARR", "€2.3M (FY2025)", "About 12 million, mostly subscriptions", "¥500,000,000", "N/A", "  $5M  ", null])
+    for (const revenue of ["$1M ARR", "€2.3M (FY2025)", "About 12 million, mostly subscriptions", "¥500,000,000", "N/A", "  $5M  ", null]) {
       expect(parses("company_foundation", foundation({ revenue })), String(revenue)).toBe(true);
+    }
   });
 
   it("parseBusinessEntry keeps the revenue text exactly", () => {
@@ -96,8 +98,9 @@ describe("C1 [behavioural] company_foundation.revenue: nullable non-blank text, 
 
   it("Edge case: blank, whitespace-only and non-string revenue is rejected", () => {
     const valid = foundation({ revenue: "$1M ARR" });
-    for (const revenue of ["", " ", "   ", "\t", "\n", " \u00a0 ", 1000000, 0, true, {}, ["$1M"]])
+    for (const revenue of ["", " ", "   ", "\t", "\n", " \u00a0 ", 1000000, 0, true, {}, ["$1M"]]) {
       rejectsOnlyBecauseOfVariant("company_foundation", valid, foundation({ revenue }), JSON.stringify(revenue) ?? "undefined");
+    }
   });
 
   it("Edge case: unknown keys next to revenue are still rejected (strict contract)", () => {
@@ -121,40 +124,47 @@ describe("C2 [behavioural] online_presence.phone: nullable, exactly 10 digits, s
 
   it("Edge case: 9 digits, 11 digits and other lengths are rejected", () => {
     const valid = online({ phone: "5550100199" });
-    for (const phone of ["555010019", "55501001999", "1", "55501", "55501001990000", "0".repeat(9), "0".repeat(11), "9".repeat(20)])
+    for (const phone of ["555010019", "55501001999", "1", "55501", "55501001990000", "0".repeat(9), "0".repeat(11), "9".repeat(20)]) {
       rejectsOnlyBecauseOfVariant("online_presence", valid, online({ phone }), phone);
+    }
   });
 
   it("Edge case (DECISION D1): an 11-digit number starting with 1 / a +1 country prefix is rejected, not stripped", () => {
     // Spec: "exactly 10 digits after stripping punctuation/spaces". "+1 (555) 010-0199" leaves ELEVEN digits.
     const valid = online({ phone: "5550100199" });
-    for (const phone of ["15550100199", "+15550100199", "+1 555 010 0199", "+1 (555) 010-0199", "1-555-010-0199", "1 (555) 010-0199", "001 555 010 0199"])
+    for (const phone of ["15550100199", "+15550100199", "+1 555 010 0199", "+1 (555) 010-0199", "1-555-010-0199", "1 (555) 010-0199", "001 555 010 0199"]) {
       rejectsOnlyBecauseOfVariant("online_presence", valid, online({ phone }), phone);
+    }
   });
 
   it("Edge case: letters, vanity numbers and extensions are rejected", () => {
     const valid = online({ phone: "5550100199" });
-    for (const phone of ["555010019a", "abcdefghij", "555-010-FLOW", "1-800-FLOWERS", "(555) 010-0199 ext 5", "555 010 0199 x12", "five five five", "555O100199", "5550l00199", "NaN", "Infinity", "0x5550100199", "5.550100199e9"])
+    for (const phone of ["555010019a", "abcdefghij", "555-010-FLOW", "1-800-FLOWERS", "(555) 010-0199 ext 5", "555 010 0199 x12", "five five five", "555O100199", "5550l00199", "NaN", "Infinity", "0x5550100199", "5.550100199e9"]) {
       rejectsOnlyBecauseOfVariant("online_presence", valid, online({ phone }), phone);
+    }
   });
 
   it("Edge case: blank and non-string phone values are rejected", () => {
     const valid = online({ phone: "5550100199" });
-    for (const phone of ["", " ", "          ", "()-", "- - -", 5550100199, 0, true, {}, ["5550100199"]])
+    for (const phone of ["", " ", "          ", "()-", "- - -", 5550100199, 0, true, {}, ["5550100199"]]) {
       rejectsOnlyBecauseOfVariant("online_presence", valid, online({ phone }), JSON.stringify(phone) ?? "undefined");
+    }
   });
 
   it("Edge case: non-ASCII digits are not digits (Arabic-Indic, full-width, superscript)", () => {
     const valid = online({ phone: "5550100199" });
-    for (const phone of ["٥٥٥٠١٠٠١٩٩", "５５５０１００１９９", "⁵⁵⁵⁰¹⁰⁰¹⁹⁹", "५५५०१००१९९"])
+    for (const phone of ["٥٥٥٠١٠٠١٩٩", "５５５０１００１９９", "⁵⁵⁵⁰¹⁰⁰¹⁹⁹", "५५५०१००१९९"]) {
       rejectsOnlyBecauseOfVariant("online_presence", valid, online({ phone }), phone);
+    }
   });
 
   it("Edge case (DECISION D1): punctuated input is rejected or normalised to the 10 digits, never stored punctuated", () => {
     expect(parses("online_presence", online({ phone: "5550100199" })), "valid control must be accepted").toBe(true);
     for (const phone of ["(555) 010-0199", "555-010-0199", "555.010.0199", "555 010 0199", " 5550100199", "5550100199 ", "5550100199\n"]) {
       const result = parsedOrUndefined("online_presence", online({ phone }));
-      if (result !== undefined) expect(result.phone, `${JSON.stringify(phone)} accepted => stored as the 10 digits`).toBe("5550100199");
+      if (result !== undefined) {
+        expect(result.phone, `${JSON.stringify(phone)} accepted => stored as the 10 digits`).toBe("5550100199");
+      }
     }
   });
 
@@ -178,44 +188,51 @@ describe("C3 [behavioural] key_person.age: nullable integer 0-150; nationality: 
 
   it("Edge case: below 0 and above 150 are rejected (-1, 151, 1000, huge)", () => {
     const valid = person({ age: 42 });
-    for (const age of [-1, -0.0001, -150, 151, 152, 1000, 1e9, Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER])
+    for (const age of [-1, -0.0001, -150, 151, 152, 1000, 1e9, Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER]) {
       rejectsOnlyBecauseOfVariant("key_person", valid, person({ age }), String(age));
+    }
   });
 
   it("Edge case: non-integers are rejected (2.5, 0.5, 149.999, 150.5)", () => {
     const valid = person({ age: 42 });
-    for (const age of [2.5, 0.5, 41.9999, 149.999, 150.5, Math.PI])
+    for (const age of [2.5, 0.5, 41.9999, 149.999, 150.5, Math.PI]) {
       rejectsOnlyBecauseOfVariant("key_person", valid, person({ age }), String(age));
+    }
   });
 
   it("Edge case: NaN, +Infinity and -Infinity are rejected", () => {
     const valid = person({ age: 42 });
-    for (const age of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])
+    for (const age of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
       rejectsOnlyBecauseOfVariant("key_person", valid, person({ age }), String(age));
+    }
   });
 
   it("Edge case: numeric strings and NaN-like strings are not integers", () => {
     const valid = person({ age: 42 });
-    for (const age of ["42", " 42", "042", "4e1", "NaN", "nan", "Infinity", "-Infinity", "forty", "", " ", "null", "0"])
+    for (const age of ["42", " 42", "042", "4e1", "NaN", "nan", "Infinity", "-Infinity", "forty", "", " ", "null", "0"]) {
       rejectsOnlyBecauseOfVariant("key_person", valid, person({ age }), JSON.stringify(age));
+    }
   });
 
   it("Edge case: booleans, arrays and objects are not ages", () => {
     const valid = person({ age: 42 });
-    for (const age of [true, false, [], [42], {}, { value: 42 }])
+    for (const age of [true, false, [], [42], {}, { value: 42 }]) {
       rejectsOnlyBecauseOfVariant("key_person", valid, person({ age }), JSON.stringify(age) ?? "undefined");
+    }
   });
 
   it("nationality accepts text and null", () => {
-    for (const nationality of ["Canadian", "Irish-American", "Côte d'Ivoire", "  German  ", "日本", null])
+    for (const nationality of ["Canadian", "Irish-American", "Côte d'Ivoire", "  German  ", "日本", null]) {
       expect(parses("key_person", person({ nationality })), String(nationality)).toBe(true);
+    }
     expect(parsedOrUndefined("key_person", person({ nationality: "Canadian" }))?.nationality).toBe("Canadian");
   });
 
   it("Edge case: blank and non-string nationality is rejected", () => {
     const valid = person({ nationality: "Canadian" });
-    for (const nationality of ["", " ", "   ", "\t\n", 5, true, {}, ["Canadian"]])
+    for (const nationality of ["", " ", "   ", "\t\n", 5, true, {}, ["Canadian"]]) {
       rejectsOnlyBecauseOfVariant("key_person", valid, person({ nationality }), JSON.stringify(nationality) ?? "undefined");
+    }
   });
 
   it("Edge case: a person whose only populated fact is age 0, a nationality or a portrait is not 'wholly empty'", () => {
@@ -248,8 +265,9 @@ describe.each(placements)("C4 [behavioural] storage reference shape at $label", 
   });
 
   it("accepts every allowed extension with its matching content type", () => {
-    for (const [ext, type] of TYPE_BY_EXTENSION)
+    for (const [ext, type] of TYPE_BY_EXTENSION) {
       expect(parses(kind, put(ref(folder, { path: path(folder, ext), content_type: type }))), `${ext} + ${type}`).toBe(true);
+    }
   });
 
   it("Edge case: path traversal, absolute and URL-like paths are rejected", () => {
@@ -259,68 +277,88 @@ describe.each(placements)("C4 [behavioural] storage reference shape at $label", 
       `..\\${folder}\\${CO}\\${OBJ}.png`, `/${folder}/${CO}/${OBJ}.png`, `//${folder}/${CO}/${OBJ}.png`, `C:/${folder}/${CO}/${OBJ}.png`, `C:\\${folder}\\${CO}\\${OBJ}.png`,
       `\\\\server\\share\\${OBJ}.png`, `file:///${folder}/${CO}/${OBJ}.png`, `https://cdn.example/${folder}/${CO}/${OBJ}.png`, `data:image/png;base64,iVBORw0KGgo=`,
       `${folder}\\${CO}\\${OBJ}.png`, `~/${folder}/${CO}/${OBJ}.png`, `/etc/passwd`,
-    ]) reject(ref(folder, { path: bad }), bad);
+    ]) {
+      reject(ref(folder, { path: bad }), bad);
+    }
   });
 
   it("Edge case: extra, missing or empty path segments are rejected", () => {
     for (const bad of [
       `${folder}/${CO}/nested/${OBJ}.png`, `${folder}/${CO}//${OBJ}.png`, `${folder}//${CO}/${OBJ}.png`, `./${folder}/${CO}/${OBJ}.png`,
       `${folder}/${OBJ}.png`, `${folder}/${CO}`, `${folder}/${CO}/`, `${folder}/`, folder, `${CO}/${OBJ}.png`,
-    ]) reject(ref(folder, { path: bad }), bad);
+    ]) {
+      reject(ref(folder, { path: bad }), bad);
+    }
   });
 
   it("Edge case: a wrong or unknown storage prefix is rejected", () => {
-    for (const prefix of ["avatars", "uploads", "public", "images", "logo", `${folder}s`, `${folder}-old`, folder.toUpperCase(), `x${folder}`, `${folder}/${folder}`, "", "private"])
+    for (const prefix of ["avatars", "uploads", "public", "images", "logo", `${folder}s`, `${folder}-old`, folder.toUpperCase(), `x${folder}`, `${folder}/${folder}`, "", "private"]) {
       reject(ref(folder, { path: path(prefix) }), prefix);
+    }
   });
 
   it("Edge case: the company segment must be a UUID", () => {
-    for (const segment of ["acme", "123", CO.slice(1), `${CO}0`, CO.replaceAll("-", ""), `{${CO}}`, "00000000-0000-0000-0000-00000000000g", ""])
+    for (const segment of ["acme", "123", CO.slice(1), `${CO}0`, CO.replaceAll("-", ""), `{${CO}}`, "00000000-0000-0000-0000-00000000000g", ""]) {
       reject(ref(folder, { path: `${folder}/${segment}/${OBJ}.png` }), segment);
+    }
   });
 
   it("Edge case: the object name must be <uuid>.<allowed extension>", () => {
     for (const name of [
       "photo.png", OBJ, `${OBJ}.`, `${OBJ}.png.exe`, `${OBJ}.exe`, `${OBJ}.html`, `${OBJ}.bmp`, `${OBJ}.tiff`, `${OBJ}.ico`, `${OBJ}.svgz`, `${OBJ}.PNG`, `${OBJ}.Jpg`,
       `${OBJ}.png `, ` ${OBJ}.png`, `${OBJ}.png\n`, `${OBJ}.png\u0000.jpg`, `${OBJ}.png?x=1`, `${OBJ}.png#top`, `${OBJ.slice(1)}.png`, `${OBJ}0.png`, `.png`, `png`,
-    ]) reject(ref(folder, { path: `${folder}/${CO}/${name}` }), name);
+    ]) {
+      reject(ref(folder, { path: `${folder}/${CO}/${name}` }), name);
+    }
   });
 
   it("Edge case: blank, missing and non-string paths are rejected", () => {
-    for (const bad of ["", " ", "   ", "\n", null, 5, true, {}, [path(folder)]]) reject(ref(folder, { path: bad }), JSON.stringify(bad));
+    for (const bad of ["", " ", "   ", "\n", null, 5, true, {}, [path(folder)]]) {
+      reject(ref(folder, { path: bad }), JSON.stringify(bad));
+    }
     reject(without(ref(folder), "path"), "missing path");
   });
 
   it("Edge case (DECISION D3): content type must be one of the five image types", () => {
-    for (const contentType of ["image/bmp", "image/tiff", "image/x-icon", "image/jpg", "image/avif", "image/svg", "text/html", "text/plain", "application/pdf", "application/octet-stream", "IMAGE/PNG", "image/png; charset=binary", "image/png ", "", " ", null, 5, {}, ["image/png"]])
+    for (const contentType of ["image/bmp", "image/tiff", "image/x-icon", "image/jpg", "image/avif", "image/svg", "text/html", "text/plain", "application/pdf", "application/octet-stream", "IMAGE/PNG", "image/png; charset=binary", "image/png ", "", " ", null, 5, {}, ["image/png"]]) {
       reject(ref(folder, { content_type: contentType }), JSON.stringify(contentType));
+    }
     reject(without(ref(folder), "content_type"), "missing content_type");
   });
 
   it("Edge case (DECISION D3): content type that disagrees with the extension is rejected", () => {
-    for (const [ext, type] of [["png", "image/jpeg"], ["jpg", "image/png"], ["jpeg", "image/webp"], ["gif", "image/png"], ["webp", "image/gif"], ["svg", "image/png"], ["png", "image/svg+xml"], ["jpg", "image/svg+xml"]])
+    for (const [ext, type] of [["png", "image/jpeg"], ["jpg", "image/png"], ["jpeg", "image/webp"], ["gif", "image/png"], ["webp", "image/gif"], ["svg", "image/png"], ["png", "image/svg+xml"], ["jpg", "image/svg+xml"]]) {
       reject(ref(folder, { path: path(folder, ext), content_type: type }), `${ext} + ${type}`);
+    }
   });
 
   it("Edge case: size_bytes is a positive integer of at most 5 MiB (5,242,880)", () => {
-    for (const size of [1, 2048, 5 * 1024 * 1024 - 1, 5 * 1024 * 1024]) expect(parses(kind, put(ref(folder, { size_bytes: size }))), String(size)).toBe(true);
-    for (const size of [0, -1, -2048, 0.5, 1.5, 2048.0001, 5 * 1024 * 1024 + 1, 6 * 1024 * 1024, 10 * 1024 * 1024, 1e12, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, "2048", "", null, true, {}, [2048]])
+    for (const size of [1, 2048, 5 * 1024 * 1024 - 1, 5 * 1024 * 1024]) {
+      expect(parses(kind, put(ref(folder, { size_bytes: size }))), String(size)).toBe(true);
+    }
+    for (const size of [0, -1, -2048, 0.5, 1.5, 2048.0001, 5 * 1024 * 1024 + 1, 6 * 1024 * 1024, 10 * 1024 * 1024, 1e12, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, "2048", "", null, true, {}, [2048]]) {
       reject(ref(folder, { size_bytes: size }), String(size));
+    }
     reject(without(ref(folder), "size_bytes"), "missing size_bytes");
   });
 
   it("Edge case: id must be a UUID", () => {
-    for (const id of ["", "not-a-uuid", "12345", 7, null, {}, uid(5).slice(1), `${uid(5)}0`]) reject(ref(folder, { id }), JSON.stringify(id));
+    for (const id of ["", "not-a-uuid", "12345", 7, null, {}, uid(5).slice(1), `${uid(5)}0`]) {
+      reject(ref(folder, { id }), JSON.stringify(id));
+    }
     reject(without(ref(folder), "id"), "missing id");
   });
 
   it("Edge case: unknown keys on the reference are rejected (strict contract)", () => {
-    for (const extra of [{ url: "https://cdn.example/x.png" }, { alt: "A person" }, { bucket: "private" }, { signed_url: "https://x" }, { width: 100 }])
+    for (const extra of [{ url: "https://cdn.example/x.png" }, { alt: "A person" }, { bucket: "private" }, { signed_url: "https://x" }, { width: 100 }]) {
       reject({ ...ref(folder), ...extra }, JSON.stringify(extra));
+    }
   });
 
   it("Edge case: a reference needs all four properties; partial and non-object values are rejected", () => {
-    for (const bad of [{}, { id: OBJ }, { path: path(folder) }, "portraits", path(folder), 5, true, [ref(folder)], []]) reject(bad, JSON.stringify(bad));
+    for (const bad of [{}, { id: OBJ }, { path: path(folder) }, "portraits", path(folder), 5, true, [ref(folder)], []]) {
+      reject(bad, JSON.stringify(bad));
+    }
   });
 });
 
@@ -367,7 +405,9 @@ describe("C4 [behavioural] key_person.portrait and offering.images containers", 
     const valid = offering({ images: [good(1), good(2), good(3)] });
     rejectsOnlyBecauseOfVariant("offering", valid, offering({ images: [good(1), good(2), { ...good(3), size_bytes: 0 }] }), "bad third image");
     rejectsOnlyBecauseOfVariant("offering", valid, offering({ images: [good(1), "offering-images/x.png", good(3)] }), "string item");
-    for (const images of [null, good(1), "images", 3, {}]) rejectsOnlyBecauseOfVariant("offering", valid, offering({ images }), JSON.stringify(images));
+    for (const images of [null, good(1), "images", 3, {}]) {
+      rejectsOnlyBecauseOfVariant("offering", valid, offering({ images }), JSON.stringify(images));
+    }
   });
 
   it("Edge case: an offering whose only populated field is images is not 'wholly empty'", () => {
@@ -413,7 +453,9 @@ describe("C6 [behavioural] field registry knows every new field", () => {
     expect(matches[0]).toMatchObject({ kind: expected.kind, field: expected.field, default: expected.default, coverageRequired: true });
     expect(matches[0].allowedOrigins).toContain("user_provided");
     expect(matches[0].allowedOrigins.length).toBeGreaterThan(0);
-    for (const origin of matches[0].allowedOrigins) expect(ORIGINS, origin).toContain(origin);
+    for (const origin of matches[0].allowedOrigins) {
+      expect(ORIGINS, origin).toContain(origin);
+    }
     expect(new Set(matches[0].allowedOrigins).size).toBe(matches[0].allowedOrigins.length);
     expect(typeof matches[0].type).toBe("string");
   });
@@ -507,8 +549,9 @@ describe("C5 contract sources and migration files for the SQL contract", () => {
     expect(defaults.company_foundation).toHaveProperty("revenue", null);
     expect(defaults.online_presence).toHaveProperty("phone", null);
     const registry = JSON.parse(read("src/contracts/field-registry.json")) as { path: string }[];
-    for (const wanted of ["/company_foundation/revenue", "/online_presence/phone", "/key_people/@id/age", "/key_people/@id/nationality", "/key_people/@id/portrait", "/offerings/@id/images"])
+    for (const wanted of ["/company_foundation/revenue", "/online_presence/phone", "/key_people/@id/age", "/key_people/@id/nationality", "/key_people/@id/portrait", "/offerings/@id/images"]) {
       expect(registry.map((item) => item.path), wanted).toContain(wanted);
+    }
   });
 
   it("[behavioural] a NEW migration exists (0018, or 0019 when Q6's 0018_knowledge_assets_storage.sql is present), holds the generated contract block and names the new fields", () => {
@@ -525,8 +568,9 @@ describe("C5 contract sources and migration files for the SQL contract", () => {
     const text = read(`supabase/migrations/${added[0]}`);
     expect(text).toContain("-- BEGIN GENERATED CONTRACT (scripts/generate-sql-contract.mjs; do not edit)");
     expect(text).toContain("-- END GENERATED CONTRACT");
-    for (const needle of ['"revenue"', '"phone"', '"age"', '"nationality"', '"portrait"', '"images"'])
+    for (const needle of ['"revenue"', '"phone"', '"age"', '"nationality"', '"portrait"', '"images"']) {
       expect(text, needle).toContain(needle);
+    }
   });
 
   it("[non-regression guard] migrations 0001-0017 are byte-identical (applied migrations are never edited)", () => {

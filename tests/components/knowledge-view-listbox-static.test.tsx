@@ -28,13 +28,17 @@ function triggerOf(page: Page) {
   const { $ } = page;
   const found = $('button[aria-haspopup="listbox"]').toArray();
   expect(found.length, 'exactly one <button aria-haspopup="listbox"> section trigger').toBe(1);
-  return $(found[0]!);
+  return $(found[0]);
 }
 function nameOf(page: Page, el: ReturnType<Page["$"]>): string {
   const label = el.attr("aria-label");
-  if (label) return norm(label);
+  if (label) {
+    return norm(label);
+  }
   const by = el.attr("aria-labelledby");
-  if (by) return norm(by.split(/\s+/).map((id) => page.$(`[id="${id}"]`).text()).join(" "));
+  if (by) {
+    return norm(by.split(/\s+/).map((id) => page.$(`[id="${id}"]`).text()).join(" "));
+  }
   return norm(el.text());
 }
 const shownSection = (page: Page) => {
@@ -147,7 +151,7 @@ describe("C6 animation hook (stylesheet)", () => {
   // behavioural (static analysis of the shipped stylesheets: the state hook drives a transition or animation)
   it("a [data-state=open] or [data-state=closed] rule sets a transition or animation", () => {
     const all = css(join(__dirname, "../../src")).join("\n");
-    const rules = [...all.matchAll(/[^{}]*\[data-state=["']?(?:open|closed)["']?\][^{}]*\{([^}]*)\}/g)].map((m) => m[1]!);
+    const rules = [...all.matchAll(/[^{}]*\[data-state=["']?(?:open|closed)["']?\][^{}]*\{([^}]*)\}/g)].map((m) => m[1]);
     expect(rules.length, 'a CSS rule selecting [data-state="open"] / [data-state="closed"]').toBeGreaterThan(0);
     expect(rules.some((body) => /\b(transition|animation)\b/.test(body)), "such a rule declares transition or animation").toBe(true);
   });

@@ -84,7 +84,7 @@ describe("C8 status and alert roles", () => {
   it("'Saving…' and '✓ Saved' are role=status; a failure is role=alert and not a status", async () => {
     const view = await open("General Info");
     view.server.hold();
-    const input = await startEdit(view, SINGLE_FIELDS[0]!);
+    const input = await startEdit(view, SINGLE_FIELDS[0]);
     await type(view, input, "Announced");
     await key(view, input, "Enter");
     expect(statusText(view)).toMatch(/saving/i);
@@ -95,7 +95,7 @@ describe("C8 status and alert roles", () => {
     expect(alerts(view)).toHaveLength(0);
 
     view.server.writeFailure = { status: 503, message: "Draft store is down." };
-    await editAndEnter(view, SINGLE_FIELDS[0]!, "Not announced as saved");
+    await editAndEnter(view, SINGLE_FIELDS[0], "Not announced as saved");
     expect(alertText(view)).toContain("Draft store is down.");
     expect(statuses(view).map((s) => s.props.role)).not.toContain("alert");
     expect(statusText(view)).not.toMatch(/saving/i);
@@ -121,7 +121,9 @@ describe("C8 chip controls", () => {
     const view = await open(BUYERS.section);
     const remove = view.byRole("button", /^remove /i);
     expect(remove.length).toBeGreaterThanOrEqual(4);
-    for (const button of remove) expect(view.nameOf(button)).not.toMatch(/[×✕✖]/);
+    for (const button of remove) {
+      expect(view.nameOf(button)).not.toMatch(/[×✕✖]/);
+    }
     const input = await chipInput(view, BUYERS);
     expect(view.nameOf(input)).toMatch(/^add buyer/i);
   });
@@ -146,20 +148,24 @@ describe("C8 focus is never dropped", () => {
   });
 
   it("Cancel returns focus to the button", async () => {
-    const view = await open(AREA_FIELDS[0]!.section);
-    const area = await startEdit(view, AREA_FIELDS[0]!);
+    const view = await open(AREA_FIELDS[0].section);
+    const area = await startEdit(view, AREA_FIELDS[0]);
     await type(view, area, "changed");
-    await click(view, buttonNamed(view, /^cancel\b/i)!);
-    expect(focusedIs(editButton(view, AREA_FIELDS[0]!.label))).toBe(true);
+    await click(view, buttonNamed(view, /^cancel\b/i));
+    expect(focusedIs(editButton(view, AREA_FIELDS[0].label))).toBe(true);
   });
 });
 
 describe("C8 the page stays well formed with editors open", () => {
   it("opening every kind of editor in All sections leaves ids unique and every text control named", async () => {
     const view = await open("All sections");
-    for (const field of [...SINGLE_FIELDS, ...AREA_FIELDS, FOUNDED, EMPLOYEES]) await click(view, editButton(view, field.label));
+    for (const field of [...SINGLE_FIELDS, ...AREA_FIELDS, FOUNDED, EMPLOYEES]) {
+      await click(view, editButton(view, field.label));
+    }
     await chipInput(view, BUYERS);
     expect(duplicateIds(view)).toEqual([]);
-    for (const control of typable(view)) expect(view.nameOf(control), "every text control has a name").not.toBe("");
+    for (const control of typable(view)) {
+      expect(view.nameOf(control), "every text control has a name").not.toBe("");
+    }
   });
 });

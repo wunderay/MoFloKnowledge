@@ -76,8 +76,11 @@ it("retains related source paragraphs, lists and forms across CMS sibling sectio
   expect(sections[1].links).toEqual([{ url: "https://example.com/accounting", label: "Learn about accounting" }]);
   expect(JSON.stringify(sections)).not.toMatch(/Repeated|Unrelated|Sponsored|Footer|Read news|Log in/);
   const retained = new Set(capture.segments.map((segment) => segment.text));
-  for (const section of sections)
-    for (const text of [section.heading, ...section.paragraphs, ...section.listItems, ...section.links.map((link) => link.label)].filter(Boolean)) expect(retained.has(text!)).toBe(true);
+  for (const section of sections) {
+    for (const text of [section.heading, ...section.paragraphs, ...section.listItems, ...section.links.map((link) => link.label)].filter(Boolean)) {
+      expect(retained.has(text!)).toBe(true);
+    }
+  }
   const observations = technicalObservations({ id: "page", retrievedAt: "2026-10-16T00:00:00Z", capture });
   expect(observations).toContainEqual(expect.objectContaining({ property: "stylesheet", value: "font-family: Lato, sans-serif; color: #123456; background-color: rgb(240, 240, 240);" }));
   expect(observations).toContainEqual(expect.objectContaining({ property: "declared-color", value: "#123456" }));
@@ -112,8 +115,9 @@ it("retains exact CMS form context and scoped nested lists without blending sibl
     { heading: "Business services", intro: "We offer these services:", items: ["Records support", "Payroll support"] },
     { heading: "Business services", intro: "Records support", items: ["Monthly reports"] },
   ]);
-  for (const text of ["Receive weekly articles in your inbox.", "Records support", "Monthly reports", "Payroll support"])
+  for (const text of ["Receive weekly articles in your inbox.", "Records support", "Monthly reports", "Payroll support"]) {
     expect(capture.segments.some((segment) => segment.text === text)).toBe(true);
+  }
 });
 
 

@@ -173,22 +173,22 @@ const source = {
 const evidence = [
   { id: EVIDENCE_ID, source_page_id: SOURCE_ID, kind: "text" as const, excerpt: "Our brand colors, logos and typefaces.", technical: null },
 ];
-type Claim = { entry: string; target: string };
+interface Claim { entry: string; target: string }
 /** One source-backed claim per card, on the first offering and on the brand lists. */
 export function evidenceTargets(business: Business): Claim[] {
-  const o = business.offerings[0]!;
+  const o = business.offerings[0];
   const br = business.branding_and_style;
   const at = (path: string) => `/offerings/@${o.id}/${path}`;
   return [
     { entry: o.id, target: at("name") },
     { entry: o.id, target: at("offering_type") },
     { entry: o.id, target: at("description") },
-    { entry: o.id, target: at(`features/@${o.features[0]!.id}/text`) },
+    { entry: o.id, target: at(`features/@${o.features[0].id}/text`) },
     { entry: o.id, target: at("pricing/raw") },
     { entry: o.id, target: at("pricing/pricing_model") },
-    { entry: "branding", target: `/branding_and_style/logos/@${br.logos[0]!.id}/url` },
-    { entry: "branding", target: `/branding_and_style/brand_colors/@${br.brand_colors[0]!.id}/hex` },
-    { entry: "branding", target: `/branding_and_style/fonts/@${br.fonts[0]!.id}/family` },
+    { entry: "branding", target: `/branding_and_style/logos/@${br.logos[0].id}/url` },
+    { entry: "branding", target: `/branding_and_style/brand_colors/@${br.brand_colors[0].id}/hex` },
+    { entry: "branding", target: `/branding_and_style/fonts/@${br.fonts[0].id}/family` },
   ];
 }
 

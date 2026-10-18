@@ -65,7 +65,7 @@ describe("C3 ARIA roles and attributes", () => {
     expect(String(t.props["aria-expanded"])).toBe("true");
     const lbs = listboxes(view);
     expect(lbs).toHaveLength(1);
-    const lb = lbs[0]!;
+    const lb = lbs[0];
     expect(lb.props.id, "the listbox has an id").toBeTruthy();
     expect(String(t.props["aria-controls"]), "the trigger's aria-controls names the listbox").toBe(String(lb.props.id));
     expect(options(view)).toHaveLength(LABELS.length);
@@ -152,7 +152,9 @@ describe("C4 keyboard", () => {
     const view = await draftView();
     await open(view);
     await press(view, "Home");
-    for (let i = 0; i < 5; i++) await press(view, "ArrowDown");
+    for (let i = 0; i < 5; i++) {
+      await press(view, "ArrowDown");
+    }
     expect(activeLabel(view)).toBe("Key People");
     await press(view, "Enter");
     expect(navigatedTo(view)?.searchParams.get("section")).toBe("key-people");

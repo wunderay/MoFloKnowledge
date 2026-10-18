@@ -29,7 +29,7 @@ it('paces starts and enforces HTTP concurrency while releasing failed tasks', as
     await Promise.all(Array.from({ length: 4 }, (_, i) => scheduler.runHttp(`https://host${i}.example.com`, async () => { active++; max = Math.max(max, active); await new Promise(resolve => setTimeout(resolve, 20)); active--; })));
     expect(max).toBe(3);
     await Promise.all([0, 1].map(() => scheduler.runHttp('https://example.com', async () => { starts.push(Date.now()); })));
-    expect(starts[1]! - starts[0]!).toBeGreaterThanOrEqual(490);
+    expect(starts[1] - starts[0]).toBeGreaterThanOrEqual(490);
 });
 it('honors longest robots rule and bot group; retries indeterminate origins once', async () => {
     const policy = parseRobots('User-agent: *\nDisallow: /\nUser-agent: MoFloKnowledgeBot\nDisallow: /private*\nAllow: /private/public$\nCrawl-delay: 2');
@@ -55,7 +55,9 @@ it('uses destination relevance without letting repeated services crowd out compa
         ['/contact', 'Contact'], ['/appointment', 'Schedule'], ['/company-background/privacy-policy', 'Privacy'],
         ['/company-background/referrals', 'Referrals'], ['/blog/service-news', 'Service news'],
         ...Array.from({ length: 5 }, (_, index) => [`/services/detail-${index}`, 'Service']),
-    ]) frontier.add(url, label, 1);
+    ]) {
+      frontier.add(url, label, 1);
+    }
     const selected = Array.from({ length: 9 }, () => frontier.next()?.url);
     expect(selected).toContain('https://example.com/company-background');
     expect(selected).toContain('https://example.com/contact');

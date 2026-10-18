@@ -55,15 +55,21 @@ it("C1 no user-visible MoFlo Cloud remains in src", () => {
     lines.forEach((line, i) => {
       const t = line.trim();
       if (inBlockComment) {
-        if (t.includes("*/")) inBlockComment = false;
+        if (t.includes("*/")) {
+          inBlockComment = false;
+        }
         return;
       }
       if (t.startsWith("/*")) {
-        if (!t.includes("*/")) inBlockComment = true;
+        if (!t.includes("*/")) {
+          inBlockComment = true;
+        }
         return;
       }
-      if (t.startsWith("//") || t.startsWith("*")) return;
-      if (/MoFlo Cloud/.test(line)) {
+      if (t.startsWith("//") || t.startsWith("*")) {
+        return;
+      }
+      if (line.includes('MoFlo Cloud')) {
         hits.push(`${relative(SRC.pathname, join(SRC.pathname, file))}:${i + 1}`);
       }
     });
@@ -92,9 +98,9 @@ it("C2 check-email message has a success modifier; mismatch error does not", asy
   const statusOf = (message: string) => {
     state.message = message;
     const html = renderToStaticMarkup(createElement(SignUpForm));
-    const match = html.match(/<p\b([^>]*\brole="status"[^>]*)>([^<]*)<\/p>/);
+    const match = /<p\b([^>]*\brole="status"[^>]*)>([^<]*)<\/p>/.exec(html);
     expect(match).not.toBeNull();
-    const classAttr = match![1].match(/\bclass="([^"]*)"/);
+    const classAttr = /\bclass="([^"]*)"/.exec(match![1]);
     return {
       text: match![2],
       tokens: classAttr ? classAttr[1].split(/\s+/) : [],
@@ -134,8 +140,10 @@ function cssRules(css: string) {
 
 function mobileMaxWidth(ctx: string[]): number | null {
   for (const c of ctx) {
-    const m = c.match(/@media[^]*?max-width:\s*(\d+(?:\.\d+)?)px/);
-    if (m) return Number(m[1]);
+    const m = /@media[^]*?max-width:\s*(\d+(?:\.\d+)?)px/.exec(c);
+    if (m) {
+      return Number(m[1]);
+    }
   }
   return null;
 }
@@ -145,8 +153,8 @@ it("C3 globals.css has a success style for the sign-in status line", () => {
   const rules = cssRules(readFileSync(CSS, "utf8"));
   const successRule = rules.find(
     (r) =>
-      /success/.test(r.sel) &&
-      /status/.test(r.sel) &&
+      r.sel.includes('success') &&
+      r.sel.includes('status') &&
       r.body.length > 0,
   );
   expect(successRule).toBeDefined();

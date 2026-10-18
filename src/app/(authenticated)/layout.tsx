@@ -12,6 +12,8 @@ export default async function AuthenticatedLayout({
   } catch {
     redirect("/sign-in?error=configuration");
   }
-  if (!user) redirect("/sign-in");
+  if (!user) {
+    redirect("/sign-in");
+  }
   return <AppShell>{children}</AppShell>;
 }

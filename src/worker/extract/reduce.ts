@@ -26,9 +26,15 @@ const normalizedWording = (value: unknown) => typeof value === "string"
   ? value.normalize("NFKC").toLowerCase().replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim()
   : canonicalStringify(value);
 function equivalentItem(value: unknown): unknown {
-  if (typeof value === "string") return /^https?:/.test(value) ? value : normalizedWording(value);
-  if (Array.isArray(value)) return value.map(equivalentItem);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, equivalentItem(v)]));
+  if (typeof value === "string") {
+    return /^https?:/.test(value) ? value : normalizedWording(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(equivalentItem);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, equivalentItem(v)]));
+  }
   return value;
 }
 const categoricalFields = new Set(["name", "title", "role", "category", "industry"]);
@@ -48,7 +54,9 @@ function mergeFontItems(items: { id: string }[]): { id: string }[] {
       merged.set(item.id, { ...previous,
         observations: [...new Set([...oldFont.observations, ...font.observations])].sort(),
       } as typeof previous);
-    } else if (!previous) merged.set(item.id, item);
+    } else if (!previous) {
+      merged.set(item.id, item);
+    }
   }
   return [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
@@ -60,8 +68,9 @@ export function reduceCandidates(
     partial: boolean;
   },
 ): Proposal[] {
-  if (candidates.some((candidate) => candidate.origin !== "source_backed"))
+  if (candidates.some((candidate) => candidate.origin !== "source_backed")) {
     throw new Error("invalid_origin");
+  }
   candidates = [...candidates].sort(
     (a, b) =>
       a.entryId.localeCompare(b.entryId) ||
@@ -78,11 +87,12 @@ export function reduceCandidates(
     "market_and_customers",
     "branding_and_style",
     "online_presence",
-  ] as const)
+  ] as const) {
     groups.set(stableId(options.companyId, kind, "singleton"), {
       kind,
       candidates: [],
     });
+  }
   for (const c of candidates) {
     const group = groups.get(c.entryId) ?? { kind: c.kind, candidates: [] };
     group.candidates.push(c);
@@ -109,7 +119,9 @@ export function reduceCandidates(
           old.evidenceIds = [
             ...new Set([...old.evidenceIds, ...c.evidenceIds]),
           ];
-        } else unique.set(key, { ...c, evidenceIds: [...c.evidenceIds] });
+        } else {
+          unique.set(key, { ...c, evidenceIds: [...c.evidenceIds] });
+        }
       }
       let values = [...unique.values()];
       let assembledSources: ValidatedCandidate[] | null = null;
@@ -129,11 +141,15 @@ export function reduceCandidates(
         const seen = new Set([key(all[0].value)]);
         for (const c of all) {
           if (assembledSources.length >= 3 || typeof c.value !== "string" ||
-            new URL(c.page.capture.finalUrl).pathname !== "/" || seen.has(key(c.value))) continue;
+            new URL(c.page.capture.finalUrl).pathname !== "/" || seen.has(key(c.value))) {
+            continue;
+          }
           const publishedSummary = c.observations.some((o) =>
             (o.property === "meta-description" || /^jsonld:.*\/description$/.test(o.property ?? "")) &&
             o.value !== null && key(o.value) === key(c.value));
-          if (!publishedSummary || [...assembledSources, c].map((v) => String(v.value)).join("\n\n").length > 20000) continue;
+          if (!publishedSummary || [...assembledSources, c].map((v) => String(v.value)).join("\n\n").length > 20000) {
+            continue;
+          }
           assembledSources.push(c);
           seen.add(key(c.value));
         }
@@ -146,9 +162,13 @@ export function reduceCandidates(
         const parts = String(best.value).split(/\n\s*\n/);
         const seen = new Set(parts.map(normalizedWording));
         for (const candidate of all) {
-          if (candidate.note !== "Additional explicitly named founder background.") continue;
+          if (candidate.note !== "Additional explicitly named founder background.") {
+            continue;
+          }
           const additions = String(candidate.value).split(/\n\s*\n/).filter((part) => !seen.has(normalizedWording(part)));
-          if (!additions.length) continue;
+          if (!additions.length) {
+            continue;
+          }
           parts.push(...additions);
           additions.forEach((part) => seen.add(normalizedWording(part)));
           assembledSources.push(candidate);
@@ -158,16 +178,20 @@ export function reduceCandidates(
       const target = field.path.replace("@id", `@${entryId}`);
       const itemValues = new Map<string, string>();
       let collectionConflict = false;
-      if (collection)
-        for (const c of values)
+      if (collection) {
+        for (const c of values) {
           for (const item of c.value as { id: string }[]) {
             const previous = itemValues.get(item.id),
               next = canonicalStringify(field.field === "target_buyers"
-                ? { ...item, text: buyerIdentityKey(String((item as { id: string; text: string }).text)) }
+                ? { ...item, text: buyerIdentityKey((item as { id: string; text: string }).text) }
                 : field.field === "channels" ? equivalentItem({ ...item, label: null }) : equivalentItem(item));
-            if (previous && previous !== next && field.field !== "fonts") collectionConflict = true;
+            if (previous && previous !== next && field.field !== "fonts") {
+              collectionConflict = true;
+            }
             itemValues.set(item.id, next);
           }
+        }
+      }
       const conflict = collection ? collectionConflict : values.length > 1;
       if (conflict) {
         provenance.conflicts.push({
@@ -221,6 +245,7 @@ export function reduceCandidates(
           retrieved_at: page.retrievedAt,
         });
         for (const id of c.segment_ids) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
           const segment = page.capture.segments.find((s) => s.id === id)!;
           const eid = stableId(page.id, "segment", id);
           evidenceMap.set(eid, {
@@ -247,13 +272,17 @@ export function reduceCandidates(
           });
         }
       }
-      if (conflict) continue;
+      if (conflict) {
+        continue;
+      }
       const leaves = enumerateFactualLeaves(
         entryBusiness(group.kind, content as never),
       ).filter((l) => l.path === target || l.path.startsWith(target + "/"));
       for (const leaf of leaves) {
         const matching = values.filter((c) => {
-          if (!collection) return true;
+          if (!collection) {
+            return true;
+          }
           // Attach only evidence that actually supports this selected leaf.
           try {
             if (field.field === "fonts" && /\/observations\/\d+$/.test(leaf.path)) {
@@ -262,12 +291,15 @@ export function reduceCandidates(
               return font?.observations.includes(String(leaf.value)) ?? false;
             }
             const observed = resolveStablePointer(c.value, leaf.path.slice(target.length));
-            if (field.field === "target_buyers" && leaf.path.endsWith("/text"))
+            if (field.field === "target_buyers" && leaf.path.endsWith("/text")) {
               return buyerIdentityKey(String(observed)) === buyerIdentityKey(String(leaf.value));
+            }
             return observed === leaf.value;
           } catch { return false; }
         });
-        if (!matching.length) continue;
+        if (!matching.length) {
+          continue;
+        }
         const c = matching[0];
         const claim: Claim = {
           id: stableId(options.jobId, entryId, leaf.path, "claim"),
@@ -290,8 +322,9 @@ export function reduceCandidates(
       (group.kind === "key_person" || group.kind === "offering") &&
       !enumerateFactualLeaves(entryBusiness(group.kind, content as never))
         .length
-    )
+    ) {
       continue;
+    }
     const parsed = parseBusinessEntry(group.kind, content);
 
     proposals.push(
@@ -337,11 +370,12 @@ export function reduceCandidates(
       proposal.provenance,
       { entryIds: [entryId], supportingClaims: allClaims },
     );
-    if (issues.length)
+    if (issues.length) {
       throw new Error(
         "Reduced provenance invalid: " +
           issues.map((i) => i.code + " " + i.path).join(","),
       );
+    }
   }
   return proposals;
 }

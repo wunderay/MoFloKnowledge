@@ -19,9 +19,12 @@ export function SignInForm() {
               password: form.get("password"),
             }),
           });
-          const result = await response.json();
-          if (response.ok) window.location.assign("/dashboard");
-          else setMessage(result.error?.message || "Unable to sign in.");
+          const result = (await response.json()) as { error?: { message?: string } };
+          if (response.ok) {
+            window.location.assign("/dashboard");
+          } else {
+            setMessage(result.error?.message || "Unable to sign in.");
+          }
         } catch {
           setMessage("Unable to connect. Please retry.");
         } finally {

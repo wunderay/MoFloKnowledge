@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { readCompany } from "../../../../server/read-model";
 import { UpdateCompanySchema } from "../../../../contracts/api-companies";
 export const GET = route(async (_r, c, { client, user }) =>
-  readCompany(client, IdSchema.parse((await c.params).companyId), user!.id),
+  readCompany(client, IdSchema.parse((await c.params).companyId), user.id),
 );
 export const PATCH = route(async (r, c, { client }) => {
   const b = await readJson(r, UpdateCompanySchema);

@@ -28,7 +28,9 @@ describe("people fixtures", () => {
 
   // guard
   it("every person and the portrait are schema-valid, and snapshots carry the same people", () => {
-    for (const p of PEOPLE) expect(() => PersonSchema.parse(p)).not.toThrow();
+    for (const p of PEOPLE) {
+      expect(() => PersonSchema.parse(p)).not.toThrow();
+    }
     expect(() => PortraitSchema.parse(PORTRAIT)).not.toThrow();
     for (const payload of [peopleSnapshot().payload, evidenceFixture().snapshot().payload]) {
       expect(() => KnowledgeBaseExportSchema.parse(payload)).not.toThrow();

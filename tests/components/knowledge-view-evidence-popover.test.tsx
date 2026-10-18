@@ -43,8 +43,9 @@ const sourceFiles = (dir: string): string[] =>
   );
 for (const file of sourceFiles(SRC)) {
   const id = "@/" + relative(SRC, file).replace(/\.tsx?$/, "").split(sep).join("/");
-  for (const each of id.endsWith("/index") ? [id, id.slice(0, -"/index".length)] : [id])
+  for (const each of id.endsWith("/index") ? [id, id.slice(0, -"/index".length)] : [id]) {
     vi.doMock(each, () => import(/* @vite-ignore */ file));
+  }
 }
 vi.doMock("next/link", () => ({
   default: ({ href, children, ...rest }: { href: string; children?: React.ReactNode }) =>

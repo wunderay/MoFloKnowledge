@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use */
 import "server-only";
 import type { verifiedSession } from "../lib/supabase/server";
 import { parseResponse } from "./http";
@@ -9,9 +10,14 @@ export async function readCompanySummaries(
   options: { archived?: boolean; cursor?: string } = {},
 ) {
   let query = client.from("companies").select("*").order("id").limit(50);
-  if (options.archived) query = query.not("archived_at", "is", null);
-  else query = query.is("archived_at", null);
-  if (options.cursor) query = query.gt("id", options.cursor);
+  if (options.archived) {
+    query = query.not("archived_at", "is", null);
+  } else {
+    query = query.is("archived_at", null);
+  }
+  if (options.cursor) {
+    query = query.gt("id", options.cursor);
+  }
   const companies = (await checked(query)) ?? [];
   const result = [];
   for (const company of companies) {
@@ -50,6 +56,7 @@ export async function readCompanySummaries(
   }
   return parseResponse(CompanyListSchema, {
     companies: result,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     nextCursor: companies.length === 50 ? companies.at(-1)!.id : null,
   });
 }

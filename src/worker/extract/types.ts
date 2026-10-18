@@ -1,12 +1,12 @@
 /** Captured observations and source-backed candidates used by deterministic extraction. */
-export type TechnicalObservation = {
+export interface TechnicalObservation {
   id: string;
   selector: string | null;
   property: string | null;
   value: string | null;
   asset_url: string | null;
-};
-export type FieldCandidate = {
+}
+export interface FieldCandidate {
   /** Relative source quality for narrative selection; never suppresses factual conflicts. */
   priority?: number;
   field: string;
@@ -17,4 +17,4 @@ export type FieldCandidate = {
   observation_ids: string[];
   supporting_fields: string[];
   note: string | null;
-};
+}

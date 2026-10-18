@@ -17,13 +17,13 @@ export const HOST_BOUNDARY_PROBES = [
     'renderer-no-host-mounts',
 ] as const;
 export type HostBoundaryProbe = typeof HOST_BOUNDARY_PROBES[number];
-export type HostProbeEvidence = {
+export interface HostProbeEvidence {
     probe: HostBoundaryProbe;
     denied: boolean;
     target: string;
     observedAt: string;
     evidence: string;
-};
+}
 export function completeHostEvidence(probes: HostProbeEvidence[]): boolean {
     return HOST_BOUNDARY_PROBES.every(probe => probes.some(result => result.probe === probe && result.denied && result.target.length > 0 && Number.isFinite(Date.parse(result.observedAt)) && result.evidence.length > 0));
 }

@@ -20,17 +20,17 @@ import {
 import type { RenderResult, RenderTask } from "../../contracts/render-task";
 import type { Job, JobRepository } from "../job-repository";
 import type { Progress, SafeJobError } from "../../contracts";
-export type StoredCapture = {
+export interface StoredCapture {
   id: string;
   retrievedAt: string;
   capture: PageCapture;
-};
-export type CrawlResult = {
+}
+export interface CrawlResult {
   captures: StoredCapture[];
   errors: SafeJobError[];
   progress: Progress;
   checkpoint: Record<string, unknown>;
-};
+}
 export async function runCrawl(
   job: Job,
   repository: JobRepository,
@@ -101,7 +101,7 @@ export async function runCrawl(
   };
   progress.stage = "crawling";
   // Sources already finalized are immutable and reused after a process restart.
-  for (const row of job.source_captures ?? [])
+  for (const row of job.source_captures ?? []) {
     if (row.capture_status === "captured") {
       const observations = row.observations as Record<string, unknown>;
       const capture: PageCapture = {
@@ -120,26 +120,30 @@ export async function runCrawl(
         requiresRender: false,
         truncated: Boolean(observations.truncated),
       };
-      if (capture)
+      if (capture) {
         captures.push({
           id: String(row.id),
           retrievedAt: String(row.retrieved_at),
           capture,
         });
+      }
     }
-  if (job.status === "extracting" || saved.stage === "extracting")
+  }
+  if (job.status === "extracting" || saved.stage === "extracting") {
     return {
       captures,
       errors,
       progress: { ...progress, stage: "extracting" },
       checkpoint: saved,
     };
+  }
   let effectiveRoot = root;
   let designUsed = Math.max(
     budgets.snapshot().designBytes,
     (job.source_captures ?? []).reduce(
       (total, row) =>
         total +
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion -- coerces untyped JSON (observations) that may hold a numeric string
         Number(
           (
             (row.observations as Record<string, unknown>)?.design as
@@ -195,10 +199,11 @@ export async function runCrawl(
         return;
       }
       // A Crawl-delay that cannot leave room for a fetch is never waited out.
-      if (policy.delayMs + fetchMargin() > CRAWL_LIMITS.fetchMs)
+      if (policy.delayMs + fetchMargin() > CRAWL_LIMITS.fetchMs) {
         throw new DeadlineError(
           "Crawl-delay is longer than the time allowed for one fetch",
         );
+      }
       let document: Awaited<ReturnType<typeof fetchDocument>> | undefined;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
@@ -217,7 +222,9 @@ export async function runCrawl(
                 signal: taskSignal,
                 onRequest: async (url) => {
                   const rule = await robots.check(url, taskSignal);
-                  if (!rule.allowed) throw new Error("robots_blocked");
+                  if (!rule.allowed) {
+                    throw new Error("robots_blocked");
+                  }
                   if (!paced) {
                     paced = true;
                     return;
@@ -237,7 +244,9 @@ export async function runCrawl(
             { at: jobDeadlineAt - fetchMargin(), scope: "job" },
           );
           document = response;
-          if (response.status !== 429 && response.status < 500) break;
+          if (response.status !== 429 && response.status < 500) {
+            break;
+          }
           if (attempt === 0 && response.status === 429) {
             const raw = response.headers["retry-after"];
             const seconds = Number(raw);
@@ -264,21 +273,27 @@ export async function runCrawl(
             jobDeadlineAt - Date.now() < CRAWL_LIMITS.fetchMs ||
             error instanceof NetworkPolicyError ||
             attempt === 1
-          )
+          ) {
             throw error;
+          }
         }
       }
-      if (!document) throw new Error("capture_unavailable");
-      if (document.status === 429 || document.status >= 500)
+      if (!document) {
+        throw new Error("capture_unavailable");
+      }
+      if (document.status === 429 || document.status >= 500) {
         throw new Error("page_temporarily_unavailable");
-      if (document.status < 200 || document.status >= 300)
+      }
+      if (document.status < 200 || document.status >= 300) {
         throw new Error("page_unavailable");
+      }
       if (
         !/text\/html|application\/xhtml\+xml/i.test(
           document.headers["content-type"] ?? "",
         )
-      )
+      ) {
         throw new Error("unsupported_content");
+      }
       let capture = captureHtml(document);
       let designBytes = 0;
       if (shouldRenderPage(capture, item.depth === 0)) {
@@ -301,8 +316,9 @@ export async function runCrawl(
                 },
                 taskSignal,
               ).then((result) => {
-                if (result.resourceBytes > remaining)
+                if (result.resourceBytes > remaining) {
                   throw new Error("design_budget");
+                }
                 designUsed = usedBefore + result.resourceBytes;
                 return result;
               });
@@ -319,18 +335,21 @@ export async function runCrawl(
               message: "Browser observations were unavailable.",
             });
           }
-        } else
+        } else {
           errors.push({
             code: "render_not_configured",
             url: item.url,
             retryable: false,
             message: "Browser observations are not configured.",
           });
+        }
       }
       budgets.finish(reservation, document.body.byteLength, 0);
       finished = true;
       frontier.alias(item.url, capture.finalUrl);
-      if (item.depth === 0) effectiveRoot = new URL(capture.finalUrl).origin;
+      if (item.depth === 0) {
+        effectiveRoot = new URL(capture.finalUrl).origin;
+      }
       const retrievedAt = new Date().toISOString();
       const row = await repository.source(job, {
         normalized_url: capture.normalizedUrl,
@@ -361,21 +380,28 @@ export async function runCrawl(
         },
       });
       captures.push({ id: String(row.id), retrievedAt, capture });
-      for (const link of capture.links)
+      for (const link of capture.links) {
         frontier.add(link.url, link.label, item.depth + 1);
-      if (capture.truncated)
+      }
+      if (capture.truncated) {
         errors.push({
           code: "text_truncated",
           url: item.url,
           retryable: false,
           message: "Text exceeded the capture limit.",
         });
+      }
     } catch (error) {
-      if (signal.aborted) throw signal.reason;
-      if (error instanceof NetworkPolicyError) throw error;
+      if (signal.aborted) {
+        throw signal.reason;
+      }
+      if (error instanceof NetworkPolicyError) {
+        throw error;
+      }
       progress.failed++;
-      if (error instanceof DeadlineError && error.scope === "job")
+      if (error instanceof DeadlineError && error.scope === "job") {
         timedOut = true;
+      }
       errors.push(
         deadlineHit(error)
           ? {
@@ -394,7 +420,9 @@ export async function runCrawl(
             },
       );
     } finally {
-      if (!finished) budgets.finish(reservation, 0, 0);
+      if (!finished) {
+        budgets.finish(reservation, 0, 0);
+      }
       inFlight.delete(item.url);
     }
   }
@@ -407,7 +435,9 @@ export async function runCrawl(
     const batch: { item: FrontierItem; reservation: Reservation }[] = [];
     for (let index = 0; index < 3; index++) {
       const item = frontier.next();
-      if (!item) break;
+      if (!item) {
+        break;
+      }
       if (
         captures.some(
           (c) =>
@@ -421,8 +451,9 @@ export async function runCrawl(
             c.capture.normalizedUrl === item.url ||
             c.capture.finalUrl === item.url,
         );
-        for (const link of done?.capture.links ?? [])
+        for (const link of done?.capture.links ?? []) {
           frontier.add(link.url, link.label, item.depth + 1);
+        }
         continue;
       }
       try {
@@ -432,7 +463,9 @@ export async function runCrawl(
         break;
       }
     }
-    if (!batch.length) break;
+    if (!batch.length) {
+      break;
+    }
     await Promise.all(
       batch.map(({ item, reservation }) => processItem(item, reservation)),
     );

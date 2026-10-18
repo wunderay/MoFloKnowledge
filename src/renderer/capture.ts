@@ -22,14 +22,17 @@ export async function captureRenderedPage(
       )
         .replace(/\s+/g, " ")
         .trim();
-      if (original.length > limit)
+      if (original.length > limit) {
         limitations.push(
           "A visible text observation exceeded the capture limit.",
         );
+      }
       return original.slice(0, limit);
     };
     const safeURL = (raw: string | null | undefined): string | null => {
-      if (!raw) return null;
+      if (!raw) {
+        return null;
+      }
       try {
         const url = new URL(raw, document.baseURI);
         return ["http:", "https:"].includes(url.protocol) &&
@@ -53,6 +56,7 @@ export async function captureRenderedPage(
         const tag = current.tagName.toLowerCase();
         const siblings = current.parentElement
           ? [...current.parentElement.children].filter(
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
               (sibling) => sibling.tagName === current!.tagName,
             )
           : [current];
@@ -66,12 +70,13 @@ export async function captureRenderedPage(
       const usable = observed.filter(
         (node) => selectorFor(node).length <= 2000,
       );
-      if (usable.length > limit || usable.length !== observed.length)
+      if (usable.length > limit || usable.length !== observed.length) {
         limitations.push(
           "Rendered " +
             query.slice(0, 200) +
             " observations exceeded the capture limit.",
         );
+      }
       return usable.slice(0, limit);
     };
     const styles = select(
@@ -94,10 +99,11 @@ export async function captureRenderedPage(
         const declarations = [...sheet.cssRules]
           .map((rule) => rule.cssText)
           .join("\n");
-        if (declarations.length > 100000)
+        if (declarations.length > 100000) {
           limitations.push(
             "Stylesheet observation exceeded the capture limit.",
           );
+        }
         return {
           url: safeURL(sheet.href),
           declarations: declarations.slice(0, 100000),
@@ -124,6 +130,7 @@ export async function captureRenderedPage(
       )
       .slice(0, 100)
       .map((entry) => ({
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         url: safeURL(entry.name)!,
         loaded: (entry as PerformanceResourceTiming).responseEnd > 0,
       }));
@@ -133,10 +140,10 @@ export async function captureRenderedPage(
     )
       .filter(
         (element) =>
-          !element.closest("a") ||
-          !(element.closest("a") as HTMLAnchorElement).hostname ||
+          !element.closest("a")?.hostname ||
           [location.hostname, "www." + location.hostname].includes(
-            (element.closest("a") as HTMLAnchorElement).hostname,
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+            (element.closest("a")!).hostname,
           ),
       )
       .map((element) => {
@@ -246,8 +253,9 @@ export async function captureRenderedPage(
     };
     const root = document.querySelector("main") ?? document.body;
     const originalText = (root as HTMLElement | null)?.innerText ?? "";
-    if (originalText.length > 100000)
+    if (originalText.length > 100000) {
       limitations.push("Rendered text exceeded the capture limit.");
+    }
     return {
       finalUrl: location.href,
       text: originalText.slice(0, 100000),

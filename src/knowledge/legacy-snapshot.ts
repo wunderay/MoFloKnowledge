@@ -8,17 +8,23 @@ import { withAddedFields, ADDED_FIELDS, type EntryKind } from "../contracts/busi
 const isObject = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 export function upgradeLegacySnapshot(stored: unknown): unknown {
-  if (!isObject(stored)) return stored;
+  if (!isObject(stored)) {
+    return stored;
+  }
   const targets: string[] = [];
   /** The entry with its missing added fields at their defaults; stored fields keep their place and value. */
   const fill = (kind: EntryKind, value: unknown, root: string): unknown => {
-    if (!isObject(value)) return value;
+    if (!isObject(value)) {
+      return value;
+    }
     targets.push(...(ADDED_FIELDS[kind] ?? []).filter((field) => !Object.hasOwn(value, field)).map((field) => `${root}/${field}`));
     return withAddedFields(kind, value);
   };
   const items = (kind: EntryKind, value: unknown, root: string): unknown =>
-    Array.isArray(value) ? value.map((item) => fill(kind, item, isObject(item) ? `${root}/@${item.id}` : root)) : value;
-  if (!Object.hasOwn(stored, "site_links")) targets.push("/site_links/links");
+    Array.isArray(value) ? value.map((item) => fill(kind, item, isObject(item) ? `${root}/@${String(item.id)}` : root)) : value;
+  if (!Object.hasOwn(stored, "site_links")) {
+    targets.push("/site_links/links");
+  }
   const upgraded = {
     ...stored,
     site_links: Object.hasOwn(stored, "site_links") ? stored.site_links : { links: [] },
@@ -29,11 +35,15 @@ export function upgradeLegacySnapshot(stored: unknown): unknown {
   };
   const provenance = isObject(stored.provenance) ? stored.provenance : null;
   const coverage = provenance && Array.isArray(provenance.coverage) ? provenance.coverage : null;
-  if (!provenance || !coverage) return upgraded;
+  if (!provenance || !coverage) {
+    return upgraded;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
   const covered = new Set(coverage.flatMap((row) => (Array.isArray(row?.targets) ? row.targets : [])));
   return {
     ...upgraded,
     provenance: { ...provenance, coverage: [
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
       ...coverage,
       ...targets.filter((target) => !covered.has(target)).map((target) => ({
         targets: [target], status: "not_checked", job_id: null, reason: "No approved entry assessed this field.",

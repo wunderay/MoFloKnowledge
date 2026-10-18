@@ -59,7 +59,9 @@ describe("auth responses", () => {
       await signUp(post("sign-up", credentials, "https://evil.example")),
     ];
     expect(responses.map((r) => r.status)).toEqual([200, 401, 403, 400, 200, 403]);
-    for (const response of responses) expect(response.headers.get("cache-control")).toContain("no-store");
+    for (const response of responses) {
+      expect(response.headers.get("cache-control")).toContain("no-store");
+    }
   });
 });
 
@@ -69,7 +71,7 @@ describe("configuration", () => {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "test-publishable-only";
     state.create.mockReturnValue({ auth: {} });
     await createClient();
-    expect(state.create.mock.calls[0]![2].cookieOptions).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/" });
+    expect(state.create.mock.calls[0][2].cookieOptions).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/" });
     expect(nextConfig.poweredByHeader).toBe(false);
   });
 

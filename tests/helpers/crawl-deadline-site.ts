@@ -13,13 +13,13 @@ import { CRAWL_LIMITS } from "../../src/worker/crawl/budgets";
 /** How long after a deadline expires a pending operation may still be running. */
 export const SLACK_MS = 250;
 
-export type Hit = { host: string; path: string; at: number };
-export type SiteRequest = { host: string; path: string };
+export interface Hit { host: string; path: string; at: number }
+export interface SiteRequest { host: string; path: string }
 export type SiteHandler = (
   request: SiteRequest,
   response: http.ServerResponse,
 ) => void;
-export type Site = {
+export interface Site {
   port: number;
   hits: Hit[];
   /** Real pinned transport pointed at the loopback server. */
@@ -27,13 +27,13 @@ export type Site = {
   /** Hits for anything other than robots.txt. */
   pageHits: () => Hit[];
   close: () => Promise<void>;
-};
+}
 
 export async function startSite(handler: SiteHandler): Promise<Site> {
   const hits: Hit[] = [];
   const sockets = new Set<import("node:net").Socket>();
   const server = http.createServer((request, response) => {
-    const host = (request.headers.host ?? "").split(":")[0]!;
+    const host = (request.headers.host ?? "").split(":")[0];
     const path = request.url ?? "/";
     hits.push({ host, path, at: Date.now() });
     handler({ host, path }, response);
@@ -56,7 +56,9 @@ export async function startSite(handler: SiteHandler): Promise<Site> {
     pageHits: () => hits.filter((hit) => !hit.path.startsWith("/robots.txt")),
     close: () =>
       new Promise<void>((resolve) => {
-        for (const socket of sockets) socket.destroy();
+        for (const socket of sockets) {
+          socket.destroy();
+        }
         server.close(() => resolve());
       }),
   };
@@ -130,7 +132,7 @@ export function accelerateLimits(limits: {
   fetchMs: number;
 }): () => void {
   const target = CRAWL_LIMITS as unknown as MutableLimits;
-  const saved = { jobMs: target.jobMs!, fetchMs: target.fetchMs! };
+  const saved = { jobMs: target.jobMs, fetchMs: target.fetchMs };
   Object.assign(target, limits);
   return () => Object.assign(target, saved);
 }

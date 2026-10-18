@@ -17,15 +17,21 @@ export const addButtons = (view: View) => view.byRole("button", ADD_PAGE);
 export function addButton(view: View): HNode {
   const buttons = addButtons(view);
   expect(buttons, 'one "+ Add page" button').toHaveLength(1);
-  return buttons[0]!;
+  return buttons[0];
 }
 
 /** Open, visible dialogs (a native <dialog> counts only while open). */
 export function openDialogs(view: View): HNode[] {
   return view.all().filter((n) => {
-    if (roleOf(n) !== "dialog" || isHidden(n)) return false;
-    if (/^field evidence$/i.test(view.nameOf(n))) return false;
-    if (n.tag === "dialog") return n.props.open === true || n.props.open === "" || view.app.fakes.get(n.path)?.node.open === true;
+    if (roleOf(n) !== "dialog" || isHidden(n)) {
+      return false;
+    }
+    if (/^field evidence$/i.test(view.nameOf(n))) {
+      return false;
+    }
+    if (n.tag === "dialog") {
+      return n.props.open === true || n.props.open === "" || view.app.fakes.get(n.path)?.node.open === true;
+    }
     return true;
   });
 }
@@ -36,7 +42,7 @@ export async function openAdd(view: View): Promise<HNode> {
   await view.settle();
   const dialogs = openDialogs(view);
   expect(dialogs, '"+ Add page" opens exactly one dialog').toHaveLength(1);
-  return dialogs[0]!;
+  return dialogs[0];
 }
 
 export const urlField = (view: View, dialog: HNode): HNode | undefined => view.byRole("textbox", /page url/i, dialog)[0];
@@ -58,7 +64,9 @@ export async function fill(view: View, url: string, title?: string): Promise<HNo
   const dialog = theDialog(view)!;
   expect(dialog, "the add-page dialog is open").toBeDefined();
   await typeInto(view, urlField(view, dialog), url);
-  if (title !== undefined) await typeInto(view, titleField(view, dialog), title);
+  if (title !== undefined) {
+    await typeInto(view, titleField(view, dialog), title);
+  }
   return dialog;
 }
 /** Click Save and let the request finish. */
@@ -90,13 +98,19 @@ export async function pressEnterInUrl(view: View): Promise<void> {
   for (let node: HNode | null = field; node; node = node.parent) {
     if (typeof node.props.onKeyDown === "function") {
       node.props.onKeyDown(event);
-      if (event.propagationStopped) break;
+      if (event.propagationStopped) {
+        break;
+      }
     }
   }
   if (!event.defaultPrevented) {
     let form: HNode | null = field.parent;
-    while (form && !(form.tag === "form" && typeof form.props.onSubmit === "function")) form = form.parent;
-    if (form) form.props.onSubmit({ ...event, type: "submit", target: form, currentTarget: form });
+    while (form && !(form.tag === "form" && typeof form.props.onSubmit === "function")) {
+      form = form.parent;
+    }
+    if (form) {
+      form.props.onSubmit({ ...event, type: "submit", target: form, currentTarget: form });
+    }
   }
   view.app.flushSync();
   await view.settle();
@@ -115,17 +129,21 @@ export function withWebsite(website: string | null, links: Link[] | null | undef
   const draft = siteDraft(links === undefined ? {} : { links });
   const foundation = draft.entries.find((e) => e.kind === "company_foundation") as any;
   foundation.content.website = website;
-  if (website) (draft.company as any).website_url = website;
+  if (website) {
+    (draft.company as any).website_url = website;
+  }
   return draft;
 }
 
 /** Focus handed back to "+ Add page" after the dialog closed: the button was focused, or a native modal <dialog> was closed (the browser restores focus itself). */
-export type FocusProbe = { button: number; meta?: FakeNode; closes: number };
+export interface FocusProbe { button: number; meta?: FakeNode; closes: number }
 export function probeFocus(view: View, dialog: HNode): FocusProbe {
   const meta = dialog.tag === "dialog" ? view.fakeOf(dialog) : undefined;
   return { button: view.fakeOf(addButton(view))?.focusCalls ?? 0, meta, closes: meta?.closeCalls ?? 0 };
 }
 export function focusReturned(view: View, before: FocusProbe): boolean {
-  if ((view.fakeOf(addButton(view))?.focusCalls ?? 0) > before.button) return true;
+  if ((view.fakeOf(addButton(view))?.focusCalls ?? 0) > before.button) {
+    return true;
+  }
   return !!before.meta && before.meta.closeCalls > before.closes;
 }

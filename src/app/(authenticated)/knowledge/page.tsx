@@ -11,14 +11,17 @@ export default async function KnowledgePage({
 }) {
   const params = await searchParams;
   const id = UUIDSchema.safeParse(params.companyId);
-  if (!id.success)
+  if (!id.success) {
     return (
       <Notice error>
         Select a company from the dashboard to open its workspace.
       </Notice>
     );
+  }
   const { client, user } = await verifiedSession();
-  if (!user) redirect("/sign-in");
+  if (!user) {
+    redirect("/sign-in");
+  }
   try {
     const initialDraft = await readDraft(client, id.data, user.id);
     return (

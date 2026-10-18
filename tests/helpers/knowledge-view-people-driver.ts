@@ -15,8 +15,8 @@ import {
 } from "./knowledge-view-site-all-runtime";
 import { norm } from "./knowledge-view-dom";
 
-export type Failure = { status: number; code: string; message: string };
-export type PeopleApi = {
+export interface Failure { status: number; code: string; message: string }
+export interface PeopleApi {
   /** Multipart bodies sent to POST .../uploads. */
   uploads: { path: string; form: FormData }[];
   /** DELETE .../entries/<id> requests (path + parsed JSON body). */
@@ -25,7 +25,7 @@ export type PeopleApi = {
   uploadFailure: Failure | null;
   /** The reference the server returns for a successful upload (id is fresh per upload). */
   uploaded: { id: string; path: string; content_type: string; size_bytes: number; url: string }[];
-};
+}
 
 /** Teach the fake API the routes the Quest relies on. DELETE /entries/<id> is the shape the Quest locks (builder work). */
 export function installPeopleApi(server: FakeServer): PeopleApi {
@@ -38,13 +38,15 @@ export function installPeopleApi(server: FakeServer): PeopleApi {
   let counter = 0;
   server.fetch = async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.pathname + input.search : String((input as any)?.url ?? input);
-    const path = url.split("?")[0]!;
+    const path = url.split("?")[0];
     const method = (init?.method ?? "GET").toUpperCase();
     const company = server.draft?.company.id as string;
     if (method === "POST" && /^\/api\/companies\/[^/]+\/uploads$/.test(path)) {
       server.requests.push({ method, path, body: init?.body });
       api.uploads.push({ path, form: init?.body as FormData });
-      if (api.uploadFailure) return reply(api.uploadFailure.status, null, api.uploadFailure);
+      if (api.uploadFailure) {
+        return reply(api.uploadFailure.status, null, api.uploadFailure);
+      }
       const id = `00000000-0000-4000-8000-00000ff${(0xa00 + ++counter).toString(16).padStart(5, "0")}`;
       const out = { id, path: `portraits/${company}/${id}.png`, content_type: "image/png", size_bytes: 4096, url: `/api/companies/${company}/uploads/${id}` };
       api.uploaded.push(out);
@@ -55,17 +57,22 @@ export function installPeopleApi(server: FakeServer): PeopleApi {
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       server.requests.push({ method, path, body });
       api.deletes.push({ path, body });
-      const found = server.draft.entries.find((e: any) => e.id === decodeURIComponent(entry[1]!));
-      if (!found) return reply(404, null, { code: "not_found", message: "Not found." });
-      if (body?.expectedRevision !== found.current_revision)
+      const found = server.draft.entries.find((e: any) => e.id === decodeURIComponent(entry[1]));
+      if (!found) {
+        return reply(404, null, { code: "not_found", message: "Not found." });
+      }
+      if (body?.expectedRevision !== found.current_revision) {
         return reply(409, null, { code: "conflict", message: "The saved revision changed." });
+      }
       server.draft.entries = server.draft.entries.filter((e: any) => e !== found);
       return reply(200, { id: found.id });
     }
     if (method === "DELETE") {
       // a configured write failure answers it; record the request the way the base does
       const out = await base(input, init);
-      if (entry) api.deletes.push({ path, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      if (entry) {
+        api.deletes.push({ path, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      }
       return out;
     }
     return base(input, init);
@@ -73,7 +80,7 @@ export function installPeopleApi(server: FakeServer): PeopleApi {
   return api;
 }
 
-export type Opened = { view: View; api: PeopleApi; server: FakeServer };
+export interface Opened { view: View; api: PeopleApi; server: FakeServer }
 export async function openKeyPeople(opts: Omit<OpenOptions, "section" | "rawSection" | "fullUrl" | "server"> & { all?: boolean; configure?: (s: FakeServer, a: PeopleApi) => void }): Promise<Opened> {
   let api!: PeopleApi;
   let fake!: FakeServer;
@@ -98,7 +105,9 @@ export function peopleListNode(view: View): HNode | null {
   const named = (n: HNode) => typeof n.props["aria-label"] === "string" || typeof n.props["aria-labelledby"] === "string";
   return (
     view.all().find((n) => {
-      if (!(LIST_ROLES.includes(roleOf(n)) || ["ul", "ol", "nav"].includes(n.tag)) || !named(n)) return false;
+      if (!(LIST_ROLES.includes(roleOf(n)) || ["ul", "ol", "nav"].includes(n.tag)) || !named(n)) {
+        return false;
+      }
       const name = view.nameOf(n);
       return /\bpeople\b|\bpersons?\b/i.test(name) && !/^knowledge section/i.test(name);
     }) ?? null
@@ -106,12 +115,14 @@ export function peopleListNode(view: View): HNode | null {
 }
 export function rowNodes(view: View): HNode[] {
   const list = peopleListNode(view);
-  if (!list) return [];
+  if (!list) {
+    return [];
+  }
   const items = descendants(list).filter((n) => ["listitem", "option", "tab", "menuitem"].includes(roleOf(n)));
   return items.filter((n) => !items.some((o) => o !== n && descendants(o).includes(n)));
 }
 /** The thing a user presses to select the row: its first button, else the row. */
-export const rowTarget = (view: View, row: HNode): HNode => descendants(row).find((n) => roleOf(n) === "button" || roleOf(n) === "link") ?? row;
+export const rowTarget = (_view: View, row: HNode): HNode => descendants(row).find((n) => roleOf(n) === "button" || roleOf(n) === "link") ?? row;
 export const rowTexts = (view: View) => rowNodes(view).map((r) => view.text(r));
 
 export function buttons(view: View, pattern: RegExp, within?: HNode): HNode[] {

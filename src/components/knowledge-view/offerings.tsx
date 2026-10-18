@@ -15,6 +15,7 @@ const COST_HELP = "Enter a number, for example 49.99.";
 const costSpec = (kind: TextSpec["kind"]): TextSpec => ({
   label: "Offering cost",
   kind,
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- entry content is a Record<string, any> by design (one editor handles every entry kind)
   read: (content) => (typeof content.pricing?.amount === "string" ? content.pricing.amount : ""),
   apply: (content, text) => {
     const value = text.trim();
@@ -22,9 +23,14 @@ const costSpec = (kind: TextSpec["kind"]): TextSpec => ({
       content.pricing = null;
       return { content };
     }
-    if (/^-\s*\d/.test(value)) return { error: "Cost cannot be negative. Enter 0 or more." };
-    if (!/^\d+(\.\d+)?$/.test(value)) return { error: COST_HELP };
+    if (/^-\s*\d/.test(value)) {
+      return { error: "Cost cannot be negative. Enter 0 or more." };
+    }
+    if (!/^\d+(\.\d+)?$/.test(value)) {
+      return { error: COST_HELP };
+    }
     const amount = value.replace(/^0+(?=\d)/, "");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- entry content is a Record<string, any> by design (one editor handles every entry kind)
     content.pricing = {
       billing_interval: null,
       pricing_model: null,
@@ -58,9 +64,13 @@ function editorsOf(entryId: string) {
 
 /** What the Cost card shows, and the field that holds it: the price wording, else amount with currency and interval, else free/contact. */
 function costOf(pricing: Offering["pricing"]): { text: string; path: string } | null {
-  if (!pricing) return null;
+  if (!pricing) {
+    return null;
+  }
   const raw = textOrNull(pricing.raw);
-  if (raw) return { text: raw, path: "pricing/raw" };
+  if (raw) {
+    return { text: raw, path: "pricing/raw" };
+  }
   const amount = textOrNull(pricing.amount);
   if (amount) {
     const text = [amount, textOrNull(pricing.currency)].filter(Boolean).join(" ");
@@ -68,8 +78,12 @@ function costOf(pricing: Offering["pricing"]): { text: string; path: string } | 
     // Built from several fields, so the whole pricing is its evidence.
     return { text: interval ? `${text} / ${interval}` : text, path: "pricing" };
   }
-  if (pricing.kind === "free") return { text: "Free", path: "pricing/kind" };
-  if (pricing.kind === "contact_for_pricing") return { text: "Contact for pricing", path: "pricing/kind" };
+  if (pricing.kind === "free") {
+    return { text: "Free", path: "pricing/kind" };
+  }
+  if (pricing.kind === "contact_for_pricing") {
+    return { text: "Contact for pricing", path: "pricing/kind" };
+  }
   return null;
 }
 
@@ -244,7 +258,7 @@ export function BusinessOfferings({
   onSelect,
   canEdit = false,
   blocked = false,
-  onSaved = async () => {},
+  onSaved = () => Promise.resolve(),
 }: {
   companyId: string;
   offerings: ViewOffering[];
@@ -272,21 +286,29 @@ export function BusinessOfferings({
   const [focusTo, setFocusTo] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!focusTo) return;
+    if (!focusTo) {
+      return;
+    }
     const target = rows.current.get(focusTo);
-    if (!target) return; // the list has not caught up yet
+    if (!target) {
+      return;
+    } // the list has not caught up yet
     target.focus();
     setFocusTo(null);
   }, [focusTo, offerings.length]);
   useEffect(() => {
-    if (!deleted) return;
-    const timer = setTimeout(() => setDeleted(null), UNDO_MS);
-    return () => clearTimeout(timer);
+    if (!deleted) {
+      return;
+    }
+    const timer = setTimeout(() => { setDeleted(null); }, UNDO_MS);
+    return () => { clearTimeout(timer); };
   }, [deleted]);
 
   /** Runs one request; only one at a time. A failure shows the server's message. */
   async function run(request: () => Promise<void>, failed: string) {
-    if (busy.current) return;
+    if (busy.current) {
+      return;
+    }
     busy.current = true;
     setWorking(true);
     setError("");
@@ -320,7 +342,9 @@ export function BusinessOfferings({
     }, "The offering could not be deleted.");
   const undo = () =>
     run(async () => {
-      if (!deleted) return;
+      if (!deleted) {
+        return;
+      }
       // The deleted entry is archived, not erased: restoring it brings back the offering with its history and evidence.
       await api(companyPath(companyId, `/entries/${deleted.entryId}/restore`), write("POST", {}));
       setFocusTo(deleted.offeringId);
@@ -383,13 +407,16 @@ export function BusinessOfferings({
                 >
                   <button
                     ref={(element) => {
-                      if (element) rows.current.set(offering.id, element);
-                      else rows.current.delete(offering.id);
+                      if (element) {
+                        rows.current.set(offering.id, element);
+                      } else {
+                        rows.current.delete(offering.id);
+                      }
                     }}
                     type="button"
                     className="knowledge-view__offering-button"
                     aria-current={index === selected ? "true" : undefined}
-                    onClick={() => onSelect(offering.id)}
+                    onClick={() => { onSelect(offering.id); }}
                   >
                     <span className="knowledge-view__offering-icon" aria-hidden="true"><Icon name="cube" size={16} /></span>
                     <span className="knowledge-view__offering-text">
@@ -397,12 +424,12 @@ export function BusinessOfferings({
                       {type && <small>{type}</small>}
                     </span>
                   </button>
-                  <ItemSource evidence={evidence} path={`/offerings/@${offering.id}`} name={titles[index]!} />
+                  <ItemSource evidence={evidence} path={`/offerings/@${offering.id}`} name={titles[index]} />
                 </li>
               );
             })}
           </ul>
-          {detail(offerings[selected]!, titles[selected]!)}
+          {detail(offerings[selected], titles[selected])}
         </div>
       )}
     </>

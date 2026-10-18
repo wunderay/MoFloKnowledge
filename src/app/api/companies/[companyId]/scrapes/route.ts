@@ -15,7 +15,7 @@ export const POST = route(async (r, c, { client }) => {
       "Use a public HTTP(S) company hostname.",
     );
   }
-  const job = await rpc(client, "enqueue_scrape", {
+  const job = (await rpc(client, "enqueue_scrape", {
     p_company: IdSchema.parse((await c.params).companyId),
     p_url: normalizedUrl,
     p_options: {
@@ -23,6 +23,6 @@ export const POST = route(async (r, c, { client }) => {
       max_depth: b.options?.depthLimit ?? 2,
     },
     p_request: b.requestId,
-  });
+  })) as { id: string; status: string };
   return { jobId: job.id, status: job.status };
 }, 202);

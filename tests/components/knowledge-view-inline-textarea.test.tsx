@@ -40,8 +40,8 @@ const originalOf = (field: (typeof AREA_FIELDS)[number]) =>
 
 describe.each(AREA_FIELDS)("C2 textarea field: $label", (field) => {
   const original = () => originalOf(field);
-  const saveButton = (view: Awaited<ReturnType<typeof open>>) => buttonNamed(view, /^save\b/i)!;
-  const cancelButton = (view: Awaited<ReturnType<typeof open>>) => buttonNamed(view, /^cancel\b/i)!;
+  const saveButton = (view: Awaited<ReturnType<typeof open>>) => buttonNamed(view, /^save\b/i);
+  const cancelButton = (view: Awaited<ReturnType<typeof open>>) => buttonNamed(view, /^cancel\b/i);
 
   it("shows the text as a button named 'Edit <Field>' with title 'Click to edit' and a pencil", async () => {
     const view = await open(field.section);
@@ -89,7 +89,9 @@ describe.each(AREA_FIELDS)("C2 textarea field: $label", (field) => {
     await click(view, saveButton(view));
     expect(statusText(view)).toMatch(/saving/i);
     const again = buttonNamed(view, /^save\b/i);
-    if (again) await view.click(again);
+    if (again) {
+      await view.click(again);
+    }
     view.server.release();
     await view.settle();
     expect(statusText(view)).toMatch(/✓\s*Saved/);
@@ -166,7 +168,7 @@ describe.each(AREA_FIELDS)("C2 textarea field: $label", (field) => {
 
   it("an empty field has an 'Edit <Field>' button and typing a value saves it", async () => {
     const draft = draftWith((b) => {
-      (field.kind === "positioning" ? (b.positioning as any) : (b.company_foundation as any))[field.path[0]!] = null;
+      (field.kind === "positioning" ? (b.positioning as any) : (b.company_foundation as any))[field.path[0]] = null;
     });
     const view = await open(field.section, { draft });
     const before = stored(view, field.kind);

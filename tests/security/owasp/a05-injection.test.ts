@@ -58,7 +58,9 @@ describe("request bodies", () => {
     for (const [name, schema] of requestSchemas) {
       const found = objectsOf(schema);
       expect(found.length, name).toBeGreaterThan(0);
-      for (const object of found) expect(object._def.unknownKeys, name).toBe("strict");
+      for (const object of found) {
+        expect(object._def.unknownKeys, name).toBe("strict");
+      }
     }
 
     // ...and a rejected body never reaches the auth provider.
@@ -78,16 +80,18 @@ describe("SQL", () => {
         const path = join(dir, name);
         return statSync(path).isDirectory() ? sourceFiles(path) : /\.tsx?$/.test(name) ? [path] : [];
       });
-    const withQuery = sourceFiles(join(ROOT, "src")).filter((path) => /\.query\(/.test(readFileSync(path, "utf8")));
+    const withQuery = sourceFiles(join(ROOT, "src")).filter((path) => readFileSync(path, "utf8").includes('.query('));
     expect(withQuery.map((path) => path.slice(ROOT.length + 1))).toEqual(["src/worker/job-repository.ts"]);
     const text = readFileSync(join(ROOT, "src/worker/job-repository.ts"), "utf8");
     // The only interpolations inside SQL text: the function name (always a string literal at the call site) and $n.
     expect(text).not.toMatch(/this\.call(?:<[^(]*>)?\(\s*(?!["'])/);
-    const sql = [...text.matchAll(/\.query\(\s*`([^`]*)`/g)].map((match) => match[1]!);
+    const sql = [...text.matchAll(/\.query\(\s*`([^`]*)`/g)].map((match) => match[1]);
     expect(sql.length).toBeGreaterThan(0);
-    for (const statement of sql)
-      for (const part of statement.matchAll(/\$\{([^}]*)\}/g))
+    for (const statement of sql) {
+      for (const part of statement.matchAll(/\$\{([^}]*)\}/g)) {
         expect(part[1], statement).toMatch(/^(name|args\.map\(\(_, i\) => `\$\$\{i \+ 1\}`\)\.join\(","\))$/);
+      }
+    }
 
     // Hostile text goes to the database as a parameter, unchanged.
     process.env.APP_ORIGIN = ORIGIN;
@@ -108,8 +112,9 @@ describe("SQL", () => {
 
 describe("links and images", () => {
   it("render only http(s) links and plain SVG documents", () => {
-    for (const hostile of ["javascript:alert(1)", " JaVaScRiPt:alert(1)", "data:text/html,<script>1</script>", "vbscript:x", "//evil.example/x", "/relative"])
+    for (const hostile of ["javascript:alert(1)", " JaVaScRiPt:alert(1)", "data:text/html,<script>1</script>", "vbscript:x", "//evil.example/x", "/relative"]) {
       expect(safeHref(hostile), hostile).toBeUndefined();
+    }
     expect(safeHref("https://example.com/a?b=1")).toBe("https://example.com/a?b=1");
 
     // SVG is recognised only as a plain document, not HTML or XML with an entity subset.

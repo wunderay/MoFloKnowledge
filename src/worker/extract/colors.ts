@@ -7,7 +7,10 @@ export function normalizeColor(
   const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(text);
   if (hex) {
     let h = hex[1];
-    if (h.length <= 4) h = [...h].map((c) => c + c).join("");
+    if (h.length <= 4) {
+      // eslint-disable-next-line @typescript-eslint/no-misused-spread -- spreading a string by code point is intended (no grapheme splitting needed)
+      h = [...h].map((c) => c + c).join("");
+    }
     if (h.length === 8) {
       alpha = parseInt(h.slice(6), 16) / 255;
       h = h.slice(0, 6);
@@ -15,26 +18,37 @@ export function normalizeColor(
     return { hex: "#" + h.toUpperCase(), alpha };
   }
   const fn = /^(rgba?|hsla?)\((.*)\)$/.exec(text);
-  if (!fn) return null;
+  if (!fn) {
+    return null;
+  }
   const args = fn[2]
     .replace(/\s*\/\s*/, ",")
     .split(/[\s,]+/)
     .filter(Boolean);
-  if (args.length < 3 || args.length > 4) return null;
-  if (args[3])
+  if (args.length < 3 || args.length > 4) {
+    return null;
+  }
+  if (args[3]) {
     alpha = args[3].endsWith("%") ? parseFloat(args[3]) / 100 : Number(args[3]);
-  if (fn[1].startsWith("rgb"))
+  }
+  if (fn[1].startsWith("rgb")) {
     rgb = args
       .slice(0, 3)
       .map((x) => (x.endsWith("%") ? parseFloat(x) * 2.55 : Number(x)));
-  else {
+  } else {
     const h = (((parseFloat(args[0]) % 360) + 360) % 360) / 360,
       s = parseFloat(args[1]) / 100,
       l = parseFloat(args[2]) / 100;
-    if (!args[1].endsWith("%") || !args[2].endsWith("%")) return null;
+    if (!args[1].endsWith("%") || !args[2].endsWith("%")) {
+      return null;
+    }
     const hue = (p: number, q: number, t: number) => {
-      if (t < 0) t++;
-      if (t > 1) t--;
+      if (t < 0) {
+        t++;
+      }
+      if (t > 1) {
+        t--;
+      }
       return t < 1 / 6
         ? p + (q - p) * 6 * t
         : t < 0.5
@@ -57,8 +71,9 @@ export function normalizeColor(
     alpha < 0 ||
     alpha > 1 ||
     rgb.some((x) => x < 0 || x > 255)
-  )
+  ) {
     return null;
+  }
   return {
     hex:
       "#" +

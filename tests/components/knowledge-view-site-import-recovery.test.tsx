@@ -4,7 +4,8 @@
 //  2. the provenance the importer writes must fit the API's claim cap at the promised 500 links.
 import { describe, expect, it, vi } from "vitest";
 import { CreateEntrySchema, SaveEntrySchema } from "../../src/contracts/api-entries";
-import { EntryProvenanceSchema, createEmptyProvenance, entryBusiness, parseBusinessEntry, validateProvenance } from "../../src/contracts";
+import type { createEmptyProvenance} from "../../src/contracts";
+import { EntryProvenanceSchema, entryBusiness, parseBusinessEntry, validateProvenance } from "../../src/contracts";
 import { siteCard, siteCardText } from "../helpers/knowledge-view-site-all-dom";
 import { FakeServer, type Req } from "../helpers/knowledge-view-site-all-runtime";
 import {
@@ -47,14 +48,16 @@ function failDraftReadsAfterWrite(server: FakeServer) {
   const original = server.fetch;
   server.fetch = (async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const method = (init?.method ?? "GET").toUpperCase();
-    const path = String(input).split("?")[0]!;
-    if (method === "GET" && /\/draft$/.test(path) && written && broken) {
+    const path = String(input).split("?")[0];
+    if (method === "GET" && path.endsWith("/draft") && written && broken) {
       server.requests.push({ method, path, body: undefined });
       const body = { data: null, error: { code: "unavailable", message: "Draft store is down." }, requestId: "00000000-0000-4000-8000-0000000000aa" };
       return { ok: false, status: 503, json: async () => body, text: async () => JSON.stringify(body) };
     }
     const reply = await original(input, init);
-    if (method !== "GET" && reply.ok) written = true;
+    if (method !== "GET" && reply.ok) {
+      written = true;
+    }
     return reply;
   }) as typeof server.fetch;
   return { recover: () => void (broken = false) };
@@ -93,7 +96,7 @@ describe("a saved import whose draft re-read fails", () => {
       expect(view.server.writes, "no second write").toHaveLength(1);
 
       // Reload while the read still fails: still stale, still one write
-      const reload = () => view.byRole("button", /^reload$/i)[0]!;
+      const reload = () => view.byRole("button", /^reload$/i)[0];
       expect(reload(), "a Reload control").toBeDefined();
       await view.click(reload());
       await view.settle();
@@ -130,7 +133,7 @@ async function sentBy(draft: ReturnType<typeof siteDraft>, pages: Page[]): Promi
   const site = siteLinksFrom(draft.entries as never);
   await saveLinks(COMPANY_ID, ACTOR, site, importCandidates(pages, site.links));
   expect(server.writes).toHaveLength(1);
-  return server.writes[0]!;
+  return server.writes[0];
 }
 const stored = (provenance: unknown) => {
   const parsed = EntryProvenanceSchema.safeParse(provenance);
@@ -211,7 +214,7 @@ describe("what the server stores for an import fits the contract at the link cap
     const full = (n: number) => {
       const links = manyLinks(n);
       const provenance = userProvenance(links);
-      return siteLinksFrom(siteDraft({ links, provenance: { ...provenance, claims: Array.from({ length: Math.min(500, 2 * n) }, (_, i) => ({ ...userProvenance(manyLinks(1)).claims[0]!, id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` })) } }).entries as never);
+      return siteLinksFrom(siteDraft({ links, provenance: { ...provenance, claims: Array.from({ length: Math.min(500, 2 * n) }, (_, i) => ({ ...userProvenance(manyLinks(1)).claims[0], id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` })) } }).entries as never);
     };
     expect(importRoom(full(250))).toEqual({ room: 0, limit: "claims" });
     expect(importRoom(full(100))).toEqual({ room: 400, limit: null });
@@ -240,7 +243,9 @@ describe("the operation budget", () => {
     const view = await openSite({ draft: withOperations(999), inventory: inventory([PAGES.shop]) });
     const dialog = await openPicker(view);
     expect(view.text(dialog)).toMatch(/source records are full/i);
-    for (const box of boxes(view, dialog)) await view.check(box.node, true);
+    for (const box of boxes(view, dialog)) {
+      await view.check(box.node, true);
+    }
     await view.settle();
     await confirm(view);
     expect(view.server.writes).toEqual([]);
@@ -264,11 +269,13 @@ describe("the picker states the limit it enforces", () => {
   it("an entry with its claims at the cap says its source records are full and sends nothing", async () => {
     const links = manyLinks(60);
     const provenance = userProvenance(links);
-    provenance.claims = Array.from({ length: 500 }, (_, i) => ({ ...userProvenance(manyLinks(1)).claims[0]!, id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` }));
+    provenance.claims = Array.from({ length: 500 }, (_, i) => ({ ...userProvenance(manyLinks(1)).claims[0], id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` }));
     const view = await openSite({ draft: siteDraft({ links, provenance }), inventory: inventory([PAGES.shop, PAGES.subscribe]) });
     const dialog = await openPicker(view);
     expect(view.text(dialog)).toMatch(/source records are full/i);
-    for (const box of boxes(view, dialog)) await view.check(box.node, true);
+    for (const box of boxes(view, dialog)) {
+      await view.check(box.node, true);
+    }
     await view.settle();
     await confirm(view);
     expect(view.server.writes).toEqual([]);

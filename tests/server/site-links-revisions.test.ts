@@ -27,7 +27,9 @@ describe("C4 [behavioural] manual creation of a site_links entry", () => {
         `/site_links/links/@${L2}/title`, `/site_links/links/@${L2}/url`, `/site_links/links/@${L2}/note`,
       ].sort(),
     );
-    for (const claim of provenance.claims) expect(claim).toMatchObject({ origin: "user_provided", entry_id: request, actor_id: actor });
+    for (const claim of provenance.claims) {
+      expect(claim).toMatchObject({ origin: "user_provided", entry_id: request, actor_id: actor });
+    }
     const coverage = provenance.coverage.flatMap((item) => item.targets);
     expect(coverage.filter((target) => target === "/site_links/links")).toHaveLength(1);
   });

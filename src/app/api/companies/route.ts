@@ -23,7 +23,7 @@ export const GET = route(async (request, _context, { client, user }) => {
     })
     .strict()
     .parse(Object.fromEntries(new URL(request.url).searchParams));
-  return readCompanySummaries(client, user!.id, {
+  return readCompanySummaries(client, user.id, {
     cursor: query.cursor,
     archived: query.archived === "true",
   });

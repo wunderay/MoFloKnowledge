@@ -15,7 +15,9 @@ vi.mock("react", async (original) => ({
   ...await original<typeof import("react")>(),
   useState: (initial: unknown) => {
     const index = harness.cursor++;
-    if (!(index in harness.slots)) harness.slots[index] = initial;
+    if (!(index in harness.slots)) {
+      harness.slots[index] = initial;
+    }
     return [harness.slots[index], (next: unknown) => {
       harness.slots[index] = typeof next === "function"
         ? next(harness.slots[index]) : next;
@@ -50,8 +52,12 @@ vi.mock("../../src/components/editor/proposal-review", () => ({ ProposalReview: 
 import { KnowledgeEditor } from "../../src/components/editor/knowledge-editor";
 
 function elements(node: React.ReactNode): ReactElement<any>[] {
-  if (Array.isArray(node)) return node.flatMap(elements);
-  if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];
+  if (Array.isArray(node)) {
+    return node.flatMap(elements);
+  }
+  if (!React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return [];
+  }
   return [node, ...elements(node.props.children)];
 }
 function deferred<T>() {
@@ -109,7 +115,9 @@ beforeEach(() => {
   };
   harness.dispatch.mockImplementation((action) => {
     if (action.type === "saved") {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- test removes a caller-chosen key from a scratch object
       delete harness.state.values[action.id];
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- test removes a caller-chosen key from a scratch object
       delete harness.state.provenance[action.id];
       harness.state.dirty = harness.state.dirty.filter((id: string) => id !== action.id);
     } else if (action.type === "edit") {
@@ -138,7 +146,7 @@ it("waits for the authoritative draft before enabling an unrelated edit and a se
   field(loaded, "overview").props.onChange("Only overview changed");
   harness.api.mockResolvedValueOnce({}).mockResolvedValueOnce(authoritative);
   await button(render(), "Save and approve").props.onClick();
-  const secondSave = JSON.parse(harness.api.mock.calls[2]![1].body);
+  const secondSave = JSON.parse(harness.api.mock.calls[2][1].body);
   expect(secondSave.expectedRevision).toBe(2);
   expect(secondSave.content.main_address).toEqual(selected.main_address);
   expect(secondSave.content.overview).toBe("Only overview changed");

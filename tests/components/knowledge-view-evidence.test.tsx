@@ -43,7 +43,7 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
     const sales = await open[source]("Sales & Marketing", { marks: [channelMark] });
     const pitch = triggers(sales, inCard(sales, "Sales & Marketing", "Pitch"));
     expect(pitch).toHaveLength(1);
-    expect(pitch[0]!.label).toBe("Historical generated · approved ⓘ");
+    expect(pitch[0].label).toBe("Historical generated · approved ⓘ");
     expect(triggers(sales, inCard(sales, "Sales & Marketing", "Channels")).map((t) => t.label)).toEqual([
       "Historical inferred ⓘ",
       "Historical inferred ⓘ",

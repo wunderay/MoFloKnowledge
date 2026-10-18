@@ -25,7 +25,9 @@ export function Source({
   filled: boolean;
   name?: string;
 }) {
-  if (!filled && !coverageFor(evidence.provenance, path) && !hasClaim(evidence.provenance, path)) return null;
+  if (!filled && !coverageFor(evidence.provenance, path) && !hasClaim(evidence.provenance, path)) {
+    return null;
+  }
   return (
     <CitationPopover
       path={path}
@@ -43,7 +45,9 @@ export function Source({
  * says which item carries which origin. Items backed by sources rely on the field's control.
  */
 export function ItemSource({ evidence, path, name }: { evidence: Evidence; path: string; name: string }) {
-  if (!hasMarkedOrigin(evidence.provenance, path)) return null;
+  if (!hasMarkedOrigin(evidence.provenance, path)) {
+    return null;
+  }
   // The path ends in an item id, so the control is named by the item's own text instead.
   return <Source evidence={evidence} path={path} filled name={name} />;
 }
@@ -61,7 +65,9 @@ export function CoverageNote({
   label?: string;
 }) {
   const assessment = coverageFor(evidence.provenance, path);
-  if (!empty && (!assessment || assessment.status === "found")) return null;
+  if (!empty && (!assessment || assessment.status === "found")) {
+    return null;
+  }
   return (
     <p className="knowledge-view__coverage">
       {label && <>{label}: </>}
@@ -131,16 +137,17 @@ export function Field({
   );
 }
 
-export type ChipItem = { id: string; label: string; detail?: string | null; mark?: ReactNode };
+export interface ChipItem { id: string; label: string; detail?: string | null; mark?: ReactNode }
 
 /** One outlined pill per item. An empty list is a single dashed "+ Add" pill; a filled list ends with a dashed "Add" pill. */
 export function Chips({ items, href, noun }: { items: ChipItem[]; href: string; noun: string }) {
-  if (items.length === 0)
+  if (items.length === 0) {
     return (
       <div className="knowledge-view__chips">
         <Link className="knowledge-view__chip knowledge-view__chip--add" href={href}>+ Add</Link>
       </div>
     );
+  }
   return (
     <ul className="knowledge-view__chips">
       {items.map((item) => (
@@ -221,7 +228,7 @@ export function Count({ n, one, many }: { n: number; one: string; many: string }
   );
 }
 
-export type Stat = { label: string; icon: IconName; value: ReactNode };
+export interface Stat { label: string; icon: IconName; value: ReactNode }
 
 export function Stats({ stats, counts = false }: { stats: Stat[]; counts?: boolean }) {
   return (

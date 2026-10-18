@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use */
 import "server-only";
 import type { verifiedSession } from "../lib/supabase/server";
 import { FrontierSnapshotSchema, ProgressSchema, SafeJobErrorSchema, JobStatusSchema } from "../contracts/jobs";
@@ -7,21 +8,23 @@ import { checked } from "./read-model";
 import { HttpError, parseResponse } from "./http";
 
 type Client = Awaited<ReturnType<typeof verifiedSession>>["client"];
-type SourceRow = {
+interface SourceRow {
   id: string; scrape_job_id: string; normalized_url: string; final_url: string | null;
   title: string | null; retrieved_at: string | null;
   capture_status: "captured" | "failed" | "blocked" | "unsupported"; error_code: string | null;
-};
-type JobRow = {
+}
+interface JobRow {
   id: string; status: string; created_at: string; updated_at: string;
   options: Record<string, unknown>; progress: Record<string, unknown>;
   checkpoint: Record<string, unknown>; errors: unknown;
-};
+}
 const terminal = new Set(["succeeded", "partial", "failed", "cancelled"]);
 
 /** Read-only projection: checkpoint candidates, leases and configuration never leave the server. */
 export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]): SourceCoverage {
-  if (!job) return { job: null, pages: [] };
+  if (!job) {
+    return { job: null, pages: [] };
+  }
   const frontier = FrontierSnapshotSchema.safeParse(job.checkpoint.frontier);
   const errors = parseResponse(SafeJobErrorSchema.array().max(200), job.errors ?? []);
   const status = parseResponse(JobStatusSchema, job.status);
@@ -33,6 +36,7 @@ export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]):
   const aliases = new Map(frontier.success ? frontier.data.aliases : []);
   const resolve = (input: string) => {
     const visited = new Set<string>();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     while (aliases.has(input) && !visited.has(input)) { visited.add(input); input = aliases.get(input)!; }
     return input;
   };
@@ -48,9 +52,13 @@ export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]):
     });
   }
   for (const error of errors) {
-    if (!error.url || !["capture_failed", "deadline_exceeded", "robots_blocked"].includes(error.code)) continue;
+    if (!error.url || !["capture_failed", "deadline_exceeded", "robots_blocked"].includes(error.code)) {
+      continue;
+    }
     const url = resolve(error.url);
-    if (pages.has(url)) continue;
+    if (pages.has(url)) {
+      continue;
+    }
     pages.set(url, { sourceId: null, url, title: null,
       state: error.code === "robots_blocked" ? "blocked" : "failed", selected: true,
       retrievedAt: null, reason: error.message, score: null, depth: null });
@@ -58,7 +66,9 @@ export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]):
   if (frontier.success) {
     for (const pending of [...frontier.data.pending].sort((a, b) => a.depth - b.depth || b.score - a.score || a.url.localeCompare(b.url))) {
       const url = resolve(pending.url);
-      if (pages.has(url)) continue;
+      if (pages.has(url)) {
+        continue;
+      }
       pages.set(url, { sourceId: null, url, title: null,
         state: terminal.has(status) ? "linked_not_selected" : "pending",
         selected: terminal.has(status) ? false : null, retrievedAt: null,
@@ -67,7 +77,9 @@ export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]):
     }
     for (const seen of frontier.data.seen) {
       const url = resolve(seen);
-      if (pages.has(url)) continue;
+      if (pages.has(url)) {
+        continue;
+      }
       pages.set(url, { sourceId: null, url, title: null, state: "selected_no_capture", selected: true,
         retrievedAt: null, reason: "Selected URL has no stored capture outcome.", score: null, depth: null });
     }
@@ -83,7 +95,9 @@ export async function readSourceCoverage(client: Client, companyId: string, user
   const job = await checked(client.from("scrape_jobs")
     .select("id,status,created_at,updated_at,options,progress,checkpoint,errors")
     .eq("company_id", companyId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle());
-  if (!job) return projectSourceCoverage(null, []);
+  if (!job) {
+    return projectSourceCoverage(null, []);
+  }
   const sources = await checked(client.from("source_pages")
     .select("id,scrape_job_id,normalized_url,final_url,title,retrieved_at,capture_status,error_code")
     .eq("company_id", companyId).eq("scrape_job_id", job.id).order("recorded_at").order("id"));
@@ -95,7 +109,9 @@ export async function readSourceCapture(client: Client, companyId: string, sourc
   const source = await checked(client.from("source_pages")
     .select("id,scrape_job_id,normalized_url,final_url,title,retrieved_at,capture_status,cleaned_content,observations")
     .eq("company_id", companyId).eq("id", sourceId).maybeSingle());
-  if (!source) throw new HttpError(404, "unavailable", "Resource unavailable.");
+  if (!source) {
+    throw new HttpError(404, "unavailable", "Resource unavailable.");
+  }
   const observations = source.observations ?? {};
   const segments = Array.isArray(observations.segments) ? observations.segments.flatMap((segment: { id?: unknown; text?: unknown; heading?: unknown }) =>
     typeof segment.id === "string" && typeof segment.text === "string" ? [{ id: segment.id, text: segment.text,

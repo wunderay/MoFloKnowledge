@@ -24,7 +24,7 @@ import { SectionView } from "../knowledge-view/section-view";
 import { SectionListbox } from "../knowledge-view/section-listbox";
 import { type KnowledgeSectionId } from "../knowledge-view/sections";
 import "../knowledge-view/knowledge-view.css";
-type ViewEntry = {
+interface ViewEntry {
   id: string;
   company_id: string;
   kind: EntryKind;
@@ -32,8 +32,8 @@ type ViewEntry = {
   provenance: EntryProvenance;
   review_status: ReviewStatus;
   current_revision: number;
-};
-type Version = { id: string; version_number: number; created_at: string };
+}
+interface Version { id: string; version_number: number; created_at: string }
 export function snapshotEntries(payload: KnowledgeBaseExport): ViewEntry[] {
   const provenance = { ...createEmptyProvenance(), ...payload.provenance };
   return Object.keys(CATEGORY_SPECS).flatMap((kind) => {
@@ -155,8 +155,8 @@ export function KnowledgeViewer({
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     api<{ companies: { id: string; name: string }[] }>("/api/companies")
-      .then((data) => setCompanies(data.companies))
-      .catch(() => {});
+      .then((data) => { setCompanies(data.companies); })
+      .catch(() => undefined);
   }, []);
   useEffect(() => {
     if (initialData && !initializedList.current) {
@@ -167,22 +167,29 @@ export function KnowledgeViewer({
     setVersionId(initialVersionId ?? "");
     setVersions([]);
     setHistory(null);
-    if (!companyId) return;
+    if (!companyId) {
+      return;
+    }
     const abort = new AbortController();
     api<Version[] | { versions: Version[] }>(
       companyPath(companyId, "/versions"),
       { signal: abort.signal },
     )
       .then((data) => {
-        if (abort.signal.aborted) return;
+        if (abort.signal.aborted) {
+          return;
+        }
         const all = Array.isArray(data) ? data : data.versions;
         setVersions(all);
         setVersionId(initialVersionId ?? all[0]?.id ?? "draft");
       })
-      .catch((error) => {
-        if (!abort.signal.aborted) setError(error.message);
+      .catch((error: unknown) => {
+        if (!abort.signal.aborted) {
+          setError((error as Error).message);
+        }
       });
-    return () => abort.abort();
+    return () => { abort.abort(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialData only seeds the first render; versions reload when company or initial version change
   }, [companyId, initialVersionId]);
   useEffect(() => {
     setQuery("");
@@ -202,7 +209,9 @@ export function KnowledgeViewer({
       return;
     }
     initializedView.current = true;
-    if (!versionId || !companyId) return;
+    if (!versionId || !companyId) {
+      return;
+    }
     const abort = new AbortController();
     setLoading(true);
     setError("");
@@ -221,7 +230,9 @@ export function KnowledgeViewer({
             citationContext?: CitationContext;
           }>(companyPath(companyId, "/draft"), { signal: abort.signal }).then(
             (data) => {
-              if (abort.signal.aborted || !current()) return;
+              if (abort.signal.aborted || !current()) {
+                return;
+              }
               setActorId(data.actorId ?? "");
               setGeneration(data.draftGeneration ?? null);
               setName(data.company.name);
@@ -236,23 +247,31 @@ export function KnowledgeViewer({
             companyPath(companyId, `/versions/${versionId}`),
             { signal: abort.signal },
           ).then((data) => {
-            if (abort.signal.aborted || !current()) return;
+            if (abort.signal.aborted || !current()) {
+              return;
+            }
             setPayload(data);
             setName(data.provenance.company.name);
             setEntries(snapshotEntries(data));
           });
     request
-      .catch((error) => {
-        if (!abort.signal.aborted && current()) setError(error.message);
+      .catch((error: unknown) => {
+        if (!abort.signal.aborted && current()) {
+          setError((error as Error).message);
+        }
       })
       .finally(() => {
-        if (!abort.signal.aborted && current()) setLoading(false);
+        if (!abort.signal.aborted && current()) {
+          setLoading(false);
+        }
       });
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- readEpoch is a plain counter (not a DOM ref); the cleanup must bump the current value
       readEpoch.current++;
       activeRead.current?.abort();
       abort.abort();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialData only seeds the first render; the read restarts on company/version/reload only
   }, [companyId, versionId, reload]);
   /**
    * Re-reads the draft after a save so the view shows it, without blanking the page. The save is
@@ -267,8 +286,9 @@ export function KnowledgeViewer({
   async function refreshDraft(what?: "changes", userInitiated = false) {
     const forCompany = companyId;
     const current = viewNow.current;
-    if (current.companyId !== forCompany || current.versionId !== "draft")
+    if (current.companyId !== forCompany || current.versionId !== "draft") {
       return;
+    }
     const mine = ++readEpoch.current;
     const latest = () => readEpoch.current === mine;
     setRefreshing(true);
@@ -298,24 +318,34 @@ export function KnowledgeViewer({
           );
         }),
       ]);
-      if (!latest()) return;
+      if (!latest()) {
+        return;
+      }
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
       setGeneration(data.draftGeneration ?? null);
-      if (data.company.name) setName(data.company.name);
+      if (data.company.name) {
+        setName(data.company.name);
+      }
       setEntries(data.entries);
       setCitationContext(data.citationContext);
       setStaleDraft(null);
       setError("");
       setLoading(false);
     } catch (error) {
-      if (!latest()) return;
+      if (!latest()) {
+        return;
+      }
       setLoading(false);
       setStaleWhat(userInitiated ? staleWhatNow.current : (what ?? "links"));
       setStaleDraft((error as Error).message || "The draft could not be read.");
     } finally {
       clearTimeout(timer);
-      if (activeRead.current === read) activeRead.current = null;
-      if (latest()) setRefreshing(false);
+      if (activeRead.current === read) {
+        activeRead.current = null;
+      }
+      if (latest()) {
+        setRefreshing(false);
+      }
     }
   }
   async function reject(entry: ViewEntry) {
@@ -351,7 +381,7 @@ export function KnowledgeViewer({
         </Link>
         <button
           className="button button--quiet"
-          onClick={() => setHistory(entry)}
+          onClick={() => { setHistory(entry); }}
         >
           History
         </button>
@@ -403,23 +433,25 @@ export function KnowledgeViewer({
         },
       ).map((entry) => ({
         ...entry,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         provenance: entries.find((original) => original.id === entry.id)!
           .provenance,
       })),
     [companyId, entries, section, review, origin, coverage, query],
   );
-  if (!companyId)
+  if (!companyId) {
     return (
       <Notice error>
         Select a company from the dashboard.{" "}
         <Link href="/dashboard">View companies</Link>
       </Notice>
     );
+  }
   const profileMode = mode === "profile";
   const heading = (entry: ViewEntry) =>
     "name" in entry.content && entry.content.name
-      ? String(entry.content.name)
-      : CATEGORY_SPECS[entry.kind]!.label;
+      ? entry.content.name
+      : CATEGORY_SPECS[entry.kind].label;
   return (
     <div className="version-viewer knowledge-view">
       <h1 className="sr-only">{name}</h1>
@@ -430,9 +462,9 @@ export function KnowledgeViewer({
             aria-label="Switch company"
             value={companyId}
             onChange={(event) =>
-              window.location.assign(
+              { window.location.assign(
                 `/knowledge/view?companyId=${event.target.value}`,
-              )
+              ); }
             }
           >
             {!companies.some((company) => company.id === companyId) && (
@@ -468,7 +500,7 @@ export function KnowledgeViewer({
               <button
                 className="button"
                 key={item}
-                onClick={() => setMode(item)}
+                onClick={() => { setMode(item); }}
                 aria-pressed={mode === item}
               >
                 {labelOf(item)}
@@ -493,7 +525,7 @@ export function KnowledgeViewer({
               name="format"
               aria-label="Export format"
               value={exportFormat}
-              onChange={(event) => setExportFormat(event.target.value)}
+              onChange={(event) => { setExportFormat(event.target.value); }}
               disabled={loading || !versionId}
             >
               <option value="json">JSON (.json)</option>
@@ -539,7 +571,7 @@ export function KnowledgeViewer({
           {canEdit && versionId === "draft" && (
             <button
               className="button"
-              onClick={() => setReload((value) => value + 1)}
+              onClick={() => { setReload((value) => value + 1); }}
             >
               Reload latest draft
             </button>
@@ -590,8 +622,11 @@ export function KnowledgeViewer({
                 onSelectPerson={(id) => {
                   setPersonId(id);
                   const url = new URL(window.location.href);
-                  if (id) url.searchParams.set("person", id);
-                  else url.searchParams.delete("person");
+                  if (id) {
+                    url.searchParams.set("person", id);
+                  } else {
+                    url.searchParams.delete("person");
+                  }
                   window.history.replaceState(null, "", url);
                 }}
               />
@@ -624,13 +659,13 @@ export function KnowledgeViewer({
             aria-label="Search company knowledge"
             placeholder="Search this company's knowledge…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); }}
           />
           <select
             className="filter-input"
             aria-label="Filter section"
             value={section}
-            onChange={(e) => setSection(e.target.value)}
+            onChange={(e) => { setSection(e.target.value); }}
           >
             <option value="">All sections</option>
             {Object.entries(CATEGORY_SPECS).map(([key, spec]) => (
@@ -643,7 +678,7 @@ export function KnowledgeViewer({
             className="filter-input"
             aria-label="Filter origin"
             value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
+            onChange={(e) => { setOrigin(e.target.value); }}
           >
             <option value="">All origins</option>
             {["source_backed", "inferred", "generated", "user_provided"].map(
@@ -661,7 +696,7 @@ export function KnowledgeViewer({
             className="filter-input"
             aria-label="Filter review status"
             value={review}
-            onChange={(e) => setReview(e.target.value)}
+            onChange={(e) => { setReview(e.target.value); }}
           >
             <option value="">All review states</option>
             {["approved", "unreviewed", "rejected"].map((v) => (
@@ -674,7 +709,7 @@ export function KnowledgeViewer({
             className="filter-input"
             aria-label="Filter coverage"
             value={coverage}
-            onChange={(e) => setCoverage(e.target.value)}
+            onChange={(e) => { setCoverage(e.target.value); }}
           >
             <option value="">All coverage</option>
             {["found", "not_found", "not_checked", "partial", "conflict"].map(
@@ -713,10 +748,10 @@ export function KnowledgeViewer({
                 <tr key={e.id}>
                   <td>
                     {"name" in e.content
-                      ? String(e.content.name ?? "Unnamed")
-                      : CATEGORY_SPECS[e.kind]!.label}
+                      ? e.content.name ?? "Unnamed"
+                      : CATEGORY_SPECS[e.kind].label}
                   </td>
-                  <td>{CATEGORY_SPECS[e.kind]!.label}</td>
+                  <td>{CATEGORY_SPECS[e.kind].label}</td>
                   <td>
                     <StatusBadge value={e.review_status} />
                   </td>
@@ -751,10 +786,8 @@ export function KnowledgeViewer({
                   <div className="section-heading">
                     <h3>
                       {"name" in e.content
-                        ? String(
-                            e.content.name ?? CATEGORY_SPECS[e.kind]!.label,
-                          )
-                        : CATEGORY_SPECS[e.kind]!.label}
+                        ? (e.content.name ?? CATEGORY_SPECS[e.kind].label)
+                        : CATEGORY_SPECS[e.kind].label}
                     </h3>
                     <StatusBadge value={e.review_status} />
                   </div>
@@ -769,6 +802,7 @@ export function KnowledgeViewer({
                           .map(([key, value]) => (
                             <ValueView
                               key={key}
+                              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
                               value={value}
                               label={labelOf(key)}
                               path={`${root}/${key}`}
@@ -812,8 +846,8 @@ export function KnowledgeViewer({
           entryId={history.id}
           revision={history.current_revision}
           canEdit={canEdit && versionId === "draft"}
-          onClose={() => setHistory(null)}
-          onRestore={() => setReload((value) => value + 1)}
+          onClose={() => { setHistory(null); }}
+          onRestore={() => { setReload((value) => value + 1); }}
           onStale={() => {
             setHistory(null);
             setError(

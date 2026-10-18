@@ -77,7 +77,7 @@ describe("fixtures", () => {
   // guard
   it("there are four offerings; the fourth is unnamed, and ids are unique entry ids", () => {
     expect(OFFERINGS).toHaveLength(4);
-    expect(GIFT!.name).toBeNull();
+    expect(GIFT.name).toBeNull();
     expect(new Set(OFFERING_IDS).size).toBe(4);
   });
 });
@@ -103,10 +103,10 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     const { rows } = list(page);
     expect(rows).toHaveLength(4);
     const texts = rows.map((r) => textOf(page, r));
-    for (const [i, o] of [SUB!, WHOLESALE!, WORKSHOP!].entries()) {
+    for (const [i, o] of [SUB, WHOLESALE, WORKSHOP].entries()) {
       expect(texts[i], `row ${i + 1} shows the name`).toContain(o.name);
       expect(texts[i], `row ${i + 1} shows the type`).toContain(o.offering_type);
-      const afterName = texts[i]!.slice(texts[i]!.indexOf(o.name!) + o.name!.length);
+      const afterName = texts[i].slice(texts[i].indexOf(o.name!) + o.name!.length);
       expect(afterName, "the type follows the name").toContain(o.offering_type);
     }
   });
@@ -115,23 +115,25 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
   it("Edge case: an offering without a name is listed as 'Untitled offering N' (its position), with no 'null' for the missing type", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const { rows } = list(page);
-    expect(textOf(page, rows[3]!)).toContain("Untitled offering 4");
-    for (const r of rows) expect(textOf(page, r)).not.toMatch(BAD);
-    expect(textOf(page, rows[0]!)).not.toContain("Untitled offering");
+    expect(textOf(page, rows[3])).toContain("Untitled offering 4");
+    for (const r of rows) {
+      expect(textOf(page, r)).not.toMatch(BAD);
+    }
+    expect(textOf(page, rows[0])).not.toContain("Untitled offering");
   });
 
   // behavioural
   it("selects the first offering by default, and only that one", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     expect(selectedIndexes(page)).toEqual([0]);
-    expect(shown(page, detail(page), "Offering")).toContain(SUB!.name);
+    expect(shown(page, detail(page), "Offering")).toContain(SUB.name);
   });
 
   // behavioural
   it.each([1, 2, 3])("the offering URL parameter selects offering %i, and only that one", async (index) => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[index] });
     expect(selectedIndexes(page)).toEqual([index]);
-    expect(shown(page, detail(page), "Description")).toContain(OFFERINGS[index]!.description);
+    expect(shown(page, detail(page), "Description")).toContain(OFFERINGS[index].description);
   });
 
   // behavioural
@@ -140,14 +142,14 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     async (offering) => {
       const page = await openOfferings({ draft: offeringsDraft(), offering });
       expect(selectedIndexes(page)).toEqual([0]);
-      expect(shown(page, detail(page), "Offering")).toContain(SUB!.name);
+      expect(shown(page, detail(page), "Offering")).toContain(SUB.name);
       expect(page.html).not.toContain("<script>alert(1)");
     },
   );
 
   // behavioural
   it("Edge case: one offering is listed, selected and counted as 1", async () => {
-    const page = await openOfferings({ draft: offeringsDraft([SUB!]) });
+    const page = await openOfferings({ draft: offeringsDraft([SUB]) });
     expect(list(page).rows).toHaveLength(1);
     expect(selectedIndexes(page)).toEqual([0]);
     expect(countBadge(page, "Business Offerings", offeringsList(page)).count).toBe(1);
@@ -156,16 +158,16 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
   // behavioural
   it("Edge case: fourteen offerings are all listed, counted as 14, and the last can be selected", async () => {
     const many = Array.from({ length: 14 }, (_, i) => ({
-      ...SUB!,
+      ...SUB,
       id: `00000000-0000-4000-8000-00000ff${(0x700 + i).toString(16).padStart(5, "0")}`,
       name: `Roast plan ${String.fromCharCode(65 + i)}`,
       description: `Description of plan ${String.fromCharCode(65 + i)}.`,
       features: [],
     }));
-    const page = await openOfferings({ draft: offeringsDraft(many), offering: many[13]!.id });
+    const page = await openOfferings({ draft: offeringsDraft(many), offering: many[13].id });
     const { rows } = list(page);
     expect(rows).toHaveLength(14);
-    many.forEach((o, i) => expect(textOf(page, rows[i]!)).toContain(o.name));
+    many.forEach((o, i) => expect(textOf(page, rows[i])).toContain(o.name));
     expect(countBadge(page, "Business Offerings", offeringsList(page)).count).toBe(14);
     expect(selectedIndexes(page)).toEqual([13]);
     expect(shown(page, detail(page), "Description")).toContain("Description of plan N.");
@@ -175,9 +177,9 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
   it("Edge case: a very long offering name is kept whole in the list and in the detail", async () => {
     const name = `${"Extraordinarily long offering name ".repeat(12)}ends here`;
     const b = offeringsBusiness();
-    b.offerings[0]!.name = name;
+    b.offerings[0].name = name;
     const page = await openOfferings({ draft: draftFrom(b) });
-    expect(textOf(page, list(page).rows[0]!)).toContain(name);
+    expect(textOf(page, list(page).rows[0])).toContain(name);
     expect(shown(page, detail(page), "Offering")).toContain(name);
   });
 
@@ -185,9 +187,9 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
   it("Edge case: special characters in an offering name are text, never markup", async () => {
     const name = `Tea & <i>Toast</i> "Box" <img src=x onerror=alert(1)>`;
     const b = offeringsBusiness();
-    b.offerings[0]!.name = name;
+    b.offerings[0].name = name;
     const page = await openOfferings({ draft: draftFrom(b) });
-    expect(textOf(page, list(page).rows[0]!)).toContain(name);
+    expect(textOf(page, list(page).rows[0])).toContain(name);
     expect(page.$("i").length + page.$("img").length).toBe(0);
     expect(page.html).not.toContain("<img src=x");
   });
@@ -198,10 +200,12 @@ describe("C2 offering detail", () => {
   it("the first offering fills Offering, Type, Description, Key features, Cost and Pricing model", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const d = detail(page);
-    expect(shown(page, d, "Offering")).toContain(SUB!.name);
+    expect(shown(page, d, "Offering")).toContain(SUB.name);
     expect(shown(page, d, "Type")).toContain("Subscription");
-    expect(shown(page, d, "Description")).toContain(SUB!.description);
-    for (const f of SUB!.features) expect(shown(page, d, "Key features")).toContain(f.text);
+    expect(shown(page, d, "Description")).toContain(SUB.description);
+    for (const f of SUB.features) {
+      expect(shown(page, d, "Key features")).toContain(f.text);
+    }
     expect(shown(page, d, "Cost")).toContain("$18 per bag, billed monthly");
     expect(shown(page, d, "Pricing model")).toContain("Recurring subscription");
   });
@@ -220,15 +224,18 @@ describe("C2 offering detail", () => {
   it("the detail shows only the selected offering's values", async () => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[1] });
     const d = detail(page);
-    expect(shown(page, d, "Offering")).toContain(WHOLESALE!.name);
+    expect(shown(page, d, "Offering")).toContain(WHOLESALE.name);
     expect(shown(page, d, "Type")).toContain("Wholesale");
-    expect(shown(page, d, "Description")).toContain(WHOLESALE!.description);
-    for (const f of SECOND_OFFERING_FEATURES) expect(shown(page, d, "Key features")).toContain(f);
+    expect(shown(page, d, "Description")).toContain(WHOLESALE.description);
+    for (const f of SECOND_OFFERING_FEATURES) {
+      expect(shown(page, d, "Key features")).toContain(f);
+    }
     expect(shown(page, d, "Cost")).toContain("Contact us for wholesale pricing");
     expect(shown(page, d, "Pricing model")).toContain("Volume-tiered quote");
     const all = DETAIL.map((l) => shown(page, d, l)).join(" ");
-    for (const other of [SUB!.name, SUB!.description, "Roasted to order", "$18 per bag", "Recurring subscription"])
+    for (const other of [SUB.name, SUB.description, "Roasted to order", "$18 per bag", "Recurring subscription"]) {
       expect(all, `nothing of the first offering ("${other}") leaks into the detail`).not.toContain(other);
+    }
   });
 
   // behavioural
@@ -238,23 +245,27 @@ describe("C2 offering detail", () => {
     expect(shown(page, d, "Cost")).toContain("Free for subscribers");
     expect(addLinksOf(page, d["Key features"])).toEqual([`${ADD}&entryId=${OFFERING_IDS[2]}`]);
     expect(addLinksOf(page, d["Pricing model"])).toEqual([`${ADD}&entryId=${OFFERING_IDS[2]}`]);
-    for (const label of ["Offering", "Type", "Description", "Cost"] as const)
+    for (const label of ["Offering", "Type", "Description", "Cost"] as const) {
       expect(addLinksOf(page, d[label]), `card "${label}" is filled`).toEqual([]);
+    }
   });
 
   // behavioural
   it("Edge case: an offering with null pricing, no features, no name and no type shows empty states with + Add to the offering editor", async () => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[3] });
     const d = detail(page);
-    for (const label of ["Type", "Key features", "Cost", "Pricing model"] as const)
+    for (const label of ["Type", "Key features", "Cost", "Pricing model"] as const) {
       expect(addLinksOf(page, d[label]), `card "${label}"`).toEqual([`${ADD}&entryId=${OFFERING_IDS[3]}`]);
-    expect(shown(page, d, "Description")).toContain(GIFT!.description);
-    expect(addLinksOf(page, d["Description"])).toEqual([]);
+    }
+    expect(shown(page, d, "Description")).toContain(GIFT.description);
+    expect(addLinksOf(page, d.Description)).toEqual([]);
     // The name is missing: the card says so (fallback name or empty state) rather than printing nothing or 'null'.
     const name = shown(page, d, "Offering");
     expect(name).not.toMatch(BAD);
-    expect(/Untitled offering 4/.test(name) || addLinksOf(page, d["Offering"]).length === 1, "unnamed offering").toBe(true);
-    for (const label of DETAIL) expect(shown(page, d, label)).not.toMatch(BAD);
+    expect(name.includes('Untitled offering 4') || addLinksOf(page, d.Offering).length === 1, "unnamed offering").toBe(true);
+    for (const label of DETAIL) {
+      expect(shown(page, d, label)).not.toMatch(BAD);
+    }
   });
 
   // behavioural
@@ -265,23 +276,24 @@ describe("C2 offering detail", () => {
       .map((el) => `${norm(page.$(el).text())} ${page.$(el).attr("aria-label") ?? ""} ${page.$(el).attr("value") ?? ""}`);
     expect(actions.filter((a) => /delete/i.test(a))).toEqual([]);
     // positive anchor so this cannot pass on a page without the section
-    expect(shown(page, detail(page), "Offering")).toContain(SUB!.name);
+    expect(shown(page, detail(page), "Offering")).toContain(SUB.name);
   });
 
   // behavioural
   it("values are text: no form control sits in the detail", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const d = detail(page);
-    for (const label of DETAIL)
+    for (const label of DETAIL) {
       expect(page.$(d[label]).find("input,textarea,select").length, `card "${label}"`).toBe(0);
+    }
   });
 
   // behavioural
   it("Edge case: a very long description and many features are kept whole", async () => {
     const description = `${"Small-lot coffee roasted every single week. ".repeat(100)}The very last sentence.`;
     const b = offeringsBusiness();
-    b.offerings[0]!.description = description;
-    b.offerings[0]!.features = Array.from({ length: 12 }, (_, i) => ({
+    b.offerings[0].description = description;
+    b.offerings[0].features = Array.from({ length: 12 }, (_, i) => ({
       id: `00000000-0000-4000-8000-00000ff${(0x800 + i).toString(16).padStart(5, "0")}`,
       text: `Feature number ${String.fromCharCode(65 + i)}`,
     }));
@@ -289,13 +301,15 @@ describe("C2 offering detail", () => {
     const d = detail(page);
     expect(shown(page, d, "Description")).toContain("The very last sentence.");
     expect(shown(page, d, "Description").length).toBeGreaterThan(4000);
-    for (const f of b.offerings[0]!.features) expect(shown(page, d, "Key features")).toContain(f.text);
+    for (const f of b.offerings[0].features) {
+      expect(shown(page, d, "Key features")).toContain(f.text);
+    }
   });
 
   // behavioural (defensive: these pricing objects break PricingSchema, which requires `raw`)
   it("Edge case: without pricing wording, Cost shows amount, currency and billing interval", async () => {
     const b = offeringsBusiness();
-    Object.assign(b.offerings[0]!.pricing!, { raw: "", amount: "12.50", currency: "EUR", billing_interval: "year" });
+    Object.assign(b.offerings[0].pricing!, { raw: "", amount: "12.50", currency: "EUR", billing_interval: "year" });
     const page = await openOfferings({ draft: draftFrom(b) });
     const cost = shown(page, detail(page), "Cost");
     expect(cost).toContain("12.50");
@@ -309,7 +323,7 @@ describe("C2 offering detail", () => {
     ["free", /free/i],
   ] as const)("Edge case: a %s price without wording is shown as such", async (kind, expected) => {
     const b = offeringsBusiness();
-    Object.assign(b.offerings[0]!.pricing!, { raw: "", kind, amount: null, currency: null, billing_interval: null });
+    Object.assign(b.offerings[0].pricing!, { raw: "", kind, amount: null, currency: null, billing_interval: null });
     const page = await openOfferings({ draft: draftFrom(b) });
     expect(shown(page, detail(page), "Cost")).toMatch(expected);
   });
@@ -317,10 +331,10 @@ describe("C2 offering detail", () => {
   // behavioural (defensive, as above)
   it("Edge case: an unknown price (no wording, no amount) is an empty state", async () => {
     const b = offeringsBusiness();
-    Object.assign(b.offerings[0]!.pricing!, { raw: "", kind: "paid", amount: null, currency: null, billing_interval: null });
+    Object.assign(b.offerings[0].pricing!, { raw: "", kind: "paid", amount: null, currency: null, billing_interval: null });
     const page = await openOfferings({ draft: draftFrom(b) });
     const d = detail(page);
-    expect(addLinksOf(page, d["Cost"])).toEqual([`${ADD}&entryId=${OFFERING_IDS[0]}`]);
+    expect(addLinksOf(page, d.Cost)).toEqual([`${ADD}&entryId=${OFFERING_IDS[0]}`]);
     expect(shown(page, d, "Cost")).not.toMatch(BAD);
   });
 });
@@ -354,13 +368,15 @@ describe("C6 security", () => {
   // behavioural (defensive: a javascript: offering url breaks OfferingSchema's URL rule)
   it("Edge case: no link on the page uses a javascript:, data: or vbscript: URL", async () => {
     const b = offeringsBusiness();
-    b.offerings[0]!.url = HOSTILE.jsLogo;
-    b.offerings[1]!.url = HOSTILE.dataLogo;
+    b.offerings[0].url = HOSTILE.jsLogo;
+    b.offerings[1].url = HOSTILE.dataLogo;
     const page = await openOfferings({ draft: draftFrom(b) });
-    for (const a of page.$("[href],[src],[action],[formaction]").toArray())
-      for (const attr of ["href", "src", "action", "formaction"])
+    for (const a of page.$("[href],[src],[action],[formaction]").toArray()) {
+      for (const attr of ["href", "src", "action", "formaction"]) {
         expect(page.$(a).attr(attr) ?? "", `${attr} of <${(a as Element & { name: string }).name}>`).not.toMatch(/^\s*(javascript|data|vbscript):/i);
-    expect(shown(page, detail(page), "Offering")).toContain(SUB!.name);
+      }
+    }
+    expect(shown(page, detail(page), "Offering")).toContain(SUB.name);
   });
 
   // behavioural
@@ -390,7 +406,7 @@ describe("C7 draft, saved snapshot and evidence", () => {
     const draft = offeringsDraft();
     const fromDraft = region(await openOfferings({ draft, offering }));
     const fromSnapshot = region(await openOfferings({ snapshot: offeringsSnapshot(draft), offering }));
-    expect(fromDraft).toContain(offering ? OFFERINGS[OFFERING_IDS.indexOf(offering as never)]!.description! : SUB!.name!);
+    expect(fromDraft).toContain(offering ? OFFERINGS[OFFERING_IDS.indexOf(offering as never)].description! : SUB.name!);
     expect(fromSnapshot).toEqual(fromDraft);
   });
 
@@ -400,8 +416,9 @@ describe("C7 draft, saved snapshot and evidence", () => {
       const fx = evidenceFixture();
       const page = await openOfferings(source === "draft" ? { draft: fx.draft } : { snapshot: fx.snapshot() });
       const d = detail(page);
-      for (const label of DETAIL)
+      for (const label of DETAIL) {
         expect(triggers(page, d[label]).some((t) => t.startsWith("Sources")), `card "${label}" has a Sources control`).toBe(true);
+      }
     });
   });
 });

@@ -58,9 +58,12 @@ describe("C1 [behavioural] site_links is a singleton entry kind with an empty de
     for (const kind of [
       "company_foundation", "positioning", "market_and_customers", "branding_and_style",
       "online_presence", "key_person", "offering",
-    ]) expect(EntryKindSchema.safeParse(kind).success).toBe(true);
-    for (const bad of ["site_link", "SITE_LINKS", "sitelinks", "", "links"])
+    ]) {
+      expect(EntryKindSchema.safeParse(kind).success).toBe(true);
+    }
+    for (const bad of ["site_link", "SITE_LINKS", "sitelinks", "", "links"]) {
       expect(EntryKindSchema.safeParse(bad).success).toBe(false);
+    }
   });
 
   it("createEntryDefault('site_links') is exactly { links: [] } and is a fresh object each time", () => {
@@ -128,13 +131,16 @@ describe("C2 [behavioural] link item shape: { id: uuid, title, url: absolute htt
       "https://acme.example:8443/admin",
       "http://intranet/handbook",
       "https://sub.domain.acme.example/path/",
-    ]) expect(accepted(content(link(1, { url }))), url).toBe(true);
+    ]) {
+      expect(accepted(content(link(1, { url }))), url).toBe(true);
+    }
   });
 
   it("Edge case: relative and scheme-less URLs are rejected", () => {
     const valid = content(link(1));
-    for (const url of ["/about", "about", "../about", "./about.html", "//acme.example/about", "www.acme.example/about", "acme.example", "?q=1", "#top"])
+    for (const url of ["/about", "about", "../about", "./about.html", "//acme.example/about", "www.acme.example/about", "acme.example", "?q=1", "#top"]) {
       rejectsOnlyBecauseOfVariant(valid, content(link(1, { url })));
+    }
   });
 
   it("Edge case: non-http(s) schemes are rejected, in any letter case and with control-character tricks", () => {
@@ -154,40 +160,47 @@ describe("C2 [behavioural] link item shape: { id: uuid, title, url: absolute htt
       "vbscript:msgbox(1)",
       "ws://acme.example/socket",
       "blob:https://acme.example/uuid",
-    ]) rejectsOnlyBecauseOfVariant(valid, content(link(1, { url })));
+    ]) {
+      rejectsOnlyBecauseOfVariant(valid, content(link(1, { url })));
+    }
   });
 
   it("Edge case: empty, whitespace-only, host-less and non-string URLs are rejected", () => {
     const valid = content(link(1));
-    for (const url of ["", "   ", "http://", "https://", null, 42, undefined, ["https://acme.example"]])
+    for (const url of ["", "   ", "http://", "https://", null, 42, undefined, ["https://acme.example"]]) {
       rejectsOnlyBecauseOfVariant(valid, content(link(1, { url })));
+    }
   });
 
   it("Edge case (DECISION): a URL carrying credentials is rejected, like every other URL in the knowledge base", () => {
     // C2 says "absolute http(s) URL"; the repo's only definition of that (URLSchema in primitives.ts and
     // private.valid_url in SQL) is "absolute HTTP(S) URL without credentials", so userinfo must not be stored.
     const valid = content(link(1));
-    for (const url of ["https://user:secret@acme.example/admin", "http://admin@acme.example/"])
+    for (const url of ["https://user:secret@acme.example/admin", "http://admin@acme.example/"]) {
       rejectsOnlyBecauseOfVariant(valid, content(link(1, { url })));
+    }
   });
 
   it("Edge case: empty and whitespace-only titles are rejected; non-string or missing titles too", () => {
     const valid = content(link(1));
-    for (const title of ["", " ", "   ", "\t\n", null, 7, undefined, ["About"]])
+    for (const title of ["", " ", "   ", "\t\n", null, 7, undefined, ["About"]]) {
       rejectsOnlyBecauseOfVariant(valid, content(link(1, { title })));
+    }
     const { title: _removed, ...noTitle } = link(1);
     rejectsOnlyBecauseOfVariant(valid, content(noTitle));
   });
 
   it("Edge case: titles with surrounding whitespace, unicode or markup-looking text are ordinary text", () => {
-    for (const title of ["  About us  ", "Über uns", "公司简介", "Pricing <b>&</b> plans", "A".repeat(200)])
+    for (const title of ["  About us  ", "Über uns", "公司简介", "Pricing <b>&</b> plans", "A".repeat(200)]) {
       expect(accepted(content(link(1, { title }))), title).toBe(true);
+    }
   });
 
   it("Edge case: note must be a string or null (not a number, object or boolean)", () => {
     const valid = content(link(1));
-    for (const note of [5, true, {}, ["x"]])
+    for (const note of [5, true, {}, ["x"]]) {
       rejectsOnlyBecauseOfVariant(valid, content(link(1, { note })));
+    }
     expect(accepted(content(link(1, { note: "A free-text note" })))).toBe(true);
     expect(accepted(content(link(1, { note: null })))).toBe(true);
   });
@@ -196,8 +209,9 @@ describe("C2 [behavioural] link item shape: { id: uuid, title, url: absolute htt
     const valid = content(link(1));
     const { id: _id, ...noId } = link(1);
     rejectsOnlyBecauseOfVariant(valid, content(noId));
-    for (const bad of [null, "", "not-a-uuid", "12345", 7, "a2000000-0000-4000-8000-00000000000"])
+    for (const bad of [null, "", "not-a-uuid", "12345", 7, "a2000000-0000-4000-8000-00000000000"]) {
       rejectsOnlyBecauseOfVariant(valid, content(link(1, { id: bad })));
+    }
   });
 
   it("Edge case: duplicate ids are rejected, even when everything else differs", () => {
@@ -221,14 +235,16 @@ describe("C2 [behavioural] link item shape: { id: uuid, title, url: absolute htt
   it("Edge case: entry content must be an object with a links array", () => {
     const valid = content(link(1));
     expect(accepted(valid)).toBe(true);
-    for (const bad of [null, undefined, [], "links", 3, {}, { links: null }, { links: link(1) }, { links: "x" }, { items: [link(1)] }])
+    for (const bad of [null, undefined, [], "links", 3, {}, { links: null }, { links: link(1) }, { links: "x" }, { items: [link(1)] }]) {
       expect(accepted(bad), JSON.stringify(bad)).toBe(false);
+    }
   });
 
   it("Edge case: items that are not objects are rejected", () => {
     const valid = content(link(1));
-    for (const item of [null, "https://acme.example", 5, []])
+    for (const item of [null, "https://acme.example", 5, []]) {
       rejectsOnlyBecauseOfVariant(valid, content(item));
+    }
   });
 });
 
@@ -252,9 +268,9 @@ describe("C3 [behavioural + non-regression] database contract inputs", () => {
   it("[behavioural] a NEW migration (numbered after 0016) allows knowledge_entries.kind = 'site_links'", () => {
     const added = migrations.filter((name) => Number.parseInt(name.split("_")[0], 10) > 16);
     expect(added.length).toBeGreaterThan(0);
-    const mentioning = added.filter((name) => /site_links/.test(read(`supabase/migrations/${name}`)));
+    const mentioning = added.filter((name) => read(`supabase/migrations/${name}`).includes('site_links'));
     expect(mentioning.length).toBeGreaterThan(0);
-    expect(mentioning.some((name) => /knowledge_entries/.test(read(`supabase/migrations/${name}`)))).toBe(true);
+    expect(mentioning.some((name) => read(`supabase/migrations/${name}`).includes('knowledge_entries'))).toBe(true);
   });
 
   it("[non-regression] already-applied migrations 0001 (baseline CHECK) and 0009 (first import) are byte-identical", () => {
@@ -302,7 +318,11 @@ describe("C4 [behavioural] field registry, provenance and coverage accept /site_
 
   it("the registry does not leak site_links paths onto other kinds", () => {
     expect(fieldForTarget("/online_presence/links")).toBeUndefined();
-    for (const item of FIELD_REGISTRY) if (item.path.startsWith("/site_links/")) expect(item.kind as string).toBe("site_links");
+    for (const item of FIELD_REGISTRY) {
+      if (item.path.startsWith("/site_links/")) {
+        expect(item.kind as string).toBe("site_links");
+      }
+    }
   });
 
   it("an empty business requires coverage for /site_links/links exactly once (DECISION: every registry field is coverage-required)", () => {
@@ -323,25 +343,27 @@ describe("C6 [behavioural] CATEGORY_SPECS.site_links lets the editor edit the li
   it("has the Site links label and a description/icon like every other category", () => {
     const spec = CATEGORY_SPECS.site_links;
     expect(spec).toBeDefined();
-    expect(spec!.label).toBe("Site links");
-    expect(typeof spec!.description).toBe("string");
-    expect(spec!.description.length).toBeGreaterThan(0);
-    expect(typeof spec!.icon).toBe("string");
+    expect(spec.label).toBe("Site links");
+    expect(typeof spec.description).toBe("string");
+    expect(spec.description.length).toBeGreaterThan(0);
+    expect(typeof spec.icon).toBe("string");
   });
 
   it("edits the `links` list through item fields title, url and note (and nothing else)", () => {
     const links = CATEGORY_SPECS.site_links?.fields.links;
     expect(links).toBeDefined();
-    expect(Object.keys(CATEGORY_SPECS.site_links!.fields)).toEqual(["links"]);
-    expect(links!.items).toBeDefined();
-    expect(Object.keys(links!.items!.fields ?? {}).sort()).toEqual(["note", "title", "url"]);
+    expect(Object.keys(CATEGORY_SPECS.site_links.fields)).toEqual(["links"]);
+    expect(links.items).toBeDefined();
+    expect(Object.keys(links.items!.fields ?? {}).sort()).toEqual(["note", "title", "url"]);
   });
 
   it("the editable field names match the content contract", () => {
     const sample = link(1);
     const specFields = Object.keys(CATEGORY_SPECS.site_links?.fields.links?.items?.fields ?? {});
     expect(specFields.length).toBeGreaterThan(0);
-    for (const name of specFields) expect(Object.keys(sample)).toContain(name);
+    for (const name of specFields) {
+      expect(Object.keys(sample)).toContain(name);
+    }
   });
 
   it("[non-regression] existing categories keep their labels", () => {

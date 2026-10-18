@@ -50,7 +50,7 @@ const business = () => buildEvidence({ business: refillLists }).business;
 const cardEl = (page: Page, section: LockedSection, title: string) => card(page, title, titlesOf(section))!;
 /** The list item (chip, row) showing `text`. */
 const itemOf = (page: Page, el: ReturnType<typeof cardEl>, text: string) =>
-  page.$(deepestContaining(page, el, text)[0]!).closest("li");
+  page.$(deepestContaining(page, el, text)[0]).closest("li");
 const markers = (page: Page, li: ReturnType<Page["$"]>) =>
   li.children(".citation-popover").find("button").toArray().map((b) => norm(page.$(b).text()));
 /** Every item of the card that carries its own marker, by its shown text. */
@@ -68,11 +68,11 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
     "%s: only the item whose own claim is non-source gets a marker",
     async (title, m) => {
       const page = await open[source](m.section, { marks: [markOf(m, 1)] });
-      const texts = SHOWN[title]!(business());
+      const texts = SHOWN[title](business());
       expect(texts.length).toBeGreaterThan(1);
       const el = cardEl(page, m.section, title);
       expect(markedItems(page, el, texts)).toEqual([texts[1]]);
-      expect(markers(page, itemOf(page, el, texts[1]!))).toEqual([LABEL[m.origin]]);
+      expect(markers(page, itemOf(page, el, texts[1]))).toEqual([LABEL[m.origin]]);
       // The field-level control names the origin too.
       expect(headerLabel(page, m.section, title)).toContain(m.label);
     },
@@ -82,7 +82,7 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
   it("4 buyers, inferred only on buyer 2: the marker sits on that chip alone", async () => {
     const m = ITEM_MARKS.find((x) => x.card === "Buyers")!;
     const page = await open[source]("Customers & Industry", { marks: [markOf(m, 1)] });
-    const texts = SHOWN.Buyers!(business());
+    const texts = SHOWN.Buyers(business());
     expect(texts).toHaveLength(4);
     const el = cardEl(page, "Customers & Industry", "Buyers");
     expect(texts.map((t) => markers(page, itemOf(page, el, t)))).toEqual([[], [LABEL.inferred], [], []]);
@@ -93,7 +93,7 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
     const m = ITEM_MARKS.find((x) => x.card === "Buyers")!;
     const user: Mark = { target: markOf(m, 0).target, origin: "user_provided" };
     const page = await open[source]("Customers & Industry", { marks: [user, markOf(m, 1)] });
-    const texts = SHOWN.Buyers!(business());
+    const texts = SHOWN.Buyers(business());
     const el = cardEl(page, "Customers & Industry", "Buyers");
     expect(texts.map((t) => markers(page, itemOf(page, el, t)))).toEqual([[LABEL.user_provided], [LABEL.inferred], [], []]);
     const label = headerLabel(page, "Customers & Industry", "Buyers");
@@ -119,7 +119,7 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
       );
     };
     const page = await open[source]("Sales & Marketing", { business: four, marks: [user, markOf(m, 1)] });
-    const texts = SHOWN["Ideal persona"]!(buildEvidence({ business: four }).business);
+    const texts = SHOWN["Ideal persona"](buildEvidence({ business: four }).business);
     expect(texts).toHaveLength(4);
     const el = cardEl(page, "Sales & Marketing", "Ideal persona");
     expect(texts.map((t) => markers(page, itemOf(page, el, t)))).toEqual([[LABEL.user_provided], [LABEL.generated], [], []]);
@@ -134,7 +134,7 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
     const sourced: Mark = { target: markOf(m, 2).target, origin: "source_backed" };
     const page = await open[source]("Customers & Industry", { marks: [sourced] });
     const el = cardEl(page, "Customers & Industry", "Buyers");
-    expect(markedItems(page, el, SHOWN.Buyers!(business()))).toEqual([]);
+    expect(markedItems(page, el, SHOWN.Buyers(business()))).toEqual([]);
     expect(header(page, el)).toEqual(["Sources ⓘ"]);
   });
 });

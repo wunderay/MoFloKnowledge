@@ -1,7 +1,7 @@
 import registry from "./field-registry.json";
 import type { EntryKind } from "./business";
 import type { Origin } from "./provenance";
-export type FieldDefinition = {
+export interface FieldDefinition {
   path: string;
   kind: EntryKind;
   field: string;
@@ -9,7 +9,7 @@ export type FieldDefinition = {
   default: unknown;
   allowedOrigins: Origin[];
   coverageRequired: boolean;
-};
+}
 export const FIELD_REGISTRY = registry as FieldDefinition[];
 export function fieldForTarget(path: string): FieldDefinition | undefined {
   return FIELD_REGISTRY.find((field) => {
@@ -19,20 +19,26 @@ export function fieldForTarget(path: string): FieldDefinition | undefined {
 }
 export function allowedOriginsForTarget(path: string): Origin[] {
   const field = fieldForTarget(path);
-  if (!field) return [];
+  if (!field) {
+    return [];
+  }
   // Nested observations and interpreted purposes have distinct permissions (plan coverage matrix).
   if (
     /\/(?:ctas|funnels)\//.test(path) &&
     !path.endsWith("/purpose") &&
     !path.endsWith("/name")
-  )
+  ) {
     return ["source_backed", "user_provided"];
-  if (/\/fonts\//.test(path) && !path.endsWith("/apparent_use"))
+  }
+  if (path.includes('/fonts/') && !path.endsWith("/apparent_use")) {
     return ["source_backed", "user_provided"];
-  if (/\/brand_colors\//.test(path) && !path.endsWith("/apparent_role"))
+  }
+  if (path.includes('/brand_colors/') && !path.endsWith("/apparent_role")) {
     return ["source_backed", "user_provided"];
-  if (/\/logos\//.test(path) && !path.endsWith("/variant"))
+  }
+  if (path.includes('/logos/') && !path.endsWith("/variant")) {
     return ["source_backed", "user_provided"];
+  }
   return field.allowedOrigins;
 }
 export function requiredCoverageTargets(
@@ -43,13 +49,22 @@ export function requiredCoverageTargets(
     if (field.kind === "key_person" || field.kind === "offering") {
       const key = field.kind === "key_person" ? "key_people" : "offerings";
       const items = business[key];
-      if (!Array.isArray(items)) continue;
+      if (!Array.isArray(items)) {
+        continue;
+      }
       if (items.length === 0) {
-        if (!result.includes(`/${key}`)) result.push(`/${key}`);
-      } else
-        for (const item of items)
+        if (!result.includes(`/${key}`)) {
+          result.push(`/${key}`);
+        }
+      } else {
+        for (const item of items) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
           result.push(field.path.replace("@id", `@${item.id}`));
-    } else if (Object.hasOwn(business, field.kind)) result.push(field.path);
+        }
+      }
+    } else if (Object.hasOwn(business, field.kind)) {
+      result.push(field.path);
+    }
   }
   return result;
 }

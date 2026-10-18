@@ -20,7 +20,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, vi } from "vitest";
 import { parse, norm, type Page } from "./knowledge-view-dom";
 import type { Draft } from "./knowledge-view-fixtures";
-import type { KnowledgeBaseExport } from "../../src/contracts";
 
 const shared = vi.hoisted(() => ({
   dispatcher: null as null | Record<string, (...args: any[]) => any>,
@@ -45,8 +44,8 @@ vi.mock("react", async (original) => {
     names.map((name) => [
       name,
       (...args: unknown[]) =>
-        shared.dispatcher && shared.dispatcher[name]
-          ? shared.dispatcher[name]!(...args)
+        shared.dispatcher?.[name]
+          ? shared.dispatcher[name](...args)
           : (base[name] as (...a: unknown[]) => unknown)(...args),
     ]),
   );
@@ -115,28 +114,32 @@ const PROVIDED = new Set(["@/lib/supabase/server", "@/server/read-model", "@/ser
 for (const file of sourceFiles(SRC)) {
   const id = "@/" + relative(SRC, file).replace(/\.(ts|tsx)$/, "").split(sep).join("/");
   const ids = id.endsWith("/index") ? [id, id.slice(0, -"/index".length)] : [id];
-  for (const each of ids)
-    if (!PROVIDED.has(each)) vi.doMock(each, () => import(/* @vite-ignore */ file));
+  for (const each of ids) {
+    if (!PROVIDED.has(each)) {
+      vi.doMock(each, () => import(/* @vite-ignore */ file));
+    }
+  }
 }
 
 // ---- the rendered tree --------------------------------------------------------------------------
-export type HNode = {
+export interface HNode {
   tag: string;
   props: Record<string, any>;
   children: (HNode | string)[];
   path: string;
   parent: HNode | null;
-};
-type Inst = { hooks: any[]; cursor: number };
-type EffectRec = { create: () => void | (() => void); deps?: unknown[]; cleanup?: void | (() => void) };
-export type FakeNode = {
+}
+interface Inst { hooks: any[]; cursor: number }
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- mirrors React's EffectCallback type
+interface EffectRec { create: () => void | (() => void); deps?: unknown[]; cleanup?: void | (() => void) }
+export interface FakeNode {
   path: string;
   focusCalls: number;
   showModalCalls: number;
   closeCalls: number;
   /** The selection last set on a text control (setSelectionRange / selectionStart / select()), or null. */
   selection: [number, number] | null;
-};
+}
 
 const sym = (name: string) => Symbol.for(name);
 const FRAGMENT = sym("react.fragment");
@@ -181,11 +184,15 @@ class App {
 
   markDirty() {
     this.dirty = true;
-    if (this.queued) return;
+    if (this.queued) {
+      return;
+    }
     this.queued = true;
     queueMicrotask(() => {
       this.queued = false;
-      if (!this.dirty) return;
+      if (!this.dirty) {
+        return;
+      }
       try {
         this.render();
       } catch (error) {
@@ -217,19 +224,33 @@ class App {
         }
         this.tree = root;
         for (const [path, inst] of [...this.insts]) {
-          if (this.visited.has(path)) continue;
-          for (const hook of inst.hooks) if (hook && typeof hook === "object" && "create" in hook) (hook as EffectRec).cleanup?.();
+          if (this.visited.has(path)) {
+            continue;
+          }
+          for (const hook of inst.hooks) {
+            if (hook && typeof hook === "object" && "create" in hook) {
+              (hook as EffectRec).cleanup?.();
+            }
+          }
           this.insts.delete(path);
         }
         const present = new Set(descendants(root).map((n) => n.path));
-        for (const path of [...this.fakes.keys()]) if (!present.has(path)) this.fakes.delete(path);
+        for (const path of [...this.fakes.keys()]) {
+          if (!present.has(path)) {
+            this.fakes.delete(path);
+          }
+        }
         const batch = this.pending;
         for (const rec of batch) {
           rec.cleanup?.();
           rec.cleanup = undefined;
         }
-        for (const rec of batch) rec.cleanup = rec.create();
-        if (!this.dirty) break;
+        for (const rec of batch) {
+          rec.cleanup = rec.create();
+        }
+        if (!this.dirty) {
+          break;
+        }
       }
     } finally {
       this.rendering = false;
@@ -237,10 +258,13 @@ class App {
   }
 
   flushSync() {
-    if (this.dirty) this.render();
+    if (this.dirty) {
+      this.render();
+    }
     if (this.error) {
       const error = this.error;
       this.error = null;
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- rethrows whatever the rendered component threw
       throw error;
     }
   }
@@ -248,10 +272,13 @@ class App {
   async settle(rounds = 8) {
     for (let i = 0; i < rounds; i++) {
       await new Promise((resolve) => setTimeout(resolve, 0));
-      if (this.dirty) this.render();
+      if (this.dirty) {
+        this.render();
+      }
       if (this.error) {
         const error = this.error;
         this.error = null;
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- rethrows whatever the rendered component threw
         throw error;
       }
     }
@@ -264,7 +291,9 @@ class App {
   }
 
   expandChild(child: any, parent: HNode, path: string) {
-    if (child === null || child === undefined || typeof child === "boolean") return;
+    if (child === null || child === undefined || typeof child === "boolean") {
+      return;
+    }
     if (typeof child === "string" || typeof child === "number") {
       parent.children.push(String(child));
       return;
@@ -273,18 +302,22 @@ class App {
       child.forEach((item, index) => this.expandChild(item, parent, `${path}[${index}]`));
       return;
     }
-    if ((child as any)?.$$typeof === sym("react.portal")) {
-      this.expandChildren((child as any).children, parent, `${path}/portal`);
+    if ((child)?.$$typeof === sym("react.portal")) {
+      this.expandChildren((child).children, parent, `${path}/portal`);
       return;
     }
-    if (!React.isValidElement(child)) return;
+    if (!React.isValidElement(child)) {
+      return;
+    }
     const { type, props } = child as any;
     const key = (child as any).key;
     const here = `${path}/${key !== null && key !== undefined ? `k${key}` : ""}${typeName(type)}`;
     if (typeof type === "string") {
       const { children: kids, ref, ...rest } = props as Record<string, any>;
       const node: HNode = { tag: type, props: rest, children: [], path: here, parent };
-      if (ref) this.attachRef(ref, node);
+      if (ref) {
+        this.attachRef(ref, node);
+      }
       parent.children.push(node);
       this.expandChildren(kids, node, here);
       return;
@@ -336,7 +369,9 @@ class App {
     } finally {
       this.current = previous;
     }
-    if (out && typeof (out as any).then === "function") return;
+    if (out && typeof (out as any).then === "function") {
+      return;
+    }
     this.expandChildren(out, parent, `${path}>`);
   }
 
@@ -346,6 +381,7 @@ class App {
     let entry = this.fakes.get(node.path);
     if (!entry) {
       const meta: FakeNode = { path: node.path, focusCalls: 0, showModalCalls: 0, closeCalls: 0, selection: null };
+      // eslint-disable-next-line @typescript-eslint/no-this-alias -- test double needs the outer instance inside nested function scopes
       const app = this;
       // A text control's value as the browser holds it: what the user typed (see View.type), else the rendered value.
       let typed: string | undefined;
@@ -354,7 +390,7 @@ class App {
       const currentValue = () => {
         const props = rendered();
         // A controlled control takes the value its component renders next, as React does.
-        if (props && props.value !== undefined && !Object.is(props.value, seen)) {
+        if (props?.value !== undefined && !Object.is(props.value, seen)) {
           seen = props.value;
           typed = undefined;
         }
@@ -365,7 +401,7 @@ class App {
           return currentValue();
         },
         set value(next: string) {
-          typed = String(next);
+          typed = next;
         },
         get selectionStart() {
           return meta.selection?.[0] ?? currentValue().length;
@@ -386,7 +422,9 @@ class App {
           meta.selection = [0, currentValue().length];
         },
         blur: () => {
-          if (shared.focused === meta.path) shared.focused = null;
+          if (shared.focused === meta.path) {
+            shared.focused = null;
+          }
         },
         setRangeText: () => {},
         tagName: node.tag.toUpperCase(),
@@ -429,9 +467,14 @@ class App {
   attachRef(ref: any, node: HNode) {
     const fresh = !this.fakes.has(node.path);
     const entry = this.fakeFor(node);
-    if (!fresh) return;
-    if (typeof ref === "function") ref(entry.node);
-    else ref.current = entry.node;
+    if (!fresh) {
+      return;
+    }
+    if (typeof ref === "function") {
+      ref(entry.node);
+    } else {
+      ref.current = entry.node;
+    }
   }
 
   /** Elements matching a simple selector (#id, tag, [attr], [attr=value]), for document.querySelector. */
@@ -439,25 +482,36 @@ class App {
     const all = descendants(this.tree);
     const sel = selector.trim();
     let m: RegExpExecArray | null;
-    if ((m = /^#([\w:-]+)$/.exec(sel))) return all.filter((n) => n.props.id === m![1]);
-    if ((m = /^\[([\w-]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(sel)))
-      return all.filter((n) => (m![2] === undefined ? n.props[m![1]!] !== undefined : String(n.props[m![1]!]) === m![2]));
-    if (/^[a-z][a-z0-9]*$/i.test(sel)) return all.filter((n) => n.tag === sel.toLowerCase());
+    if ((m = /^#([\w:-]+)$/.exec(sel))) {
+      return all.filter((n) => n.props.id === m![1]);
+    }
+    if ((m = /^\[([\w-]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(sel))) {
+      return all.filter((n) => (m![2] === undefined ? n.props[m![1]] !== undefined : String(n.props[m![1]]) === m![2]));
+    }
+    if (/^[a-z][a-z0-9]*$/i.test(sel)) {
+      return all.filter((n) => n.tag === sel.toLowerCase());
+    }
     return [];
   }
 
   // -- hooks -----------------------------------------------------------------------------------
   dispatcher: Record<string, (...args: any[]) => any> = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- test double needs the outer instance inside nested function scopes
     const app = this;
     const slot = <T,>(init: () => T): [T, number, Inst] => {
       const inst = app.current;
-      if (!inst) throw new Error("A hook was called outside a component render");
+      if (!inst) {
+        throw new Error("A hook was called outside a component render");
+      }
       const index = inst.cursor++;
-      if (!(index in inst.hooks)) inst.hooks[index] = init();
+      if (!(index in inst.hooks)) {
+        inst.hooks[index] = init();
+      }
       return [inst.hooks[index] as T, index, inst];
     };
     const same = (a?: unknown[], b?: unknown[]) =>
       !!a && !!b && a.length === b.length && a.every((value, i) => Object.is(value, b[i]));
+    // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- mirrors React's EffectCallback type
     const effect = (create: () => void | (() => void), deps?: unknown[]) => {
       const [rec, , inst] = slot<EffectRec & { first: boolean }>(() => ({ create, deps: undefined, first: true }));
       if (rec.first || !deps || !same(deps, rec.deps)) {
@@ -475,7 +529,9 @@ class App {
           const c: any = { value: typeof initial === "function" ? (initial as () => unknown)() : initial };
           c.set = (next: unknown) => {
             const value = typeof next === "function" ? (next as (v: unknown) => unknown)(c.value) : next;
-            if (Object.is(value, c.value)) return;
+            if (Object.is(value, c.value)) {
+              return;
+            }
             c.value = value;
             app.markDirty();
           };
@@ -488,7 +544,9 @@ class App {
           const c: any = { value: init ? init(initial) : initial };
           c.dispatch = (action: unknown) => {
             const value = c.reducer(c.value, action);
-            if (Object.is(value, c.value)) return;
+            if (Object.is(value, c.value)) {
+              return;
+            }
             c.value = value;
             app.markDirty();
           };
@@ -521,7 +579,11 @@ class App {
       useInsertionEffect: effect,
       useId: () => slot(() => `:t${++app.idCounter}:`)[0],
       useContext: (context: any) => {
-        for (let i = app.ctx.length - 1; i >= 0; i--) if (app.ctx[i]![0] === context) return app.ctx[i]![1];
+        for (let i = app.ctx.length - 1; i >= 0; i--) {
+          if (app.ctx[i][0] === context) {
+            return app.ctx[i][1];
+          }
+        }
         return context._currentValue;
       },
       useImperativeHandle: noop,
@@ -535,8 +597,8 @@ class App {
 }
 
 // ---- the fake company API -------------------------------------------------------------------------
-export type Req = { method: string; path: string; body: any };
-type Failure = { status: number; message: string; code?: string };
+export interface Req { method: string; path: string; body: any }
+interface Failure { status: number; message: string; code?: string }
 const IS_WRITE = (method: string) => method !== "GET";
 
 export class FakeServer {
@@ -551,7 +613,7 @@ export class FakeServer {
   /** While set, writes wait for `release()` before they are answered. */
   gate: { promise: Promise<void>; release: () => void } | null = null;
 
-  constructor(init: { draft?: Draft; snapshot?: KnowledgeBaseExport | unknown; versions?: unknown[] }) {
+  constructor(init: { draft?: Draft; snapshot?: unknown; versions?: unknown[] }) {
     this.draft = init.draft ? structuredClone(init.draft) : null;
     this.snapshot = init.snapshot ? structuredClone(init.snapshot) : null;
     this.versions = (init.versions as any[]) ?? [];
@@ -576,7 +638,7 @@ export class FakeServer {
   /** Writes that create a site_links entry or revise an entry, in the order they were sent. */
   writesTo(kind: "entries" | "revisions"): Req[] {
     return this.writes.filter((r) =>
-      kind === "entries" ? /\/entries$/.test(r.path) : /\/entries\/[^/]+\/revisions$/.test(r.path),
+      kind === "entries" ? r.path.endsWith("/entries") : /\/entries\/[^/]+\/revisions$/.test(r.path),
     );
   }
 
@@ -587,26 +649,35 @@ export class FakeServer {
 
   fetch = async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.pathname + input.search : String((input as any)?.url ?? input);
-    const path = url.split("?")[0]!;
+    const path = url.split("?")[0];
     const method = (init?.method ?? "GET").toUpperCase();
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
     this.requests.push({ method, path, body });
-    if (IS_WRITE(method) && this.gate) await this.gate.promise;
-    if (method === "GET" && path === "/api/companies")
+    if (IS_WRITE(method) && this.gate) {
+      await this.gate.promise;
+    }
+    if (method === "GET" && path === "/api/companies") {
       return this.reply(200, { companies: [{ id: this.draft?.company.id ?? "x", name: this.draft?.company.name ?? "x" }] });
-    if (method === "GET" && /\/versions$/.test(path)) return this.reply(200, this.versions);
-    if (method === "GET" && /\/draft$/.test(path)) return this.reply(200, structuredClone(this.draft));
-    if (method === "GET" && /\/sources$/.test(path)) {
-      if (this.sourcesFailure)
+    }
+    if (method === "GET" && path.endsWith("/versions")) {
+      return this.reply(200, this.versions);
+    }
+    if (method === "GET" && path.endsWith("/draft")) {
+      return this.reply(200, structuredClone(this.draft));
+    }
+    if (method === "GET" && path.endsWith("/sources")) {
+      if (this.sourcesFailure) {
         return this.reply(this.sourcesFailure.status, null, { code: this.sourcesFailure.code ?? "unavailable", message: this.sourcesFailure.message });
+      }
       return this.reply(200, structuredClone(this.sources));
     }
-    if (IS_WRITE(method) && this.writeFailure)
+    if (IS_WRITE(method) && this.writeFailure) {
       return this.reply(this.writeFailure.status, null, {
         code: this.writeFailure.code ?? (this.writeFailure.status === 409 ? "conflict" : "unavailable"),
         message: this.writeFailure.message,
         details: this.writeFailure.status === 409 ? { currentRevision: 99 } : undefined,
       });
+    }
     let match = /^\/api\/companies\/([^/]+)\/entries$/.exec(path);
     if (method === "POST" && match && this.draft) {
       const id = body.content && "id" in body.content ? body.content.id : body.requestId;
@@ -633,10 +704,13 @@ export class FakeServer {
     }
     match = /^\/api\/companies\/([^/]+)\/entries\/([^/]+)\/revisions$/.exec(path);
     if (method === "POST" && match && this.draft) {
-      const entry = this.draft.entries.find((e: any) => e.id === decodeURIComponent(match![2]!));
-      if (!entry) return this.reply(404, null, { code: "unavailable", message: "Resource unavailable." });
-      if (body.expectedRevision !== entry.current_revision)
+      const entry = this.draft.entries.find((e: any) => e.id === decodeURIComponent(match[2]));
+      if (!entry) {
+        return this.reply(404, null, { code: "unavailable", message: "Resource unavailable." });
+      }
+      if (body.expectedRevision !== entry.current_revision) {
         return this.reply(409, null, { code: "conflict", message: "The saved revision changed.", details: { currentRevision: entry.current_revision } });
+      }
       entry.revision = entry.current_revision = entry.current_revision + 1;
       entry.content = body.content;
       entry.provenance = body.provenance;
@@ -652,7 +726,9 @@ function installGlobals(app: App, server: FakeServer, href: string) {
   const listeners = app.documentListeners;
   const eventTarget = {
     addEventListener: (type: string, fn: (e: any) => void) => {
-      if (!listeners.has(type)) listeners.set(type, new Set());
+      if (!listeners.has(type)) {
+        listeners.set(type, new Set());
+      }
       listeners.get(type)!.add(fn);
     },
     removeEventListener: (type: string, fn: (e: any) => void) => listeners.get(type)?.delete(fn),
@@ -708,8 +784,12 @@ afterEach(() => {
 
 // ---- queries over the rendered tree ----------------------------------------------------------------------
 export const textOfNode = (n: HNode | string): string => {
-  if (typeof n === "string") return n;
-  if (n.props["aria-hidden"] === true || n.props["aria-hidden"] === "true") return "";
+  if (typeof n === "string") {
+    return n;
+  }
+  if (n.props["aria-hidden"] === true || n.props["aria-hidden"] === "true") {
+    return "";
+  }
   const parts = n.children.map(textOfNode);
   return parts.join(n.tag === "#root" ? " " : isInline(n.tag) ? "" : " ");
 };
@@ -718,27 +798,32 @@ const isInline = (tag: string) => ["span", "a", "strong", "em", "b", "i", "small
 export function descendants(n: HNode): HNode[] {
   const out: HNode[] = [];
   const walk = (node: HNode) => {
-    for (const child of node.children)
+    for (const child of node.children) {
       if (typeof child !== "string") {
         out.push(child);
         walk(child);
       }
+    }
   };
   walk(n);
   return out;
 }
 export const ancestorsOf = (n: HNode): HNode[] => {
   const out: HNode[] = [];
-  for (let p = n.parent; p; p = p.parent) out.push(p);
+  for (let p = n.parent; p; p = p.parent) {
+    out.push(p);
+  }
   return out;
 };
 const hiddenProp = (n: HNode) =>
   n.props.hidden === true || n.props.hidden === "" || n.props["aria-hidden"] === true || n.props["aria-hidden"] === "true" ||
-  (n.props.style && typeof n.props.style === "object" && (n.props.style as any).display === "none");
+  (n.props.style && typeof n.props.style === "object" && (n.props.style).display === "none");
 export const isHidden = (n: HNode) => hiddenProp(n) || ancestorsOf(n).some(hiddenProp);
 
 export function roleOf(n: HNode): string {
-  if (n.props.role) return String(n.props.role);
+  if (n.props.role) {
+    return String(n.props.role);
+  }
   switch (n.tag) {
     case "a": return n.props.href !== undefined ? "link" : "";
     case "button": return "button";
@@ -770,7 +855,9 @@ export const SECTION_IDS: Record<SectionLabel, string> = {
 };
 
 const toReact = (n: HNode | string): React.ReactNode => {
-  if (typeof n === "string") return n;
+  if (typeof n === "string") {
+    return n;
+  }
   const { key: _key, ...props } = n.props;
   void _key;
   return React.createElement(n.tag === "#root" ? React.Fragment : n.tag, n.tag === "#root" ? null : props, ...n.children.map(toReact));
@@ -816,7 +903,9 @@ export class View {
   /** Accessible name of an element: aria-label, aria-labelledby, an associated or wrapping label, then its text. */
   nameOf(n: HNode): string {
     const label = n.props["aria-label"];
-    if (typeof label === "string" && label.trim()) return norm(label);
+    if (typeof label === "string" && label.trim()) {
+      return norm(label);
+    }
     const by = n.props["aria-labelledby"];
     if (typeof by === "string") {
       const all = this.all();
@@ -824,17 +913,25 @@ export class View {
         const target = all.find((x) => x.props.id === id);
         return target ? textOfNode(target) : "";
       }).join(" ");
-      if (norm(text)) return norm(text);
+      if (norm(text)) {
+        return norm(text);
+      }
     }
     if (n.tag === "input" || n.tag === "select" || n.tag === "textarea") {
       const wrapping = ancestorsOf(n).find((a) => a.tag === "label");
-      if (wrapping) return norm(textOfNode(wrapping));
+      if (wrapping) {
+        return norm(textOfNode(wrapping));
+      }
       const id = n.props.id;
       if (id) {
         const forLabel = this.all().find((x) => x.tag === "label" && x.props.htmlFor === id);
-        if (forLabel) return norm(textOfNode(forLabel));
+        if (forLabel) {
+          return norm(textOfNode(forLabel));
+        }
       }
-      if (n.tag === "input" && ["button", "submit", "reset"].includes(String(n.props.type))) return norm(String(n.props.value ?? ""));
+      if (n.tag === "input" && ["button", "submit", "reset"].includes(String(n.props.type))) {
+        return norm(String(n.props.value ?? ""));
+      }
       return norm(String(n.props.title ?? ""));
     }
     return norm(textOfNode(n)) || norm(String(n.props.title ?? ""));
@@ -844,8 +941,12 @@ export class View {
   byRole(role: string, name?: string | RegExp, within?: HNode): HNode[] {
     const pool = within ? descendants(within) : this.all();
     return pool.filter((n) => {
-      if (roleOf(n) !== role || isHidden(n)) return false;
-      if (name === undefined) return true;
+      if (roleOf(n) !== role || isHidden(n)) {
+        return false;
+      }
+      if (name === undefined) {
+        return true;
+      }
       const accessible = this.nameOf(n);
       return typeof name === "string" ? accessible.toLowerCase() === norm(name).toLowerCase() : name.test(accessible);
     });
@@ -854,9 +955,15 @@ export class View {
   dialogs(): HNode[] {
     return this.all().filter((n) => {
       const role = roleOf(n);
-      if (role !== "dialog" && role !== "alertdialog") return false;
-      if (isHidden(n)) return false;
-      if (/^field evidence$/i.test(this.nameOf(n))) return false;
+      if (role !== "dialog" && role !== "alertdialog") {
+        return false;
+      }
+      if (isHidden(n)) {
+        return false;
+      }
+      if (/^field evidence$/i.test(this.nameOf(n))) {
+        return false;
+      }
       if (n.tag === "dialog" && !n.props.role) {
         const fake = this.app.fakes.get(n.path);
         return n.props.open === true || n.props.open === "" || fake?.node.open === true;
@@ -870,7 +977,9 @@ export class View {
   /** Did focus move into the dialog: autoFocus, a focus() call on a ref inside it, or showModal() on a native dialog. */
   focusMovedInto(dialog: HNode): boolean {
     const inside = [dialog, ...descendants(dialog)];
-    if (inside.some((n) => n.props.autoFocus)) return true;
+    if (inside.some((n) => n.props.autoFocus)) {
+      return true;
+    }
     return inside.some((n) => {
       const fake = this.fakeOf(n);
       return !!fake && (fake.focusCalls > 0 || (n.tag === "dialog" && fake.showModalCalls > 0));
@@ -888,7 +997,9 @@ export class View {
   /** A click, bubbled up the way a browser does it; a submit button then submits its form. Returns false for a disabled control. */
   async click(stale: HNode): Promise<boolean> {
     const n = this.fresh(stale);
-    if (!n || this.isDisabled(n)) return false;
+    if (!n || this.isDisabled(n)) {
+      return false;
+    }
     const target = { tagName: n.tag.toUpperCase(), value: n.props.value, checked: n.props.checked, name: n.props.name, id: n.props.id, type: n.props.type };
     const event: any = {
       type: "click",
@@ -906,13 +1017,17 @@ export class View {
       const handler = node.props.onClick;
       if (typeof handler === "function") {
         handler({ ...event, currentTarget: { ...target, tagName: node.tag.toUpperCase() } });
-        if (event.propagationStopped) break;
+        if (event.propagationStopped) {
+          break;
+        }
       }
     }
     const submits = n.tag === "button" ? n.props.type === undefined || n.props.type === "submit" : n.tag === "input" && n.props.type === "submit";
     if (submits && !event.defaultPrevented) {
       const form = ancestorsOf(n).find((a) => a.tag === "form" && typeof a.props.onSubmit === "function");
-      if (form) form.props.onSubmit({ ...event, type: "submit", target: form, currentTarget: form });
+      if (form) {
+        form.props.onSubmit({ ...event, type: "submit", target: form, currentTarget: form });
+      }
     }
     this.app.flushSync();
     return true;
@@ -920,11 +1035,16 @@ export class View {
   /** Check or uncheck a checkbox. Returns false for a disabled one (a browser fires nothing). */
   async check(stale: HNode, checked = true): Promise<boolean> {
     const n = this.fresh(stale);
-    if (!n || this.isDisabled(n)) return false;
+    if (!n || this.isDisabled(n)) {
+      return false;
+    }
     const target = { tagName: "INPUT", type: "checkbox", checked, value: n.props.value, name: n.props.name, id: n.props.id };
     const event = { type: "change", target, currentTarget: target, preventDefault() {}, stopPropagation() {}, persist() {}, nativeEvent: {} };
-    if (typeof n.props.onChange === "function") n.props.onChange(event);
-    else if (typeof n.props.onClick === "function") n.props.onClick({ ...event, type: "click" });
+    if (typeof n.props.onChange === "function") {
+      n.props.onChange(event);
+    } else if (typeof n.props.onClick === "function") {
+      n.props.onClick({ ...event, type: "click" });
+    }
     this.app.flushSync();
     return true;
   }
@@ -937,15 +1057,22 @@ export class View {
       const handler = node.props.onKeyDown ?? node.props.onKeyUp;
       if (typeof handler === "function") {
         handler(event);
-        if (event.propagationStopped) break;
+        if (event.propagationStopped) {
+          break;
+        }
       }
     }
     if (key === "Escape") {
       const native = [scope, ...descendants(scope)].find((n) => n.tag === "dialog" && typeof n.props.onCancel === "function");
-      if (native) native.props.onCancel({ type: "cancel", preventDefault() {}, stopPropagation() {}, target: native, currentTarget: native });
+      if (native) {
+        native.props.onCancel({ type: "cancel", preventDefault() {}, stopPropagation() {}, target: native, currentTarget: native });
+      }
     }
-    for (const type of ["keydown", "keyup"])
-      for (const fn of this.app.documentListeners.get(type) ?? []) fn(keyEvent(key, focusable));
+    for (const type of ["keydown", "keyup"]) {
+      for (const fn of this.app.documentListeners.get(type) ?? []) {
+        fn(keyEvent(key, focusable));
+      }
+    }
     this.app.flushSync();
   }
   async settle(rounds?: number) {
@@ -953,10 +1080,10 @@ export class View {
   }
 }
 
-export type OpenOptions = {
+export interface OpenOptions {
   section?: SectionLabel;
   draft?: Draft;
-  snapshot?: { payload: KnowledgeBaseExport | unknown; versionId: string };
+  snapshot?: { payload: unknown; versionId: string };
   versions?: { id: string; version_number: number; created_at: string }[];
   /** A raw `section` URL value (used instead of `section`), e.g. an identifier or an unknown value. */
   rawSection?: string;
@@ -964,7 +1091,7 @@ export type OpenOptions = {
   fullUrl?: { extra?: Record<string, string> };
   /** Configure the fake API before the page renders (sources, failures). */
   server?: (server: FakeServer) => void;
-};
+}
 
 /** Mount any element in the runtime (used to check the runtime itself). */
 export async function mountElement(element: React.ReactElement, server = new FakeServer({})): Promise<View> {
@@ -985,11 +1112,12 @@ export async function openView(opts: OpenOptions): Promise<View> {
   const server = new FakeServer({ draft: opts.draft, snapshot: opts.snapshot?.payload, versions: opts.versions ?? [] });
   opts.server?.(server);
   shared.server = server;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- rawSection: null must keep winning over the section lookup
   const sectionId = opts.rawSection !== undefined ? opts.rawSection : opts.section ? SECTION_IDS[opts.section] : undefined;
   const versionParam = opts.snapshot ? opts.snapshot.versionId : "draft";
   const clientQuery = new URLSearchParams(
     opts.fullUrl
-      ? { companyId: companyId as string, versionId: versionParam, ...(opts.fullUrl.extra ?? {}), ...(sectionId ? { section: sectionId } : {}) }
+      ? { companyId: companyId, versionId: versionParam, ...(opts.fullUrl.extra ?? {}), ...(sectionId ? { section: sectionId } : {}) }
       : sectionId ? { section: sectionId } : {},
   ).toString();
   shared.search = clientQuery;

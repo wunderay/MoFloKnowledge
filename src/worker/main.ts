@@ -6,13 +6,14 @@ import { extractAndFinish } from "./extract/pipeline";
 import { createRendererClient } from "../renderer/client";
 async function main() {
   const connectionString = process.env.WORKER_DATABASE_URL;
-  if (!connectionString)
+  if (!connectionString) {
     throw new Error(
       "Configure WORKER_DATABASE_URL for a dedicated restricted PostgreSQL login.",
     );
+  }
   const repository = new PostgresJobRepository({ connectionString });
   const stop = new AbortController();
-  const shutdown = () => stop.abort("shutdown");
+  const shutdown = () => { stop.abort("shutdown"); };
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);
   const render =

@@ -116,15 +116,16 @@ describe("C2 General Info", () => {
   // behavioural
   it("Headquarters shows the main address and the other locations", async () => {
     const page = await openSection("General Info");
-    const text = body(page, cardsOf(page, "General Info")["Headquarters"]!);
-    for (const part of ["212 Wharf Street", "Portland", "48 Baxter Boulevard", "9 Industrial Way", "Westbrook"])
+    const text = body(page, cardsOf(page, "General Info").Headquarters);
+    for (const part of ["212 Wharf Street", "Portland", "48 Baxter Boulevard", "9 Industrial Way", "Westbrook"]) {
       expect(text).toContain(part);
+    }
   });
 
   // behavioural
   it("Alternate names shows one chip per name", async () => {
     const page = await openSection("General Info");
-    const el = cardsOf(page, "General Info")["Alternate names"]!;
+    const el = cardsOf(page, "General Info")["Alternate names"];
     expect(separateChips(page, el, texts(cf.alternative_company_names))).toBeNull();
   });
 
@@ -132,8 +133,8 @@ describe("C2 General Info", () => {
   it("Overview and Founding story show their full text", async () => {
     const page = await openSection("General Info");
     const cards = cardsOf(page, "General Info");
-    expect(body(page, cards["Overview"]!)).toContain(OVERVIEW);
-    expect(body(page, cards["Founding story"]!)).toContain(FOUNDING_STORY);
+    expect(body(page, cards.Overview)).toContain(OVERVIEW);
+    expect(body(page, cards["Founding story"])).toContain(FOUNDING_STORY);
   });
 
   // behavioural
@@ -141,10 +142,10 @@ describe("C2 General Info", () => {
     const long = business_with_overview(`${"Roasting small lots every single week. ".repeat(120)}The very last sentence of the overview.`);
     const page = await openSection("General Info", { draft: long });
     const cards = cardsOf(page, "General Info");
-    const text = body(page, cards["Overview"]!);
+    const text = body(page, cards.Overview);
     expect(text).toContain("The very last sentence of the overview.");
     expect(text.length).toBeGreaterThan(4000);
-    expect(body(page, cards["Founding story"]!)).toContain(FOUNDING_STORY);
+    expect(body(page, cards["Founding story"])).toContain(FOUNDING_STORY);
   });
 
   // behavioural
@@ -175,7 +176,7 @@ describe("C2 General Info", () => {
     expect(page.html).not.toContain("<script>alert");
     expect(page.html).not.toContain("<img src=x");
     expect(page.$("b").length + page.$("img").length + page.$("script:contains('alert')").length).toBe(0);
-    expect(body(page, cardsOf(page, "General Info")["Overview"]!)).toContain('Sells <img src=x onerror=alert(1)> & "quotes".');
+    expect(body(page, cardsOf(page, "General Info").Overview)).toContain('Sells <img src=x onerror=alert(1)> & "quotes".');
   });
 });
 
@@ -202,21 +203,25 @@ describe("C3 Customers & Industry", () => {
   it("Business model, Company role and Industry outlook show their values", async () => {
     const page = await openSection("Customers & Industry");
     const cards = cardsOf(page, "Customers & Industry");
-    expect(body(page, cards["Business model"]!)).toContain(cf.business_model);
-    const role = body(page, cards["Company role"]!);
-    for (const r of texts(cf.company_role)) expect(role).toContain(r);
-    const outlook = body(page, cards["Industry outlook"]!);
-    for (const o of mc.industry_outlook) expect(outlook).toContain(o.text);
+    expect(body(page, cards["Business model"])).toContain(cf.business_model);
+    const role = body(page, cards["Company role"]);
+    for (const r of texts(cf.company_role)) {
+      expect(role).toContain(r);
+    }
+    const outlook = body(page, cards["Industry outlook"]);
+    for (const o of mc.industry_outlook) {
+      expect(outlook).toContain(o.text);
+    }
   });
 
   // behavioural
   it("Industry groupings, Service locations, Buyers and Suppliers are chip cards with one chip per item", async () => {
     const page = await openSection("Customers & Industry");
     const cards = cardsOf(page, "Customers & Industry");
-    expect(separateChips(page, cards["Industry groupings"]!, texts(mc.industry_groupings))).toBeNull();
-    expect(separateChips(page, cards["Service locations"]!, texts(cf.service_locations))).toBeNull();
-    expect(separateChips(page, cards["Buyers"]!, texts(mc.target_buyers))).toBeNull();
-    expect(separateChips(page, cards["Suppliers"]!, mc.suppliers_and_partners.map((s) => s.name!))).toBeNull();
+    expect(separateChips(page, cards["Industry groupings"], texts(mc.industry_groupings))).toBeNull();
+    expect(separateChips(page, cards["Service locations"], texts(cf.service_locations))).toBeNull();
+    expect(separateChips(page, cards.Buyers, texts(mc.target_buyers))).toBeNull();
+    expect(separateChips(page, cards.Suppliers, mc.suppliers_and_partners.map((s) => s.name!))).toBeNull();
   });
 
   // behavioural
@@ -263,8 +268,9 @@ describe("C4 Sales & Marketing", () => {
     const page = await openSection("Sales & Marketing");
     const el = banner(page, "Sales & Marketing", COMPANY_NAME);
     expect(el, 'banner with label "Sales & Marketing" and the company name').not.toBeNull();
-    for (const platform of PLATFORMS)
-      expect(socialColumn(page, el!, platform, HANDLES[platform]!, PLATFORMS), `${platform} column shows its handle`).toBe(true);
+    for (const platform of PLATFORMS) {
+      expect(socialColumn(page, el!, platform, HANDLES[platform], PLATFORMS), `${platform} column shows its handle`).toBe(true);
+    }
   });
 
   // behavioural
@@ -278,22 +284,30 @@ describe("C4 Sales & Marketing", () => {
   it("shows the pitch, personas, needs, channels, calls to action and funnels", async () => {
     const page = await openSection("Sales & Marketing");
     const cards = cardsOf(page, "Sales & Marketing");
-    expect(body(page, cards["Pitch"]!)).toContain(business.positioning.company_pitch);
-    const persona = body(page, cards["Ideal persona"]!);
+    expect(body(page, cards.Pitch)).toContain(business.positioning.company_pitch);
+    const persona = body(page, cards["Ideal persona"]);
     for (const p of mc.ideal_customer_personas) {
       expect(persona).toContain(p.name!);
       expect(persona).toContain(p.role!);
     }
-    const needs = body(page, cards["Customer needs"]!);
-    for (const n of texts(mc.customer_needs)) expect(needs).toContain(n);
-    const channels = body(page, cards["Channels"]!);
-    for (const c of mc.channels) expect(channels).toContain(c.label!);
-    const ctas = body(page, cards["Calls to action"]!);
-    for (const c of mc.ctas) expect(ctas).toContain(c.label!);
-    const funnels = body(page, cards["Funnels"]!);
+    const needs = body(page, cards["Customer needs"]);
+    for (const n of texts(mc.customer_needs)) {
+      expect(needs).toContain(n);
+    }
+    const channels = body(page, cards.Channels);
+    for (const c of mc.channels) {
+      expect(channels).toContain(c.label!);
+    }
+    const ctas = body(page, cards["Calls to action"]);
+    for (const c of mc.ctas) {
+      expect(ctas).toContain(c.label);
+    }
+    const funnels = body(page, cards.Funnels);
     for (const f of mc.funnels) {
       expect(funnels).toContain(f.name!);
-      for (const s of f.steps) expect(funnels).toContain(s.label!);
+      for (const s of f.steps) {
+        expect(funnels).toContain(s.label);
+      }
     }
   });
 
@@ -305,7 +319,9 @@ describe("C4 Sales & Marketing", () => {
     const el = banner(page, "Sales & Marketing", COMPANY_NAME);
     expect(el, "banner is still shown").not.toBeNull();
     const text = textOf(page, el!);
-    for (const platform of PLATFORMS) expect(text).not.toContain(platform);
+    for (const platform of PLATFORMS) {
+      expect(text).not.toContain(platform);
+    }
     expect(text).not.toMatch(/undefined|null|NaN|\[object/);
     cardsOf(page, "Sales & Marketing");
   });
@@ -323,8 +339,9 @@ describe("C4 Sales & Marketing", () => {
     const page = await openSection("Sales & Marketing", { draft: draftFrom(b) });
     const el = banner(page, "Sales & Marketing", COMPANY_NAME);
     expect(el).not.toBeNull();
-    for (const [i, e] of extra.entries())
+    for (const [i, e] of extra.entries()) {
       expect(socialColumn(page, el!, e.platform, `hp_${i}`, all), `${e.platform} column`).toBe(true);
+    }
   });
 });
 
@@ -333,11 +350,13 @@ describe("C5 values render as text; empty values render an empty state with + Ad
   it.each(LOCKED_SECTIONS)("%s: closed or read-only, no input, textarea or select holds a knowledge value", async (section) => {
     const page = await openSection(section);
     const cards = cardsOf(page, section);
-    for (const [title, el] of Object.entries(cards))
+    for (const [title, el] of Object.entries(cards)) {
       expect(controlsIn(page, el), `card "${title}" contains no form controls`).toEqual([]);
+    }
     const valueBearers = page.$("input,textarea").toArray().map((c) => `${page.$(c).attr("value") ?? ""} ${page.$(c).text()}`);
-    for (const probe of [OVERVIEW, FOUNDING_STORY, COMPANY_NAME, "212 Wharf Street"])
+    for (const probe of [OVERVIEW, FOUNDING_STORY, COMPANY_NAME, "212 Wharf Street"]) {
       expect(valueBearers.some((v) => v.includes(probe)), `no control carries "${probe.slice(0, 30)}…"`).toBe(false);
+    }
   });
 
   // behavioural
@@ -345,7 +364,7 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     const page = await openSection(section, { draft: viewerOf(buildEmptyDraft()) });
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
-      const el = cards[title]!;
+      const el = cards[title];
       expect(addLinks(page, el), `card "${title}" has a "+ Add" link`).toEqual([
         `/knowledge?companyId=${EMPTY_COMPANY_ID}&category=${kind}`,
       ]);
@@ -360,7 +379,7 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     const page = await openSection(section, { draft: buildEmptyDraft() });
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
-      const el = cards[title]!;
+      const el = cards[title];
       const control = INLINE_CONTROL[title];
       if (control) {
         expect(inlineControls(page, el), `card "${title}" is filled in place`).toEqual([control]);
@@ -380,10 +399,11 @@ describe("C5 values render as text; empty values render an empty state with + Ad
   it.each(LOCKED_SECTIONS)("%s: entries that exist but hold blank values get the same empty states (a viewer: + Add links)", async (section) => {
     const page = await openSection(section, { draft: viewerOf(draftFrom(createEmptyBusiness())) });
     const cards = cardsOf(page, section);
-    for (const { title, kind } of CARDS_BY_SECTION[section])
-      expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([
+    for (const { title, kind } of CARDS_BY_SECTION[section]) {
+      expect(addLinks(page, cards[title]), `card "${title}"`).toEqual([
         `/knowledge?companyId=${COMPANY_ID}&category=${kind}`,
       ]);
+    }
   });
 
   // behavioural
@@ -393,19 +413,20 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
       const control = INLINE_CONTROL[title];
       if (control) {
-        expect(inlineControls(page, cards[title]!), `card "${title}"`).toEqual([control]);
-        expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([]);
-      } else
-        expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([
+        expect(inlineControls(page, cards[title]), `card "${title}"`).toEqual([control]);
+        expect(addLinks(page, cards[title]), `card "${title}"`).toEqual([]);
+      } else {
+        expect(addLinks(page, cards[title]), `card "${title}"`).toEqual([
           `/knowledge?companyId=${COMPANY_ID}&category=${kind}`,
         ]);
+      }
     }
   });
 
   // behavioural
   it("the founding story empty state reads 'No founding story yet'", async () => {
     const page = await openSection("General Info", { draft: buildEmptyDraft() });
-    expect(body(page, cardsOf(page, "General Info")["Founding story"]!)).toMatch(/No founding story yet/i);
+    expect(body(page, cardsOf(page, "General Info")["Founding story"])).toMatch(/No founding story yet/i);
   });
 
   // behavioural
@@ -416,19 +437,19 @@ describe("C5 values render as text; empty values render an empty state with + Ad
       const draft = draftFrom(b, { role });
       const page = await openSection("General Info", { draft });
       const cards = cardsOf(page, "General Info");
-      expect(body(page, cards["Founding story"]!)).toMatch(/No founding story yet/i);
+      expect(body(page, cards["Founding story"])).toMatch(/No founding story yet/i);
       if (role === "viewer") {
-        expect(addLinks(page, cards["Founding story"]!)).toEqual([`/knowledge?companyId=${COMPANY_ID}&category=positioning`]);
-        expect(inlineControls(page, cards["Founding story"]!)).toEqual([]);
+        expect(addLinks(page, cards["Founding story"])).toEqual([`/knowledge?companyId=${COMPANY_ID}&category=positioning`]);
+        expect(inlineControls(page, cards["Founding story"])).toEqual([]);
       } else {
-        expect(addLinks(page, cards["Founding story"]!)).toEqual([]);
-        expect(inlineControls(page, cards["Founding story"]!)).toEqual(["Edit Founding story"]);
+        expect(addLinks(page, cards["Founding story"])).toEqual([]);
+        expect(inlineControls(page, cards["Founding story"])).toEqual(["Edit Founding story"]);
       }
       for (const title of ["Headquarters", "Alternate names", "Overview"]) {
-        expect(addLinks(page, cards[title]!), `card "${title}"`).toEqual([]);
-        expect(norm(body(page, cards[title]!))).not.toMatch(/No .* yet/i);
+        expect(addLinks(page, cards[title]), `card "${title}"`).toEqual([]);
+        expect(norm(body(page, cards[title]))).not.toMatch(/No .* yet/i);
       }
-      expect(body(page, cards["Overview"]!)).toContain(OVERVIEW);
+      expect(body(page, cards.Overview)).toContain(OVERVIEW);
     }
   });
 
@@ -436,7 +457,9 @@ describe("C5 values render as text; empty values render an empty state with + Ad
   it("Edge case: a filled draft shows no founding story empty state and no + Add in General Info", async () => {
     const page = await openSection("General Info");
     expect(page.html).not.toMatch(/No founding story yet/i);
-    for (const el of Object.values(cardsOf(page, "General Info"))) expect(addLinks(page, el)).toEqual([]);
+    for (const el of Object.values(cardsOf(page, "General Info"))) {
+      expect(addLinks(page, el)).toEqual([]);
+    }
   });
 });
 

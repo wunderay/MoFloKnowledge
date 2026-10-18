@@ -53,7 +53,9 @@ describe("every API route", () => {
         const handler = mod[method] as
           | ((request: Request, context: unknown) => Promise<Response>)
           | undefined;
-        if (!handler) continue;
+        if (!handler) {
+          continue;
+        }
         handlers++;
         const url = `${ORIGIN}/api/${name}`;
         if (method !== "GET") {
@@ -67,7 +69,9 @@ describe("every API route", () => {
           );
           expect(forged.status, `${method} ${name} foreign origin`).toBe(403);
         }
-        if (PUBLIC_ROUTES.includes(name)) continue;
+        if (PUBLIC_ROUTES.includes(name)) {
+          continue;
+        }
         const anonymous = await handler(
           new Request(url, {
             method,
@@ -115,6 +119,7 @@ describe("SSRF", () => {
       "ftp://example.com/",
       "gopher://example.com/",
       "data:text/html,hi",
+      // secretlint-disable-next-line @secretlint/secretlint-rule-basicauth -- intentionally fake credentials: the SSRF check must reject them
       "http://user:pass@example.com/",
       "http://example.com:8080/",
       "http://localhost/",
@@ -127,22 +132,25 @@ describe("SSRF", () => {
       "http://[::1]/",
       "http://[::ffff:7f00:1]/",
       "http://metadata/",
-    ])
+    ]) {
       expect(() => normalizeUrl(input), input).toThrow();
+    }
   });
 
   it("refuses names that resolve to cloud metadata or private addresses, including IPv6 and mixed answers", async () => {
-    const answer = (...addresses: string[]) => async () =>
-      addresses.map((address) => ({ address, family: (address.includes(":") ? 6 : 4) as 4 | 6 }));
-    for (const address of ["169.254.169.254", "100.100.100.200", "fd00:ec2::254", "::ffff:169.254.169.254", "192.168.1.10"])
+    const answer = (...addresses: string[]) => async (): Promise<{ address: string; family: 4 | 6 }[]> =>
+      addresses.map((address) => ({ address, family: address.includes(":") ? 6 : 4 }));
+    for (const address of ["169.254.169.254", "100.100.100.200", "fd00:ec2::254", "::ffff:169.254.169.254", "192.168.1.10"]) {
       await expect(approveDestination("https://metadata.example.com/", answer(address)), address).rejects.toThrow();
+    }
     await expect(approveDestination("https://example.com/", answer("93.184.216.34", "10.0.0.5"))).rejects.toThrow();
     await expect(approveDestination("https://example.com/", answer())).rejects.toThrow();
   });
 
   it("applies the same rules at the API boundary and to renderer tasks", () => {
-    for (const website of ["file:///etc/passwd", "ftp://example.com", "javascript:alert(1)", "http://user:pw@example.com", "http://example.com:8080"])
+    for (const website of ["file:///etc/passwd", "ftp://example.com", "javascript:alert(1)", "http://user:pw@example.com", "http://example.com:8080"]) {
       expect(WebsiteSchema.safeParse(website).success, website).toBe(false);
+    }
     expect(WebsiteSchema.safeParse("https://example.com").success).toBe(true);
     const task = (url: string, scope: string[]) => RenderTaskSchema.safeParse({ url, scope });
     expect(task("https://example.com/", ["example.com"]).success).toBe(true);

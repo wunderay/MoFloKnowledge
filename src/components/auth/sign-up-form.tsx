@@ -24,11 +24,14 @@ export function SignUpForm() {
               password: form.get("password"),
             }),
           });
-          const result = await response.json();
-          if (!response.ok)
+          const result = (await response.json()) as { error?: { message?: string }; data?: { signedIn?: boolean } };
+          if (!response.ok) {
             setMessage(result.error?.message || "Unable to sign up.");
-          else if (result.data?.signedIn) window.location.assign("/dashboard");
-          else setMessage("Check your email to confirm your account.");
+          } else if (result.data?.signedIn) {
+            window.location.assign("/dashboard");
+          } else {
+            setMessage("Check your email to confirm your account.");
+          }
         } catch {
           setMessage("Unable to connect. Please retry.");
         } finally {

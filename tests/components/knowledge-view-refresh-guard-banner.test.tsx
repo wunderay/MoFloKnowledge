@@ -123,7 +123,7 @@ describe("C5 the banner's Reload is not cut off at the save re-read limit", () =
     const button = view.byRole("button", /^reload/i)[0];
     expect(button && disabled(view, button), "Reload shows it is working").toBe(true);
 
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await settleAll(view);
     expect(view.text(), "the notice is gone").not.toMatch(STALE_NOTICE);
     expect(view.text()).not.toMatch(FAILURE_TEXT);
@@ -141,7 +141,7 @@ describe("C5 the banner's Reload is not cut off at the save re-read limit", () =
     reads.holdNext();
     await click(view, reload(view));
     await sleep(300);
-    reads.drafts[0]!.fail("Draft store is down.");
+    reads.drafts[0].fail("Draft store is down.");
     await settleAll(view);
     expect(view.text(), "still stale").toMatch(STALE_NOTICE);
     expect(view.text()).toMatch(/draft store is down/i);

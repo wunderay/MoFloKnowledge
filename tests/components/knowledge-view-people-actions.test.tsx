@@ -97,8 +97,8 @@ describe("C4 create a person", () => {
     await view.settle(8);
     const posts = server.writesTo("entries");
     expect(posts, "one POST to /api/companies/<id>/entries").toHaveLength(1);
-    expect(posts[0]!.path).toBe(`${company}/entries`);
-    const body = CreateEntrySchema.parse(posts[0]!.body);
+    expect(posts[0].path).toBe(`${company}/entries`);
+    const body = CreateEntrySchema.parse(posts[0].body);
     expect(body.kind).toBe("key_person");
     expect(body.content).toMatchObject({ name: "Untitled person", title: null, role: null, gender: null, background_or_relevance: null, age: null, nationality: null, portrait: null });
     expect((body.content as { id: string }).id).toMatch(UUID);
@@ -112,7 +112,7 @@ describe("C4 create a person", () => {
     clearNavigations();
     await view.click(need(addPersonButton(view), 'a button named "Add person"'));
     await view.settle(8);
-    const created = server.writesTo("entries")[0]!.body.content.id as string;
+    const created = server.writesTo("entries")[0].body.content.id as string;
     expect(rowNodes(view)).toHaveLength(5);
     expect(count(view)).toBe(5);
     expect(rowTexts(view)[4]).toContain("Untitled person");
@@ -225,9 +225,9 @@ describe("C5 delete a person", () => {
     await view.settle(8);
     expect(api.deletes, "one DELETE request").toHaveLength(1);
     expect(server.requests.filter((r) => r.method === "DELETE")).toHaveLength(1);
-    expect(api.deletes[0]!.path).toBe(`${company}/entries/${PERSON_IDS[0]}`);
-    expect(api.deletes[0]!.body.expectedRevision).toBe(2);
-    expect(api.deletes[0]!.body.requestId).toMatch(UUID);
+    expect(api.deletes[0].path).toBe(`${company}/entries/${PERSON_IDS[0]}`);
+    expect(api.deletes[0].body.expectedRevision).toBe(2);
+    expect(api.deletes[0].body.requestId).toMatch(UUID);
     expect(dialogOf(view)).toBeNull();
     expect(rowNodes(view)).toHaveLength(3);
     expect(count(view)).toBe(3);
@@ -309,8 +309,8 @@ describe("C6 portrait upload", () => {
     await selectRow(view, 1);
     await chooseFile(view, portraitInput(view), png("tomas.png"));
     expect(api.uploads, "one upload").toHaveLength(1);
-    expect(api.uploads[0]!.path).toBe(`${company}/uploads`);
-    const form = api.uploads[0]!.form;
+    expect(api.uploads[0].path).toBe(`${company}/uploads`);
+    const form = api.uploads[0].form;
     expect(form).toBeInstanceOf(FormData);
     expect(form.get("kind")).toBe("portraits");
     const file = form.get("file") as File;
@@ -318,10 +318,10 @@ describe("C6 portrait upload", () => {
     expect(file.size).toBe(64);
     const revisions = server.writesTo("revisions");
     expect(revisions, "one revision").toHaveLength(1);
-    expect(revisions[0]!.path).toBe(`${company}/entries/${PERSON_IDS[1]}/revisions`);
-    const body = SaveEntrySchema.parse(revisions[0]!.body);
+    expect(revisions[0].path).toBe(`${company}/entries/${PERSON_IDS[1]}/revisions`);
+    const body = SaveEntrySchema.parse(revisions[0].body);
     expect(body.expectedRevision).toBe(2);
-    const { id, path, content_type, size_bytes } = api.uploaded[0]!;
+    const { id, path, content_type, size_bytes } = api.uploaded[0];
     expect(body.content).toEqual({ ...TOMAS, portrait: { id, path, content_type, size_bytes } });
     // the upload is sent before the revision
     expect(server.requests.findIndex((r) => r.path.endsWith("/uploads"))).toBeLessThan(server.requests.findIndex((r) => r.path.endsWith("/revisions")));
@@ -332,22 +332,24 @@ describe("C6 portrait upload", () => {
     const { view, api } = await openKeyPeople({ draft: peopleDraft() });
     await selectRow(view, 1);
     expect(view.page().$("img").length, "only Maya has an image so far").toBeGreaterThan(0);
-    expect(showsInitials(view.page(), peopleRows(view.page())[1]!, "TL")).toBe(true);
+    expect(showsInitials(view.page(), peopleRows(view.page())[1], "TL")).toBe(true);
     await chooseFile(view, portraitInput(view), png());
     const page = view.page();
     const srcs = page.$("img").toArray().map((i) => page.$(i).attr("src"));
-    expect(srcs).toContain(`${company}/uploads/${api.uploaded[0]!.id}`);
+    expect(srcs).toContain(`${company}/uploads/${api.uploaded[0].id}`);
     expect(srcs).toContain(PORTRAIT_URL);
-    for (const src of srcs) expect(src).toMatch(new RegExp(`^${company}/uploads/[0-9a-f-]{36}$`));
-    expect(showsInitials(page, peopleRows(page)[1]!, "TL"), "the portrait replaces the initials").toBe(false);
+    for (const src of srcs) {
+      expect(src).toMatch(new RegExp(`^${company}/uploads/[0-9a-f-]{36}$`));
+    }
+    expect(showsInitials(page, peopleRows(page)[1], "TL"), "the portrait replaces the initials").toBe(false);
   });
 
   // behavioural
   it("a person who already has a portrait gets the new reference in place of the old", async () => {
     const { view, api, server } = await openKeyPeople({ draft: peopleDraft() });
     await chooseFile(view, portraitInput(view), png("new.png"));
-    const body = SaveEntrySchema.parse(server.writesTo("revisions")[0]!.body);
-    expect((body.content as { portrait: { id: string } }).portrait.id).toBe(api.uploaded[0]!.id);
+    const body = SaveEntrySchema.parse(server.writesTo("revisions")[0].body);
+    expect((body.content as { portrait: { id: string } }).portrait.id).toBe(api.uploaded[0].id);
     expect((body.content as { name: string }).name).toBe(MAYA.name);
     const srcs = view.page().$("img").toArray().map((i) => view.page().$(i).attr("src"));
     expect(srcs).not.toContain(PORTRAIT_URL);

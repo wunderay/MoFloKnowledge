@@ -22,9 +22,11 @@ export async function readCitationContext(
     { claim: Claim; provenance: EntryProvenance }
   >();
   const add = (provenance: EntryProvenance) => {
-    for (const claim of provenance.claims)
-      if (!available.has(claim.id))
+    for (const claim of provenance.claims) {
+      if (!available.has(claim.id)) {
         available.set(claim.id, { claim, provenance });
+      }
+    }
   };
   roots.forEach(add);
   current.forEach(add);
@@ -35,23 +37,27 @@ export async function readCitationContext(
     provenance.claims.map((claim) => claim.id),
   );
   let lookups = 0;
-  for (let index = 0; index < pending.length; index++) {
-    const id = pending[index];
-    if (claims.has(id)) continue;
-    if (claims.size >= 10000)
+  // `pending` grows while iterating (based_on_claim_ids are pushed); array iteration visits appended items.
+  for (const id of pending) {
+    if (claims.has(id)) {
+      continue;
+    }
+    if (claims.size >= 10000) {
       throw new HttpError(
         503,
         "invalid_state",
         "Citation context is temporarily unavailable.",
       );
+    }
     let found = available.get(id);
     if (!found) {
-      if (++lookups > 1000)
+      if (++lookups > 1000) {
         throw new HttpError(
           503,
           "invalid_state",
           "Citation context is temporarily unavailable.",
         );
+      }
       // Search only immutable revisions containing this exact referenced claim, within the company.
       const result = await client
         .from("knowledge_entry_versions")
@@ -60,27 +66,36 @@ export async function readCitationContext(
         .contains("provenance", { claims: [{ id }] })
         .limit(1)
         .maybeSingle();
-      if (result.error) throw mapDatabaseError(result.error);
-      if (result.data) add(EntryProvenanceSchema.parse(result.data.provenance));
+      if (result.error) {
+        throw mapDatabaseError(result.error);
+      }
+      if (result.data) {
+        add(EntryProvenanceSchema.parse(result.data.provenance));
+      }
       found = available.get(id);
     }
-    if (!found)
+    if (!found) {
       throw new HttpError(
         503,
         "invalid_state",
         "Citation support is temporarily unavailable.",
       );
+    }
     const { claim, provenance } = found;
     claims.set(id, claim);
     pending.push(...claim.based_on_claim_ids);
     for (const evidenceId of claim.evidence_ids) {
       const item = provenance.evidence.find((item) => item.id === evidenceId);
-      if (!item) continue;
+      if (!item) {
+        continue;
+      }
       evidence.set(item.id, item);
       const source = provenance.sources.find(
         (source) => source.id === item.source_page_id,
       );
-      if (source) sources.set(source.id, source);
+      if (source) {
+        sources.set(source.id, source);
+      }
     }
   }
   return {

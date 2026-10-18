@@ -6,7 +6,7 @@ import {
   type Proposal,
   type SafeJobError,
 } from "../contracts";
-export type Job = {
+export interface Job {
   id: string;
   company_id: string;
   requested_by: string;
@@ -25,7 +25,7 @@ export type Job = {
     current_revision: number;
     content: Record<string, unknown>;
   }[];
-};
+}
 export interface JobRepository {
   claim(workerId: string): Promise<Job | null>;
   heartbeat(job: Job): Promise<Job>;
@@ -64,6 +64,7 @@ export class PostgresJobRepository implements JobRepository {
       "select private.claim_job($1) as job",
       [workerId],
     );
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
     return result.rows[0]?.job as Job | null;
   }
   heartbeat(j: Job) {

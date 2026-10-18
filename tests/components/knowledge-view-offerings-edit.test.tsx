@@ -58,7 +58,7 @@ import {
 
 vi.setConfig({ testTimeout: 60_000 });
 
-const FIRST = OFFERINGS[0]!;
+const FIRST = OFFERINGS[0];
 const TITLE = FIRST.name!;
 const KEY_FEATURE: ChipField = { id: "feature", section: "Business Offerings", label: "Key features", noun: "key feature", kind: "offering", path: ["features"] };
 const open = () => openOB("Business Offerings");
@@ -95,7 +95,7 @@ describe("A1 Add offering", () => {
     expect(content.features).toEqual([]);
     expect(content.pricing ?? null).toBeNull();
     expect(content.description ?? null).toBeNull();
-    expect(server.gets.filter((r) => /\/draft$/.test(r.path)).length, "the draft is read again").toBeGreaterThanOrEqual(1);
+    expect(server.gets.filter((r) => r.path.endsWith("/draft")).length, "the draft is read again").toBeGreaterThanOrEqual(1);
   });
 
   it("the new offering is listed, selected (aria-current, ?offering=<id>) and its list button is focused", async () => {
@@ -119,8 +119,8 @@ describe("A2 Delete offering", () => {
     await view.settle(8);
     expect(view.dialogs(), "no confirm dialog").toHaveLength(0);
     expect(api.deletes).toHaveLength(1);
-    expect(api.deletes[0]!.path).toBe(`/api/companies/${COMPANY_ID}/entries/${FIRST.id}`);
-    expect(api.deletes[0]!.body).toEqual({ expectedRevision: before.current_revision, requestId: expect.stringMatching(UUID) });
+    expect(api.deletes[0].path).toBe(`/api/companies/${COMPANY_ID}/entries/${FIRST.id}`);
+    expect(api.deletes[0].body).toEqual({ expectedRevision: before.current_revision, requestId: expect.stringMatching(UUID) });
     expect(listTitles(view).some((t) => t.startsWith(TITLE)), "the offering left the list").toBe(false);
   });
 
@@ -140,7 +140,7 @@ describe("A2 Delete offering", () => {
     await click(view, mustButton(view, "Undo"));
     await view.settle(8);
     expect(api.restores, "exactly one restore request").toHaveLength(1);
-    expect(api.restores[0]!.path).toBe(`/api/companies/${COMPANY_ID}/entries/${FIRST.id}/restore`);
+    expect(api.restores[0].path).toBe(`/api/companies/${COMPANY_ID}/entries/${FIRST.id}/restore`);
     expect(server.writesTo("entries"), "the offering is not created again").toHaveLength(0);
     expect(storedById(view, FIRST.id).content).toEqual(before.content);
     expect(listTitles(view).some((t) => t.startsWith(TITLE))).toBe(true);
@@ -199,7 +199,7 @@ describe("A3 text fields", () => {
     expect(area.tag).toBe("textarea");
     expect(buttonNamed(view, /^cancel$/i), "a Cancel button").toBeDefined();
     await type(view, area, "A new description.");
-    await click(view, buttonNamed(view, /^save$/i)!);
+    await click(view, buttonNamed(view, /^save$/i));
     await view.settle();
     const { content } = revisionWrite(view, before);
     expect(content).toEqual(withField(before, ["description"], "A new description."));
@@ -258,7 +258,7 @@ describe("A3 cost", () => {
 describe("A3 a second offering", () => {
   it("editing the second offering writes to its own entry", async () => {
     const { view } = await open();
-    const second = OFFERINGS[1]!;
+    const second = OFFERINGS[1];
     await selectOffering(view, second.name!);
     const before = storedById(view, second.id);
     await editAndEnter(view, { label: "Offering name" }, "Wholesale, renamed");
@@ -270,7 +270,7 @@ describe("A3 a second offering", () => {
     const { view } = await open();
     const input = await startEdit(view, { label: "Offering name" });
     await type(view, input, "Typed, not saved");
-    await selectOffering(view, OFFERINGS[1]!.name!);
+    await selectOffering(view, OFFERINGS[1].name!);
     expect(pageText(view)).not.toContain("Typed, not saved");
     const inputs = textboxes(view, "Offering name");
     expect(inputs.map((n) => valueOf(view, n)).join("|")).not.toContain("Typed, not saved");

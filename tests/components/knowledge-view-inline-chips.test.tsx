@@ -58,7 +58,9 @@ describe.each(CHIP_FIELDS)("C3 chip list: $label", (field) => {
   it("every item has a Remove button and the list has an Add button; no text field until Add is used", async () => {
     const { view, items } = await seed();
     expect(items.length).toBeGreaterThan(0);
-    for (const item of items) expect(removeButtons(view, item.text), `Remove ${item.text}`).toHaveLength(1);
+    for (const item of items) {
+      expect(removeButtons(view, item.text), `Remove ${item.text}`).toHaveLength(1);
+    }
     one(addPill(view, field), `a button named "Add ${field.noun}"`);
     expect(addInputs(view, field)).toHaveLength(0);
     nothingSent(view);
@@ -86,8 +88,8 @@ describe.each(CHIP_FIELDS)("C3 chip list: $label", (field) => {
     const next = getAt(content, field.path) as { id: string; text: string }[];
     expect(next.slice(0, items.length), "the existing items keep their ids and order").toEqual(items);
     expect(next).toHaveLength(items.length + 1);
-    expect(next[items.length]!.text).toBe("Brand new entry");
-    expect(next[items.length]!.id).toMatch(UUID);
+    expect(next[items.length].text).toBe("Brand new entry");
+    expect(next[items.length].id).toMatch(UUID);
     expect(content).toEqual(setAt(structuredClone(before.content), field.path, next));
     expect(statusText(view)).toMatch(/✓\s*Saved/);
     expect(removeButtons(view, "Brand new entry"), "the new item is shown with its own Remove button").toHaveLength(1);
@@ -107,12 +109,12 @@ describe.each(CHIP_FIELDS)("C3 chip list: $label", (field) => {
   it("a duplicate is refused with a message, whatever its case or spacing, and nothing is sent", async () => {
     const { view, items } = await seed();
     const input = await chipInput(view, field);
-    await type(view, input, `  ${items[0]!.text.toUpperCase()}  `);
+    await type(view, input, `  ${items[0].text.toUpperCase()}  `);
     await key(view, input, "Enter");
     await view.settle();
     expect(alertText(view), "a visible reason, not a console message").toMatch(/already/i);
     nothingSent(view, "a duplicate is not saved");
-    expect(removeButtons(view, items[0]!.text), "the list still shows the original once").toHaveLength(1);
+    expect(removeButtons(view, items[0].text), "the list still shows the original once").toHaveLength(1);
     // a different text is accepted afterwards
     await type(view, view.fresh(input) ?? input, "Not a duplicate");
     await key(view, view.fresh(input) ?? input, "Enter");
@@ -165,7 +167,7 @@ describe.each(CHIP_FIELDS)("C3 chip list: $label", (field) => {
 
   it("Remove saves the list without the item and shows an Undo toast; Undo saves the list exactly as it was", async () => {
     const { view, before, items } = await seed();
-    const target = items[1]!;
+    const target = items[1];
     await removeChip(view, target.text);
     const removed = revisionWrite(view, before, 0);
     expect(getAt(removed.content, field.path)).toEqual(items.filter((i) => i.id !== target.id));
@@ -210,7 +212,9 @@ describe("C3 banner counters follow the lists with singular and plural", () => {
   it("show the stored counts as '<n> <noun>'", async () => {
     const view = await open("Customers & Industry");
     const text = view.text();
-    for (const c of COUNTERS) expect(shows(text, c.fixture, c.one, c.many), `${c.fixture} ${c.many}`).toBe(true);
+    for (const c of COUNTERS) {
+      expect(shows(text, c.fixture, c.one, c.many), `${c.fixture} ${c.many}`).toBe(true);
+    }
     expect(shows(text, SUPPLIER.fixture, SUPPLIER.one, SUPPLIER.many), "2 Suppliers").toBe(true);
   });
 

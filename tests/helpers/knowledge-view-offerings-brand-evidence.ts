@@ -24,17 +24,17 @@ const evidence = [
 ];
 
 export type Origin = "source_backed" | "inferred" | "user_provided";
-export type Coverage = {
+export interface Coverage {
   target: string;
   status: "found" | "partial" | "conflict" | "not_checked" | "not_found";
   reason: string | null;
-};
-type Mark = { target: (b: Business) => string | null; origin: Origin };
+}
+interface Mark { target: (b: Business) => string | null; origin: Origin }
 
 const OB = "/branding_and_style";
 const off = (b: Business, i: number) => (b.offerings[i] ? `/offerings/@${b.offerings[i].id}` : null);
 const brandItem = (list: "logos" | "brand_colors" | "fonts", i: number, leaf: string): Mark["target"] =>
-  (b) => (b.branding_and_style[list][i] ? `${OB}/${list}/@${b.branding_and_style[list][i]!.id}/${leaf}` : null);
+  (b) => (b.branding_and_style[list][i] ? `${OB}/${list}/@${b.branding_and_style[list][i].id}/${leaf}` : null);
 const offeringLeaf = (i: number, leaf: string): Mark["target"] => (b) => (off(b, i) ? `${off(b, i)}/${leaf}` : null);
 /** The claims every fixture carries (a target that does not exist in a variant is skipped). */
 export const MARKS: Record<string, Mark> = {
@@ -66,12 +66,12 @@ export const REASONS = {
   noFonts: "No typeface declaration was found in the stylesheets.",
 };
 
-export type ObEvidenceOptions = {
+export interface ObEvidenceOptions {
   /** Edit the business before provenance is built. */
   business?: (b: Business) => void;
   coverage?: (b: Business) => Coverage[];
   marks?: string[];
-};
+}
 export const defaultCoverage = (b: Business): Coverage[] => [
   { target: `${off(b, 0)}/description`, status: "partial" as const, reason: REASONS.description },
   { target: `${off(b, 3)}/pricing`, status: "not_found" as const, reason: REASONS.noPricing },
@@ -89,7 +89,7 @@ export function buildObEvidence(opts: ObEvidenceOptions = {}) {
   const draft = draftFrom(business);
   const brandingEntry = draft.entries.find((e) => e.kind === "branding_and_style")!;
   const claims = (opts.marks ?? Object.keys(MARKS))
-    .map((key) => ({ key, target: MARKS[key]!.target(business), origin: MARKS[key]!.origin }))
+    .map((key) => ({ key, target: MARKS[key].target(business), origin: MARKS[key].origin }))
     .filter((m): m is { key: string; target: string; origin: Origin } => m.target !== null)
     .map((m, i) => {
       const offering = business.offerings.find((o) => m.target.startsWith(`/offerings/@${o.id}/`));
@@ -115,7 +115,7 @@ export function buildObEvidence(opts: ObEvidenceOptions = {}) {
       sources: own.some((c) => c.evidence_ids.length) ? [source] : [],
       evidence: own.some((c) => c.evidence_ids.length) ? evidence : [],
       claims: own,
-      coverage: coverage.filter((c) => c.targets[0]!.startsWith(root)),
+      coverage: coverage.filter((c) => c.targets[0].startsWith(root)),
     } as never;
   }
   draft.citationContext = { claims, evidence, sources: [source] } as never;

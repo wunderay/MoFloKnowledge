@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use */
 import { ArrowUpRight } from "../shared/icons";
 import type { CitationContext, EntryProvenance } from "@/contracts";
 import { CitationPopover, safeHref } from "../shared/citation-popover";
@@ -18,7 +19,7 @@ export function ValueView({
   approved: boolean;
   label?: string;
 }) {
-  if (Array.isArray(value))
+  if (Array.isArray(value)) {
     return (
       <div className="entry-value">
         <div className="entry-value__label">
@@ -54,7 +55,8 @@ export function ValueView({
         )}
       </div>
     );
-  if (value && typeof value === "object")
+  }
+  if (value && typeof value === "object") {
     return (
       <div>
         {Object.entries(value)
@@ -72,6 +74,7 @@ export function ValueView({
           ))}
       </div>
     );
+  }
   return (
     <div className="entry-value">
       <span className="entry-value__label">

@@ -59,23 +59,30 @@ const PROVIDED = new Set(["@/lib/supabase/server", "@/server/read-model", "@/ser
 for (const file of sourceFiles(SRC)) {
   const id = "@/" + relative(SRC, file).replace(/\.(ts|tsx)$/, "").split(sep).join("/");
   const ids = id.endsWith("/index") ? [id, id.slice(0, -"/index".length)] : [id];
-  for (const each of ids)
-    if (!PROVIDED.has(each)) vi.doMock(each, () => import(/* @vite-ignore */ file));
+  for (const each of ids) {
+    if (!PROVIDED.has(each)) {
+      vi.doMock(each, () => import(/* @vite-ignore */ file));
+    }
+  }
 }
 
-export type OBRenderOptions = {
+export interface OBRenderOptions {
   section?: string;
   /** Value for the `offering` URL parameter; omitted when undefined. */
   offering?: string;
   draft?: Draft;
   snapshot?: { payload: KnowledgeBaseExport; versionId: string };
-};
+}
 
 export async function renderOB(opts: OBRenderOptions): Promise<string> {
   const companyId = (opts.snapshot?.payload.company_id ?? opts.draft?.company.id)!;
   const query = new URLSearchParams();
-  if (opts.section !== undefined) query.set("section", opts.section);
-  if (opts.offering !== undefined) query.set("offering", opts.offering);
+  if (opts.section !== undefined) {
+    query.set("section", opts.section);
+  }
+  if (opts.offering !== undefined) {
+    query.set("offering", opts.offering);
+  }
   state.search = query.toString();
   // These read-only (Q3) tests look at the view as a viewer sees it: an owner's draft edits in place (Quest offerings-brand-edit,
   // which has its own tests), and its controls are not part of what they check.
@@ -98,7 +105,9 @@ export async function renderOB(opts: OBRenderOptions): Promise<string> {
 export async function sectionIdOf(label: "Business Offerings" | "Brand Identity"): Promise<string> {
   const page = parse(await renderOB({ draft: buildDraft() }));
   const item = selectorItems(page).find((i) => i.label === label);
-  if (!item || !item.value) throw new Error(`the "Knowledge section" selector should list "${label}" with an identifier`);
+  if (!item?.value) {
+    throw new Error(`the "Knowledge section" selector should list "${label}" with an identifier`);
+  }
   return item.value;
 }
 

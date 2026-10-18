@@ -1,6 +1,7 @@
 export function downloadFilename(companyName: string, version: number): string {
-  if (!Number.isSafeInteger(version) || version < 1)
+  if (!Number.isSafeInteger(version) || version < 1) {
     throw new Error("Invalid version");
+  }
   const slug =
     companyName
       .normalize("NFKD")

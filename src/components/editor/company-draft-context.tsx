@@ -2,24 +2,27 @@
 import { createContext, useContext, useMemo, useReducer } from "react";
 import type { BusinessEntry, EntryKind, EntryProvenance } from "@/contracts";
 
-type EditorState = {
+interface EditorState {
   category: EntryKind;
   values: Record<string, BusinessEntry>;
   provenance: Record<string, EntryProvenance>;
   dirty: string[];
-};
+}
 type Action =
   | { type: "category"; category: EntryKind }
   | { type: "edit"; id: string; content: BusinessEntry }
   | { type: "provenance"; id: string; provenance: EntryProvenance }
   | { type: "saved"; id: string };
 function reducer(state: EditorState, action: Action): EditorState {
-  if (action.type === "category")
+  if (action.type === "category") {
     return { ...state, category: action.category };
+  }
   if (action.type === "saved") {
     const values = { ...state.values };
     const provenance = { ...state.provenance };
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- reducer drops the saved entry id from a copy of the state map
     delete values[action.id];
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- reducer drops the saved entry id from a copy of the state map
     delete provenance[action.id];
     return {
       ...state,
@@ -28,12 +31,13 @@ function reducer(state: EditorState, action: Action): EditorState {
       dirty: state.dirty.filter((id) => id !== action.id),
     };
   }
-  if (action.type === "edit")
+  if (action.type === "edit") {
     return {
       ...state,
       values: { ...state.values, [action.id]: action.content },
       dirty: [...new Set([...state.dirty, action.id])],
     };
+  }
   return {
     ...state,
     provenance: { ...state.provenance, [action.id]: action.provenance },
@@ -70,7 +74,8 @@ export function CompanyDraftProvider({
 }
 export function useCompanyDraft() {
   const value = useContext(CompanyDraftContext);
-  if (!value)
+  if (!value) {
     throw new Error("Company draft controls require a company scope.");
+  }
   return value;
 }

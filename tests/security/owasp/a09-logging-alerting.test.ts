@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import { runWorker } from "../../../src/worker/run-loop";
 import type { Job, JobRepository } from "../../../src/worker/job-repository";
 
+// secretlint-disable-next-line @secretlint/secretlint-rule-database-connection-string -- intentionally fake credential: the test asserts it never reaches the logs
 const SECRET = "postgres://worker:hunter2@db.internal:5432/app";
 const ROOT = resolve(__dirname, "../../..");
 
@@ -20,7 +21,9 @@ function run(repository: Partial<JobRepository>, work: () => Promise<void>) {
     idleMs: 1,
     onEvent: (event) => {
       events.push(event);
-      if (["job_stopped", "job_finished", "claim_unavailable"].includes(String(event.event))) stop.abort();
+      if (["job_stopped", "job_finished", "claim_unavailable"].includes(String(event.event))) {
+        stop.abort();
+      }
     },
   });
   return { events, done };
@@ -37,7 +40,7 @@ describe("worker events", () => {
     expect(events.map((event) => event.event)).toEqual(["job_started", "job_stopped"]);
     expect(events.every((event) => event.jobId === "job-1")).toBe(true);
     expect(fail).toHaveBeenCalledOnce();
-    expect(fail.mock.calls[0]![1]).toMatchObject({ code: "worker_failure", message: "The worker could not complete the job." });
+    expect(fail.mock.calls[0][1]).toMatchObject({ code: "worker_failure", message: "The worker could not complete the job." });
     expect(JSON.stringify([events, fail.mock.calls])).not.toContain("hunter2");
   });
 
@@ -55,7 +58,8 @@ describe("source tree", () => {
         const path = join(dir, name);
         return statSync(path).isDirectory() ? sources(path) : /\.tsx?$/.test(name) ? [path] : [];
       });
-    for (const path of sources(join(ROOT, "src")))
+    for (const path of sources(join(ROOT, "src"))) {
       expect(readFileSync(path, "utf8"), path.slice(ROOT.length + 1)).not.toMatch(/console\.(log|info|debug|warn|error)\(/);
+    }
   });
 });

@@ -30,12 +30,13 @@ it("validates all 47 required assessments, stable IDs, exact evidence and explic
     proposals.flatMap((p) => p.provenance.coverage.flatMap((c) => c.targets)),
   ).toHaveLength(47);
   const claims = proposals.flatMap((p) => p.provenance.claims);
-  for (const p of proposals)
+  for (const p of proposals) {
     expect(
       validateProvenance(entryBusiness(p.kind, p.content), p.provenance, {
         supportingClaims: claims,
       }),
     ).toEqual([]);
+  }
   const foundation = proposals.find((p) => p.kind === "company_foundation")!;
   expect(foundation.content).toMatchObject({
     legal_entity_type: null,
@@ -339,8 +340,10 @@ it("retains distinct homepage summaries alongside the best company overview with
   const discarded = makePage("66666666-6666-4666-8666-666666666666", "/about", "<p>We aim to help.</p>");
   const values = [homepage, service, discarded].flatMap((p) => {
     const observed = technicalObservations(p);
-    if (p === homepage) return validateCandidates(deterministicCandidates(p, observed)
+    if (p === homepage) {
+      return validateCandidates(deterministicCandidates(p, observed)
       .filter((c) => c.field === "/company_foundation/overview"), p, observed, companyId);
+    }
     return validateCandidates([{ ...candidate("/company_foundation/overview", p === service ? catalog : "We aim to help.", "Northstar builds"),
       segment_ids: [p.capture.segments[0].id], priority: p === service ? 96 : 10 }], p, observed, companyId);
   });

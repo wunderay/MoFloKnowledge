@@ -20,7 +20,8 @@ describe("supply chain", () => {
     const manifest = JSON.parse(read("package.json"));
     const all = { ...manifest.dependencies, ...manifest.devDependencies };
     expect(Object.keys(all).length).toBeGreaterThan(10);
-    for (const [name, version] of Object.entries(all))
+    for (const [name, version] of Object.entries(all)) {
       expect(version, name).toMatch(/^\d+\.\d+\.\d+$/);
+    }
   });
 });

@@ -91,10 +91,11 @@ it("reserves bounded concurrent pages, obeys robots, finalizes once and resumes 
   ).toHaveLength(2);
   expect(starts).not.toContain("https://example.com/private");
   expect(starts.some((url) => url.includes("other.example"))).toBe(false);
-  for (const row of rows)
+  for (const row of rows) {
     expect(row.content_sha256).toBe(
       createHash("sha256").update(String(row.cleaned_content)).digest("hex"),
     );
+  }
   const count = starts.length;
   const resumed = await runCrawl(
     {

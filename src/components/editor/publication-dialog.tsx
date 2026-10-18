@@ -3,14 +3,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, ApiError, companyPath, write } from "../shared/api-client";
 import { Dialog, Notice } from "../shared/ui";
-type Preview = {
+interface Preview {
   draftGeneration: number;
   payloadPreview: unknown;
   blockingEntries: { entry_id: string; reason: string }[];
   approvedCount: number;
   rejectedCount: number;
   unresolvedCount: number;
-};
+}
 export function PublicationDialog({
   companyId,
   onClose,
@@ -33,11 +33,13 @@ export function PublicationDialog({
     setError("");
     api<Preview>(companyPath(companyId, "/preview"))
       .then(setPreview)
-      .catch((e) => setError(e.message));
+      .catch((e: unknown) => { setError((e as Error).message); });
   }
   useEffect(load, [companyId]);
   async function publish() {
-    if (!preview) return;
+    if (!preview) {
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -56,7 +58,9 @@ export function PublicationDialog({
         setError(
           "The draft changed after this preview. Refresh the preview and review the current entries before saving a version.",
         );
-      } else setError((e as Error).message);
+      } else {
+        setError((e as Error).message);
+      }
     } finally {
       setBusy(false);
     }

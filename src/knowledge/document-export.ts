@@ -1,4 +1,5 @@
-import { AlignmentType, Bookmark, BorderStyle, Document, ExternalHyperlink, HeadingLevel, InternalHyperlink, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType, HeightRule, VerticalAlign, TableLayoutType } from "docx";
+/* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use */
+import { AlignmentType, Bookmark, BorderStyle, Document, ExternalHyperlink, HeadingLevel, InternalHyperlink, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType, HeightRule, VerticalAlignTable, TableLayoutType } from "docx";
 import type { z } from "zod";
 import type { KnowledgeBaseExport, EntryProvenance, Claim } from "../contracts";
 import type { DraftResponseSchema } from "../contracts/api-responses";
@@ -9,8 +10,8 @@ import { factualBullets } from "./narrative-prose";
 export type DocumentInput =
   | { kind: "draft"; draft: z.infer<typeof DraftResponseSchema> }
   | { kind: "snapshot"; snapshot: KnowledgeBaseExport; stored?: unknown };
-export type DocumentTextRun = { text: string; citations?: number[]; bold?: boolean; href?: string };
-export type DocumentParagraph = {
+export interface DocumentTextRun { text: string; citations?: number[]; bold?: boolean; href?: string }
+export interface DocumentParagraph {
   text: string;
   depth: number;
   heading?: "title" | "section" | "entry" | "field";
@@ -22,7 +23,7 @@ export type DocumentParagraph = {
   runs?: DocumentTextRun[];
   anchor?: string;
   href?: string;
-};
+}
 /** Source references are semantic metadata; literal bracketed user text is never reinterpreted. */
 export function documentRuns(paragraph: DocumentParagraph): DocumentTextRun[] {
   return [
@@ -44,9 +45,15 @@ function label(key: string) {
   return LABELS[key] ?? key.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 }
 function populated(value: unknown): boolean {
-  if (value === null || value === undefined || value === "") return false;
-  if (Array.isArray(value)) return value.some(populated);
-  if (typeof value === "object") return Object.entries(value).some(([key, item]) => key !== "id" && populated(item));
+  if (value === null || value === undefined || value === "") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some(populated);
+  }
+  if (typeof value === "object") {
+    return Object.entries(value).some(([key, item]) => key !== "id" && populated(item));
+  }
   return true;
 }
 const pointer = (value: string) => value.replaceAll("~", "~0").replaceAll("/", "~1");
@@ -73,8 +80,11 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     for (const run of runs) {
       const previous = merged.at(-1);
       if (previous?.citations?.length && run.citations?.length && previous.citations.join() === run.citations.join()
-        && !previous.href && !run.href && previous.bold === run.bold) previous.text += run.text;
-      else merged.push({ ...run });
+        && !previous.href && !run.href && previous.bold === run.bold) {
+        previous.text += run.text;
+      } else {
+        merged.push({ ...run });
+      }
     }
     // Only connective text may be uncited: an explicitly unsupported fact prevents a shared end marker.
     if (shared) {
@@ -87,9 +97,13 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const roots: EntryProvenance[] = input.kind === "draft" ? input.draft.entries.map((entry) => entry.provenance) : [];
   if (input.kind === "draft") {
     for (const entry of input.draft.entries) {
-      if (entry.kind === "key_person") business.key_people.push(entry.content as (typeof business.key_people)[number]);
-      else if (entry.kind === "offering") business.offerings.push(entry.content as (typeof business.offerings)[number]);
-      else Object.assign(business, { [entry.kind]: entry.content });
+      if (entry.kind === "key_person") {
+        business.key_people.push(entry.content as (typeof business.key_people)[number]);
+      } else if (entry.kind === "offering") {
+        business.offerings.push(entry.content as (typeof business.offerings)[number]);
+      } else {
+        Object.assign(business, { [entry.kind]: entry.content });
+      }
     }
   }
   const provenance = input.kind === "snapshot" ? [input.snapshot.provenance] : [...roots, input.draft.citationContext];
@@ -101,20 +115,28 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     const numbers = new Set<number>();
     const visited = new Set<string>();
     const visit = (claim: Claim) => {
-      if (visited.has(claim.id)) return;
+      if (visited.has(claim.id)) {
+        return;
+      }
       visited.add(claim.id);
       for (const id of claim.evidence_ids) {
         const sourceId = evidence.get(id)?.source_page_id;
         const index = sources.findIndex((source) => source.id === sourceId);
-        if (index >= 0) numbers.add(index + 1);
+        if (index >= 0) {
+          numbers.add(index + 1);
+        }
       }
       for (const id of claim.based_on_claim_ids) {
         const support = claims.get(id);
-        if (support) visit(support);
+        if (support) {
+          visit(support);
+        }
       }
     };
     for (const claim of activeClaims) {
-      if (claim.targets.some((target) => target === path || target.startsWith(`${path}/`) || path.startsWith(`${target}/`))) visit(claim);
+      if (claim.targets.some((target) => target === path || target.startsWith(`${path}/`) || path.startsWith(`${target}/`))) {
+        visit(claim);
+      }
     }
     // Narrative passages may use three sources; basic structured facts need only one.
     const limit = /\/(?:overview|business_model|company_pitch|founding_story|description|background_or_relevance|writing_style_description|art_style_description|relationship_text|purpose)$|\/(?:customer_needs|features|qualifications|goals|pain_points|industry_outlook)\/[^/]+\/text$/.test(path) ? 3 : 1;
@@ -124,19 +146,28 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const unknowns = new Map<string, string>();
   const collect = (value: unknown, path: string, title: string): void => {
     references.set(path, title);
-    if (!populated(value) && (value === null || typeof value !== "object" || (Array.isArray(value) && !value.length))) unknowns.set(path, title);
-    if (Array.isArray(value)) value.forEach((item, index) => {
+    if (!populated(value) && (value === null || typeof value !== "object" || (Array.isArray(value) && !value.length))) {
+      unknowns.set(path, title);
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => {
       const id = item && typeof item === "object" && "id" in item ? `@${item.id}` : index;
       const named = item && typeof item === "object" ? ["name", "label", "family", "platform", "text", "hex"].map((key) => (item as Record<string, unknown>)[key]).find((item) => typeof item === "string" && item) : null;
       collect(item, `${path}/${id}`, typeof named === "string" && named.length < 100 ? `${title} — ${named}` : title);
     });
-    else if (value && typeof value === "object") Object.entries(value).forEach(([key, child]) => {
-      if (key !== "id") collect(child, `${path}/${pointer(key)}`, `${title} / ${label(key)}`);
+    } else if (value && typeof value === "object") {
+      Object.entries(value).forEach(([key, child]) => {
+      if (key !== "id") {
+        collect(child, `${path}/${pointer(key)}`, `${title} / ${label(key)}`);
+      }
     });
+    }
   };
   for (const key of ["company_foundation", "positioning", "market_and_customers", "branding_and_style", "online_presence", "site_links", "key_people", "offerings"] as const) {
     // Snapshots saved before site links existed have no such section.
-    if (business[key] !== undefined) collect(business[key], `/${key}`, label(key));
+    if (business[key] !== undefined) {
+      collect(business[key], `/${key}`, label(key));
+    }
   }
   const fact = (text: string, path: string): DocumentTextRun => ({ text, citations: citations(path) });
   const sentence = (text: string) => /[.!?]$/.test(text.trim()) ? text : `${text}.`;
@@ -151,10 +182,14 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const withoutOverviewDuplicates = (text: string) => text.split(/\n+/).filter((part) => normalized(part) && !repeatedNarrative(part)).join("\n\n");
   const narrative = (text: string, path: string, options: Partial<DocumentParagraph> = {}) => {
     const eligible = /^\/(?:company_foundation\/(?:overview|business_model)|positioning\/company_pitch|offerings\/@[^/]+\/(?:description|(?:features|qualifications)\/@[^/]+\/text)|market_and_customers\/customer_needs\/@[^/]+\/text)$/.test(path);
-    for (const bullet of factualBullets(text, name, !eligible)) add(bullet.text, { ...options, ...bullet, citations: citations(path) });
+    for (const bullet of factualBullets(text, name, !eligible)) {
+      add(bullet.text, { ...options, ...bullet, citations: citations(path) });
+    }
   };
   const covered = (value: string | null | undefined, context: string) => {
-    if (!value) return false;
+    if (!value) {
+      return false;
+    }
     const needle = normalized(value).toLowerCase();
     const haystack = normalized(context).toLowerCase();
     const index = haystack.indexOf(needle);
@@ -168,17 +203,21 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   const collection = (title: string, items: { text: string; path: string }[]) => {
     // Complete sentences remain authored passages; short noun groups can share one line.
     const distinct = items.filter((item, index) => items.findIndex((other) => normalized(other.text) === normalized(item.text)) === index);
-    if (!distinct.length) return;
+    if (!distinct.length) {
+      return;
+    }
     if (title === "Customers" || title === "Customer industries") {
       heading(title, "field");
-      distinct.forEach((item) => narrative(item.text, item.path, { bullet: true }));
+      distinct.forEach((item) => { narrative(item.text, item.path, { bullet: true }); });
       return;
     }
     if (distinct.reduce((length, item) => length + item.text.length, 0) > 420
       || distinct.some((item) => /[.!?]$/.test(item.text.trim()) || item.text.length > 100)) {
       heading(title, "field");
       distinct.forEach((item) => add(item.text, { bullet: true, citations: citations(item.path) }));
-    } else prose([{ text: `${title}: `, bold: true }, ...listRuns(distinct)]);
+    } else {
+      prose([{ text: `${title}: `, bold: true }, ...listRuns(distinct)]);
+    }
   };
   const address = (value: Record<string, unknown>, path: string, prefix: string) => {
     const parts = [value.line1, value.line2, [value.city, [value.region, value.postal_code].filter(Boolean).join(" ")].filter(Boolean).join(", "), value.country]
@@ -191,24 +230,30 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     // A label-only address still shows the part that exists.
     const locationLabel = wording && label ? `${label}: ` : "";
     const detail = wording || label;
-    if (detail) prose([fact(sentence(`${prefix}${locationLabel}${detail}`), path)]);
+    if (detail) {
+      prose([fact(sentence(`${prefix}${locationLabel}${detail}`), path)]);
+    }
   };
   const displayedLinks = new Set<string>();
   const renderValue = (value: unknown, title: string, path: string, depth = 0): void => {
-    if (!populated(value)) return;
+    if (!populated(value)) {
+      return;
+    }
     if (path === "/company_foundation/main_address" && value && typeof value === "object") {
       address(value as Record<string, unknown>, path, "Address: ");
       return;
     }
     if (Array.isArray(value) && path === "/company_foundation/other_locations") {
-      value.forEach((item) => address(item, `${path}/@${item.id}`, "Additional location: "));
+      value.forEach((item) => { address(item, `${path}/@${item.id}`, "Additional location: "); });
       return;
     }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     if (Array.isArray(value) && ["target_buyers", "company_role", "service_locations", "alternative_company_names", "industry_groupings"].includes(path.split("/").at(-1)!)) {
       const titles: Record<string, string> = { target_buyers: "Customers", company_role: value.length === 1 ? "Role" : "Roles",
         service_locations: value.length === 1 ? "Service area" : "Service areas", alternative_company_names: "Also known as", industry_groupings: "Customer industries" };
       const items = value.filter((item) => typeof item.text === "string")
         .map((item) => ({ text: item.text, path: `${path}/@${item.id}/text` }));
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       collection(titles[path.split("/").at(-1)!], items);
       return;
     }
@@ -219,14 +264,20 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
         pain_points: item.pain_points.filter((point: { text: string }) => !repeatedNarrative(point.text)),
       })).filter((item) => item.name || item.role || item.goals.length || item.pain_points.length
         || (item.organization_type && !buyerText.some((buyer) => normalized(buyer) === normalized(item.organization_type))));
-      if (!profiles.length) return;
+      if (!profiles.length) {
+        return;
+      }
       heading("Audience profiles", "field");
       for (const item of profiles) {
         const root = `${path}/@${item.id}`;
         const primary = item.name ? "name" : item.organization_type ? "organization_type" : item.role ? "role" : null;
-        if (primary) add(item[primary], { heading: "entry", citations: citations(`${root}/${primary}`) });
+        if (primary) {
+          add(item[primary], { heading: "entry", citations: citations(`${root}/${primary}`) });
+        }
         const details = ["role", "organization_type"].filter((field) => field !== primary && populated(item[field])).map((field) => fact(item[field], `${root}/${field}`));
-        if (details.length) prose(joined(details), { muted: true });
+        if (details.length) {
+          prose(joined(details), { muted: true });
+        }
         renderValue(item.goals, "Goals", `${root}/goals`);
         renderValue(item.pain_points, "Pain points", `${root}/pain_points`);
       }
@@ -238,8 +289,12 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
         const root = `${path}/@${item.id}`;
         const methods: Record<string, string> = { css_declared: "declared CSS", resource_loaded: "loaded resources", computed_family: "computed font family" };
         const runs = [fact(item.family, `${root}/family`)];
-        if (item.apparent_use) runs.push(fact(item.apparent_use, `${root}/apparent_use`));
-        if (item.observations.length) runs.push(fact(item.observations.map((method: string) => methods[method] ?? method).join(", "), `${root}/observations`));
+        if (item.apparent_use) {
+          runs.push(fact(item.apparent_use, `${root}/apparent_use`));
+        }
+        if (item.observations.length) {
+          runs.push(fact(item.observations.map((method: string) => methods[method] ?? method).join(", "), `${root}/observations`));
+        }
         runs.push(fact(item.brand_confirmed ? "confirmed brand guidance" : "observed, not confirmed as brand guidance", `${root}/brand_confirmed`));
         prose(joined(runs));
       }
@@ -255,10 +310,15 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       for (const item of value) {
         const classification = item.classification === "brand_guide_confirmed" ? "brand-guide-confirmed color" : "observed website color";
         const details = `${classification}; opacity ${item.alpha}${item.apparent_role ? `; apparent role: ${item.apparent_role}` : ""}`;
-        if (!groups.has(details)) groups.set(details, { colors: [], details });
+        if (!groups.has(details)) {
+          groups.set(details, { colors: [], details });
+        }
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         groups.get(details)!.colors.push(item.hex);
       }
-      for (const group of groups.values()) add(`${group.colors.join(", ")} — ${group.details}.`, { muted: true });
+      for (const group of groups.values()) {
+        add(`${group.colors.join(", ")} — ${group.details}.`, { muted: true });
+      }
       return;
     }
     if (Array.isArray(value) && path.endsWith("/social_media_links")) {
@@ -281,35 +341,61 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
         // A repeated sentence is not narrated again, but the item's other facts (publisher, date) still render.
         value = value.filter((item) => !(typeof item?.text === "string" && repeatedNarrative(item.text))
           || Object.entries(item).some(([key, child]) => key !== "id" && key !== "text" && populated(child)));
-        if (!(value as unknown[]).length) return;
+        if (!(value as unknown[]).length) {
+          return;
+        }
       }
       heading(title, "field");
       for (const [index, item] of (value as unknown[]).entries()) {
-        const itemPath = `${path}/${item && typeof item === "object" && "id" in item ? `@${item.id}` : index}`;
+        const itemPath = `${path}/${item && typeof item === "object" && "id" in item ? `@${String(item.id)}` : index}`;
         if (item && typeof item === "object" && "text" in item) {
-          if (!repeatedNarrative(String(item.text))) narrative(String(item.text), `${itemPath}/text`, { bullet: true, depth });
-          for (const [key, child] of Object.entries(item)) if (!["id", "text"].includes(key)) renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
+          if (!repeatedNarrative(String(item.text))) {
+            narrative(String(item.text), `${itemPath}/text`, { bullet: true, depth });
+          }
+          for (const [key, child] of Object.entries(item)) {
+            if (!["id", "text"].includes(key)) {
+              renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
+            }
+          }
         } else if (item && typeof item === "object") {
           const fields = Object.entries(item).filter(([key]) => key !== "id");
           const primary = ["name", "label", "family", "hex", "platform", "raw"].map((key) => fields.find(([field, child]) => field === key && populated(child))).find(Boolean);
           if (primary && typeof (item as Record<string, unknown>).url === "string") {
             const linkKey = JSON.stringify([primary[1], (item as Record<string, unknown>).url]);
             const extraFacts = fields.some(([key, child]) => key !== primary[0] && key !== "url" && populated(child));
-            if (displayedLinks.has(linkKey) && !extraFacts) continue;
+            if (displayedLinks.has(linkKey) && !extraFacts) {
+              continue;
+            }
             displayedLinks.add(linkKey);
             prose([fact(String(primary[1]), `${itemPath}/${primary[0]}`), { text: " — " }, fact(String((item as Record<string, unknown>).url), `${itemPath}/url`)], { depth });
-            for (const [key, child] of fields) if (key !== primary[0] && key !== "url") renderValue(child, label(key), `${itemPath}/${key}`, depth);
+            for (const [key, child] of fields) {
+              if (key !== primary[0] && key !== "url") {
+                renderValue(child, label(key), `${itemPath}/${key}`, depth);
+              }
+            }
             continue;
           }
-          if (primary) add(String(primary[1]), {
+          if (primary) {
+            add(String(primary[1]), {
             citations: citations(`${itemPath}/${primary[0]}`), heading: "entry", depth,
           });
-          for (const [key, child] of fields) if (key !== primary?.[0]) renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
-        } else add(String(item), { citations: citations(itemPath), bullet: true, depth });
+          }
+          for (const [key, child] of fields) {
+            if (key !== primary?.[0]) {
+              renderValue(child, label(key), `${itemPath}/${key}`, depth + 1);
+            }
+          }
+        } else {
+          add(String(item), { citations: citations(itemPath), bullet: true, depth });
+        }
       }
     } else if (value && typeof value === "object") {
       heading(title, "field");
-      for (const [key, child] of Object.entries(value)) if (key !== "id") renderValue(child, label(key), `${path}/${key}`, depth);
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "id") {
+          renderValue(child, label(key), `${path}/${key}`, depth);
+        }
+      }
     } else {
       const formatted = typeof value === "boolean" ? value ? "Yes" : "No"
         : path === "/online_presence/phone" && typeof value === "string" ? value.replace(/^(\d{3})(\d{3})(\d{4})$/, "($1) $2-$3") : String(value);
@@ -323,10 +409,19 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     }
   };
   const section = (title: string, content: unknown, path: string) => {
-    if (!populated(content)) return;
+    if (!populated(content)) {
+      return;
+    }
     heading(title);
-    if (typeof content === "string") narrative(content, path);
-    else if (content && typeof content === "object" && !Array.isArray(content)) for (const [key, value] of Object.entries(content)) if (key !== "id") renderValue(value, label(key), `${path}/${key}`);
+    if (typeof content === "string") {
+      narrative(content, path);
+    } else if (content && typeof content === "object" && !Array.isArray(content)) {
+      for (const [key, value] of Object.entries(content)) {
+        if (key !== "id") {
+          renderValue(value, label(key), `${path}/${key}`);
+        }
+      }
+    }
   };
   const name = input.kind === "draft" ? input.draft.company.name : input.snapshot.provenance.company.name;
   const website = input.kind === "draft" ? input.draft.company.website_url : input.snapshot.provenance.company.website;
@@ -335,34 +430,54 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
   if (input.kind === "draft") {
     const states = [...new Set(input.draft.entries.map((entry) => entry.review_status))].map(label);
     add(`Current saved draft · ${states.join(", ") || "No saved entries"}. Exporting does not approve or publish these values.`, { muted: true });
-  } else add(`Saved version ${input.snapshot.version} · ${input.snapshot.saved_at.slice(0, 10)} · immutable reviewed snapshot`, { muted: true });
-  if ([...claims.values()].some((claim) => claim.origin === "generated" || claim.origin === "inferred")) add("Includes historical generated or inferred material; consult the JSON provenance for each field’s origin.", { muted: true });
+  } else {
+    add(`Saved version ${input.snapshot.version} · ${input.snapshot.saved_at.slice(0, 10)} · immutable reviewed snapshot`, { muted: true });
+  }
+  if ([...claims.values()].some((claim) => claim.origin === "generated" || claim.origin === "inferred")) {
+    add("Includes historical generated or inferred material; consult the JSON provenance for each field’s origin.", { muted: true });
+  }
   businessBody = true;
   section("Overview", business.company_foundation.overview, "/company_foundation/overview");
   const foundation = business.company_foundation;
   const details: DocumentTextRun[] = [];
   const industryContext = overview.toLowerCase().split(normalized(name).toLowerCase()).join(" ").replace(/https?:\/\/\S+/g, " ");
-  if (foundation.industry && (normalized(foundation.industry).length <= 3 || !covered(foundation.industry, industryContext))) details.push(fact(foundation.industry, "/company_foundation/industry"));
+  if (foundation.industry && (normalized(foundation.industry).length <= 3 || !covered(foundation.industry, industryContext))) {
+    details.push(fact(foundation.industry, "/company_foundation/industry"));
+  }
   const legalSuffix = foundation.legal_entity_type && normalized(name).toLowerCase().replace(/[.,]+$/, "").endsWith(` ${normalized(foundation.legal_entity_type).toLowerCase()}`);
-  if (foundation.legal_entity_type && !legalSuffix) details.push(fact(foundation.legal_entity_type, "/company_foundation/legal_entity_type"));
-  if (foundation.year_founded !== null && !new RegExp(`(?:founded|established|formed)\\s+(?:in\\s+)?${foundation.year_founded}\\b`, "i").test(overview)) details.push(fact(`Founded ${foundation.year_founded}`, "/company_foundation/year_founded"));
-  if (foundation.website && foundation.website !== website && !covered(foundation.website, overview)) details.push(fact(`Website: ${foundation.website}`, "/company_foundation/website"));
+  if (foundation.legal_entity_type && !legalSuffix) {
+    details.push(fact(foundation.legal_entity_type, "/company_foundation/legal_entity_type"));
+  }
+  if (foundation.year_founded !== null && !new RegExp(`(?:founded|established|formed)\\s+(?:in\\s+)?${foundation.year_founded}\\b`, "i").test(overview)) {
+    details.push(fact(`Founded ${foundation.year_founded}`, "/company_foundation/year_founded"));
+  }
+  if (foundation.website && foundation.website !== website && !covered(foundation.website, overview)) {
+    details.push(fact(`Website: ${foundation.website}`, "/company_foundation/website"));
+  }
   // Matching header facts do not need another sentence; source details remain in JSON.
   const model = foundation.business_model ? withoutOverviewDuplicates(foundation.business_model) : "";
   const extraFields = Object.entries(foundation).filter(([key, value]) => !["overview", "industry", "legal_entity_type", "year_founded", "website", "business_model"].includes(key)
     && populated(value));
   if (details.length || model || extraFields.length) {
     heading("Company details");
-    for (const detail of details) prose([detail]);
-    if (model) narrative(model, "/company_foundation/business_model");
-    for (const [key, value] of extraFields) renderValue(value, label(key), `/company_foundation/${key}`);
+    for (const detail of details) {
+      prose([detail]);
+    }
+    if (model) {
+      narrative(model, "/company_foundation/business_model");
+    }
+    for (const [key, value] of extraFields) {
+      renderValue(value, label(key), `/company_foundation/${key}`);
+    }
   }
   const pitch = business.positioning.company_pitch ? withoutOverviewDuplicates(business.positioning.company_pitch) : "";
   section("Pitch", pitch.length <= 500 ? normalized(pitch) : pitch, "/positioning/company_pitch");
   section("Market & customers", business.market_and_customers, "/market_and_customers");
   section("Founding story", business.positioning.founding_story, "/positioning/founding_story");
   section("Branding & style", business.branding_and_style, "/branding_and_style");
-  if (populated(business.branding_and_style.fonts) || populated(business.branding_and_style.brand_colors)) add("Website observations are not confirmed brand guidelines unless explicitly marked as confirmed.", { muted: true });
+  if (populated(business.branding_and_style.fonts) || populated(business.branding_and_style.brand_colors)) {
+    add("Website observations are not confirmed brand guidelines unless explicitly marked as confirmed.", { muted: true });
+  }
   section("Online presence", business.online_presence, "/online_presence");
   const siteLinks = business.site_links?.links ?? [];
   if (siteLinks.length) {
@@ -371,11 +486,15 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       const root = `/site_links/links/@${item.id}`;
       const link = fact(item.url, `${root}/url`);
       prose([fact(`${item.title}: `, `${root}/title`), /^https?:\/\//i.test(item.url) ? { ...link, href: item.url } : link]);
-      if (item.note) add(item.note, { label: "Note", depth: 1, citations: citations(`${root}/note`) });
+      if (item.note) {
+        add(item.note, { label: "Note", depth: 1, citations: citations(`${root}/note`) });
+      }
     }
   }
   for (const [key, title] of [["key_people", "Key people"], ["offerings", "Offerings"]] as const) {
-    if (!business[key].length) continue;
+    if (!business[key].length) {
+      continue;
+    }
     heading(title);
     for (const item of business[key]) {
       const path = `/${key}/@${item.id}`;
@@ -386,18 +505,27 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       const distinctDetails = populatedDetails.filter((field, index) => populatedDetails.findIndex((other) => normalized(String(fields[other])) === normalized(String(fields[field]))) === index);
       const subtitleFragment = (value: unknown) => {
         const text = String(value).trim();
-        const word = text.match(/(\p{L}+)\.$/u)?.[1];
+        const word = (/(\p{L}+)\.$/u.exec(text))?.[1];
         // Remove sentence punctuation before the join, retaining initials, acronyms and common abbreviations.
         return key === "key_people" && distinctDetails.length > 1 && word && word.length > 3 && word !== word.toUpperCase()
           && !/^(?:prof|assoc|asst|pres|exec|admin|dept|corp)$/i.test(word) ? text.slice(0, -1) : text;
       };
-      if (distinctDetails.length) prose(joined(distinctDetails.map((field) => fact(subtitleFragment(fields[field]), `${path}/${field}`)), key === "key_people" ? "; " : " · "), { muted: true });
-      if (key === "key_people" && fields.gender) add(String(fields.gender), { label: "Stated gender", citations: citations(`${path}/gender`) });
+      if (distinctDetails.length) {
+        prose(joined(distinctDetails.map((field) => fact(subtitleFragment(fields[field]), `${path}/${field}`)), key === "key_people" ? "; " : " · "), { muted: true });
+      }
+      if (key === "key_people" && fields.gender) {
+        add(String(fields.gender), { label: "Stated gender", citations: citations(`${path}/gender`) });
+      }
       for (const [field, value] of Object.entries(item)) {
         // Uploaded images are not embedded and their storage details are not for readers.
-        if (["id", "name", "portrait", "images", ...(key === "key_people" ? ["title", "role", "gender"] : ["offering_type", "category"])].includes(field)) continue;
-        if (["description", "background_or_relevance"].includes(field) && typeof value === "string" && populated(value)) narrative(value, `${path}/${field}`);
-        else renderValue(value, label(field), `${path}/${field}`);
+        if (["id", "name", "portrait", "images", ...(key === "key_people" ? ["title", "role", "gender"] : ["offering_type", "category"])].includes(field)) {
+          continue;
+        }
+        if (["description", "background_or_relevance"].includes(field) && typeof value === "string" && populated(value)) {
+          narrative(value, `${path}/${field}`);
+        } else {
+          renderValue(value, label(field), `${path}/${field}`);
+        }
       }
     }
   }
@@ -410,23 +538,40 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     const explanation = `${label(status)}${reason ? ` — ${reason}` : ". No additional reason recorded."}`;
     const section = label(path.split("/")[1] ?? "Other");
     const key = `${section}\0${explanation}`;
-    if (!groups.has(key)) groups.set(key, { section, explanation, fields: new Set() });
+    if (!groups.has(key)) {
+      groups.set(key, { section, explanation, fields: new Set() });
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     groups.get(key)!.fields.add(title.startsWith(`${section} / `) ? title.slice(section.length + 3) : title);
   };
-  for (const item of coverage) if (item.status !== "found") for (const target of item.targets) {
+  for (const item of coverage) {
+    if (item.status !== "found") {
+      for (const target of item.targets) {
     addGap(references.get(target) ?? target.split("/").filter((part) => part && !part.startsWith("@")).map(label).join(" / "), item.status, item.reason, target);
   }
-  for (const [path, title] of unknowns) {
-    if (!coverage.some((item) => item.targets.some((target) => path === target || path.startsWith(`${target}/`)))) addGap(title, "unknown", "No assessment recorded for this saved value.", path);
+    }
   }
-  if (!groups.size) add("No unresolved coverage assessments recorded.");
+  for (const [path, title] of unknowns) {
+    if (!coverage.some((item) => item.targets.some((target) => path === target || path.startsWith(`${target}/`)))) {
+      addGap(title, "unknown", "No assessment recorded for this saved value.", path);
+    }
+  }
+  if (!groups.size) {
+    add("No unresolved coverage assessments recorded.");
+  }
   for (const section of new Set([...groups.values()].map((group) => group.section))) {
     heading(section, "field");
-    for (const group of groups.values()) if (group.section === section) add(`${[...group.fields].join("; ")}. ${group.explanation}`, { bullet: true });
+    for (const group of groups.values()) {
+      if (group.section === section) {
+        add(`${[...group.fields].join("; ")}. ${group.explanation}`, { bullet: true });
+      }
+    }
   }
   heading("Sources");
   add("Reference numbers identify the captured sources supporting the saved values. Full claims, exact supporting quotes, review states, and technical provenance are available in the JSON export; PDF also includes the original knowledge.json attachment.", { muted: true });
-  if (!sources.length) add("No public website sources recorded. Human-provided values are not website quotations.");
+  if (!sources.length) {
+    add("No public website sources recorded. Human-provided values are not website quotations.");
+  }
   sources.forEach((source, index) => {
     add(`[${index + 1}] ${source.title || source.site_name || "Captured source"}`, { heading: "entry", anchor: `source_${index + 1}` });
     add(source.url, { href: /^https?:\/\//i.test(source.url) ? source.url : undefined });
@@ -477,21 +622,26 @@ export async function renderKnowledgeDocument(input: DocumentInput): Promise<Buf
   };
   const noBorder = { style: BorderStyle.NONE, size: 0 };
   const paragraphs = documentParagraphs(input).map((paragraph) => {
-    if (!paragraph.palette) return makeParagraph(paragraph);
+    if (!paragraph.palette) {
+      return makeParagraph(paragraph);
+    }
     const rows: TableRow[] = [];
     for (let offset = 0; offset < paragraph.palette.length; offset += 4) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       const colors = Array.from({ length: 4 }, (_item, index) => paragraph.palette![offset + index]);
       rows.push(new TableRow({ height: { value: 480, rule: HeightRule.EXACT }, children: colors.flatMap((color) => color ? [
         new TableCell({ width: { size: 480, type: WidthType.DXA }, shading: { fill: color.hex.slice(1) },
           margins: { top: 0, bottom: 0, left: 0, right: 0 }, borders: Object.fromEntries(["top", "bottom", "left", "right"].map((edge) => [edge, { color: "88929B", style: BorderStyle.SINGLE, size: 4 }])),
           children: [new Paragraph({ spacing: { before: 0, after: 0 }, children: [new TextRun({ text: "", size: 2 })] })] }),
-        new TableCell({ width: { size: 2100, type: WidthType.DXA }, verticalAlign: VerticalAlign.CENTER,
+        new TableCell({ width: { size: 2100, type: WidthType.DXA }, verticalAlign: VerticalAlignTable.CENTER,
           margins: { left: 120, right: 120, top: 0, bottom: 0 },
           children: [makeParagraph({ text: color.hex, citations: color.citations, depth: 0 })] }),
       ] : [new TableCell({ width: { size: 480, type: WidthType.DXA }, children: [new Paragraph("")] }),
         new TableCell({ width: { size: 2100, type: WidthType.DXA }, children: [new Paragraph("")] })]) }));
-      if (offset + 4 < paragraph.palette.length) rows.push(new TableRow({ height: { value: 120, rule: HeightRule.EXACT },
+      if (offset + 4 < paragraph.palette.length) {
+        rows.push(new TableRow({ height: { value: 120, rule: HeightRule.EXACT },
         children: [new TableCell({ columnSpan: 8, children: [new Paragraph({ children: [new TextRun({ text: "", size: 2 })], spacing: { before: 0, after: 0 } })] })] }));
+      }
     }
     return new Table({ rows, width: { size: 10320, type: WidthType.DXA }, layout: TableLayoutType.FIXED,
       columnWidths: [480, 2100, 480, 2100, 480, 2100, 480, 2100],

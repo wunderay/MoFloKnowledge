@@ -1,7 +1,8 @@
 // Helpers for driving the "Import from website" picker through the interactive runtime, and for
 // checking what the UI sent to the entries API against the same contracts the server enforces.
 import { expect } from "vitest";
-import { entryBusiness, parseBusinessEntry, validateProvenance, EntryProvenanceSchema } from "../../src/contracts";
+import type { EntryProvenanceSchema } from "../../src/contracts";
+import { entryBusiness, parseBusinessEntry, validateProvenance } from "../../src/contracts";
 import { CreateEntrySchema, SaveEntrySchema } from "../../src/contracts/api-entries";
 import { openView, type FakeServer, type HNode, type OpenOptions, type Req, type View } from "./knowledge-view-site-all-runtime";
 import { COMPANY_ID, SITE_ENTRY_ID, inventory, labelOfPage, siteDraft, type Link, type Page } from "./knowledge-view-site-all-fixtures";
@@ -29,7 +30,7 @@ export function openSite(opts: ImportOpen = {}): Promise<View> {
 export function importButton(view: View): HNode {
   const buttons = view.byRole("button", /^import from website$/i);
   expect(buttons, 'one "Import from website" button').toHaveLength(1);
-  return buttons[0]!;
+  return buttons[0];
 }
 /** Click "Import from website" and return the dialog that opens. */
 export async function openPicker(view: View): Promise<HNode> {
@@ -37,13 +38,13 @@ export async function openPicker(view: View): Promise<HNode> {
   await view.settle();
   const dialogs = view.dialogs();
   expect(dialogs, "the import button opens exactly one dialog").toHaveLength(1);
-  return dialogs[0]!;
+  return dialogs[0];
 }
 export const pickerDialog = (view: View): HNode | undefined => view.dialogs()[0];
 export const confirmButton = (view: View, dialog: HNode): HNode | undefined => view.byRole("button", /^add selected/i, dialog)[0];
 export const cancelButton = (view: View, dialog: HNode): HNode | undefined => view.byRole("button", /^cancel$/i, dialog)[0];
 
-export type Box = { name: string; node: HNode };
+export interface Box { name: string; node: HNode }
 export function boxes(view: View, dialog: HNode): Box[] {
   return view.byRole("checkbox", undefined, dialog).map((node) => ({ name: view.nameOf(node), node }));
 }
@@ -75,17 +76,19 @@ export async function confirm(view: View): Promise<boolean> {
 }
 
 // ---- what was sent ---------------------------------------------------------------------------------------------
-export type Sent = { req: Req; kind: "create" | "revise"; content: { links: Link[] }; provenance: ReturnType<typeof EntryProvenanceSchema.parse>; body: any };
+export interface Sent { req: Req; kind: "create" | "revise"; content: { links: Link[] }; provenance: ReturnType<typeof EntryProvenanceSchema.parse>; body: any }
 /** The only write of a flow, validated against the API's request schema, content schema and provenance rules. */
 export function sentWrite(server: FakeServer, which: "create" | "revise"): Sent {
   const writes = server.writesTo(which === "create" ? "entries" : "revisions");
   expect(writes, `exactly one write to ${which === "create" ? "POST /entries" : "POST /entries/<id>/revisions"}`).toHaveLength(1);
-  return validated(writes[0]!, which);
+  return validated(writes[0], which);
 }
 export function validated(req: Req, which: "create" | "revise"): Sent {
   expect(req.method).toBe("POST");
   const body = which === "create" ? CreateEntrySchema.parse(req.body) : SaveEntrySchema.parse(req.body);
-  if (which === "create") expect(body).toMatchObject({ kind: "site_links" });
+  if (which === "create") {
+    expect(body).toMatchObject({ kind: "site_links" });
+  }
   const content = parseBusinessEntry("site_links", body.content) as { links: Link[] };
   const issues = validateProvenance(entryBusiness("site_links", content as never), body.provenance);
   expect(issues, "the sent provenance validates against the sent content").toEqual([]);

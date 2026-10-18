@@ -27,7 +27,9 @@ function CapturedSource({ companyId, sourceId }: { companyId: string; sourceId: 
   }
   return (
     <details className="source-coverage__source" onToggle={(event) => {
-      if (event.currentTarget.open && !source && !loading && !error) void load();
+      if (event.currentTarget.open && !source && !loading && !error) {
+        void load();
+      }
     }}>
       <summary>Read retained source text</summary>
       {loading && <p role="status">Loading source text…</p>}
@@ -67,7 +69,9 @@ export function SourceCoverage({ companyId, viewingSnapshot = false }: {
   }
   return (
     <details className="source-coverage" onToggle={(event) => {
-      if (event.currentTarget.open && !coverage && !loading && !error) void load();
+      if (event.currentTarget.open && !coverage && !loading && !error) {
+        void load();
+      }
     }}>
       <summary className="source-coverage__summary">Latest crawl · source coverage</summary>
       <div className="source-coverage__body">

@@ -53,7 +53,9 @@ export function candidate(
   extra: Partial<FieldCandidate> = {},
 ): FieldCandidate {
   const segment = page.capture.segments.find((s) => s.text.includes(quote));
-  if (!segment) throw new Error("Fixture quote missing: " + quote);
+  if (!segment) {
+    throw new Error("Fixture quote missing: " + quote);
+  }
   return {
     field,
     value,

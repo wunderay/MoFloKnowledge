@@ -69,7 +69,9 @@ function expectRejected(result: { response: Response; json: any; text: string },
   expect([401, 403, 404]).not.toContain(result.response.status);
   expect(result.response.headers.get("content-type") ?? "").toContain("application/json");
   expect(result.json, "the error body must be JSON").toBeDefined();
-  if (message) expect(result.text).toContain(message);
+  if (message) {
+    expect(result.text).toContain(message);
+  }
   expect(result.text.length).toBeGreaterThan(10);
   expect(world.mutations(), "a rejected upload must not touch storage").toEqual([]);
   expect(world.objects.size).toBe(0);
@@ -93,13 +95,16 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
 
       const uploads = world.storageCalls.filter((c) => c.op === "upload");
       expect(uploads).toHaveLength(1);
-      expect(uploads[0]!.bucket).toBe(BUCKET);
-      expect(uploads[0]!.path).toBe(body.path);
-      expect(uploads[0]!.options?.upsert ?? false, "uploads must never overwrite an existing object").toBe(false);
+      expect(uploads[0].bucket).toBe(BUCKET);
+      expect(uploads[0].path).toBe(body.path);
+      expect(uploads[0].options?.upsert ?? false, "uploads must never overwrite an existing object").toBe(false);
       const stored = world.objects.get(body.path)!;
       expect(stored.contentType, "the object is stored with its real content type, not the storage default").toBe(fixture.type);
-      if (name !== "svg") expect(Buffer.from(stored.bytes).equals(Buffer.from(fixture.bytes))).toBe(true);
-      else expect(Buffer.from(stored.bytes).toString()).toContain("<rect");
+      if (name !== "svg") {
+        expect(Buffer.from(stored.bytes).equals(Buffer.from(fixture.bytes))).toBe(true);
+      } else {
+        expect(Buffer.from(stored.bytes).toString()).toContain("<rect");
+      }
       expect(body.size_bytes).toBe(stored.bytes.byteLength);
       expect(world.storageCalls.every((c) => c.bucket === BUCKET)).toBe(true);
     });
@@ -146,11 +151,12 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
 
   it("C1 no storage secret or signed URL is written to the logs during uploads", async () => {
     const lines: string[] = [];
-    for (const method of ["log", "info", "warn", "error", "debug"] as const)
+    for (const method of ["log", "info", "warn", "error", "debug"] as const) {
       vi.spyOn(console, method).mockImplementation((...args: unknown[]) => void lines.push(args.map(String).join(" ")));
+    }
     await upload(a, { file: { bytes: png(), name: "ok.png", mime: "image/png" }, kind: "logos" });
     await upload(a, { file: { bytes: text("nope"), name: "bad.png", mime: "image/png" }, kind: "logos" });
-    world.storageFailures.set("upload", { message: `Request to ${"https://proj.supabase.co/storage/v1/object/sign/x?token=SIGNED_SECRET_TOKEN_9f3a7c"} failed (SERVICE_ROLE_SECRET_VALUE_b81d)` });
+    world.storageFailures.set("upload", { message: `Request to https://proj.supabase.co/storage/v1/object/sign/x?token=SIGNED_SECRET_TOKEN_9f3a7c failed (SERVICE_ROLE_SECRET_VALUE_b81d)` });
     const failed = await upload(a, { file: { bytes: png(), name: "ok.png", mime: "image/png" }, kind: "logos" });
     expect(failed.response.status).toBeGreaterThanOrEqual(400);
     expect(lines.join("\n")).not.toMatch(LEAK);
@@ -159,7 +165,7 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
 
 describe("C2 validation: content sniffing, limits and clear messages", () => {
   it("C2 anything that is not PNG, JPG, GIF, WebP or SVG is rejected with the types message, whatever its name or MIME says", async () => {
-    const impostors: Array<[string, Uint8Array, string, string]> = [
+    const impostors: [string, Uint8Array, string, string][] = [
       ["plain text named png", text("hello, this is not an image"), "logo.png", "image/png"],
       ["HTML named svg", text("<html><body><script>alert(1)</script></body></html>"), "logo.svg", "image/svg+xml"],
       ["PDF named jpg", text("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n"), "scan.jpg", "image/jpeg"],
@@ -272,7 +278,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
   });
 
   it("C2 an unknown, missing, empty or traversing kind is rejected with a message and stores nothing", async () => {
-    const kinds: Array<string | null> = [null, "", "avatars", "logo", "offering_images", "../logos", "logos/../portraits", "logos/", "/logos", "logos\\..\\x", "logos%2F..%2Fx", "logos\u0000", " logos", `../${b}/logos`];
+    const kinds: (string | null)[] = [null, "", "avatars", "logo", "offering_images", "../logos", "logos/../portraits", "logos/", "/logos", "logos\\..\\x", "logos%2F..%2Fx", "logos\u0000", " logos", `../${b}/logos`];
     for (const kind of kinds) {
       world.reset();
       ({ a, b } = arrange());
@@ -284,7 +290,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
 
   it("C2 a missing file field, a text value instead of a file, and a non-multipart body are all 4xx JSON errors", async () => {
     const { POST } = await needCollection();
-    const cases: Array<[string, BodyInit, Record<string, string>]> = [
+    const cases: [string, BodyInit, Record<string, string>][] = [
       ["no file", formFor({ kind: "logos" }), {}],
       ["text instead of file", formFor({ file: "not a file", kind: "logos" }), {}],
       ["json body", JSON.stringify({ kind: "logos" }), { "content-type": "application/json" }],

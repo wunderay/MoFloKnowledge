@@ -2,28 +2,37 @@
 export function canonicalStringify(value: unknown): string {
   const seen = new Set<object>();
   function encode(item: unknown): string {
-    if (item === null) return "null";
-    if (typeof item === "string" || typeof item === "boolean")
-      return JSON.stringify(item);
-    if (typeof item === "number") {
-      if (!Number.isFinite(item))
-        throw new Error("Canonical JSON requires finite numbers");
+    if (item === null) {
+      return "null";
+    }
+    if (typeof item === "string" || typeof item === "boolean") {
       return JSON.stringify(item);
     }
-    if (typeof item !== "object")
+    if (typeof item === "number") {
+      if (!Number.isFinite(item)) {
+        throw new Error("Canonical JSON requires finite numbers");
+      }
+      return JSON.stringify(item);
+    }
+    if (typeof item !== "object") {
       throw new Error(
         "Canonical JSON excludes undefined, functions, symbols and bigint",
       );
-    if (seen.has(item)) throw new Error("Canonical JSON cannot contain cycles");
+    }
+    if (seen.has(item)) {
+      throw new Error("Canonical JSON cannot contain cycles");
+    }
     seen.add(item);
     let result: string;
-    if (Array.isArray(item)) result = `[${Array.from(item, encode).join(",")}]`;
-    else {
+    if (Array.isArray(item)) {
+      result = `[${Array.from(item, encode).join(",")}]`;
+    } else {
       if (
         Object.getPrototypeOf(item) !== Object.prototype &&
         Object.getPrototypeOf(item) !== null
-      )
+      ) {
         throw new Error("Canonical JSON requires plain objects");
+      }
       result = `{${Object.keys(item)
         .sort()
         .map(

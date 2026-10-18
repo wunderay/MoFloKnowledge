@@ -14,7 +14,9 @@ const LISTROLES = new Set(["list", "navigation", "listbox", "tablist", "menu", "
 const accessibleName = (page: Page, el: Element): string => {
   const { $ } = page;
   const label = $(el).attr("aria-label");
-  if (label) return norm(label);
+  if (label) {
+    return norm(label);
+  }
   const by = $(el).attr("aria-labelledby");
   return by ? norm(by.split(/\s+/).map((i) => $(`[id="${i}"]`).text()).join(" ")) : "";
 };
@@ -59,19 +61,23 @@ export const groupText = (page: Page, label: Label): string => {
 export const nameOf = (page: Page, el: Element): string =>
   norm(page.$(el).attr("aria-label") ?? "") || norm(page.$(el).text()) || norm(page.$(el).attr("value") ?? "");
 export const controls = (page: Page, pattern: RegExp): Element[] =>
-  (page.$("button,a[href],input[type=button],input[type=submit],[role=button]").toArray() as Element[]).filter(
+  (page.$("button,a[href],input[type=button],input[type=submit],[role=button]").toArray()).filter(
     (el) => pattern.test(nameOf(page, el)) && !inSelectorOrForm(page, el),
   );
 export const ADD_PERSON = /^\+?\s*add person$/i;
 export const DELETE_PERSON = /^delete\b/i;
-export const fileInputs = (page: Page): Element[] => page.$('input[type="file"]').toArray() as Element[];
+export const fileInputs = (page: Page): Element[] => page.$('input[type="file"]').toArray();
 
 /** The count next to the "Key People" heading: a bare number inside the heading or inside the heading's own wrapper (one level up). */
 export function headingCount(page: Page): { heading: boolean; count: number | null } {
   const head = headings(page).find((h) => /^key people\b/i.test(h.text) && !inSelectorOrForm(page, h.el));
-  if (!head) return { heading: false, count: null };
+  if (!head) {
+    return { heading: false, count: null };
+  }
   const inline = /^key people\s+(\d+)$/i.exec(head.text);
-  if (inline) return { heading: true, count: Number(inline[1]) };
+  if (inline) {
+    return { heading: true, count: Number(inline[1]) };
+  }
   const wrapper = head.el.parent as Element | null;
   const found = wrapper ? textNodes(page).find((t) => contains(wrapper, t.node) && /^\d+$/.test(t.text)) : undefined;
   return { heading: true, count: found ? Number(found.text) : null };

@@ -48,7 +48,7 @@ export function need<T>(value: T | undefined | null, what: string): T {
 export function trigger(view: View): HNode {
   const candidates = view.byRole("button").filter((b) => NAME.test(view.nameOf(b)));
   expect(candidates.length, 'one button whose accessible name starts with "Knowledge section"').toBe(1);
-  return candidates[0]!;
+  return candidates[0];
 }
 export const freshTrigger = (view: View) => trigger(view);
 export const listboxes = (view: View) => view.byRole("listbox");
@@ -78,7 +78,9 @@ const focusedNode = (view: View): HNode | null => {
  */
 export function activeOption(view: View): HNode | null {
   const focus = focusedNode(view) ?? trigger(view);
-  if (roleOf(focus) === "option") return focus;
+  if (roleOf(focus) === "option") {
+    return focus;
+  }
   const id = str(focus.props["aria-activedescendant"]);
   return id ? options(view).find((o) => str(o.props.id) === id) ?? null : null;
 }
@@ -109,11 +111,16 @@ export async function press(view: View, key: string): Promise<{ prevented: boole
     const handler = node.props.onKeyDown;
     if (typeof handler === "function") {
       handler({ ...event, currentTarget: { tagName: node.tag.toUpperCase(), id: node.props.id } });
-      if (event.propagationStopped) break;
+      if (event.propagationStopped) {
+        break;
+      }
     }
   }
-  if (!event.propagationStopped)
-    for (const fn of view.app.documentListeners.get("keydown") ?? []) fn(keyEvent(key, target));
+  if (!event.propagationStopped) {
+    for (const fn of view.app.documentListeners.get("keydown") ?? []) {
+      fn(keyEvent(key, target));
+    }
+  }
   view.app.flushSync();
   await view.settle(3);
   return { prevented: event.defaultPrevented };
@@ -123,9 +130,11 @@ export async function press(view: View, key: string): Promise<{ prevented: boole
 export async function clickOutside(view: View): Promise<void> {
   const outside = need(view.byRole("heading").find((h) => h.tag === "h1") ?? view.byRole("heading")[0], "a heading outside the control");
   const fake = view.app.fakeFor(outside).node;
-  for (const type of ["pointerdown", "mousedown", "touchstart", "mouseup", "pointerup", "click", "focusin"])
-    for (const fn of view.app.documentListeners.get(type) ?? [])
+  for (const type of ["pointerdown", "mousedown", "touchstart", "mouseup", "pointerup", "click", "focusin"]) {
+    for (const fn of view.app.documentListeners.get(type) ?? []) {
       fn({ type, target: fake, currentTarget: fake, composedPath: () => [fake], preventDefault() {}, stopPropagation() {}, persist() {} });
+    }
+  }
   view.app.flushSync();
   await view.settle(3);
 }
@@ -154,11 +163,15 @@ export function stateHooks(view: View): string[] {
   const t = trigger(view);
   const out: HNode[] = [t];
   for (const a of ancestorsOf(t)) {
-    if (a.tag === "#root" || descendants(a).some((d) => roleOf(d) === "heading")) break;
+    if (a.tag === "#root" || descendants(a).some((d) => roleOf(d) === "heading")) {
+      break;
+    }
     out.push(a);
   }
   const lb = view.all().find((n) => roleOf(n) === "listbox");
-  if (lb) out.push(lb);
+  if (lb) {
+    out.push(lb);
+  }
   return out.map((n) => str(n.props["data-state"])).filter((v): v is string => v !== undefined);
 }
 export { norm };

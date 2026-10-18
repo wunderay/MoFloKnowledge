@@ -27,14 +27,17 @@ export function CompanySettings({
   const [busy, setBusy] = useState(false);
   const [archive, setArchive] = useState(false);
   function load() {
-    if (company.role !== "owner") return;
+    if (company.role !== "owner") {
+      return;
+    }
     api<
       | { user_id: string; role: string }[]
       | { members: { user_id: string; role: string }[] }
     >(companyPath(companyId, "/members"))
-      .then((d) => setMembers(Array.isArray(d) ? d : d.members))
-      .catch((e) => setError(e.message));
+      .then((d) => { setMembers(Array.isArray(d) ? d : d.members); })
+      .catch((e: unknown) => { setError((e as Error).message); });
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload members when the company changes only; the role is fixed for a mounted company
   useEffect(load, [companyId]);
   async function member(userId: string, body: unknown) {
     setError("");
@@ -51,7 +54,7 @@ export function CompanySettings({
       setBusy(false);
     }
   }
-  async function metadata(e: React.FormEvent<HTMLFormElement>) {
+  async function metadata(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     setBusy(true);
@@ -161,6 +164,7 @@ export function CompanySettings({
             onSubmit={(e) => {
               e.preventDefault();
               const data = new FormData(e.currentTarget);
+              // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
               void member(String(data.get("userId")), {
                 role: data.get("role"),
               });
@@ -212,7 +216,7 @@ export function CompanySettings({
                 >
                   Confirm archive
                 </button>
-                <button className="button" onClick={() => setArchive(false)}>
+                <button className="button" onClick={() => { setArchive(false); }}>
                   Keep company active
                 </button>
               </div>
@@ -221,7 +225,7 @@ export function CompanySettings({
             <button
               className="button button--danger"
               disabled={!!company.archived_at}
-              onClick={() => setArchive(true)}
+              onClick={() => { setArchive(true); }}
             >
               Archive company
             </button>

@@ -28,7 +28,7 @@ const del = (body: unknown, init: { origin?: string | null; type?: string | null
   });
 const good = { expectedRevision: 3, requestId: request };
 
-type Rpc = { data: unknown; error: { message: string; details?: string; code?: string } | null };
+interface Rpc { data: unknown; error: { message: string; details?: string; code?: string } | null }
 function session(role: "owner" | "editor" | "viewer" | null, rpc: Rpc = { data: archived, error: null }) {
   const client = {
     from: vi.fn((table: string) => {
@@ -48,8 +48,9 @@ beforeEach(() => {
 describe("the request body", () => {
   it("is exactly an expected revision and a request id", () => {
     expect(DeleteEntrySchema.safeParse(good).success).toBe(true);
-    for (const bad of [{}, { requestId: request }, { expectedRevision: 3 }, { ...good, expectedRevision: 0 }, { ...good, expectedRevision: 1.5 }, { ...good, expectedRevision: "3" }, { ...good, requestId: "not-a-uuid" }, { ...good, kind: "key_person" }, { ...good, companyId: company }])
+    for (const bad of [{}, { requestId: request }, { expectedRevision: 3 }, { ...good, expectedRevision: 0 }, { ...good, expectedRevision: 1.5 }, { ...good, expectedRevision: "3" }, { ...good, requestId: "not-a-uuid" }, { ...good, kind: "key_person" }, { ...good, companyId: company }]) {
       expect(DeleteEntrySchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
   });
 });
 
@@ -206,7 +207,7 @@ describe("the draft read", () => {
     vi.mocked(verifiedSession).mockResolvedValue({ client, user: { id: user } } as never);
     const response = await draft(new Request(`${ORIGIN}/api/companies/${company}/draft`), { params: Promise.resolve({ companyId: company }) });
     expect(response.status).toBe(200);
-    const columns = selects.knowledge_entries!.join(",");
+    const columns = selects.knowledge_entries.join(",");
     expect(columns).not.toContain("*");
     expect(columns).not.toMatch(/archiv/);
     expect(columns.split(",")).toEqual(expect.arrayContaining(["id", "kind", "current_revision", "created_at"]));

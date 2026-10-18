@@ -24,20 +24,24 @@ export default async function ViewPage({
   // The selected key person's entry id; one that matches nobody selects the first person.
   const person = typeof params.person === "string" ? params.person : undefined;
   const id = UUIDSchema.safeParse(params.companyId);
-  if (!id.success)
+  if (!id.success) {
     return (
       <Notice error>
         Select a company from the dashboard to view saved knowledge.
       </Notice>
     );
+  }
   const { client, user } = await verifiedSession();
-  if (!user) redirect("/sign-in");
+  if (!user) {
+    redirect("/sign-in");
+  }
   if (
     params.versionId &&
     params.versionId !== "draft" &&
     !UUIDSchema.safeParse(params.versionId).success
-  )
+  ) {
     return <Notice error>This saved version is unavailable.</Notice>;
+  }
   try {
     const versions = await readVersionSummaries(client, id.data, user.id);
     const versionId = params.versionId ?? versions[0]?.id ?? "draft";
@@ -55,6 +59,7 @@ export default async function ViewPage({
         />
       );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
     const saved = await readSnapshot(client, id.data, versionId, user.id);
     return (
       <KnowledgeViewer
@@ -65,8 +70,10 @@ export default async function ViewPage({
         initialOffering={offering}
         initialPerson={person}
         initialData={{
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
           companyName: saved.payload.provenance.company.name,
           versions,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
           snapshot: saved.payload,
         }}
       />

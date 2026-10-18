@@ -54,13 +54,15 @@ function hangDraftReadsAfterWrite(server: FakeServer) {
   const original = server.fetch;
   server.fetch = (async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const method = (init?.method ?? "GET").toUpperCase();
-    const path = String(input).split("?")[0]!;
-    if (method === "GET" && /\/draft$/.test(path) && written) {
+    const path = String(input).split("?")[0];
+    if (method === "GET" && path.endsWith("/draft") && written) {
       server.requests.push({ method, path, body: undefined });
       return new Promise(() => {});
     }
     const reply = await original(input, init);
-    if (method !== "GET" && reply.ok) written = true;
+    if (method !== "GET" && reply.ok) {
+      written = true;
+    }
     return reply;
   }) as typeof server.fetch;
 }
@@ -97,7 +99,7 @@ describe("a save that finishes after the section was left", () => {
     view.server.writeFailure = null;
     await click(view, one(view.byRole("button", /^retry$/i), "Retry"));
     expect(view.server.writes).toHaveLength(2);
-    expect(view.server.writes[1]!.body.requestId).toBe(view.server.writes[0]!.body.requestId);
+    expect(view.server.writes[1].body.requestId).toBe(view.server.writes[0].body.requestId);
     expect(revisionWrite(view, before, 1, before.current_revision).content.legal_entity_type).toBe("Typed, then the section changed");
     expect(alerts(view)).toHaveLength(0);
     expect(view.text(editButton(view, LEGAL.label))).toContain("Typed, then the section changed");
@@ -149,7 +151,7 @@ describe("saves of one entry never race", () => {
     expect(alerts(view)).toHaveLength(0);
     const created = creationWrite(view, "company_foundation");
     expect(created.content.overview).toBe("A first overview");
-    const revised = view.server.writesTo("revisions")[0]!;
+    const revised = view.server.writesTo("revisions")[0];
     expect(revised.body.expectedRevision).toBe(1);
     expect(revised.body.content).toEqual({ ...created.content, legal_entity_type: "S corporation" });
   });
@@ -182,13 +184,13 @@ describe("focus after Remove and Undo", () => {
   it("Remove moves focus to the next chip, or to Add after the last one; Undo to the restored chip", async () => {
     const view = await open("Customers & Industry");
     const items = itemsOf(stored(view, BUYERS.kind), BUYERS.path);
-    await removeChip(view, items[1]!.text);
+    await removeChip(view, items[1].text);
     expect(focusedPath(), "focus is not left on the page body").not.toBeNull();
-    expect(focusedPath()).toBe(one(removeButtons(view, items[2]!.text), "next chip").path);
+    expect(focusedPath()).toBe(one(removeButtons(view, items[2].text), "next chip").path);
     await click(view, one(undoButtons(view), "Undo"));
-    expect(focusedPath()).toBe(one(removeButtons(view, items[1]!.text), "restored chip").path);
+    expect(focusedPath()).toBe(one(removeButtons(view, items[1].text), "restored chip").path);
 
-    await removeChip(view, items[items.length - 1]!.text);
+    await removeChip(view, items[items.length - 1].text);
     expect(focusedPath(), "after the last chip, the Add control").toBe(one(addPill(view, BUYERS), "Add").path);
   });
 });
@@ -200,7 +202,7 @@ describe("the edit button", () => {
     const id = button.props["aria-describedby"] as string;
     expect(id, "aria-describedby points at the value").toBeTruthy();
     const described = view.all().find((n) => n.props.id === id);
-    expect(view.text(described!)).toBe("Limited Liability Company (LLC)");
+    expect(view.text(described)).toBe("Limited Liability Company (LLC)");
     expect(view.nameOf(button)).toBe("Edit Legal entity");
   });
 });
@@ -254,7 +256,9 @@ describe("a re-read that does not settle", () => {
     await sleep(400);
     await view.settle();
     expect(view.text()).toMatch(/saved\. reload to see the latest changes\./i);
-    for (const button of view.byRole("button", /^edit /i)) expect(disabled(view, button), `${view.nameOf(button)} is disabled`).toBe(true);
+    for (const button of view.byRole("button", /^edit /i)) {
+      expect(disabled(view, button), `${view.nameOf(button)} is disabled`).toBe(true);
+    }
     expect(view.server.writes, "the committed save is not sent again and the queued one is held back").toHaveLength(1);
     expect(alertText(view), "the queued change says why it was not made").toMatch(/out of date|reload/i);
     expect(view.byRole("button", /^retry$/i), "nothing to retry").toHaveLength(0);
@@ -265,10 +269,10 @@ describe("Undo", () => {
   it("asks the server to put the item back as the revision before the removal had it", async () => {
     const view = await open("Customers & Industry");
     const before = stored(view, BUYERS.kind);
-    const target = itemsOf(before, BUYERS.path)[1]!;
+    const target = itemsOf(before, BUYERS.path)[1];
     await removeChip(view, target.text);
     await click(view, one(undoButtons(view), "Undo"));
-    expect(view.server.writes[0]!.body.restoreFrom, "the removal is an ordinary save").toBeUndefined();
-    expect(view.server.writes[1]!.body.restoreFrom).toEqual({ revision: before.current_revision, itemIds: [target.id] });
+    expect(view.server.writes[0].body.restoreFrom, "the removal is an ordinary save").toBeUndefined();
+    expect(view.server.writes[1].body.restoreFrom).toEqual({ revision: before.current_revision, itemIds: [target.id] });
   });
 });

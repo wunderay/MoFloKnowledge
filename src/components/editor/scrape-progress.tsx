@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError, companyPath, write } from "../shared/api-client";
 import { Notice, StatusBadge } from "../shared/ui";
 import type { Progress, SafeJobError } from "@/contracts";
-type Job = {
+interface Job {
   id: string;
   status: string;
   progress: Partial<Progress>;
   errors?: SafeJobError[];
-};
+}
 const active = ["queued", "validating", "crawling", "extracting"];
 export function ScrapeProgress({
   companyId,
@@ -35,7 +35,9 @@ export function ScrapeProgress({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    if (!jobId) return;
+    if (!jobId) {
+      return;
+    }
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     let delay = 2000;
@@ -44,17 +46,22 @@ export function ScrapeProgress({
         const result = await api<Job>(
           companyPath(companyId, `/scrapes/${jobId}`),
         );
-        if (stopped) return;
+        if (stopped) {
+          return;
+        }
         setJob(result);
         setError("");
         delay = 2000;
-        if (active.includes(result.status)) timer = setTimeout(poll, delay);
-        else onComplete();
+        if (active.includes(result.status)) {
+          timer = setTimeout(() => { void poll(); }, delay);
+        } else {
+          onComplete();
+        }
       } catch (e) {
         if (!stopped) {
           setError((e as Error).message);
           delay = Math.min(delay * 2, 30000);
-          timer = setTimeout(poll, delay);
+          timer = setTimeout(() => { void poll(); }, delay);
         }
       }
     }
@@ -64,7 +71,7 @@ export function ScrapeProgress({
       clearTimeout(timer);
     };
   }, [companyId, jobId, onComplete]);
-  async function start(e: React.FormEvent) {
+  async function start(e: React.SyntheticEvent) {
     e.preventDefault();
     if (
       !Number.isInteger(documentLimit) ||
@@ -82,8 +89,9 @@ export function ScrapeProgress({
     setBusy(true);
     setError("");
     const key = JSON.stringify([url, documentLimit, depthLimit]);
-    if (pendingRequest.current?.key !== key)
+    if (pendingRequest.current?.key !== key) {
       pendingRequest.current = { key, id: crypto.randomUUID() };
+    }
     try {
       const result = await api<{ jobId: string; status: string }>(
         companyPath(companyId, "/scrapes"),
@@ -139,7 +147,7 @@ export function ScrapeProgress({
           <input
             type="url"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => { setUrl(e.target.value); }}
             required
             disabled={
               !canEdit || busy || (!!job && active.includes(job.status))
@@ -167,7 +175,7 @@ export function ScrapeProgress({
               disabled={
                 !canEdit || busy || Boolean(job && active.includes(job.status))
               }
-              onChange={(event) => setDocumentLimit(Number(event.target.value))}
+              onChange={(event) => { setDocumentLimit(Number(event.target.value)); }}
             />
           </label>
           <label className="field">
@@ -180,7 +188,7 @@ export function ScrapeProgress({
               disabled={
                 !canEdit || busy || Boolean(job && active.includes(job.status))
               }
-              onChange={(event) => setDepthLimit(Number(event.target.value))}
+              onChange={(event) => { setDepthLimit(Number(event.target.value)); }}
             />
           </label>
         </div>

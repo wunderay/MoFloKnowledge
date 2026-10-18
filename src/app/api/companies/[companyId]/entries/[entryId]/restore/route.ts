@@ -13,7 +13,7 @@ export const POST = route(async (r, c, { client, user }) => {
   const company = IdSchema.parse(p.companyId);
   const entry = IdSchema.parse(p.entryId);
   // Membership and role first: a non-member or viewer learns nothing about the body rules.
-  await authorizeCompany(client, company, user!.id, true);
+  await authorizeCompany(client, company, user.id, true);
   await readJson(r, RestoreEntrySchema);
   return rpc(client, "restore_entry", { p_company: company, p_entry: entry });
 });

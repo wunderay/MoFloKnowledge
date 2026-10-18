@@ -77,7 +77,9 @@ export async function prepareRevision(
       .eq("id", entryId)
       .maybeSingle(),
   );
-  if (!entry) throw new HttpError(404, "unavailable", "Resource unavailable.");
+  if (!entry) {
+    throw new HttpError(404, "unavailable", "Resource unavailable.");
+  }
   // Read the requested base, including on replay. SQL owns concurrency/idempotency under its lock.
   const previous = await checked(
     client
@@ -88,13 +90,14 @@ export async function prepareRevision(
       .eq("revision", input.expectedRevision)
       .maybeSingle(),
   );
-  if (!previous)
+  if (!previous) {
     throw new HttpError(
       409,
       "conflict",
       "The saved revision changed. Refresh and compare your changes.",
       { currentRevision: entry.current_revision },
     );
+  }
   const kind = entry.kind as EntryKind;
   const content = parseBusinessEntry(kind, input.content);
   const stored = previous.provenance as EntryProvenance;
@@ -103,14 +106,16 @@ export async function prepareRevision(
   // Only explicit decisions against existing conflicts are accepted.
   provenance.decisions = input.provenance.decisions.map((decision) => {
     const prior = stored.decisions.find((d) => d.id === decision.id);
-    if (prior && canonicalStringify(prior) === canonicalStringify(decision))
+    if (prior && canonicalStringify(prior) === canonicalStringify(decision)) {
       return prior;
-    if (!stored.conflicts.some((c) => c.id === decision.conflict_id))
+    }
+    if (!stored.conflicts.some((c) => c.id === decision.conflict_id)) {
       throw new HttpError(
         422,
         "invalid_decision",
         "Conflict decision is unavailable.",
       );
+    }
     return {
       ...decision,
       actor_id: actorId,
@@ -193,7 +198,9 @@ async function restoreItems(
   requestId: string,
 ): Promise<{ provenance: EntryProvenance; stored: EntryProvenance }> {
   const refuse = () => new HttpError(422, "invalid_restore", "The revision to restore from is unavailable.");
-  if (restore.revision >= expectedRevision) throw refuse();
+  if (restore.revision >= expectedRevision) {
+    throw refuse();
+  }
   const earlier = await checked(
     client
       .from("knowledge_entry_versions")
@@ -204,7 +211,9 @@ async function restoreItems(
       .maybeSingle(),
   );
   // A revision of another entry or company is never a source (the query is scoped; the row is checked as well).
-  if (!earlier || earlier.company_id !== companyId || earlier.entry_id !== entryId || earlier.revision !== restore.revision) throw refuse();
+  if (earlier?.company_id !== companyId || earlier.entry_id !== entryId || earlier.revision !== restore.revision) {
+    throw refuse();
+  }
   const before = entryBusiness(kind, parseStoredEntry(kind, earlier.content));
   const after = entryBusiness(kind, content);
   const past = earlier.provenance as EntryProvenance;
@@ -222,8 +231,9 @@ async function restoreItems(
       was.length === 0 ||
       was.length !== now.length ||
       !was.every((leaf) => now.some((other) => other.path === leaf.path && canonicalStringify(other.value) === canonicalStringify(leaf.value)))
-    )
+    ) {
       continue;
+    }
     const claims = claimsOf(was);
     const sound = claims.every(
       (claim) =>
@@ -232,8 +242,11 @@ async function restoreItems(
         claim.evidence_ids.every((evidence) => past.evidence.some((row) => row.id === evidence)) &&
         claim.based_on_claim_ids.every((basis) => present.has(basis)),
     );
-    if (!sound) continue;
+    if (!sound) {
+      continue;
+    }
     was.forEach((leaf, index) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       const claim = claims[index]!;
       const id = stableId(requestId, claim.id, "restored");
       const have = carried.get(id) ?? { ...claim, id, entry_id: entryId, targets: [] };
@@ -243,7 +256,9 @@ async function restoreItems(
       claim.evidence_ids.forEach((evidence) => evidenceIds.add(evidence));
     });
   }
-  if (carried.size === 0) return { provenance: revised, stored };
+  if (carried.size === 0) {
+    return { provenance: revised, stored };
+  }
   provenance.claims = [
     ...provenance.claims
       .map((claim) => ({ ...claim, targets: claim.targets.filter((target) => !restoredPaths.has(target)) }))
@@ -307,12 +322,13 @@ export function preserveSelectedCandidates(
       !candidate ||
       canonicalStringify(resolveStablePointer(business, conflict.target)) !==
         canonicalStringify(candidate.value)
-    )
+    ) {
       throw new HttpError(
         422,
         "invalid_decision",
         "Selected value does not match the saved candidate.",
       );
+    }
     const under = (target: string) =>
       target === conflict.target || target.startsWith(conflict.target + "/");
     provenance.claims = provenance.claims
@@ -323,7 +339,7 @@ export function preserveSelectedCandidates(
       .filter((claim) => claim.targets.length > 0);
     for (const leaf of enumerateFactualLeaves(business).filter((leaf) =>
       under(leaf.path),
-    ))
+    )) {
       provenance.claims.push({
         id: stableId(requestId, leaf.path, "selected"),
         entry_id: entryId,
@@ -337,6 +353,7 @@ export function preserveSelectedCandidates(
           candidate.origin === "user_provided" ? decision.decided_at : null,
         note: decision.note ?? "Reviewer selected the supported candidate.",
       });
+    }
   }
   const referenced = new Set([
     ...provenance.claims.flatMap((c) => c.evidence_ids),

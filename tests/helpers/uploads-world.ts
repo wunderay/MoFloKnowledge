@@ -29,55 +29,75 @@ export const SERVICE_SECRET = "SERVICE_ROLE_SECRET_VALUE_b81d";
 export const LEAK = /supabase\.co|\/storage\/v1|SIGNED_SECRET|SERVICE_ROLE_SECRET|[?&]token=|X-Amz-/i;
 
 export type Row = Record<string, unknown>;
-export type StoredObject = { path: string; bytes: Uint8Array; contentType: string | undefined; id: string; createdAt: string };
-export type StorageCall = { op: string; bucket: string; path?: string; paths?: string[]; options?: Record<string, unknown> };
-export type TableCall = { table: string; op: string; payload?: unknown };
+export interface StoredObject { path: string; bytes: Uint8Array; contentType: string | undefined; id: string; createdAt: string }
+export interface StorageCall { op: string; bucket: string; path?: string; paths?: string[]; options?: Record<string, unknown> }
+export interface TableCall { table: string; op: string; payload?: unknown }
 
-type Failure = { message: string; statusCode?: string };
+interface Failure { message: string; statusCode?: string }
 
 function copy(bytes: Uint8Array): Uint8Array {
   return Uint8Array.from(bytes);
 }
 
 async function toBytes(body: unknown): Promise<{ bytes: Uint8Array; blobType?: string }> {
-  if (body instanceof Uint8Array) return { bytes: copy(body) };
-  if (body instanceof ArrayBuffer) return { bytes: new Uint8Array(body.slice(0)) };
-  if (typeof body === "string") return { bytes: new TextEncoder().encode(body) };
-  if (typeof Blob !== "undefined" && body instanceof Blob) return { bytes: new Uint8Array(await body.arrayBuffer()), blobType: body.type || undefined };
+  if (body instanceof Uint8Array) {
+    return { bytes: copy(body) };
+  }
+  if (body instanceof ArrayBuffer) {
+    return { bytes: new Uint8Array(body.slice(0)) };
+  }
+  if (typeof body === "string") {
+    return { bytes: new TextEncoder().encode(body) };
+  }
+  if (typeof Blob !== "undefined" && body instanceof Blob) {
+    return { bytes: new Uint8Array(await body.arrayBuffer()), blobType: body.type || undefined };
+  }
   if (typeof FormData !== "undefined" && body instanceof FormData) {
     const file = body.get("") ?? [...body.values()].find((v) => typeof v !== "string");
-    if (file && typeof file !== "string") return { bytes: new Uint8Array(await file.arrayBuffer()), blobType: file.type || undefined };
+    if (file && typeof file !== "string") {
+      return { bytes: new Uint8Array(await file.arrayBuffer()), blobType: file.type || undefined };
+    }
   }
   if (body && typeof (body as ReadableStream).getReader === "function") {
     const reader = (body as ReadableStream<Uint8Array>).getReader();
     const chunks: Uint8Array[] = [];
     for (;;) {
       const next = await reader.read();
-      if (next.done) break;
+      if (next.done) {
+        break;
+      }
       chunks.push(next.value);
     }
     return { bytes: new Uint8Array(Buffer.concat(chunks)) };
   }
-  if (ArrayBuffer.isView(body)) return { bytes: new Uint8Array(body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength)) };
+  if (ArrayBuffer.isView(body)) {
+    return { bytes: new Uint8Array(body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength)) };
+  }
   throw new Error("fake storage: unsupported upload body");
 }
 
 class Query implements PromiseLike<{ data: unknown; error: unknown; count?: number | null; status: number }> {
-  private filters: Array<(row: Row) => boolean> = [];
+  private filters: ((row: Row) => boolean)[] = [];
   private op: "select" | "insert" | "upsert" | "update" | "delete" = "select";
   private values: Row[] = [];
   private patch: Row = {};
   private returning = false;
   private mode: "many" | "single" | "maybe" = "many";
-  private orderBy: Array<{ column: string; ascending: boolean }> = [];
+  private orderBy: { column: string; ascending: boolean }[] = [];
   private max: number | null = null;
   private wantCount = false;
   private head = false;
   constructor(private world: World, private table: string) {}
   select(_columns?: string, options?: { count?: string; head?: boolean }) {
-    if (this.op !== "select") this.returning = true;
-    if (options?.count) this.wantCount = true;
-    if (options?.head) this.head = true;
+    if (this.op !== "select") {
+      this.returning = true;
+    }
+    if (options?.count) {
+      this.wantCount = true;
+    }
+    if (options?.head) {
+      this.head = true;
+    }
     return this;
   }
   insert(values: Row | Row[]) { this.op = "insert"; this.values = Array.isArray(values) ? values : [values]; return this; }
@@ -104,20 +124,27 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
     const rows = (world.tables[this.table] ??= []);
     world.tableCalls.push({ table: this.table, op: this.op, payload: this.op === "update" ? this.patch : this.values });
     const failure = world.tableFailures.get(`${this.table}:${this.op}`);
-    if (failure) return { data: null, error: { message: failure.message, code: "XX000" }, status: 500 };
+    if (failure) {
+      return { data: null, error: { message: failure.message, code: "XX000" }, status: 500 };
+    }
     let result: Row[] = [];
     if (this.op === "insert" || this.op === "upsert") {
       for (const value of this.values) {
         const row: Row = { id: randomUUID(), created_at: new Date().toISOString(), ...value };
         const existing = this.op === "upsert" ? rows.findIndex((r) => r.id === row.id) : -1;
-        if (existing >= 0) rows[existing] = { ...rows[existing], ...row };
-        else rows.push(row);
+        if (existing >= 0) {
+          rows[existing] = { ...rows[existing], ...row };
+        } else {
+          rows.push(row);
+        }
         result.push(row);
       }
     } else {
       const matching = rows.filter((r) => this.filters.every((f) => f(r)));
       if (this.op === "update") {
-        for (const row of matching) Object.assign(row, this.patch);
+        for (const row of matching) {
+          Object.assign(row, this.patch);
+        }
         result = matching;
       } else if (this.op === "delete") {
         world.tables[this.table] = rows.filter((r) => !matching.includes(r));
@@ -126,19 +153,30 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count?: numb
         result = [...matching];
       }
     }
-    for (const { column, ascending } of [...this.orderBy].reverse())
+    for (const { column, ascending } of [...this.orderBy].reverse()) {
       result.sort((a, b) => (String(a[column]) < String(b[column]) ? -1 : String(a[column]) > String(b[column]) ? 1 : 0) * (ascending ? 1 : -1));
-    if (this.max !== null) result = result.slice(0, this.max);
+    }
+    if (this.max !== null) {
+      result = result.slice(0, this.max);
+    }
     const count = this.wantCount ? result.length : null;
     const writing = this.op !== "select";
-    if (writing && !this.returning) return { data: null, error: null, count, status: this.op === "insert" ? 201 : 204 };
-    if (this.head) return { data: null, error: null, count, status: 200 };
+    if (writing && !this.returning) {
+      return { data: null, error: null, count, status: this.op === "insert" ? 201 : 204 };
+    }
+    if (this.head) {
+      return { data: null, error: null, count, status: 200 };
+    }
     if (this.mode === "single") {
-      if (result.length !== 1) return { data: null, error: { code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned" }, status: 406 };
+      if (result.length !== 1) {
+        return { data: null, error: { code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned" }, status: 406 };
+      }
       return { data: { ...result[0] }, error: null, count, status: 200 };
     }
     if (this.mode === "maybe") {
-      if (result.length > 1) return { data: null, error: { code: "PGRST116", message: "multiple rows returned" }, status: 406 };
+      if (result.length > 1) {
+        return { data: null, error: { code: "PGRST116", message: "multiple rows returned" }, status: 406 };
+      }
       return { data: result[0] ? { ...result[0] } : null, error: null, count, status: 200 };
     }
     return { data: result.map((r) => ({ ...r })), error: null, count, status: 200 };
@@ -156,6 +194,7 @@ export class World {
   readonly client: Record<string, unknown>;
 
   constructor() {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- test double needs the outer instance inside nested function scopes
     const world = this;
     this.client = {
       from: (table: string) => new Query(world, table),
@@ -193,6 +232,7 @@ export class World {
   }
 
   private bucket(name: string) {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- test double needs the outer instance inside nested function scopes
     const world = this;
     const record = (call: Omit<StorageCall, "bucket">) => world.storageCalls.push({ bucket: name, ...call });
     const wrong = () => (name === BUCKET ? null : { data: null, error: { message: "Bucket not found", statusCode: "404" } });
@@ -201,9 +241,13 @@ export class World {
       async upload(path: string, body: unknown, options?: Record<string, unknown>) {
         record({ op: "upload", path, options });
         const bad = wrong() ?? world.fail("upload");
-        if (bad) return bad;
+        if (bad) {
+          return bad;
+        }
         const { bytes, blobType } = await toBytes(body);
-        if (world.objects.has(path) && !options?.upsert) return { data: null, error: { message: "The resource already exists", statusCode: "409" } };
+        if (world.objects.has(path) && !options?.upsert) {
+          return { data: null, error: { message: "The resource already exists", statusCode: "409" } };
+        }
         const id = randomUUID();
         const contentType = (options?.contentType as string | undefined) ?? blobType;
         world.objects.set(path, { path, bytes, contentType, id, createdAt: new Date().toISOString() });
@@ -213,27 +257,35 @@ export class World {
         record({ op: "download", path });
         const run = async () => {
           const bad = wrong() ?? world.fail("download");
-          if (bad) return bad;
+          if (bad) {
+            return bad;
+          }
           const object = world.objects.get(path);
-          if (!object) return { data: null, error: { message: "Object not found", statusCode: "404" } };
+          if (!object) {
+            return { data: null, error: { message: "Object not found", statusCode: "404" } };
+          }
           return { data: new Blob([copy(object.bytes) as BlobPart], { type: object.contentType ?? "application/octet-stream" }), error: null };
         };
         const stream = async () => {
           const result = await run();
-          if (result.error) return result;
-          return { data: (result.data as Blob).stream(), error: null };
+          if (result.error) {
+            return result;
+          }
+          return { data: (result.data).stream(), error: null };
         };
         return {
           then: (a?: (v: unknown) => unknown, b?: (e: unknown) => unknown) => run().then(a, b),
           asStream: () => ({ then: (a?: (v: unknown) => unknown, b?: (e: unknown) => unknown) => stream().then(a, b) }),
         };
       },
-      async remove(paths: Array<string | { name?: string }>) {
+      async remove(paths: (string | { name?: string })[]) {
         const list = paths.map((p) => (typeof p === "string" ? p : String(p.name)));
         record({ op: "remove", paths: list });
         const bad = wrong() ?? world.fail("remove");
-        if (bad) return bad;
-        const removed: Array<Record<string, unknown>> = [];
+        if (bad) {
+          return bad;
+        }
+        const removed: Record<string, unknown>[] = [];
         for (const path of list) {
           const object = world.objects.get(path);
           if (object) {
@@ -246,7 +298,9 @@ export class World {
       async list(prefix = "", options?: Record<string, unknown>) {
         record({ op: "list", path: prefix, options });
         const bad = wrong() ?? world.fail("list");
-        if (bad) return bad;
+        if (bad) {
+          return bad;
+        }
         const base = prefix.replace(/\/+$/, "");
         const entries = [...world.objects.values()]
           .filter((o) => (base === "" ? true : o.path.startsWith(`${base}/`)) && !o.path.slice(base ? base.length + 1 : 0).includes("/"))
@@ -268,7 +322,9 @@ export class World {
       async info(path: string) {
         record({ op: "info", path });
         const object = world.objects.get(path);
-        if (!object) return { data: null, error: { message: "Object not found", statusCode: "404" } };
+        if (!object) {
+          return { data: null, error: { message: "Object not found", statusCode: "404" } };
+        }
         return { data: { id: object.id, name: path, size: object.bytes.byteLength, contentType: object.contentType, bucketId: name }, error: null };
       },
       async createSignedUrl(path: string) {
@@ -314,8 +370,9 @@ export class World {
   seedCompany(opts: { id?: string; archived?: boolean; members?: Record<string, "owner" | "editor" | "viewer"> } = {}) {
     const id = opts.id ?? randomUUID();
     (this.tables.companies ??= []).push({ id, name: "Acme", website_url: "https://acme.example", archived_at: opts.archived ? "2026-10-01T00:00:00.000Z" : null, draft_generation: 0 });
-    for (const [user, role] of Object.entries(opts.members ?? {}))
+    for (const [user, role] of Object.entries(opts.members ?? {})) {
       (this.tables.company_members ??= []).push({ company_id: id, user_id: user, role, added_by: user, created_at: new Date().toISOString() });
+    }
     return id;
   }
 }
@@ -354,11 +411,19 @@ const PNG_IEND = chunk("IEND", Buffer.alloc(0));
 export function png(total?: number): Uint8Array {
   const base = Buffer.concat([PNG_SIGNATURE, PNG_IHDR, PNG_IDAT]);
   const minimum = base.length + PNG_IEND.length;
-  if (total === undefined) return new Uint8Array(Buffer.concat([base, PNG_IEND]));
-  if (total < minimum) throw new Error(`png(): total must be at least ${minimum}`);
-  if (total === minimum) return new Uint8Array(Buffer.concat([base, PNG_IEND]));
+  if (total === undefined) {
+    return new Uint8Array(Buffer.concat([base, PNG_IEND]));
+  }
+  if (total < minimum) {
+    throw new Error(`png(): total must be at least ${minimum}`);
+  }
+  if (total === minimum) {
+    return new Uint8Array(Buffer.concat([base, PNG_IEND]));
+  }
   const dataLength = total - minimum - 12;
-  if (dataLength < 0) throw new Error("png(): cannot pad by fewer than 12 bytes");
+  if (dataLength < 0) {
+    throw new Error("png(): cannot pad by fewer than 12 bytes");
+  }
   const text = Buffer.alloc(dataLength, 0x61);
   Buffer.from("Comment\0", "latin1").copy(text, 0, 0, Math.min(8, dataLength));
   return new Uint8Array(Buffer.concat([base, chunk("tEXt", text), PNG_IEND]));
@@ -408,27 +473,36 @@ export function sha(bytes: Uint8Array | Buffer): string {
 
 // ---------------------------------------------------------------------------------------------- request helpers
 
-export type FileSpec = { bytes: Uint8Array; name: string; mime?: string };
+export interface FileSpec { bytes: Uint8Array; name: string; mime?: string }
 
 export function formFor(input: { file?: FileSpec | string | null; kind?: string | null }): FormData {
   const form = new FormData();
   if (input.file !== undefined && input.file !== null) {
-    if (typeof input.file === "string") form.set("file", input.file);
-    else form.set("file", new File([input.file.bytes as BlobPart], input.file.name, { type: input.file.mime ?? "" }));
+    if (typeof input.file === "string") {
+      form.set("file", input.file);
+    } else {
+      form.set("file", new File([input.file.bytes as BlobPart], input.file.name, { type: input.file.mime ?? "" }));
+    }
   }
-  if (input.kind !== undefined && input.kind !== null) form.set("kind", input.kind);
+  if (input.kind !== undefined && input.kind !== null) {
+    form.set("kind", input.kind);
+  }
   return form;
 }
 
 export function postRequest(companyId: string, body: BodyInit | null, init: { origin?: string | null; headers?: Record<string, string> } = {}): Request {
   const headers: Record<string, string> = { ...(init.headers ?? {}) };
-  if (init.origin !== null) headers.origin = init.origin ?? APP_ORIGIN;
+  if (init.origin !== null) {
+    headers.origin = init.origin ?? APP_ORIGIN;
+  }
   return new Request(`${APP_ORIGIN}/api/companies/${companyId}/uploads`, { method: "POST", headers, body });
 }
 
 export function itemRequest(method: "GET" | "DELETE", companyId: string, id: string, init: { origin?: string | null } = {}): Request {
   const headers: Record<string, string> = {};
-  if (init.origin !== null && (method !== "GET" || init.origin !== undefined)) headers.origin = init.origin ?? APP_ORIGIN;
+  if (init.origin !== null && (method !== "GET" || init.origin !== undefined)) {
+    headers.origin = init.origin ?? APP_ORIGIN;
+  }
   return new Request(`${APP_ORIGIN}/api/companies/${companyId}/uploads/${encodeURIComponent(id)}`, { method, headers });
 }
 
@@ -481,7 +555,7 @@ export async function needItem(): Promise<{ GET: Handler; DELETE: Handler }> {
     ? readdirSync(base, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(join(base, e.name, "route.ts")))
     : [];
   expect(folders.length, "GET/DELETE /api/companies/[companyId]/uploads/<id> must exist: uploads/[uploadId]/route.ts").toBe(1);
-  const mod = await import(/* @vite-ignore */ join(base, folders[0]!.name, "route.ts"));
+  const mod = await import(/* @vite-ignore */ join(base, folders[0].name, "route.ts"));
   expect(typeof mod.GET, "the item route must export GET").toBe("function");
   expect(typeof mod.DELETE, "the item route must export DELETE").toBe("function");
   return mod as { GET: Handler; DELETE: Handler };

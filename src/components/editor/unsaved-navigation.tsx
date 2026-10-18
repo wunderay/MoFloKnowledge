@@ -30,7 +30,9 @@ export function UnsavedNavigationProvider({
 
   const confirmNavigation = useCallback(() => {
     const allowed = !dirty.current || window.confirm(warning);
-    if (allowed) confirmed.current = true;
+    if (allowed) {
+      confirmed.current = true;
+    }
     return allowed;
   }, []);
   const context = useMemo(
@@ -39,9 +41,11 @@ export function UnsavedNavigationProvider({
   );
 
   useEffect(() => {
-    let currentIndex = Number(window.history.state?.[indexKey] ?? 0);
+    let currentIndex = Number((window.history.state as Record<string, unknown> | null)?.[indexKey] ?? 0);
     let restoring = false;
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- the originals are only ever invoked via .call(window.history, ...)
     const originalPush = window.history.pushState;
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- the originals are only ever invoked via .call(window.history, ...)
     const originalReplace = window.history.replaceState;
     originalReplace.call(
       window.history,
@@ -83,19 +87,23 @@ export function UnsavedNavigationProvider({
         event.ctrlKey ||
         event.shiftKey ||
         event.altKey
-      )
+      ) {
         return;
+      }
       const target = event.target instanceof Element ? event.target : null;
       const navigation = target?.closest<HTMLAnchorElement | HTMLButtonElement>(
         "a[href], [data-leave-workspace]",
       );
-      if (!navigation) return;
+      if (!navigation) {
+        return;
+      }
       if (navigation instanceof HTMLAnchorElement) {
         if (
           navigation.download ||
           (navigation.target && navigation.target !== "_self")
-        )
+        ) {
           return;
+        }
         const destination = new URL(navigation.href, window.location.href);
         // The browser's beforeunload guard handles external document navigation.
         if (
@@ -103,17 +111,20 @@ export function UnsavedNavigationProvider({
           destination.href === window.location.href ||
           (destination.pathname === window.location.pathname &&
             destination.search === window.location.search)
-        )
+        ) {
           return;
+        }
       }
       if (!window.confirm(warning)) {
         event.preventDefault();
         event.stopImmediatePropagation();
-      } else confirmed.current = true;
+      } else {
+        confirmed.current = true;
+      }
     }
     function pop(event: PopStateEvent) {
       const destinationIndex = Number(
-        event.state?.[indexKey] ?? currentIndex - 1,
+        (event.state as Record<string, unknown> | null)?.[indexKey] ?? currentIndex - 1,
       );
       if (restoring) {
         restoring = false;
@@ -132,6 +143,7 @@ export function UnsavedNavigationProvider({
     function unload(event: BeforeUnloadEvent) {
       if (dirty.current && !confirmed.current) {
         event.preventDefault();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- returnValue is still required to trigger the beforeunload prompt in some browsers
         event.returnValue = "";
       }
     }
@@ -142,10 +154,12 @@ export function UnsavedNavigationProvider({
       document.removeEventListener("click", click, true);
       window.removeEventListener("popstate", pop, true);
       window.removeEventListener("beforeunload", unload);
-      if (window.history.pushState === push)
+      if (window.history.pushState === push) {
         window.history.pushState = originalPush;
-      if (window.history.replaceState === replace)
+      }
+      if (window.history.replaceState === replace) {
         window.history.replaceState = originalReplace;
+      }
     };
   }, []);
   return (

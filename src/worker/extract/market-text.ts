@@ -8,11 +8,11 @@ export const MARKET_TEXT_SUPPORTED_FIELDS = [
   "industry_groupings", "channels", "ctas", "suppliers_and_partners",
 ].map((field) => root + field);
 
-type Section = {
+interface Section {
   heading: string | null;
   paragraphs: string[];
   listItems: string[];
-};
+}
 const clean = (text: string) => text.replace(/\s+/g, " ").trim();
 const problem = /\b(?:stress(?:ful)?|difficult|complex(?:ities)?|headaches?|burden|costly mistakes|delays|problems?|worry|overlook(?:ing)?|struggl\w*)\b/i;
 const benefit = /\b(?:save|saving|reduce|reducing|minimi[sz]e|maximi[sz]e|simplify|improve|resolve|ensur(?:e|ing)|protect|secure|focus on|comp[l]?iant|compliance|peace of mind|keep you)\b/i;
@@ -35,9 +35,13 @@ const sentenceAt = (paragraph: string, index: number): string => {
   let from = 0;
   for (const sentence of sentences(paragraph)) {
     const at = paragraph.indexOf(sentence, from);
-    if (at < 0) continue;
+    if (at < 0) {
+      continue;
+    }
     from = at + sentence.length;
-    if (index < from) return sentence;
+    if (index < from) {
+      return sentence;
+    }
   }
   return paragraph;
 };
@@ -57,9 +61,13 @@ export function marketTextCandidates(
     .slice(0, 3).map((segment) => segment.id);
   const add = (field: string, value: unknown, texts: string[] = [], ids: string[] = [], note: string | null = null, priority = 0) => {
     const segment_ids = [...new Set(texts.flatMap(segmentsFor))].slice(0, 30);
-    if ((!segment_ids.length && !ids.length) || texts.some((text) => !segmentsFor(text).length)) return;
+    if ((!segment_ids.length && !ids.length) || texts.some((text) => !segmentsFor(text).length)) {
+      return;
+    }
     const key = field + JSON.stringify(value);
-    if (seen.has(key)) return;
+    if (seen.has(key)) {
+      return;
+    }
     seen.add(key);
     result.push({ field: root + field, entity_key: null, value,
       origin: "source_backed", segment_ids, observation_ids: [...new Set(ids)].slice(0, 30),
@@ -69,12 +77,16 @@ export function marketTextCandidates(
     if (field === "target_buyers") {
       const key = buyerIdentityKey(text);
       const buyer = buyers.get(key) ?? { text, passages: new Set<string>() };
-      if (text.length > buyer.text.length) buyer.text = text;
+      if (text.length > buyer.text.length) {
+        buyer.text = text;
+      }
       buyer.passages.add(context);
       buyers.set(key, buyer);
       return;
     }
-    if (text && text.length <= 1000) add(field, [{ text }], [context]);
+    if (text && text.length <= 1000) {
+      add(field, [{ text }], [context]);
+    }
   };
   const raw = page.capture.observations;
   const sections = Array.isArray(raw.contentSections)
@@ -95,54 +107,87 @@ export function marketTextCandidates(
   if (marketing) {
     for (const section of sections) {
       const heading = section.heading ?? "";
-      if (/^(?:(?:our|the)\s+)?(?:industries(?: we serve)?|industry (?:groupings|sectors)|sectors(?: we serve)?)\s*:?$/i.test(heading))
-        for (const item of section.listItems) textItem("industry_groupings", item);
-      if (/^(?:(?:our|ideal|target)\s+)?(?:customers|clients|buyers|audience)(?:\s+we\s+(?:serve|help))?\s*:?$|^who we (?:serve|help|work with)\s*:?$/i.test(heading))
+      if (/^(?:(?:our|the)\s+)?(?:industries(?: we serve)?|industry (?:groupings|sectors)|sectors(?: we serve)?)\s*:?$/i.test(heading)) {
+        for (const item of section.listItems) {
+          textItem("industry_groupings", item);
+        }
+      }
+      if (/^(?:(?:our|ideal|target)\s+)?(?:customers|clients|buyers|audience)(?:\s+we\s+(?:serve|help))?\s*:?$|^who we (?:serve|help|work with)\s*:?$/i.test(heading)) {
         for (const item of section.listItems) {
           textItem("target_buyers", item);
         }
-      if (/^(?:customer|client) (?:needs|goals|pain points)\s*:?$/i.test(heading))
-        for (const item of [...section.paragraphs, ...section.listItems]) textItem("customer_needs", item);
-      if (/^(?:our\s+)?(?:suppliers|partners|vendors)\s*:?$/i.test(heading))
-        for (const name of section.listItems.filter((item) => item.length <= 160))
+      }
+      if (/^(?:customer|client) (?:needs|goals|pain points)\s*:?$/i.test(heading)) {
+        for (const item of [...section.paragraphs, ...section.listItems]) {
+          textItem("customer_needs", item);
+        }
+      }
+      if (/^(?:our\s+)?(?:suppliers|partners|vendors)\s*:?$/i.test(heading)) {
+        for (const name of section.listItems.filter((item) => item.length <= 160)) {
           add("suppliers_and_partners", [{ name, relationship_type: heading,
             relationship_text: null, url: null }], [heading, name]);
+        }
+      }
     }
     for (const paragraph of prose) {
       // A literal client-industry list is retained as published, without mapping to a taxonomy.
       const industries = /(?:worked|work|working) with (?:a (?:wide )?variety of )?(?:businesses|clients|companies|industries),?\s+including\s*:\s*([^.!?]+)/i.exec(paragraph);
-      if (industries) for (const item of splitList(industries[1])) textItem("industry_groupings", item, industries[0]);
+      if (industries) {
+        for (const item of splitList(industries[1])) {
+          textItem("industry_groupings", item, industries[0]);
+        }
+      }
       const declaredBuyers = /^(?:target (?:buyers|customers)|our (?:clients|customers) include|we serve)\s*:?\s+([^.!?]+)/i.exec(paragraph);
-      if (declaredBuyers) for (const item of splitList(declaredBuyers[1])) textItem("target_buyers", item, declaredBuyers[0]);
+      if (declaredBuyers) {
+        for (const item of splitList(declaredBuyers[1])) {
+          textItem("target_buyers", item, declaredBuyers[0]);
+        }
+      }
       const declaredPartners = /\bour (suppliers|partners|vendors) (?:include|are)\s+(.+?)(?:[.!?](?:\s|$)|$)/i.exec(paragraph);
-      if (declaredPartners) for (const name of splitList(declaredPartners[2]))
-        add("suppliers_and_partners", [{ name, relationship_type: declaredPartners[1],
+      if (declaredPartners) {
+        for (const name of splitList(declaredPartners[2])) {
+          add("suppliers_and_partners", [{ name, relationship_type: declaredPartners[1],
           relationship_text: declaredPartners[0], url: null }], [declaredPartners[0]]);
+        }
+      }
 
       // Restrict buyer phrases to a first-party service declaration, not incidental staff counts or commentary.
       const buyerDeclaration = buyerDeclarationPattern.test(paragraph);
-      if (buyerDeclaration && !/\b(?:we (?:do not|don't)|not (?:for|intended for)|never serve)\b/i.test(paragraph))
+      if (buyerDeclaration && !/\b(?:we (?:do not|don't)|not (?:for|intended for)|never serve)\b/i.test(paragraph)) {
         for (const match of paragraph.matchAll(buyerNoun)) {
           const buyer = match[0];
           // The declaration must be in the buyer's own sentence, and that sentence must not negate it.
-          const own = sentenceAt(paragraph, match.index!);
-          if (!buyerDeclarationPattern.test(own) || hasNegation(own)) continue;
-          const before = paragraph.slice(Math.max(0, match.index! - 100), match.index);
-          if (!/\b(?:for|serve|help|assist|clients|customers|whether you are|as well as|or a|a growing)\b[^.!?]*$/i.test(before)) continue;
-          if (/^business(?:es)?$/i.test(buyer) && !/\b(?:for(?: both)?|serve|and)\s*$/i.test(before)) continue;
+          const own = sentenceAt(paragraph, match.index);
+          if (!buyerDeclarationPattern.test(own) || hasNegation(own)) {
+            continue;
+          }
+          const before = paragraph.slice(Math.max(0, match.index - 100), match.index);
+          if (!/\b(?:for|serve|help|assist|clients|customers|whether you are|as well as|or a|a growing)\b[^.!?]*$/i.test(before)) {
+            continue;
+          }
+          if (/^business(?:es)?$/i.test(buyer) && !/\b(?:for(?: both)?|serve|and)\s*$/i.test(before)) {
+            continue;
+          }
           textItem("target_buyers", buyer, paragraph);
           // An audience label alone is not a persona. Require a concrete same-passage goal or pain point.
           const key = buyerIdentityKey(buyer);
           const attributes = sentences(paragraph).filter(needText);
-          if (!attributes.length) continue;
+          if (!attributes.length) {
+            continue;
+          }
           const persona = personas.get(key) ?? { buyer, goals: new Set<string>(), pains: new Set<string>(), passages: new Set<string>() };
           for (const text of attributes) {
-            if (benefit.test(text)) persona.goals.add(text);
-            if (problem.test(text) && !benefit.test(text)) persona.pains.add(text);
+            if (benefit.test(text)) {
+              persona.goals.add(text);
+            }
+            if (problem.test(text) && !benefit.test(text)) {
+              persona.pains.add(text);
+            }
           }
           persona.passages.add(paragraph);
           personas.set(key, persona);
         }
+      }
       // Preserve an explicitly qualified customer lifecycle as written, including any stated client headcount.
       const lifecycle = buyerDeclaration && /\bfrom\s+([^.!?]*\bbusinesses\s+to\s+those nearing retirement[^.!?]*)/i.exec(paragraph);
       if (lifecycle) {
@@ -150,24 +195,31 @@ export function marketTextCandidates(
         personas.set(buyerIdentityKey(buyer), { buyer, goals: new Set(), pains: new Set(), passages: new Set([paragraph]) });
       }
       // Copy a complete source sentence, retaining the benefit/problem wording and its qualifications.
-      for (const text of sentences(paragraph))
-        if (customer.test(text) && needText(text)) needs.set(clean(text).toLowerCase(), {
+      for (const text of sentences(paragraph)) {
+        if (customer.test(text) && needText(text)) {
+          needs.set(clean(text).toLowerCase(), {
           text, score: (problem.test(text) ? 2 : 0) + (/\b(?:preparing|managing|doing|your own|you need|you require)\b/i.test(text) ? 2 : 0),
         });
+        }
+      }
     }
   }
-  for (const buyer of buyers.values()) add("target_buyers", [{ text: buyer.text }], [...buyer.passages]);
+  for (const buyer of buyers.values()) {
+    add("target_buyers", [{ text: buyer.text }], [...buyer.passages]);
+  }
   // Representative exact problem/outcome passages; the full unabridged captures remain available as evidence.
   const rankedNeeds = [...needs.values()].sort((a, b) => b.score - a.score);
   const representativeNeeds = [...new Set([
     ...rankedNeeds.filter((need) => problem.test(need.text) && !benefit.test(need.text)).slice(0, 1),
     ...rankedNeeds.filter((need) => benefit.test(need.text)).slice(0, 2), ...rankedNeeds,
   ])].slice(0, 3);
-  for (const need of representativeNeeds)
+  for (const need of representativeNeeds) {
     textItem("customer_needs", need.text);
-  for (const persona of personas.values())
+  }
+  for (const persona of personas.values()) {
     add("ideal_customer_personas", [{ name: null, role: null, organization_type: persona.buyer,
       goals: [...persona.goals].map((text) => ({ text })), pain_points: [...persona.pains].map((text) => ({ text })) }], [...persona.passages]);
+  }
   const labelEvidence = (label: string, url: string | null) => observations.filter((item) =>
     ["cta-label", "anchor-label"].includes(item.property ?? "") && item.value === label &&
     (!url || item.asset_url === url)).map((item) => item.id);
@@ -175,52 +227,69 @@ export function marketTextCandidates(
   const channel = (key: string, label: string, url: string, ids: string[], texts: string[] = [], priority = 80, note: string | null = null) => {
     const previous = channels.get(key);
     const item = previous ?? { label, url, ids: new Set<string>(), texts: new Set<string>(), priority, note };
-    if (priority > item.priority) Object.assign(item, { label, priority, note });
+    if (priority > item.priority) {
+      Object.assign(item, { label, priority, note });
+    }
     ids.forEach((id) => item.ids.add(id));
     texts.forEach((text) => item.texts.add(text));
     channels.set(key, item);
   };
   const conversion = (label: string, url: string | null, ids: string[], includeChannel = true) => {
-    if (!actionable.test(label) || label.length > 500 || !ids.length) return;
+    if (!actionable.test(label) || label.length > 500 || !ids.length) {
+      return;
+    }
     add("ctas", [{ label, url, purpose: null }], [], ids);
-    if (url && includeChannel) channel(url, label, url, ids, [], /^(?:get started|submit|send)\b/i.test(label) ? 20 : 80);
+    if (url && includeChannel) {
+      channel(url, label, url, ids, [], /^(?:get started|submit|send)\b/i.test(label) ? 20 : 80);
+    }
   };
-  for (const link of page.capture.links)
+  for (const link of page.capture.links) {
     conversion(link.label, link.url, labelEvidence(link.label, link.url));
-  if (Array.isArray(raw.ctas))
+  }
+  if (Array.isArray(raw.ctas)) {
     for (const item of raw.ctas as { label?: string; destination?: string | null }[]) {
-      if (!item.label) continue;
+      if (!item.label) {
+        continue;
+      }
       const label = item.label.split(/\n/)[0].trim();
       // A button may include a hidden loading label; retain only the actual first visible label.
       conversion(label, item.destination ?? null, labelEvidence(item.label, item.destination ?? null));
     }
+  }
   // Form fields are inputs, not conversion stages. Only the form's observed submit controls are CTAs.
   // A funnel remains unassessed until an explicit stage/transition extraction rule exists.
-  if (Array.isArray(raw.forms))
+  if (Array.isArray(raw.forms)) {
     for (const form of raw.forms as { action?: string | null; submitLabels?: string[]; heading?: string | null; context?: string | null }[]) {
       const submitEvidence = (label: string) => observations.filter((item) =>
         item.property === "form-submit-label" && item.value === label &&
         (!form.action || item.asset_url === form.action)).map((item) => item.id);
-      for (const originalLabel of form.submitLabels ?? [])
+      for (const originalLabel of form.submitLabels ?? []) {
         conversion(originalLabel.split(/\n/)[0].trim(), form.action ?? null, submitEvidence(originalLabel), false);
+      }
       const context = form.context && segmentsFor(form.context).length ? form.context : null;
       const heading = form.heading && segmentsFor(form.heading).length ? form.heading : null;
       const ids = (form.submitLabels ?? []).flatMap(submitEvidence);
-      if (!ids.length) continue;
+      if (!ids.length) {
+        continue;
+      }
       const notification = context && /\b(?:newsletter|subscribe|weekly articles|email updates)\b/i.test(context);
       const contact = /\b(?:contact|conversation|get in touch|reach out|inquir|fill out this form)\b/i.test([heading, context].join(" "));
       const contactLink = contact && page.capture.links.find((link) => /^contact(?: us)?$/i.test(link.label));
-      if (contactLink) channel(contactLink.url, contactLink.label, contactLink.url, ids,
+      if (contactLink) {
+        channel(contactLink.url, contactLink.label, contactLink.url, ids,
         [heading, context].filter((text): text is string => Boolean(text)));
-      else if (notification || (heading && actionable.test(heading))) {
-        const label = notification ? context! : heading!;
+      } else if (notification || (heading && actionable.test(heading))) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        const label = notification ? context : heading!;
         const url = form.action ?? page.capture.finalUrl;
         channel(`${url}|${label}`, label, url, ids, [label], 90,
           form.action ? "Observed form entrypoint; submission was not performed." :
             "Observed form location; its submission destination was unavailable. Submission was not performed.");
       }
     }
-  for (const item of channels.values())
+  }
+  for (const item of channels.values()) {
     add("channels", [{ channel_type: null, label: item.label, url: item.url }], [...item.texts], [...item.ids], item.note, item.priority);
+  }
   return result;
 }

@@ -1,20 +1,20 @@
 import http from 'node:http';
 import https from 'node:https';
 import tls from 'node:tls';
-import { Readable } from 'node:stream';
+import type { Readable } from 'node:stream';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
 import { approveDestination, type Address } from './destination-policy';
 import { assertDocumentScope, normalizeUrl, NetworkPolicyError } from './url-scope';
-export const BOT_USER_AGENT = 'MoFloKnowledgeBot/1.0';
-export type FetchResult = {
+const BOT_USER_AGENT = 'MoFloKnowledgeBot/1.0';
+export interface FetchResult {
     requestedUrl: string;
     finalUrl: string;
     status: number;
     headers: Record<string, string>;
     body: Buffer;
     redirects: string[];
-};
-export type FetchOptions = {
+}
+export interface FetchOptions {
     scope?: readonly string[];
     signal?: AbortSignal;
     maxBytes?: number;
@@ -22,7 +22,7 @@ export type FetchOptions = {
     method?: 'GET' | 'HEAD';
     redirect?: 'manual';
     onRequest?: (url: string) => Promise<void>;
-};
+}
 export type DestinationApprover = (url: string) => Promise<{
     url: URL;
     addresses: Address[];
@@ -36,15 +36,17 @@ export function createPinnedFetcher(approve: DestinationApprover) {
         const signal = AbortSignal.any([...(options.signal ? [options.signal] : []), AbortSignal.timeout(options.timeoutMs ?? 15000)]);
         const maxBytes = Math.min(options.maxBytes ?? 2 * 1024 * 1024, 15 * 1024 * 1024);
         for (;;) {
-            if (options.scope)
-                assertDocumentScope(current, options.scope);
+            if (options.scope) {
+              assertDocumentScope(current, options.scope);
+            }
             signal.throwIfAborted();
             await options.onRequest?.(current);
             signal.throwIfAborted();
-            const { url, addresses } = await new Promise<Awaited<ReturnType<DestinationApprover>>>((resolve, reject) => { const abort = () => reject(signal.reason); signal.addEventListener('abort', abort, { once: true }); approve(current).then(resolve, reject).finally(() => signal.removeEventListener('abort', abort)); if (signal.aborted)
-                abort(); });
+            const { url, addresses } = await new Promise<Awaited<ReturnType<DestinationApprover>>>((resolve, reject) => { const abort = () => { reject(signal.reason); }; signal.addEventListener('abort', abort, { once: true }); approve(current).then(resolve, reject).finally(() => { signal.removeEventListener('abort', abort); }); if (signal.aborted) {
+              abort();
+            } });
             signal.throwIfAborted();
-            const selected = addresses[0]!;
+            const selected = addresses[0];
             const result = await new Promise<FetchResult>((resolve, reject) => {
                 const request = (url.protocol === 'https:' ? https : http).request({
                     protocol: url.protocol, hostname: selected.address, family: selected.family, port: url.port || (url.protocol === 'https:' ? 443 : 80), path: url.pathname + url.search,
@@ -53,11 +55,14 @@ export function createPinnedFetcher(approve: DestinationApprover) {
                     ...(url.protocol === 'https:' ? { servername: url.hostname, rejectUnauthorized: true, checkServerIdentity: (_host: string, cert: tls.PeerCertificate) => tls.checkServerIdentity(url.hostname, cert) } : {}),
                 }, response => {
                     const headers: Record<string, string> = {};
-                    for (const [key, value] of Object.entries(response.headers))
-                        if (value !== undefined)
-                            headers[key] = Array.isArray(value) ? value.join(', ') : value;
+                    for (const [key, value] of Object.entries(response.headers)) {
+                      if (value !== undefined) {
+                        headers[key] = Array.isArray(value) ? value.join(', ') : value;
+                      }
+                    }
                     if ([301, 302, 303, 307, 308].includes(response.statusCode ?? 0)) {
                         response.destroy();
+                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
                         resolve({ requestedUrl, finalUrl: current, status: response.statusCode!, headers, body: Buffer.alloc(0), redirects: [...redirects] });
                         return;
                     }
@@ -80,21 +85,25 @@ export function createPinnedFetcher(approve: DestinationApprover) {
                         decoded.destroy(error);
                         request.destroy(error);
                     }
-                    else
-                        chunks.push(chunk); });
+                    else {
+                      chunks.push(chunk);
+                    } });
                     decoded.on('error', reject);
-                    decoded.on('end', () => resolve({ requestedUrl, finalUrl: current, status: response.statusCode ?? 0, headers, body: Buffer.concat(chunks), redirects: [...redirects] }));
+                    decoded.on('end', () => { resolve({ requestedUrl, finalUrl: current, status: response.statusCode ?? 0, headers, body: Buffer.concat(chunks), redirects: [...redirects] }); });
                 });
                 request.on('error', reject);
                 request.end();
             });
-            if (![301, 302, 303, 307, 308].includes(result.status) || options.redirect === 'manual')
-                return result;
-            if (!result.headers.location || redirects.length >= 5)
-                throw new NetworkPolicyError('Missing redirect target or redirect limit exceeded');
+            if (![301, 302, 303, 307, 308].includes(result.status) || options.redirect === 'manual') {
+              return result;
+            }
+            if (!result.headers.location || redirects.length >= 5) {
+              throw new NetworkPolicyError('Missing redirect target or redirect limit exceeded');
+            }
             const next = normalizeUrl(result.headers.location, current);
-            if (options.scope)
-                assertDocumentScope(next, options.scope);
+            if (options.scope) {
+              assertDocumentScope(next, options.scope);
+            }
             redirects.push(next);
             current = next;
         }

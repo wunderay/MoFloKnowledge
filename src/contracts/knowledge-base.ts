@@ -33,10 +33,11 @@ export const KnowledgeBaseExportSchema = BusinessSchema.extend({
       ...v.key_people.flatMap((person) => (person.portrait ? [person.portrait] : [])),
       ...v.offerings.flatMap((offering) => offering.images),
     ];
-    if (refs.some((ref) => storageRefCompany(ref) !== v.company_id))
+    if (refs.some((ref) => storageRefCompany(ref) !== v.company_id)) {
       ctx.addIssue({
         code: "custom",
         message: "Storage reference belongs to another company",
       });
+    }
   });
 export type KnowledgeBaseExport = z.infer<typeof KnowledgeBaseExportSchema>;

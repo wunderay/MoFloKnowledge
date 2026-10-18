@@ -23,21 +23,21 @@ import {
 } from "@/contracts";
 
 /** What backs a section's values: its provenance, review state and the draft's citation lookup. */
-export type Evidence = {
+export interface Evidence {
   provenance: EntryProvenance;
   approved: boolean;
   citationContext?: CitationContext;
-};
-export type ViewProfile = {
+}
+export interface ViewProfile {
   foundation: CompanyFoundation;
   positioning: Positioning;
   market: MarketAndCustomers;
   presence: OnlinePresence;
   branding: BrandingAndStyle;
   evidence: { foundation: Evidence; positioning: Evidence; market: Evidence; presence: Evidence; branding: Evidence };
-};
+}
 /** One offering entry, with what backs its values and, for an editable draft, the entry to revise or delete (as ViewPerson). */
-export type ViewOffering = { offering: Offering; evidence: Evidence; entryId: string; revision: number };
+export interface ViewOffering { offering: Offering; evidence: Evidence; entryId: string; revision: number }
 
 /**
  * The single-entry sections the view reads, from a draft's entries or a saved
@@ -85,12 +85,12 @@ export function profileFrom(
 }
 
 /** The site_links entry as the view needs it: its links, what backs them, and enough of the entry to revise it. */
-export type ViewSiteLinks = {
+export interface ViewSiteLinks {
   links: SiteLink[];
   evidence: Evidence;
   /** The stored entry of an editable draft; null when the company has none yet. */
   entry: { id: string; revision: number; content: SiteLinks; provenance: EntryProvenance } | null;
-};
+}
 
 export function siteLinksFrom(
   entries: {
@@ -138,7 +138,7 @@ export function offeringsFrom(
  * One key person, with what backs their values and, for an editable draft, the entry to revise or delete.
  * `entryId` and `revision` come from the stored entry; a saved snapshot has no use for them.
  */
-export type ViewPerson = { person: Person; evidence: Evidence; entryId: string; revision: number };
+export interface ViewPerson { person: Person; evidence: Evidence; entryId: string; revision: number }
 
 /** The key person entries, in the order the draft or snapshot lists them, each with its own evidence. */
 export function peopleFrom(
@@ -157,9 +157,12 @@ export function peopleFrom(
 
 /** Up to two capital letters for a person's avatar: the first letters of the first and last words of the name. */
 export function initialsOf(name: string | null): string {
-  const words = (name ?? "").split(/\s+/).map((word) => [...word.replace(/[^\p{L}\p{N}]/gu, "")][0]).filter(Boolean) as string[];
-  if (words.length === 0) return "";
-  return (words.length === 1 ? words[0]! : words[0]! + words[words.length - 1]!).toUpperCase();
+  // eslint-disable-next-line @typescript-eslint/no-misused-spread -- spreading a string by code point is intended (no grapheme splitting needed)
+  const words = (name ?? "").split(/\s+/).map((word) => [...word.replace(/[^\p{L}\p{N}]/gu, "")][0]).filter(Boolean);
+  if (words.length === 0) {
+    return "";
+  }
+  return (words.length === 1 ? words[0] : words[0] + words[words.length - 1]).toUpperCase();
 }
 
 const under = (target: string, path: string) => target === path || target.startsWith(`${path}/`);
@@ -208,7 +211,9 @@ export const textOrNull = (value: string | null | undefined): string | null => v
 
 export function addressText(address: Address): string | null {
   const raw = textOrNull(address.raw);
-  if (raw) return raw;
+  if (raw) {
+    return raw;
+  }
   const locality = [address.city, [address.region, address.postal_code].map(textOrNull).filter(Boolean).join(" ")]
     .map((part) => textOrNull(part))
     .filter(Boolean)
@@ -222,11 +227,19 @@ export function addressText(address: Address): string | null {
 }
 
 export function employeeText(count: EmployeeCount | null): string | null {
-  if (!count) return null;
+  if (!count) {
+    return null;
+  }
   const raw = textOrNull(count.raw);
-  if (raw) return raw;
-  if (count.exact !== null) return String(count.exact);
-  if (count.min !== null || count.max !== null) return `${count.min ?? ""}–${count.max ?? ""}`;
+  if (raw) {
+    return raw;
+  }
+  if (count.exact !== null) {
+    return String(count.exact);
+  }
+  if (count.min !== null || count.max !== null) {
+    return `${count.min ?? ""}–${count.max ?? ""}`;
+  }
   return null;
 }
 

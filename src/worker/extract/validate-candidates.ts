@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- zod 3 schema introspection (.innerType/.unwrap/.shape/.element) is typed any; String() on loosely typed candidate values is intentional */
 import { z } from "zod";
 import {
   FIELD_REGISTRY,
@@ -27,18 +28,34 @@ const normalizeText = (value: string) => value.normalize("NFKC").replace(/\s+/g,
 const normalizeIdentity = (value: string) => normalizeText(value).replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 /** Identity excludes enrichment such as font observation methods. */
 function itemIdentity(value: unknown, fieldPath = "", note: string | null = null): string {
-  if (!value || typeof value !== "object") return canonicalStringify(value);
+  if (!value || typeof value !== "object") {
+    return canonicalStringify(value);
+  }
   const item = value as Record<string, unknown>;
-  if (fieldPath === "/market_and_customers/target_buyers" && item.text) return "buyer:" + buyerIdentityKey(String(item.text));
-  if (fieldPath === "/market_and_customers/channels" && item.url && !note?.startsWith("Observed form")) return "channel:" + String(item.url);
-  if (item.family) return "family:" + normalizeIdentity(String(item.family));
-  if (item.hex) return "color:" + String(item.hex).toUpperCase() + ":" + String(item.alpha);
-  if (item.profile_url) return "profile:" + String(item.profile_url);
-  if (item.url) return "url:" + String(item.url) + (item.label ? ":" + normalizeIdentity(String(item.label)) : "");
-  if (item.text) return "text:" + normalizeIdentity(String(item.text));
+  if (fieldPath === "/market_and_customers/target_buyers" && item.text) {
+    return "buyer:" + buyerIdentityKey(String(item.text));
+  }
+  if (fieldPath === "/market_and_customers/channels" && item.url && !note?.startsWith("Observed form")) {
+    return "channel:" + String(item.url);
+  }
+  if (item.family) {
+    return "family:" + normalizeIdentity(String(item.family));
+  }
+  if (item.hex) {
+    return "color:" + String(item.hex).toUpperCase() + ":" + String(item.alpha);
+  }
+  if (item.profile_url) {
+    return "profile:" + String(item.profile_url);
+  }
+  if (item.url) {
+    return "url:" + String(item.url) + (item.label ? ":" + normalizeIdentity(String(item.label)) : "");
+  }
+  if (item.text) {
+    return "text:" + normalizeIdentity(String(item.text));
+  }
   return canonicalStringify(value);
 }
-export function materialize(
+function materialize(
   schema: z.ZodTypeAny,
   value: unknown,
   seed: string,
@@ -46,13 +63,15 @@ export function materialize(
   fieldPath = "",
   note: string | null = null,
 ): unknown {
-  if (schema instanceof z.ZodEffects)
+  if (schema instanceof z.ZodEffects) {
     return materialize(schema.innerType(), value, seed, path, fieldPath, note);
-  if (schema instanceof z.ZodNullable || schema instanceof z.ZodOptional)
+  }
+  if (schema instanceof z.ZodNullable || schema instanceof z.ZodOptional) {
     return value === null
       ? null
       : materialize(schema.unwrap(), value, seed, path, fieldPath, note);
-  if (schema instanceof z.ZodArray)
+  }
+  if (schema instanceof z.ZodArray) {
     return (value as unknown[]).map((v) => {
       const identity = itemIdentity(v, fieldPath, note);
       return materialize(
@@ -62,9 +81,10 @@ export function materialize(
         `${path}/@item`, fieldPath, note,
       );
     });
+  }
   if (schema instanceof z.ZodObject) {
     const result: Record<string, unknown> = {};
-    for (const [key, child] of Object.entries(schema.shape))
+    for (const [key, child] of Object.entries(schema.shape)) {
       result[key] =
         key === "id"
           ? stableId(
@@ -78,6 +98,7 @@ export function materialize(
               seed,
               `${path}/${key}`, fieldPath, note,
             );
+    }
     return result;
   }
   return value;
@@ -96,16 +117,22 @@ export function validateCandidates(
     .map((original) => {
       const c = { ...original, observation_ids: [...original.observation_ids] };
       const index = FIELD_REGISTRY.findIndex((f) => f.path === c.field);
-      if (index < 0) throw new Error("unknown_field");
+      if (index < 0) {
+        throw new Error("unknown_field");
+      }
       fieldCandidateSchemas[index].parse(c);
       const field = FIELD_REGISTRY[index];
-      if (!field.allowedOrigins.includes(c.origin))
+      if (!field.allowedOrigins.includes(c.origin)) {
         throw new Error("invalid_origin");
-      if (["key_person", "offering"].includes(field.kind) && !c.entity_key)
+      }
+      if (["key_person", "offering"].includes(field.kind) && !c.entity_key) {
         throw new Error("missing_entity_key");
+      }
       const segments = c.segment_ids.map((id) => {
         const s = page.capture.segments.find((s) => s.id === id);
-        if (!s) throw new Error("invalid_segment");
+        if (!s) {
+          throw new Error("invalid_segment");
+        }
         return s;
       });
       if (field.field === "website" || field.field === "url") {
@@ -114,16 +141,20 @@ export function validateCandidates(
             o.value === String(c.value) &&
             (o.property === "url" || o.property === "href"),
         );
-        if (observed && !c.observation_ids.includes(observed.id))
+        if (observed && !c.observation_ids.includes(observed.id)) {
           c.observation_ids.push(observed.id);
+        }
       }
       const selected = c.observation_ids.map((id) => {
         const o = observations.find((o) => o.id === id);
-        if (!o) throw new Error("invalid_observation");
+        if (!o) {
+          throw new Error("invalid_observation");
+        }
         return o;
       });
-      if (!segments.length && !selected.length)
+      if (!segments.length && !selected.length) {
         throw new Error("missing_evidence");
+      }
       const quotes = segments.map((s) => s.text).join("\n");
       if (
         field.field === "gender" &&
@@ -131,24 +162,31 @@ export function validateCandidates(
           quotes,
         ) ||
           !quotes.includes(String(c.value)))
-      )
+      ) {
         throw new Error("gender_not_explicit");
-      if (field.field === "gender")
+      }
+      if (field.field === "gender") {
         c.note = "Explicit public self-description observed in cited text.";
+      }
       if (field.field === "year_founded") {
         const year = String(c.value);
         const explicitYear = new RegExp(`(?:founded|established)[^.!?]{0,50}\\b${year}\\b`, "i").test(quotes) ||
           segments.some((segment) => new RegExp(`^Since\\s+${year}[.!]?$`, "i").test(segment.text.trim()));
         const declaredDate = selected.some((o) => /jsonld:.*\/foundingDate$/.test(o.property ?? "") && new RegExp(`^${year}(?:-|$)`).test(o.value ?? ""));
-        if (!explicitYear && !declaredDate) throw new Error("founding_not_explicit");
+        if (!explicitYear && !declaredDate) {
+          throw new Error("founding_not_explicit");
+        }
       }
       if (field.field === "founding_story" &&
-        !/\b(?:because|began|started|journey|mission|story|to solve)\b|\bsince\s+\d{4}[^.!?]{0,80}\b(?:my|our) (?:own )?(?:[\p{L}-]+\s+){0,3}practice\b/iu.test(quotes))
+        !/\b(?:because|began|started|journey|mission|story|to solve)\b|\bsince\s+\d{4}[^.!?]{0,80}\b(?:my|our) (?:own )?(?:[\p{L}-]+\s+){0,3}practice\b/iu.test(quotes)) {
         throw new Error("story_not_supported");
+      }
       if (field.field === "legal_entity_type") {
         const identity = [quotes, ...selected.filter((o) => o.property === "page-title" || /jsonld:.*\/(?:name|legalName)$/.test(o.property ?? "")).map((o) => o.value ?? "")].join(" ");
         const escaped = String(c.value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        if (!new RegExp(`\\b${escaped}\\b`, "i").test(identity)) throw new Error("legal_not_explicit");
+        if (!new RegExp(`\\b${escaped}\\b`, "i").test(identity)) {
+          throw new Error("legal_not_explicit");
+        }
       }
       if (field.field === "employee_count") {
         const v = c.value as {
@@ -167,8 +205,9 @@ export function validateCandidates(
               number !== null &&
               !v.raw.replace(/,/g, "").includes(String(number)),
           )
-        )
+        ) {
           throw new Error("employee_count_not_supported");
+        }
       }
       if (field.field === "pricing") {
         const v = c.value as {
@@ -198,16 +237,20 @@ export function validateCandidates(
                 (number) => compareDecimal(number, a) === 0,
               ),
           )
-        )
+        ) {
           throw new Error("price_not_supported");
+        }
       }
-      if (field.field === "suppliers_and_partners")
+      if (field.field === "suppliers_and_partners") {
         for (const v of c.value as {
           relationship_type: string | null;
           relationship_text: string | null;
-        }[])
-          if ((v.relationship_type || v.relationship_text) && !segments.length)
+        }[]) {
+          if ((v.relationship_type || v.relationship_text) && !segments.length) {
             throw new Error("relationship_not_supported");
+          }
+        }
+      }
       if (field.field === "website" || field.field === "url") {
         const url = String(c.value);
         if (
@@ -216,17 +259,19 @@ export function validateCandidates(
           !selected.some((o) =>
             o.property?.startsWith("jsonld:") && o.value === url,
           )
-        )
+        ) {
           throw new Error("url_not_observed");
+        }
       }
       if (
         field.field === "website" &&
         !documentScope(page.capture.finalUrl).includes(
           new URL(String(c.value)).hostname,
         )
-      )
+      ) {
         throw new Error("website_out_of_scope");
-      if (field.field === "brand_colors")
+      }
+      if (field.field === "brand_colors") {
         for (const color of c.value as {
           hex: string;
           alpha: number;
@@ -240,16 +285,19 @@ export function validateCandidates(
                 Math.abs(observed.alpha - color.alpha) < 0.001
               );
             })
-          )
+          ) {
             throw new Error("color_not_observed");
+          }
           if (
             color.classification === "brand_guide_confirmed" &&
             !/brand (?:guide|guidelines)|official brand/i.test(quotes)
-          )
+          ) {
             throw new Error("brand_confirmation_not_observed");
+          }
         }
-      if (field.field === "logos")
-        for (const logo of c.value as { url: string }[])
+      }
+      if (field.field === "logos") {
+        for (const logo of c.value as { url: string }[]) {
           if (
             !selected.some(
               (o) =>
@@ -258,8 +306,11 @@ export function validateCandidates(
                 /header|footer|^jsonld:(?:Organization|LocalBusiness)\/logo$/i.test(o.selector ?? "") &&
                 !/partner|favicon/i.test(o.value ?? ""),
             )
-          )
+          ) {
             throw new Error("company_logo_not_observed");
+          }
+        }
+      }
       // Structured entities need a cited name and an explicit supported type at
       // the same JSON-LD object path, so unrelated metadata cannot name an entity.
       const structuredEntity = (path: string) => {
@@ -283,19 +334,26 @@ export function validateCandidates(
       );
       const structuredServiceKey = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
         selected.some((o) => o.property?.startsWith("jsonld:") && o.property.endsWith("/name") && o.value &&
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
           normalizeIdentity(o.value) === normalizeIdentity(c.entity_key!.slice((page.capture.finalUrl + "|service:").length)) &&
           structuredEntity(o.property.slice("jsonld:".length, -"/name".length)));
       const listedService = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
         (() => {
-          const expected = normalizeIdentity(c.entity_key!.slice((page.capture.finalUrl + "|service:").length));
+          const expected = normalizeIdentity(c.entity_key.slice((page.capture.finalUrl + "|service:").length));
           const sections = page.capture.observations.contentSections;
-          if (!segments.some((s) => normalizeIdentity(s.text) === expected)) return false;
+          if (!segments.some((s) => normalizeIdentity(s.text) === expected)) {
+            return false;
+          }
           const lists = page.capture.observations.contentLists;
           if (Array.isArray(lists) && lists.some((list: { intro?: unknown; items?: unknown }) =>
             typeof list.intro === "string" && /\bservices?\b[^.!?]{0,100}\b(?:include|following|offer)|\bwe\s+(?:offer|provide)\b/i.test(list.intro) &&
             segments.some((segment) => normalizeText(segment.text).includes(normalizeText(list.intro as string))) &&
-            Array.isArray(list.items) && list.items.some((name) => typeof name === "string" && normalizeIdentity(name) === expected))) return true;
-          if (!Array.isArray(sections)) return false;
+            Array.isArray(list.items) && list.items.some((name) => typeof name === "string" && normalizeIdentity(name) === expected))) {
+            return true;
+          }
+          if (!Array.isArray(sections)) {
+            return false;
+          }
           return sections.some((section: { heading?: unknown; paragraphs?: unknown; listItems?: unknown }) =>
             Array.isArray(section.listItems) && section.listItems.some((name) => typeof name === "string" && normalizeIdentity(name) === expected) &&
             Array.isArray(section.paragraphs) && section.paragraphs.some((paragraph) => typeof paragraph === "string" &&
@@ -304,7 +362,7 @@ export function validateCandidates(
         })();
       const narrativeService = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
         (() => {
-          const expected = c.entity_key!.slice((page.capture.finalUrl + "|service:").length);
+          const expected = c.entity_key.slice((page.capture.finalUrl + "|service:").length);
           return segments.some((segment) => {
             const names = [segment.text, ...selected.filter((o) => o.property === "heading" || o.property === "anchor-label").map((o) => o.value ?? "")];
             return names.some((name) => (" " + normalizeIdentity(name) + " ").includes(" " + normalizeIdentity(expected) + " ")) &&
@@ -335,15 +393,16 @@ export function validateCandidates(
         !(
           c.entity_key.startsWith(page.capture.finalUrl + "|") &&
           (() => {
-            const parts = c.entity_key!.split("|");
+            const parts = c.entity_key.split("|");
             return parts.length === 3 && page.capture.segments.some((s) =>
               s.id === parts[2] && s.text.includes(parts[1]),
             );
           })()
         )
-      )
+      ) {
         throw new Error("entity_key_not_observed");
-      if (field.field === "fonts")
+      }
+      if (field.field === "fonts") {
         for (const font of c.value as {
           family: string;
           observations: string[];
@@ -352,25 +411,30 @@ export function validateCandidates(
           if (
             font.brand_confirmed &&
             !/brand (?:guide|guidelines)|official brand/i.test(quotes)
-          )
+          ) {
             throw new Error("brand_confirmation_not_observed");
+          }
           if (
             font.observations.includes("resource_loaded") &&
             !selected.some((o) => o.property === "font-resource")
-          )
+          ) {
             throw new Error("font_load_not_observed");
+          }
           if (
             font.observations.includes("computed_family") &&
             !selected.some((o) => o.property === "font-family")
-          )
+          ) {
             throw new Error("computed_font_not_observed");
+          }
           if (
             font.observations.includes("css_declared") &&
             !selected.some((o) => o.property === "stylesheet")
-          )
+          ) {
             throw new Error("declared_font_not_observed");
+          }
         }
-      if (field.field === "social_media_links")
+      }
+      if (field.field === "social_media_links") {
         for (const social of c.value as {
           platform: string;
           profile_url: string;
@@ -388,15 +452,20 @@ export function validateCandidates(
             !url.hostname
               .replace(/^www\./, "")
               .startsWith(social.platform.toLowerCase() + ".")
-          )
+          ) {
             throw new Error("social_profile_not_observed");
+          }
         }
+      }
       const roleCompanyNames = observations.filter((observation) =>
         /jsonld:.*\/(?:name|legalName)$/.test(observation.property ?? "") && observation.value &&
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         observations.some((kind) => kind.property === observation.property!.replace(/\/(?:name|legalName)$/, "/@type") &&
           /^(?:Organization|Corporation|LocalBusiness|ProfessionalService|AccountingService)$/.test(kind.value ?? "")) &&
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         observations.some((url) => url.property === observation.property!.replace(/\/(?:name|legalName)$/, "/url") &&
           (() => { try { return new URL(url.value ?? "").hostname.replace(/^www\./, "") === new URL(page.capture.finalUrl).hostname.replace(/^www\./, ""); } catch { return false; } })()))
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         .map((observation) => observation.value!);
       const normalizedServiceRole = c.field === "/company_foundation/company_role" &&
         c.note === "Normalized company role from an explicit current-company service statement." &&
@@ -415,10 +484,16 @@ export function validateCandidates(
           "max_amount",
         ]);
         const check = (value: unknown, key = "") => {
-          if (skip.has(key)) return;
+          if (skip.has(key)) {
+            return;
+          }
           if (typeof value === "string") {
-            if (normalizedServiceRole && key === "text" && value === "Service provider") return;
-            if (["hex", "platform"].includes(key)) return;
+            if (normalizedServiceRole && key === "text" && value === "Service provider") {
+              return;
+            }
+            if (["hex", "platform"].includes(key)) {
+              return;
+            }
             if (/^https?:/.test(value)) {
               if (
                 value !== page.capture.finalUrl &&
@@ -426,18 +501,25 @@ export function validateCandidates(
                 !selected.some(
                   (o) => o.asset_url === value || o.value === value,
                 )
-              )
+              ) {
                 throw new Error("url_not_observed");
+              }
               return;
             }
             // Multi-paragraph extracts may join nonadjacent exact passages. Every
             // paragraph must remain grounded; joining never permits paraphrasing.
-            if (!value.split(/\n\s*\n/).every((paragraph) => haystack.includes(normalizeText(paragraph))))
+            if (!value.split(/\n\s*\n/).every((paragraph) => haystack.includes(normalizeText(paragraph)))) {
               throw new Error("value_not_in_evidence");
-          } else if (Array.isArray(value))
-            for (const item of value) check(item, key);
-          else if (value && typeof value === "object")
-            for (const [child, v] of Object.entries(value)) check(v, child);
+            }
+          } else if (Array.isArray(value)) {
+            for (const item of value) {
+              check(item, key);
+            }
+          } else if (value && typeof value === "object") {
+            for (const [child, v] of Object.entries(value)) {
+              check(v, child);
+            }
+          }
         };
         check(c.value);
       }
@@ -452,12 +534,15 @@ export function validateCandidates(
         // their declared linked identities.
         if (name && /\/(?:team|people|staff|about-us|about)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname) &&
           observations.some((o) => o.property === "heading" && o.value &&
-            (normalizeIdentity(o.value) === normalizeIdentity(name) || normalizeIdentity(o.value).startsWith(normalizeIdentity(name) + " "))))
+            (normalizeIdentity(o.value) === normalizeIdentity(name) || normalizeIdentity(o.value).startsWith(normalizeIdentity(name) + " ")))) {
           entity = page.capture.finalUrl;
+        }
       }
       const entryId = stableId(companyId, field.kind, entity);
       let shape: z.ZodTypeAny = businessEntrySchemas[field.kind];
-      while (shape instanceof z.ZodEffects) shape = shape.innerType();
+      while (shape instanceof z.ZodEffects) {
+        shape = shape.innerType();
+      }
       const value = materialize(
         (shape as z.AnyZodObject).shape[field.field],
         c.value,

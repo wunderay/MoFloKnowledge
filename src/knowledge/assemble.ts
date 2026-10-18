@@ -21,7 +21,7 @@ import type {
 import { requiredCoverageTargets } from "../contracts/field-registry";
 import { resolveStablePointer } from "../contracts/stable-pointer";
 import { assertValidProvenance } from "../contracts/validate-provenance";
-export type SnapshotEntry = {
+export interface SnapshotEntry {
   entry_id: string;
   kind: EntryKind;
   revision: number;
@@ -31,8 +31,8 @@ export type SnapshotEntry = {
   created_at: string;
   content: BusinessEntry;
   provenance: EntryProvenance;
-};
-export type BlockingEntry = { entry_id: string; reason: string };
+}
+export interface BlockingEntry { entry_id: string; reason: string }
 export function previewPublication(entries: SnapshotEntry[]): {
   blockingEntries: BlockingEntry[];
   approvedCount: number;
@@ -40,12 +40,12 @@ export function previewPublication(entries: SnapshotEntry[]): {
 } {
   const blockingEntries: BlockingEntry[] = [];
   for (const entry of entries) {
-    if (entry.review_status === "unreviewed")
+    if (entry.review_status === "unreviewed") {
       blockingEntries.push({
         entry_id: entry.entry_id,
         reason: "Entry is unreviewed",
       });
-    else if (
+    } else if (
       entry.review_status === "approved" &&
       (entry.provenance.conflicts ?? []).some(
         (c) =>
@@ -54,11 +54,12 @@ export function previewPublication(entries: SnapshotEntry[]): {
             (d) => d.conflict_id === c.id,
           ),
       )
-    )
+    ) {
       blockingEntries.push({
         entry_id: entry.entry_id,
         reason: "Material conflict is unresolved",
       });
+    }
   }
   const approvedEntries = entries.filter((e) => e.review_status === "approved");
   const currentClaimIds = new Set(
@@ -69,11 +70,12 @@ export function previewPublication(entries: SnapshotEntry[]): {
       entry.provenance.claims.some((c) =>
         c.based_on_claim_ids.some((id) => !currentClaimIds.has(id)),
       )
-    )
+    ) {
       blockingEntries.push({
         entry_id: entry.entry_id,
         reason: "Supporting fact is not present in approved current revisions.",
       });
+    }
   }
   const approvedCount = entries.filter(
     (e) => e.review_status === "approved",
@@ -93,20 +95,28 @@ function approvedBusiness(entries: SnapshotEntry[]): Business {
       a.created_at.localeCompare(b.created_at) ||
       a.entry_id.localeCompare(b.entry_id),
   )) {
-    if (ids.has(entry.entry_id)) throw new Error("Duplicate entry UUID");
+    if (ids.has(entry.entry_id)) {
+      throw new Error("Duplicate entry UUID");
+    }
     ids.add(entry.entry_id);
-    if (entry.review_status !== "approved") continue;
+    if (entry.review_status !== "approved") {
+      continue;
+    }
     const content = parseStoredEntry(entry.kind, entry.content);
     if (entry.kind === "key_person") {
-      if (!("id" in content) || content.id !== entry.entry_id)
+      if (!("id" in content) || content.id !== entry.entry_id) {
         throw new Error("Person ID must match entry ID");
+      }
       business.key_people.push(content as Business["key_people"][number]);
     } else if (entry.kind === "offering") {
-      if (!("id" in content) || content.id !== entry.entry_id)
+      if (!("id" in content) || content.id !== entry.entry_id) {
         throw new Error("Offering ID must match entry ID");
+      }
       business.offerings.push(content as Business["offerings"][number]);
     } else {
-      if (singletons.has(entry.kind)) throw new Error("Duplicate singleton");
+      if (singletons.has(entry.kind)) {
+        throw new Error("Duplicate singleton");
+      }
       singletons.add(entry.kind);
       Object.assign(business, { [entry.kind]: content });
     }
@@ -125,7 +135,7 @@ export function assemblePreview(entries: SnapshotEntry[]): {
     approvedCount,
   };
 }
-export type AssembleInput = {
+export interface AssembleInput {
   company: { id: string; name: string; website: string };
   snapshotId: string;
   version: number;
@@ -133,13 +143,14 @@ export type AssembleInput = {
   authorId: string;
   entries: SnapshotEntry[];
   historicalClaimIds?: string[];
-};
+}
 function unique<T extends { id: string }>(items: T[]): T[] {
   const byId = new Map<string, T>();
   for (const item of items) {
     const prior = byId.get(item.id);
-    if (prior && JSON.stringify(prior) !== JSON.stringify(item))
+    if (prior && JSON.stringify(prior) !== JSON.stringify(item)) {
       throw new Error("Conflicting provenance UUID");
+    }
     byId.set(item.id, item);
   }
   return [...byId.values()];
@@ -148,7 +159,7 @@ export function assembleKnowledgeBase(
   input: AssembleInput,
 ): KnowledgeBaseExport {
   const readiness = previewPublication(input.entries);
-  if (!readiness.canPublish)
+  if (!readiness.canPublish) {
     throw new Error(
       readiness.approvedCount === 0
         ? "At least one approved entry is required"
@@ -156,6 +167,7 @@ export function assembleKnowledgeBase(
             .map((e) => `${e.entry_id}: ${e.reason}`)
             .join("; "),
     );
+  }
   const business = approvedBusiness(input.entries);
   const orderedEntries = [...input.entries].sort(
     (a, b) =>
@@ -167,18 +179,25 @@ export function assembleKnowledgeBase(
   const claimsById = new Map(allClaims.map((c) => [c.id, c]));
   const selected = new Set<string>();
   function include(id: string): void {
-    if (selected.has(id)) return;
+    if (selected.has(id)) {
+      return;
+    }
     const claim = claimsById.get(id);
-    if (!claim)
+    if (!claim) {
       throw new Error("Supporting claim is absent from approved entries");
+    }
     selected.add(id);
-    for (const parent of claim.based_on_claim_ids) include(parent);
+    for (const parent of claim.based_on_claim_ids) {
+      include(parent);
+    }
   }
   for (const entry of approved) {
     const root = entryRoot(entry.kind, entry.entry_id);
-    for (const claim of entry.provenance.claims)
-      if (claim.targets.some((t) => t.startsWith(`${root}/`)))
+    for (const claim of entry.provenance.claims) {
+      if (claim.targets.some((t) => t.startsWith(`${root}/`))) {
         include(claim.id);
+      }
+    }
   }
   const claims: Claim[] = allClaims.filter((c) => selected.has(c.id));
   const evidenceIds = new Set(claims.flatMap((c) => c.evidence_ids));
@@ -197,10 +216,12 @@ export function assembleKnowledgeBase(
         c.targets.includes(target) ? [{ ...c, targets: [target] }] : [],
       ),
     );
-    if (assessments.length > 1)
+    if (assessments.length > 1) {
       throw new Error(`Duplicate coverage: ${target}`);
-    if (assessments.length) coverage.push(assessments[0]);
-    else {
+    }
+    if (assessments.length) {
+      coverage.push(assessments[0]);
+    } else {
       const section = target.split("/")[1];
       const rejected = input.entries.some(
         (e) =>
@@ -282,7 +303,10 @@ export function assembleKnowledgeBase(
       historicalClaimIds: input.historicalClaimIds,
     },
   );
-  for (const claim of claims)
-    for (const target of claim.targets) resolveStablePointer(business, target);
+  for (const claim of claims) {
+    for (const target of claim.targets) {
+      resolveStablePointer(business, target);
+    }
+  }
   return payload;
 }

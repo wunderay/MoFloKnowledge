@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- entry content is a Record<string, any> by design (one editor handles every entry kind) */
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MAX_TEXT_LENGTH } from "@/contracts/primitives";
 import { ApiError, api, companyPath, write } from "../shared/api-client";
@@ -11,8 +12,13 @@ const HEX_HELP = "Enter a color as #RGB or #RRGGBB, for example #1A2B3C.";
 /** #RGB or #RRGGBB as the contract's upper-case #RRGGBB, or null when the text is not a color. */
 function normalizeHex(text: string): string | null {
   const value = text.trim();
-  if (/^#[0-9a-f]{6}$/i.test(value)) return value.toUpperCase();
-  if (/^#[0-9a-f]{3}$/i.test(value)) return `#${[...value.slice(1)].map((digit) => digit + digit).join("").toUpperCase()}`;
+  if (/^#[0-9a-f]{6}$/i.test(value)) {
+    return value.toUpperCase();
+  }
+  if (/^#[0-9a-f]{3}$/i.test(value)) {
+    // eslint-disable-next-line @typescript-eslint/no-misused-spread -- spreading a string by code point is intended (no grapheme splitting needed)
+    return `#${[...value.slice(1)].map((digit) => digit + digit).join("").toUpperCase()}`;
+  }
   return null;
 }
 
@@ -24,9 +30,13 @@ function colorSpec(id: string, position: number): TextSpec {
     read: (content) => content.brand_colors?.find((color: { id: string }) => color.id === id)?.hex ?? "",
     apply: (content, text) => {
       const hex = normalizeHex(text);
-      if (!hex) return { error: HEX_HELP };
+      if (!hex) {
+        return { error: HEX_HELP };
+      }
       const color = content.brand_colors?.find((item: { id: string }) => item.id === id);
-      if (!color) return { error: "This color is no longer in the list." };
+      if (!color) {
+        return { error: "This color is no longer in the list." };
+      }
       color.hex = hex;
       color.classification = "brand_guide_confirmed";
       return { content };
@@ -41,7 +51,9 @@ const addColor: TextSpec = {
   read: () => "",
   apply: (content, text) => {
     const hex = normalizeHex(text);
-    if (!hex) return { error: HEX_HELP };
+    if (!hex) {
+      return { error: HEX_HELP };
+    }
     content.brand_colors = [
       ...content.brand_colors,
       { id: crypto.randomUUID(), hex, alpha: 1, apparent_role: null, classification: "brand_guide_confirmed" },
@@ -57,7 +69,9 @@ const addFont: TextSpec = {
   read: () => "",
   apply: (content, text) => {
     const family = text.trim();
-    if (family.length > MAX_TEXT_LENGTH) return { error: `Keep this to ${MAX_TEXT_LENGTH.toLocaleString("en-US")} characters or fewer.` };
+    if (family.length > MAX_TEXT_LENGTH) {
+      return { error: `Keep this to ${MAX_TEXT_LENGTH.toLocaleString("en-US")} characters or fewer.` };
+    }
     content.fonts = [
       ...content.fonts,
       { id: crypto.randomUUID(), family: family || null, apparent_use: null, observations: [], brand_confirmed: true },
@@ -74,7 +88,9 @@ export function ColorHex({ id, position, hex }: { id: string; position: number; 
 /** "Add color" or "Add font": a button that opens a text field; Enter adds the item. */
 export function AddItem({ noun, className }: { noun: "color" | "font"; className?: string }) {
   const text = useTextField(noun === "color" ? addColor : addFont);
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
   return (
     <span className={className}>
       {text.control({ shown: null, placeholder: `+ Add ${noun}` })}
@@ -87,7 +103,9 @@ type List = "brand_colors" | "fonts" | "logos";
 /** The "×" button that removes one item of a list, with the outcome of the save under it. */
 export function RemoveItem({ list, id, noun, position }: { list: List; id: string; noun: "Color" | "Font" | "Logo"; position: number }) {
   const action = useEntryAction(`${KIND}/remove ${list}`);
-  if (!action) return null;
+  if (!action) {
+    return null;
+  }
   return (
     <>
       <button
@@ -96,14 +114,14 @@ export function RemoveItem({ list, id, noun, position }: { list: List; id: strin
         aria-label={`Remove ${noun} ${position}`}
         disabled={action.locked}
         onClick={() =>
-          action.run({
+          { action.run({
             kind: KIND,
             note: `Removed ${noun.toLowerCase()} from the knowledge view.`,
             transform: (content) => {
               content[list] = content[list].filter((item: { id: string }) => item.id !== id);
               return content;
             },
-          })
+          }); }
         }
       >
         <span aria-hidden="true">×</span>
@@ -137,17 +155,22 @@ export function useDisplayName(
   useEffect(() => {
     if (rename && editing) {
       const element = field.current;
-      if (!element) return;
+      if (!element) {
+        return;
+      }
       element.focus();
       element.setSelectionRange(element.value.length, element.value.length);
     } else if (rename && back.current) {
       back.current = false;
       trigger.current?.focus();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- focus management runs only on `editing` transitions; `rename` changing must not steal focus
   }, [editing]);
 
   const open = () => {
-    if (blocked || working.current) return;
+    if (blocked || working.current) {
+      return;
+    }
     setDraft(name);
     setProblem("");
     setEditing(true);
@@ -158,11 +181,19 @@ export function useDisplayName(
     setProblem("");
   };
   async function commit(refocus: boolean) {
-    if (working.current || !editing) return;
+    if (working.current || !editing) {
+      return;
+    }
     const value = draft.trim();
-    if (value === name) return close(refocus);
-    if (!value) return setProblem("Enter a name.");
-    if (value.length > 200) return setProblem("Keep the name to 200 characters or fewer.");
+    if (value === name) {
+      close(refocus); return;
+    }
+    if (!value) {
+      setProblem("Enter a name."); return;
+    }
+    if (value.length > 200) {
+      setProblem("Keep the name to 200 characters or fewer."); return;
+    }
     working.current = true;
     setSaving(true);
     setProblem("");
@@ -179,6 +210,7 @@ export function useDisplayName(
       return;
     }
     try {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       await rename!.onRenamed();
     } catch {
       // The name is saved; the view marks itself stale and offers a reload.
@@ -190,13 +222,17 @@ export function useDisplayName(
   const keys = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      if (!working.current) close(true);
+      if (!working.current) {
+        close(true);
+      }
     } else if (event.key === "Enter" && !event.nativeEvent?.isComposing) {
       event.preventDefault();
       void commit(true);
     }
   };
-  if (!rename) return null;
+  if (!rename) {
+    return null;
+  }
   const control = !editing ? (
       <span
         ref={trigger}
@@ -208,7 +244,9 @@ export function useDisplayName(
         className="knowledge-view__inline"
         onClick={open}
         onKeyDown={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
+          if (event.key !== "Enter" && event.key !== " ") {
+            return;
+          }
           event.preventDefault();
           open();
         }}
@@ -233,7 +271,9 @@ export function useDisplayName(
         onKeyDown={keys}
         onBlur={() => {
           // A failed save waits for Enter instead of starting another.
-          if (!problem) void commit(false);
+          if (!problem) {
+            void commit(false);
+          }
         }}
       />
     );

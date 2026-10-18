@@ -102,7 +102,9 @@ describe("C3 the picker", () => {
     const view = await openSite({ ...full(), draft: noSiteDraft() });
     const dialog = await openPicker(view);
     expect(boxFor(view, dialog, PAGES.careersCopy), "nothing is stored yet, so the careers page is offered").toBeDefined();
-    for (const page of LISTED) expect(boxFor(view, dialog, page)).toBeDefined();
+    for (const page of LISTED) {
+      expect(boxFor(view, dialog, page)).toBeDefined();
+    }
   });
 
   // C3 behavioural
@@ -155,7 +157,9 @@ describe("C3 the picker", () => {
     await view.settle();
     expect(view.text()).toContain("The crawl inventory is unavailable.");
     const dialog = pickerDialog(view);
-    if (dialog) expect(boxes(view, dialog)).toHaveLength(0);
+    if (dialog) {
+      expect(boxes(view, dialog)).toHaveLength(0);
+    }
     expect(view.server.writes).toEqual([]);
   });
 
@@ -164,7 +168,9 @@ describe("C3 the picker", () => {
     const view = await openSite(full());
     await openPicker(view);
     const again = view.byRole("button", /^import from website$/i)[0];
-    if (again) await view.click(again);
+    if (again) {
+      await view.click(again);
+    }
     await view.settle();
     expect(view.dialogs().length).toBeLessThanOrEqual(1);
   });
@@ -187,8 +193,8 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
     const added = links.slice(LINKS.length);
     expect(added).toHaveLength(2);
     const byUrl = Object.fromEntries(added.map((l) => [l.url, l]));
-    expect(byUrl[PAGES.shop.url]!.title).toBe("Shop our coffees");
-    expect(byUrl[PAGES.untitled.url]!.title, "a page without a title is titled by its URL").toBe(PAGES.untitled.url);
+    expect(byUrl[PAGES.shop.url].title).toBe("Shop our coffees");
+    expect(byUrl[PAGES.untitled.url].title, "a page without a title is titled by its URL").toBe(PAGES.untitled.url);
     for (const link of added) {
       expect(link.note).toBeNull();
       expect(link.id).toMatch(UUID);
@@ -223,7 +229,7 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
     const positions = [...LINKS.map((l) => l.title), "Shop our coffees", "Roasting workshops"].map((t) => text.indexOf(t));
     positions.forEach((p) => expect(p).toBeGreaterThanOrEqual(0));
     expect(positions.slice(0, 4)).toEqual([...positions.slice(0, 4)].sort((a, b) => a - b));
-    expect(Math.min(positions[4]!, positions[5]!)).toBeGreaterThan(positions[3]!);
+    expect(Math.min(positions[4], positions[5])).toBeGreaterThan(positions[3]);
     expect(view.byRole("button", /^import from website$/i)).toHaveLength(1);
   });
 
@@ -239,8 +245,8 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
     await confirm(view);
     const writes = view.server.writesTo("revisions");
     expect(writes).toHaveLength(2);
-    const first = validated(writes[0]!, "revise");
-    const next = validated(writes[1]!, "revise");
+    const first = validated(writes[0], "revise");
+    const next = validated(writes[1], "revise");
     expect(next.body.expectedRevision, "the second save is based on the first save's revision").toBe(SITE_REVISION + 1);
     expect(next.content.links.slice(0, LINKS.length + 1)).toEqual(first.content.links);
     expect(new Set(next.content.links.map((l) => l.id)).size).toBe(LINKS.length + 2);
@@ -253,7 +259,7 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
     const view = await openSite({ inventory: inventory([blank]) });
     const dialog = await openPicker(view);
     expect(boxes(view, dialog), "the one captured page is offered").toHaveLength(1);
-    await view.check(boxes(view, dialog)[0]!.node, true);
+    await view.check(boxes(view, dialog)[0].node, true);
     await view.settle();
     await confirm(view);
     const sent = sentWrite(view.server, "revise");
@@ -279,7 +285,9 @@ describe("C3 creating the site_links entry (POST /entries)", () => {
       ]),
     );
     expect(sent.content.links).toHaveLength(2);
-    for (const link of sent.content.links) expect(link.id).toMatch(UUID);
+    for (const link of sent.content.links) {
+      expect(link.id).toMatch(UUID);
+    }
   });
 
   // C3 behavioural
@@ -321,7 +329,9 @@ describe("C3 selection, repeats and failures", () => {
     const twin: Page = { ...PAGES.shop, sourceId: PAGES.subscribe.sourceId, title: "Shop (second capture)" };
     const view = await openSite({ inventory: inventory([PAGES.shop, twin, PAGES.workshops]) });
     const dialog = await openPicker(view);
-    for (const box of boxes(view, dialog)) await view.check(box.node, true);
+    for (const box of boxes(view, dialog)) {
+      await view.check(box.node, true);
+    }
     await view.settle();
     await confirm(view);
     const sent = sentWrite(view.server, "revise");
@@ -338,12 +348,14 @@ describe("C3 selection, repeats and failures", () => {
     const first = confirmButton(view, pickerDialog(view) ?? dialog)!;
     await view.click(first);
     const again = pickerDialog(view) ? confirmButton(view, pickerDialog(view)!) : undefined;
-    if (again) await view.click(again);
+    if (again) {
+      await view.click(again);
+    }
     await view.settle();
     view.server.release();
     await view.settle();
     expect(view.server.writes, "one save, not two").toHaveLength(1);
-    validated(view.server.writes[0]!, "revise");
+    validated(view.server.writes[0], "revise");
   });
 
   // C3 behavioural
@@ -353,7 +365,9 @@ describe("C3 selection, repeats and failures", () => {
     await selectPages(view, [PAGES.shop]);
     await view.click(confirmButton(view, pickerDialog(view) ?? dialog)!);
     const again = pickerDialog(view) ? confirmButton(view, pickerDialog(view)!) : undefined;
-    if (again) await view.click(again);
+    if (again) {
+      await view.click(again);
+    }
     view.server.release();
     await view.settle();
     expect(view.server.writesTo("entries")).toHaveLength(1);
@@ -371,7 +385,9 @@ describe("C3 selection, repeats and failures", () => {
     expect(asked(view.text()), "the error tells the person to reload").toBeGreaterThan(before);
     const dialog = pickerDialog(view);
     expect(dialog, "the dialog stays open").toBeDefined();
-    for (const page of LISTED) expect(boxFor(view, dialog!, page), `"${labelOfPage(page)}" is still listed`).toBeDefined();
+    for (const page of LISTED) {
+      expect(boxFor(view, dialog!, page), `"${labelOfPage(page)}" is still listed`).toBeDefined();
+    }
   });
 
   // C3 behavioural
@@ -384,12 +400,16 @@ describe("C3 selection, repeats and failures", () => {
     expect(view.server.writes).toHaveLength(1);
     let dialog = pickerDialog(view);
     expect(dialog, "the dialog stays open").toBeDefined();
-    for (const page of LISTED) expect(boxFor(view, dialog!, page)).toBeDefined();
+    for (const page of LISTED) {
+      expect(boxFor(view, dialog!, page)).toBeDefined();
+    }
     // the server recovers; whatever the dialog lost, the person checks again and retries
     view.server.writeFailure = null;
     for (const page of [PAGES.shop, PAGES.workshops]) {
       const box = boxFor(view, pickerDialog(view)!, page)!;
-      if (!isChecked(box)) await view.check(box, true);
+      if (!isChecked(box)) {
+        await view.check(box, true);
+      }
     }
     await view.settle();
     await confirm(view);
@@ -407,7 +427,9 @@ describe("C3 selection, repeats and failures", () => {
         const entry = s.draft.entries.find((e: { kind: string }) => e.kind === "site_links");
         // the person's page still shows revision 4; the server is already at 5
         s.fetch = ((original) => async (input: unknown, init?: { method?: string; body?: unknown }) => {
-          if ((init?.method ?? "GET") === "POST" && String(input).endsWith("/revisions")) entry.current_revision = entry.revision = 5;
+          if ((init?.method ?? "GET") === "POST" && String(input).endsWith("/revisions")) {
+            entry.current_revision = entry.revision = 5;
+          }
           return original(input, init);
         })(s.fetch);
       },
@@ -441,10 +463,16 @@ describe("C3 the 500-link limit", () => {
     const dialog = pickerDialog(view)!;
     expect(view.text(dialog), "the dialog says why a second page cannot be added").toMatch(LIMIT_MSG);
     const button = confirmButton(view, dialog);
-    if (button) await view.click(button);
+    if (button) {
+      await view.click(button);
+    }
     await view.settle();
-    for (const count of linkCountsSent(view.server)) expect(count).toBeLessThanOrEqual(500);
-    for (const write of view.server.writes) validated(write, "revise");
+    for (const count of linkCountsSent(view.server)) {
+      expect(count).toBeLessThanOrEqual(500);
+    }
+    for (const write of view.server.writes) {
+      validated(write, "revise");
+    }
   });
 
   // C3 behavioural
@@ -466,10 +494,14 @@ describe("C3 the 500-link limit", () => {
     await view.settle();
     const dialog = pickerDialog(view);
     if (dialog) {
-      for (const box of boxes(view, dialog)) await view.check(box.node, true);
+      for (const box of boxes(view, dialog)) {
+        await view.check(box.node, true);
+      }
       await view.settle();
       const confirmed = confirmButton(view, pickerDialog(view) ?? dialog);
-      if (confirmed) await view.click(confirmed);
+      if (confirmed) {
+        await view.click(confirmed);
+      }
       await view.settle();
     }
     expect(view.server.writes, "no write that would exceed 500").toEqual([]);
@@ -494,17 +526,22 @@ describe("C7 the import never sends a non-http(s) URL", () => {
     const view = await openSite({ inventory: inventory(hostilePages()) });
     const dialog = await openPicker(view);
     const text = view.text(dialog);
-    for (const bad of ["Javascript page", "Data page", "File transfer page", "Protocol relative page", "Relative page", "Credentials page"])
+    for (const bad of ["Javascript page", "Data page", "File transfer page", "Protocol relative page", "Relative page", "Credentials page"]) {
       expect(text, bad).not.toContain(bad);
+    }
     expect(text).not.toMatch(/javascript:|data:text|ftp:|evil\.example|secret@/);
     expect(boxes(view, dialog).length).toBeGreaterThanOrEqual(2);
-    for (const box of boxes(view, dialog)) await view.check(box.node, true);
+    for (const box of boxes(view, dialog)) {
+      await view.check(box.node, true);
+    }
     await view.settle();
     await confirm(view);
     const sent = sentWrite(view.server, "revise");
     const added = sent.content.links.slice(LINKS.length);
     expect(added.length).toBeGreaterThanOrEqual(2);
-    for (const link of added) expect(link.url).toMatch(/^https?:\/\/[^@]+$/i);
+    for (const link of added) {
+      expect(link.url).toMatch(/^https?:\/\/[^@]+$/i);
+    }
   });
 
   // C7 behavioural
@@ -575,7 +612,11 @@ describe("C6 the dialog is keyboard operable", () => {
     const names = boxes(view, dialog).map((b) => b.name);
     expect(names.length).toBeGreaterThanOrEqual(LISTED.length);
     expect(new Set(names).size).toBe(names.length);
-    for (const page of LISTED) expect(names.some((n) => n.toLowerCase().includes(labelOfPage(page).toLowerCase()))).toBe(true);
-    for (const name of names) expect(norm(name)).not.toMatch(/^(select|check)?\s*$/i);
+    for (const page of LISTED) {
+      expect(names.some((n) => n.toLowerCase().includes(labelOfPage(page).toLowerCase()))).toBe(true);
+    }
+    for (const name of names) {
+      expect(norm(name)).not.toMatch(/^(select|check)?\s*$/i);
+    }
   });
 });

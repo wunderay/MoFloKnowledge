@@ -51,7 +51,9 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
       coverage: [],
       business: (b) => Object.assign(b.company_foundation, { year_founded: null, employee_count: null, legal_entity_type: null }),
     });
-    for (const label of GENERAL_STATS) expect(stat(page, label)).toContain("Unknown · Not assessed");
+    for (const label of GENERAL_STATS) {
+      expect(stat(page, label)).toContain("Unknown · Not assessed");
+    }
   });
 
   // behavioural

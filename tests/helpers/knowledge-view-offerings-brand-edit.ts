@@ -16,13 +16,13 @@ import {
   type View,
 } from "./knowledge-view-site-all-runtime";
 
-export type ObApi = {
+export interface ObApi {
   deletes: { path: string; body: any }[];
   patches: { path: string; body: any }[];
   restores: { path: string; body: any }[];
   /** Entries a DELETE archived: like the database, the row stays (and keeps its id) but the draft no longer lists it. */
   archived: any[];
-};
+}
 const reply = (status: number, data: unknown, error?: { code: string; message: string }) => {
   const body = { data: error ? null : data, error: error ?? null, requestId: "00000000-0000-4000-8000-0000000000aa" };
   return { ok: status < 400, status, json: async () => body, text: async () => JSON.stringify(body) };
@@ -34,7 +34,7 @@ export function installObApi(server: FakeServer): ObApi {
   const base = server.fetch;
   server.fetch = async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.pathname + input.search : String((input as any)?.url ?? input);
-    const path = url.split("?")[0]!;
+    const path = url.split("?")[0];
     const method = (init?.method ?? "GET").toUpperCase();
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
     const entry = /^\/api\/companies\/[^/]+\/entries\/([^/]+)$/.exec(path);
@@ -47,10 +47,16 @@ export function installObApi(server: FakeServer): ObApi {
       }
       server.requests.push({ method, path, body });
       api.deletes.push({ path, body });
-      if (server.gate) await server.gate.promise;
-      const found = server.draft.entries.find((e: any) => e.id === decodeURIComponent(entry[1]!));
-      if (!found) return reply(404, null, { code: "not_found", message: "Not found." });
-      if (body?.expectedRevision !== found.current_revision) return reply(409, null, { code: "conflict", message: "The saved revision changed." });
+      if (server.gate) {
+        await server.gate.promise;
+      }
+      const found = server.draft.entries.find((e: any) => e.id === decodeURIComponent(entry[1]));
+      if (!found) {
+        return reply(404, null, { code: "not_found", message: "Not found." });
+      }
+      if (body?.expectedRevision !== found.current_revision) {
+        return reply(409, null, { code: "conflict", message: "The saved revision changed." });
+      }
       // An archive, not an erase: the entry keeps its id (creating it again would collide with it).
       server.draft.entries = server.draft.entries.filter((e: any) => e !== found);
       api.archived.push(found);
@@ -63,16 +69,21 @@ export function installObApi(server: FakeServer): ObApi {
       }
       server.requests.push({ method, path, body });
       api.restores.push({ path, body });
-      if (server.gate) await server.gate.promise;
-      const found = api.archived.find((e: any) => e.id === decodeURIComponent(restoring[1]!));
-      if (!found) return reply(422, null, { code: "validation", message: "Review the supplied values and approval requirements." });
+      if (server.gate) {
+        await server.gate.promise;
+      }
+      const found = api.archived.find((e: any) => e.id === decodeURIComponent(restoring[1]));
+      if (!found) {
+        return reply(422, null, { code: "validation", message: "Review the supplied values and approval requirements." });
+      }
       api.archived = api.archived.filter((e: any) => e !== found);
       server.draft.entries.push(found);
       return reply(200, { id: found.id, kind: found.kind, revision: found.current_revision });
     }
     // Creating an entry whose id belongs to an archived one collides with it, as the primary key does.
-    if (method === "POST" && /^\/api\/companies\/[^/]+\/entries$/.test(path) && body?.content?.id && api.archived.some((e: any) => e.id === body.content.id))
+    if (method === "POST" && /^\/api\/companies\/[^/]+\/entries$/.test(path) && body?.content?.id && api.archived.some((e: any) => e.id === body.content.id)) {
       return reply(503, null, { code: "unavailable", message: "The service is temporarily unavailable. Please retry." });
+    }
     if (method === "PATCH" && company) {
       if (server.writeFailure) {
         api.patches.push({ path, body });
@@ -80,7 +91,9 @@ export function installObApi(server: FakeServer): ObApi {
       }
       server.requests.push({ method, path, body });
       api.patches.push({ path, body });
-      if (body?.expectedGeneration !== server.draft.draftGeneration) return reply(409, null, { code: "conflict", message: "The saved revision changed." });
+      if (body?.expectedGeneration !== server.draft.draftGeneration) {
+        return reply(409, null, { code: "conflict", message: "The saved revision changed." });
+      }
       server.draft.company = { ...server.draft.company, name: body.name };
       server.draft.draftGeneration += 1;
       return reply(200, server.draft.company);
@@ -93,7 +106,7 @@ export function installObApi(server: FakeServer): ObApi {
 export const offeringsDraftAs = (role: "owner" | "viewer" = "owner"): Draft => draftFrom(offeringsBusiness(), { role });
 export const brandDraftAs = (role: "owner" | "viewer" = "owner"): Draft => draftFrom(brandBusiness(), { role });
 
-export type OpenedOB = { view: View; api: ObApi; server: FakeServer };
+export interface OpenedOB { view: View; api: ObApi; server: FakeServer }
 export async function openOB(section: "Business Offerings" | "Brand Identity", opts: Omit<OpenOptions, "section" | "rawSection" | "fullUrl" | "server"> & { offering?: string } = {}): Promise<OpenedOB> {
   let api!: ObApi;
   const { offering, ...rest } = opts;

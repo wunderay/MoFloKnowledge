@@ -29,7 +29,7 @@ export function mapDatabaseError(error: {
   const value = error.message || "";
   let details: Record<string, unknown> | undefined;
   try {
-    const parsed = JSON.parse(error.details ?? "{}");
+    const parsed = JSON.parse(error.details ?? "{}") as unknown;
     const safe = z
       .object({
         currentRevision: z.number().int().positive().optional(),
@@ -38,56 +38,66 @@ export function mapDatabaseError(error: {
       })
       .strip()
       .parse(parsed);
-    if (Object.keys(safe).length) details = safe;
+    if (Object.keys(safe).length) {
+      details = safe;
+    }
   } catch {
     /* Provider details are never forwarded. */
   }
 
-  if (/not_authenticated/.test(value))
+  if (value.includes('not_authenticated')) {
     return new HttpError(401, "signed_out", "Sign in to continue.");
-  if (/entry_has_dependents/.test(value))
+  }
+  if (value.includes('entry_has_dependents')) {
     return new HttpError(
       422,
       "entry_has_dependents",
       "Another entry cites this one's sources. Remove that citation first.",
     );
-  if (/not_found|unavailable|not_member/.test(value))
+  }
+  if (/not_found|unavailable|not_member/.test(value)) {
     return new HttpError(404, "unavailable", "Resource unavailable.");
-  if (/forbidden|insufficient_role|owner_required/.test(value))
+  }
+  if (/forbidden|insufficient_role|owner_required/.test(value)) {
     return new HttpError(
       403,
       "forbidden",
       "Your role cannot perform this action.",
     );
+  }
   if (
     error.code === "23505" &&
-    /knowledge_entries_singleton_idx/.test(`${value} ${error.details ?? ""}`)
-  )
+    `${value} ${error.details ?? ""}`.includes('knowledge_entries_singleton_idx')
+  ) {
     return new HttpError(
       409,
       "conflict",
       "The saved state changed. Refresh and compare your changes.",
     );
-  if (/stale|conflict|active_job/.test(value))
+  }
+  if (/stale|conflict|active_job/.test(value)) {
     return new HttpError(
       409,
       "conflict",
       "The saved state changed. Refresh and compare your changes.",
       details,
     );
-  if (/rate_limit/.test(value))
+  }
+  if (value.includes('rate_limit')) {
     return new HttpError(429, "rate_limited", "Please wait before retrying.");
+  }
   if (
     /invalid|validation|archived|last_owner|unreviewed|approval|approved|evidence|coverage|edited_leaf_requires_user_origin|unsupported_origin|unsupported_candidate_origin/.test(
       value,
     ) ||
     error.code === "23514"
-  )
+  ) {
     return new HttpError(
       422,
       "validation",
       "Review the supplied values and approval requirements.",
     );
+  }
   return new HttpError(
     503,
     "unavailable",
@@ -98,12 +108,13 @@ export function assertWriteOrigin(request: Request) {
   if (
     !["GET", "HEAD", "OPTIONS"].includes(request.method) &&
     request.headers.get("origin") !== appOrigin()
-  )
+  ) {
     throw new HttpError(
       403,
       "invalid_origin",
       "Request origin is not allowed.",
     );
+  }
 }
 export async function readJson<S extends z.ZodTypeAny>(
   request: Request,
@@ -114,15 +125,18 @@ export async function readJson<S extends z.ZodTypeAny>(
       .get("content-type")
       ?.toLowerCase()
       .startsWith("application/json")
-  )
+  ) {
     throw new HttpError(400, "invalid_json", "Send application/json.");
+  }
   const reader = request.body?.getReader();
   let size = 0;
   const chunks: Uint8Array[] = [];
-  if (reader)
+  if (reader) {
     for (;;) {
       const result = await reader.read();
-      if (result.done) break;
+      if (result.done) {
+        break;
+      }
       size += result.value.byteLength;
       if (size > 1048576) {
         await reader.cancel();
@@ -130,8 +144,10 @@ export async function readJson<S extends z.ZodTypeAny>(
       }
       chunks.push(result.value);
     }
+  }
   try {
-    return schema.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
+    return schema.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown);
   } catch (error) {
     const business =
       error instanceof z.ZodError &&
@@ -156,12 +172,15 @@ export function json(data: unknown, requestId: string, status = 200) {
     },
   );
 }
-export type RouteContext = { params: Promise<Record<string, string>> };
+export interface RouteContext { params: Promise<Record<string, string>> }
+type Session = Awaited<ReturnType<typeof verifiedSession>>;
+/** The session as `route` hands it to a handler: signed-in, so `user` is never null. */
+export type SignedInSession = Session & { user: NonNullable<Session["user"]> };
 export function route(
   handler: (
     request: Request,
     context: RouteContext,
-    auth: Awaited<ReturnType<typeof verifiedSession>>,
+    auth: SignedInSession,
     requestId: string,
   ) => Promise<unknown>,
   status = 200,
@@ -171,9 +190,10 @@ export function route(
     try {
       assertWriteOrigin(request);
       const auth = await verifiedSession();
-      if (!auth.user)
+      if (!auth.user) {
         throw new HttpError(401, "signed_out", "Sign in to continue.");
-      const data = await handler(request, context, auth, requestId);
+      }
+      const data = await handler(request, context, auth as SignedInSession, requestId);
       return data instanceof Response ? data : json(data, requestId, status);
     } catch (error) {
       const safe =
@@ -206,15 +226,23 @@ export async function rpc(
   name: string,
   args: Record<string, unknown>,
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
   const { data, error } = await client.rpc(name, args);
-  if (error) throw mapDatabaseError(error);
-  if (name === "create_company") return parseResponse(IdSchema, data);
-  if (["update_company", "archive_company"].includes(name))
+  if (error) {
+    throw mapDatabaseError(error);
+  }
+  if (name === "create_company") {
+    return parseResponse(IdSchema, data);
+  }
+  if (["update_company", "archive_company"].includes(name)) {
     return parseResponse(CompanyRowSchema, data);
-  if (name === "archive_entry")
+  }
+  if (name === "archive_entry") {
     return parseResponse(ArchivedEntryResponseSchema, data);
-  if (name === "restore_entry")
+  }
+  if (name === "restore_entry") {
     return parseResponse(RestoredEntryResponseSchema, data);
+  }
   if (
     [
       "create_entry",
@@ -222,9 +250,10 @@ export async function rpc(
       "revert_entry",
       "apply_proposal",
     ].includes(name)
-  )
+  ) {
     return parseResponse(RevisionResponseSchema, data);
-  return data;
+  }
+  return data as unknown;
 }
 
 export function parseResponse<S extends z.ZodTypeAny>(
@@ -232,11 +261,13 @@ export function parseResponse<S extends z.ZodTypeAny>(
   value: unknown,
 ): z.output<S> {
   const result = schema.safeParse(value);
-  if (!result.success)
+  if (!result.success) {
     throw new HttpError(
       503,
       "invalid_response",
       "The service returned an invalid response. Please retry.",
     );
-  return result.data;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
+  return result.data as z.output<S>;
 }

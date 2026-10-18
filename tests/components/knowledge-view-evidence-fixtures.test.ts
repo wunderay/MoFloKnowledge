@@ -54,10 +54,10 @@ describe("fixtures", () => {
   it("Edge case: generated wording on a field that forbids it is reported, so the check is not vacuous", () => {
     const bad = buildEvidence({
       coverage: [],
-      marks: [{ target: (b) => `/market_and_customers/target_buyers/@${b.market_and_customers.target_buyers[0]!.id}/text`, origin: "generated" }],
+      marks: [{ target: (b) => `/market_and_customers/target_buyers/@${b.market_and_customers.target_buyers[0].id}/text`, origin: "generated" }],
     });
     const all = bad.draft.entries.map((e) => e.provenance);
-    const p = { ...all[0]!, claims: all.flatMap((x) => x.claims), evidence: all.flatMap((x) => x.evidence), sources: all[2]!.sources };
+    const p = { ...all[0], claims: all.flatMap((x) => x.claims), evidence: all.flatMap((x) => x.evidence), sources: all[2].sources };
     const issues = validateProvenance(bad.business as never, p as never, { requireCoverage: false });
     expect(issues.map((i) => i.code)).toContain("origin_disallowed");
   });

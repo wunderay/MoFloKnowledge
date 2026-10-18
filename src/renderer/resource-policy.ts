@@ -29,34 +29,43 @@ export async function installResourcePolicy(context: BrowserContext, task: Rende
             const request = route.request();
             const url = normalizeUrl(request.url());
             const type = request.resourceType();
-            if (!['GET', 'HEAD'].includes(request.method()) || ['websocket', 'media', 'eventsource', 'manifest'].includes(type))
-                throw new Error('Resource method/type blocked');
+            if (!['GET', 'HEAD'].includes(request.method()) || ['websocket', 'media', 'eventsource', 'manifest'].includes(type)) {
+              throw new Error('Resource method/type blocked');
+            }
             if (request.isNavigationRequest()) {
                 assertDocumentScope(url, task.scope);
-                if (!allowedNavigations.has(url))
-                    throw new Error('Unrequested document navigation blocked');
-                if (request.frame().parentFrame())
-                    throw new Error('Frames disabled');
-                if (++documentCount > 6)
-                    throw new Error('Navigation limit exceeded');
+                if (!allowedNavigations.has(url)) {
+                  throw new Error('Unrequested document navigation blocked');
+                }
+                if (request.frame().parentFrame()) {
+                  throw new Error('Frames disabled');
+                }
+                if (++documentCount > 6) {
+                  throw new Error('Navigation limit exceeded');
+                }
             }
-            if (type === 'document' && request.frame().parentFrame())
-                throw new Error('Frames disabled');
+            if (type === 'document' && request.frame().parentFrame()) {
+              throw new Error('Frames disabled');
+            }
             const host = new URL(url).hostname;
             const wait = (starts.get(host) ?? 0) + 500 - Date.now();
-            if (wait > 0)
-                await delay(wait, undefined, { signal });
+            if (wait > 0) {
+              await delay(wait, undefined, { signal });
+            }
             starts.set(host, Date.now());
             const max = request.isNavigationRequest() ? 2 * 1024 * 1024 : Math.max(0, task.maxDesignBytes - resourceBytes);
             const response = await fetchResource(url, request.method() as 'GET' | 'HEAD', max, signal);
             const body = response.body;
             signal.throwIfAborted();
-            if (body.length > max)
-                throw new Error('Resource byte budget exceeded');
-            if (!request.isNavigationRequest())
-                resourceBytes += body.length;
-            if (type === 'stylesheet' && stylesheets.length < 50)
-                stylesheets.push({ url, declarations: body.toString('utf8').slice(0, 100000), status: 'available' });
+            if (body.length > max) {
+              throw new Error('Resource byte budget exceeded');
+            }
+            if (!request.isNavigationRequest()) {
+              resourceBytes += body.length;
+            }
+            if (type === 'stylesheet' && stylesheets.length < 50) {
+              stylesheets.push({ url, declarations: body.toString('utf8').slice(0, 100000), status: 'available' });
+            }
             if (request.isNavigationRequest() && [301, 302, 303, 307, 308].includes(response.status)) {
                 const target = normalizeUrl(response.headers.location ?? '', url);
                 assertDocumentScope(target, task.scope);
@@ -66,13 +75,14 @@ export async function installResourcePolicy(context: BrowserContext, task: Rende
         }
         catch (error) {
             limitations.push(error instanceof Error ? error.message : 'Resource blocked');
-            await route.abort('blockedbyclient').catch(() => { });
+            await route.abort('blockedbyclient').catch(() => undefined);
         }
         finally {
             release();
         }
     });
     await context.addInitScript(() => {
+        // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- init-script stub that replaces window.WebSocket
         Object.defineProperty(window, 'WebSocket', { value: class {
                 constructor() { throw new Error('WebSocket disabled'); }
             } });

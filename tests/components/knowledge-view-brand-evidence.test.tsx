@@ -20,7 +20,7 @@ const noColorsOrFonts: ObEvidenceOptions = {
 };
 const cardOf = (page: Page, title: string) => card(page, title, CARDS)!;
 const itemOf = (page: Page, title: string, text: string) =>
-  page.$(deepestContaining(page, cardOf(page, title), text)[0]!).closest("li");
+  page.$(deepestContaining(page, cardOf(page, title), text)[0]).closest("li");
 const markerNames = (page: Page, li: ReturnType<Page["$"]>) =>
   li.find("button.citation-popover__trigger").toArray().map((b) => page.$(b).attr("aria-label"));
 const bannerCell = (page: Page, label: string) => textOf(page, labelGroup(page, label, CELLS, brandBanner(page, COMPANY_NAME)!)!);
@@ -67,12 +67,12 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
   // behavioural
   it("images have meaningful alt text naming the company and the logo, never the address", async () => {
     const page = await open[source]();
-    const all = imagesIn(page, page.$(".knowledge-view__panel")[0]!);
-    expect(all.map((i) => i.src)).toEqual([LOGOS[0]!.url, ...LOGOS.map((l) => l.url)]);
+    const all = imagesIn(page, page.$(".knowledge-view__panel")[0]);
+    expect(all.map((i) => i.src)).toEqual([LOGOS[0].url, ...LOGOS.map((l) => l.url)]);
     const labels = ["Primary", "Primary", "Stacked lockup", "Logo"];
     all.forEach((image, i) => {
       expect(image.alt).toContain(COMPANY_NAME);
-      expect(image.alt).toContain(labels[i]!);
+      expect(image.alt).toContain(labels[i]);
       expect(image.alt).not.toMatch(/https?:|\.svg|\.png/);
     });
   });
@@ -103,8 +103,9 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
   // behavioural
   it("empty fields with no assessment say so instead of staying silent", async () => {
     const page = await open[source]({ ...noColorsOrFonts, coverage: () => [] });
-    for (const title of ["Colors", "Fonts"])
+    for (const title of ["Colors", "Fonts"]) {
       expect(textOf(page, cardOf(page, title))).toContain("Unknown · Not assessed — No assessment is recorded for this field.");
+    }
     expect(bannerCell(page, "Palette")).toContain("Unknown · Not assessed — No assessment is recorded for this field.");
   });
 });
@@ -114,7 +115,7 @@ describe("brand evidence, draft and snapshot agree", () => {
   it("a snapshot shows the same controls and notes as its draft", async () => {
     const a = await open.draft();
     const b = await open.snapshot();
-    const region = (page: Page) => textOf(page, page.$(".knowledge-view__panel")[0]!);
+    const region = (page: Page) => textOf(page, page.$(".knowledge-view__panel")[0]);
     expect(region(b)).toEqual(region(a));
     expect(region(a)).toContain(REASONS.logos);
   });

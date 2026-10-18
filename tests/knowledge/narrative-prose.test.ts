@@ -29,7 +29,9 @@ it("keeps full ambiguous, personal, quoted, negative and conditional statements 
     "We can help clients, from setup to filing if eligible.", "We can help clients, from setup to filing as long as they qualify.",
     "We can provide tools, assisting clients if eligible.", "We have used this system for years.",
     "My experience matters. We provide tools for our clients.", 'We provide tools with a "we know best" message.',
-  ]) expect(factualBullets(text, "Lumen Ledger").map((bullet) => bullet.text).join(" ")).toBe(text);
+  ]) {
+    expect(factualBullets(text, "Lumen Ledger").map((bullet) => bullet.text).join(" ")).toBe(text);
+  }
   expect(factualBullets("We provide tools for our clients.", "Lumen Ledger"))
     .toEqual([{ text: "tools for its clients.", label: "Services provided" }]);
   expect(factualBullets("My experience matters. I have worked with clients.", "Lumen Ledger", true))

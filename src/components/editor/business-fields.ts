@@ -1,4 +1,4 @@
-export type FieldSpec = {
+export interface FieldSpec {
   label?: string;
   type?: "text" | "long" | "url" | "date" | "number" | "boolean" | "select";
   options?: string[];
@@ -6,7 +6,7 @@ export type FieldSpec = {
   items?: FieldSpec;
   default?: unknown;
   hint?: string;
-};
+}
 const t: FieldSpec = { type: "text" },
   long: FieldSpec = { type: "long" },
   url: FieldSpec = { type: "url" },
@@ -253,22 +253,32 @@ export function labelOf(key: string) {
   return key.replaceAll("_", " ").replace(/^./, (x) => x.toUpperCase());
 }
 export function newValue(spec: FieldSpec, identified = false): unknown {
-  if (spec.default !== undefined) return structuredClone(spec.default);
-  if (spec.items) return [];
-  if (spec.fields)
+  if (spec.default !== undefined) {
+    return structuredClone(spec.default);
+  }
+  if (spec.items) {
+    return [];
+  }
+  if (spec.fields) {
     return Object.fromEntries([
       ...(identified ? [["id", crypto.randomUUID()]] : []),
       ...Object.entries(spec.fields).map(([k, s]) => [k, newValue(s)]),
     ]);
+  }
   return null;
 }
 
 /** A readable choice label; stable IDs remain in the underlying candidate. */
 export function summarizeValue(value: unknown): string {
-  if (value === null || value === undefined) return "Unknown";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (Array.isArray(value))
+  if (value === null || value === undefined) {
+    return "Unknown";
+  }
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  if (Array.isArray(value)) {
     return value.length ? value.map(summarizeValue).join("; ") : "No values";
+  }
   if (typeof value === "object") {
     const object = value as Record<string, unknown>;
     for (const field of [
@@ -281,8 +291,9 @@ export function summarizeValue(value: unknown): string {
       "url",
       "profile_url",
     ]) {
-      if (typeof object[field] === "string" && object[field])
+      if (typeof object[field] === "string" && object[field]) {
         return object[field];
+      }
     }
     const fields = Object.entries(object).filter(
       ([key, item]) => key !== "id" && item !== null,
@@ -293,5 +304,6 @@ export function summarizeValue(value: unknown): string {
           .join("; ")
       : "Unknown";
   }
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
   return String(value);
 }

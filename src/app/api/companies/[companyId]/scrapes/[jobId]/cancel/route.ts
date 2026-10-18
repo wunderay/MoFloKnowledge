@@ -10,5 +10,5 @@ export const POST = route(async (r, c, { client, user }) => {
     p_company: IdSchema.parse(p.companyId),
     p_job: IdSchema.parse(p.jobId),
   });
-  return readJob(client, p.companyId, p.jobId, user!.id);
+  return readJob(client, p.companyId, p.jobId, user.id);
 });

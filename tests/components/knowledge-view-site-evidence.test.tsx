@@ -47,8 +47,8 @@ function parts(page: Page) {
     field: all.filter((el) => !inLink(el)).map((el) => ({ name: name(el), shown: norm(page.$(el).text()) })),
     all: all.map((el) => ({ name: name(el), shown: norm(page.$(el).text()) })),
     markersOf: (index: number, links = LINKS) => {
-      const item = linkItem(page, card!, links[index]!, links);
-      expect(item, `the card lists "${links[index]!.title}"`).not.toBeNull();
+      const item = linkItem(page, card!, links[index], links);
+      expect(item, `the card lists "${links[index].title}"`).not.toBeNull();
       return page.$(item!).find(TRIGGER).toArray().map((el) => ({ name: name(el), shown: norm(page.$(el).text()) }));
     },
   };
@@ -80,9 +80,9 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge evidence (%s)", (s
     expect(parted.markersOf(2)).toEqual([]);
     for (const index of [1, 3]) {
       const markers = parted.markersOf(index);
-      expect(markers, LINKS[index]!.title).toHaveLength(1);
-      expect(markers[0]!.name).toBe(`User correction: evidence for ${LINKS[index]!.title}`);
-      expect(markers[0]!.shown).toBe("User correction ⓘ");
+      expect(markers, LINKS[index].title).toHaveLength(1);
+      expect(markers[0].name).toBe(`User correction: evidence for ${LINKS[index].title}`);
+      expect(markers[0].shown).toBe("User correction ⓘ");
     }
   });
 
@@ -103,9 +103,9 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge evidence (%s)", (s
     const inferred = parted.markersOf(1);
     const generated = parted.markersOf(2);
     expect(inferred).toHaveLength(1);
-    expect(inferred[0]!.name).toBe(`Historical inferred: evidence for ${LINKS[1]!.title}`);
+    expect(inferred[0].name).toBe(`Historical inferred: evidence for ${LINKS[1].title}`);
     expect(generated).toHaveLength(1);
-    expect(generated[0]!.name).toMatch(new RegExp(`^Historical generated( · approved)?: evidence for ${LINKS[2]!.title}$`));
+    expect(generated[0].name).toMatch(new RegExp(`^Historical generated( · approved)?: evidence for ${LINKS[2].title}$`));
     expect(parted.markersOf(0)).toEqual([]);
     expect(parted.markersOf(3)).toHaveLength(1);
     for (const c of parted.all) {
@@ -128,7 +128,7 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge evidence (%s)", (s
   it("a list that is only partly found prints its reason next to the links; a fully found list prints none", async () => {
     const partial = (await open[source]({ coverage: { status: "partial", reason: COVERAGE_REASONS.partial } })).page();
     expect(textOfCard(partial)).toContain(COVERAGE_REASONS.partial);
-    expect(textOfCard(partial)).toContain(LINKS[0]!.title);
+    expect(textOfCard(partial)).toContain(LINKS[0].title);
     const found = (await open[source]()).page();
     expect(textOfCard(found)).not.toMatch(/partial|not found in checked|conflicting|unknown ·/i);
   });
@@ -174,6 +174,8 @@ describe("Site Knowledge evidence, draft and snapshot agree", () => {
     draft.entries.find((e) => e.kind === "site_links")!.provenance = { sources: [], evidence: [], claims: [], coverage: [], operations: [], conflicts: [], decisions: [] } as never;
     const page = (await openView({ section: "Site Knowledge", draft })).page();
     const text = textOfCard(page);
-    for (const link of LINKS) expect(text).toContain(link.title);
+    for (const link of LINKS) {
+      expect(text).toContain(link.title);
+    }
   });
 });

@@ -17,7 +17,11 @@ export const same = (a: string, b: string) => norm(a).toLowerCase() === norm(b).
 
 export function ancestorsOf(node: AnyNode): Element[] {
   const out: Element[] = [];
-  for (let p = node.parent as Element | null; p; p = p.parent as Element | null) if (p.type === "tag") out.push(p);
+  for (let p = node.parent as Element | null; p; p = p.parent as Element | null) {
+    if (p.type === "tag") {
+      out.push(p);
+    }
+  }
   return out;
 }
 const textOfEl = (page: Page, el: AnyNode) => norm(page.$(el as Element).text());
@@ -28,7 +32,9 @@ export function orderIndex(page: Page): Map<AnyNode, number> {
   let i = 0;
   const walk = (n: AnyNode) => {
     out.set(n, i++);
-    if ("children" in n) (n.children as AnyNode[]).forEach(walk);
+    if ("children" in n) {
+      (n.children as AnyNode[]).forEach(walk);
+    }
   };
   walk(page.$.root()[0] as AnyNode);
   return out;
@@ -44,15 +50,23 @@ export function siteHeading(page: Page): Element | null {
  */
 export function siteCard(page: Page): Element | null {
   const heading = siteHeading(page);
-  if (!heading) return null;
+  if (!heading) {
+    return null;
+  }
   const others = headings(page).filter((h) => h.el !== heading && !inSelectorOrForm(page, h.el));
   const selector = sectionSelector(page);
   let best: Element = heading;
   for (const parent of ancestorsOf(heading)) {
-    if (["body", "html", "main"].includes(parent.name)) break;
-    if (selector && contains(parent, selector)) break;
+    if (["body", "html", "main"].includes(parent.name)) {
+      break;
+    }
+    if (selector && contains(parent, selector)) {
+      break;
+    }
     // A heading inside an open dialog or a citation popover belongs to that overlay, not to a sibling section.
-    if (others.some((o) => contains(parent, o.el) && !page.$(o.el).closest("[role=dialog],dialog").length)) break;
+    if (others.some((o) => contains(parent, o.el) && !page.$(o.el).closest("[role=dialog],dialog").length)) {
+      break;
+    }
     best = parent;
   }
   return best;
@@ -71,18 +85,24 @@ export function linkItem(page: Page, card: Element, link: Link, all: Link[]): El
   const first = page.$(card).find("*").toArray().find((el) => {
     const kids = page.$(el).children().toArray();
     return has(el, link.title) && !kids.some((k) => has(k, link.title)) ;
-  }) as Element | undefined;
-  if (!first) return null;
+  });
+  if (!first) {
+    return null;
+  }
   const others = all.filter((l) => l.id !== link.id).map((l) => l.title).filter((t) => !link.title.includes(t));
   let best: Element = first;
   for (const parent of ancestorsOf(first)) {
-    if (!contains(card, parent) && parent !== card) break;
-    if (others.some((t) => has(parent, t))) break;
+    if (!contains(card, parent) && parent !== card) {
+      break;
+    }
+    if (others.some((t) => has(parent, t))) {
+      break;
+    }
     best = parent;
   }
   return best;
 }
-export type Anchor = { href: string; rel: string[]; target: string | undefined; text: string; label: string };
+export interface Anchor { href: string; rel: string[]; target: string | undefined; text: string; label: string }
 export function anchorsIn(page: Page, el: AnyNode): Anchor[] {
   return page.$(el as Element).find("a[href]").toArray().map((a) => ({
     href: page.$(a).attr("href")!,
@@ -118,8 +138,12 @@ export function addPageLinks(page: Page, el: AnyNode): string[] {
 const CONTROL = "button,[role=button],input[type=button],input[type=submit],a[role=button]";
 function controlName(page: Page, el: Element): string {
   const aria = page.$(el).attr("aria-label");
-  if (aria) return norm(aria);
-  if (el.name === "input") return norm(page.$(el).attr("value") ?? "");
+  if (aria) {
+    return norm(aria);
+  }
+  if (el.name === "input") {
+    return norm(page.$(el).attr("value") ?? "");
+  }
   return norm(page.$(el).text());
 }
 export function importControls(page: Page): Element[] {

@@ -10,7 +10,7 @@ export const POST = route(async (r, c, { client, user }) => {
     client,
     IdSchema.parse(p.companyId),
     IdSchema.parse(p.entryId),
-    user!.id,
+    user.id,
     b,
   );
   return rpc(client, "save_entry_revision", {

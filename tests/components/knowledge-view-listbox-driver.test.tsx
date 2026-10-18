@@ -31,13 +31,17 @@ function Reference({ mode }: { mode: "push" | "link" }) {
   const box = useRef<any>(null);
   const wrap = useRef<any>(null);
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      return;
+    }
     const away = () => setOpen(false);
     document.addEventListener("pointerdown", away);
     return () => document.removeEventListener("pointerdown", away);
   }, [isOpen]);
   useEffect(() => {
-    if (isOpen) box.current?.focus();
+    if (isOpen) {
+      box.current?.focus();
+    }
   }, [isOpen]);
   const choose = (id: string) => {
     setOpen(false);
@@ -57,14 +61,19 @@ function Reference({ mode }: { mode: "push" | "link" }) {
             ref={box}
             role="listbox"
             tabIndex={-1}
-            aria-activedescendant={`o-${LISTBOX_SECTIONS[active]!.id}`}
+            aria-activedescendant={`o-${LISTBOX_SECTIONS[active].id}`}
             onKeyDown={(e) => {
-              if (e.key === "ArrowDown") setActive(Math.min(last, active + 1));
-              else if (e.key === "ArrowUp") setActive(Math.max(0, active - 1));
-              else if (e.key === "Home") setActive(0);
-              else if (e.key === "End") setActive(last);
-              else if (e.key === "Enter" || e.key === " ") choose(LISTBOX_SECTIONS[active]!.id);
-              else if (e.key === "Escape") {
+              if (e.key === "ArrowDown") {
+                setActive(Math.min(last, active + 1));
+              } else if (e.key === "ArrowUp") {
+                setActive(Math.max(0, active - 1));
+              } else if (e.key === "Home") {
+                setActive(0);
+              } else if (e.key === "End") {
+                setActive(last);
+              } else if (e.key === "Enter" || e.key === " ") {
+                choose(LISTBOX_SECTIONS[active].id);
+              } else if (e.key === "Escape") {
                 setOpen(false);
                 btn.current?.focus();
               }

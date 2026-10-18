@@ -75,7 +75,9 @@ describe.each(STATES)("C7 read-only: %s", (_name, options) => {
       expect(owner.byRole("button", /^edit /i).length, "an owner's draft of this section is editable (the contrast this test is about)").toBeGreaterThan(0);
       const view = await open(section, options());
       expectNoEditing(view);
-      for (const value of values) expect(isPlainText(view, value), `"${value.slice(0, 40)}…" is plain text`).toBe(true);
+      for (const value of values) {
+        expect(isPlainText(view, value), `"${value.slice(0, 40)}…" is plain text`).toBe(true);
+      }
     });
 
     it("clicking a value or pressing keys on it changes nothing and sends nothing", async () => {
@@ -108,7 +110,9 @@ describe("C7 read-only views keep the links to the advanced editor", () => {
       expectNoEditing(view);
       const adds = view.byRole("link", /^\+ add$/i);
       expect(adds.length, `"+ Add" links in ${section}`).toBeGreaterThan(0);
-      for (const link of adds) expect(String(link.props.href)).toMatch(/^\/knowledge\?companyId=[^&]+&category=/);
+      for (const link of adds) {
+        expect(String(link.props.href)).toMatch(/^\/knowledge\?companyId=[^&]+&category=/);
+      }
     }
   });
 
@@ -118,7 +122,9 @@ describe("C7 read-only views keep the links to the advanced editor", () => {
     const view = await open("Customers & Industry", snapshot());
     expect(view.byRole("link", /^add buyer$/i)).toHaveLength(1);
     const items = itemsOf(stored(await open("Customers & Industry"), "market_and_customers"), ["target_buyers"]);
-    for (const item of items) expect(removeButtons(view, item.text)).toHaveLength(0);
+    for (const item of items) {
+      expect(removeButtons(view, item.text)).toHaveLength(0);
+    }
   });
 
   it("the banner counters read '<n> <noun>' in a snapshot too", async () => {

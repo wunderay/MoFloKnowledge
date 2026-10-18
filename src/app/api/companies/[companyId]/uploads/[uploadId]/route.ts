@@ -14,10 +14,12 @@ export const GET = route(async (_request, context, { client, user }) => {
   const params = await context.params;
   const companyId = parseId(params.companyId);
   const uploadId = parseId(params.uploadId);
-  await authorizeUploads(client, companyId, user!.id, false);
+  await authorizeUploads(client, companyId, user.id, false);
   const upload = await findUpload(client, companyId, uploadId);
   const { data, error } = await client.storage.from(UPLOAD_BUCKET).download(upload.path);
-  if (error || !data) throw error && !isStorageNotFound(error) ? storageUnavailable() : unavailable();
+  if (error || !data) {
+    throw error && !isStorageNotFound(error) ? storageUnavailable() : unavailable();
+  }
   // The type comes from the extension this app chose at upload time, never from stored metadata, and the
   // response is inert whatever the bytes are: no sniffing, no script, no subresources, no framing as a document.
   return new Response(data.stream(), {
@@ -38,19 +40,25 @@ export const DELETE = route(async (_request, context, { client, user }) => {
   const params = await context.params;
   const companyId = parseId(params.companyId);
   const uploadId = parseId(params.uploadId);
-  await authorizeUploads(client, companyId, user!.id, true);
+  await authorizeUploads(client, companyId, user.id, true);
   const upload = await findUpload(client, companyId, uploadId);
   // Object first, metadata second: a failure in between leaves a row that still serves or 404s, never a
   // readable object without a row. Removing an already-missing object is not an error, so a retry completes.
   const removed = await client.storage.from(UPLOAD_BUCKET).remove([upload.path]);
-  if (removed.error) throw storageUnavailable();
+  if (removed.error) {
+    throw storageUnavailable();
+  }
   const { data, error } = await client
     .from("uploads")
     .delete()
     .eq("id", uploadId)
     .eq("company_id", companyId)
     .select("id");
-  if (error) throw mapDatabaseError(error);
-  if (!data?.length) throw unavailable(); // another request deleted it first, or the row was not ours to delete
+  if (error) {
+    throw mapDatabaseError(error);
+  }
+  if (!data?.length) {
+    throw unavailable();
+  } // another request deleted it first, or the row was not ours to delete
   return { id: uploadId };
 });

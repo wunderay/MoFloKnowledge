@@ -4,7 +4,7 @@ import { ApiError, api, companyPath, write } from "../shared/api-client";
 import type { ViewPerson } from "./data";
 
 /** The reference the uploads API returns for a stored image; only these four fields are saved with the person. */
-type Stored = { id: string; path: string; content_type: string; size_bytes: number };
+interface Stored { id: string; path: string; content_type: string; size_bytes: number }
 
 /** Sends the file to the uploads API as a portrait and returns the stored reference. The server alone decides what is acceptable. */
 async function uploadPortrait(companyId: string, file: File): Promise<Stored> {
@@ -17,8 +17,9 @@ async function uploadPortrait(companyId: string, file: File): Promise<Stored> {
     data?: Stored | null;
     error?: { message?: string } | null;
   } | null;
-  if (!response.ok || body?.error || !body?.data)
+  if (!response.ok || body?.error || !body?.data) {
     throw new ApiError(body?.error?.message ?? "The photo could not be uploaded.", response.status);
+  }
   const { id, path, content_type, size_bytes } = body.data;
   return { id, path, content_type, size_bytes };
 }
@@ -51,7 +52,9 @@ export function PortraitControl({
     const file = event.target.files?.[0];
     // Let the same file be chosen again after a failure.
     event.target.value = "";
-    if (!file || working.current) return;
+    if (!file || working.current) {
+      return;
+    }
     working.current = true;
     setBusy(true);
     setError("");
@@ -118,19 +121,27 @@ function ConfirmDelete({
 
   // A native modal dialog takes focus, traps it and makes the page behind it inert.
   const modal = useCallback((element: HTMLDialogElement | null) => {
-    if (element && !element.open) element.showModal();
+    if (element && !element.open) {
+      element.showModal();
+    }
   }, []);
 
   function close() {
-    if (!deleting.current) onClose();
+    if (!deleting.current) {
+      onClose();
+    }
   }
   function onKeyDown(event: KeyboardEvent) {
-    if (event.key !== "Escape") return;
+    if (event.key !== "Escape") {
+      return;
+    }
     event.preventDefault();
     close();
   }
   async function confirm() {
-    if (deleting.current) return;
+    if (deleting.current) {
+      return;
+    }
     deleting.current = true;
     setBusy(true);
     setError("");
@@ -167,8 +178,12 @@ function ConfirmDelete({
         // The browser can close a modal without a cancel event; keep it open while the request runs.
         const element = event.currentTarget;
         if (deleting.current) {
-          if (!element.open) element.showModal();
-        } else onClose();
+          if (!element.open) {
+            element.showModal();
+          }
+        } else {
+          onClose();
+        }
       }}
     >
       <div className="knowledge-view__dialog-body">
@@ -216,7 +231,9 @@ export function DeletePerson({
 
   // Whenever the dialog closes, focus goes back to the button that opened it.
   useEffect(() => {
-    if (wasOpen.current && !open) button.current?.focus();
+    if (wasOpen.current && !open) {
+      button.current?.focus();
+    }
     wasOpen.current = open;
   }, [open]);
 
@@ -229,12 +246,12 @@ export function DeletePerson({
         aria-label={`Delete ${title}`}
         disabled={blocked}
         title={blocked ? "Reload to see the latest changes before deleting." : undefined}
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); }}
       >
         Delete
       </button>
       {open && (
-        <ConfirmDelete companyId={companyId} item={item} title={title} onClose={() => setOpen(false)} onDeleted={onDeleted} />
+        <ConfirmDelete companyId={companyId} item={item} title={title} onClose={() => { setOpen(false); }} onDeleted={onDeleted} />
       )}
     </>
   );

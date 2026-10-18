@@ -7,8 +7,9 @@ import { KnowledgeBaseExportSchema } from "../../src/contracts";
 const withRows = (count: number) => {
   const copy = structuredClone(fixture);
   const rows = copy.provenance.coverage;
-  for (let index = rows.length; index < count; index++)
+  for (let index = rows.length; index < count; index++) {
     rows.push({ targets: [`/key_people/@a6000000-0000-4000-8000-${String(index).padStart(12, "0")}/name`], status: "not_checked", job_id: null, reason: "Entered manually." } as never);
+  }
   return copy;
 };
 
