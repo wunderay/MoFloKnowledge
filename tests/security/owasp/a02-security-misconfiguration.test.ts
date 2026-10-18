@@ -75,10 +75,8 @@ describe("configuration", () => {
     expect(nextConfig.poweredByHeader).toBe(false);
   });
 
-  // KNOWN GAP: neither next.config.ts nor the middleware sets X-Frame-Options / frame-ancestors, X-Content-Type-Options,
-  // Referrer-Policy, Strict-Transport-Security or a Content-Security-Policy on pages. Only the upload and document routes
-  // set their own headers. Remove `.fails` when headers() is added.
-  it.fails("sends clickjacking and MIME-sniffing protection headers on pages", async () => {
+  // headers() in next.config.ts sets clickjacking, MIME-sniffing, referrer, HSTS and report-only CSP headers on every route.
+  it("sends clickjacking and MIME-sniffing protection headers on pages", async () => {
     const rules = await nextConfig.headers!();
     const keys = rules.flatMap((rule) => rule.headers.map((header) => header.key.toLowerCase()));
     expect(keys).toContain("x-content-type-options");
