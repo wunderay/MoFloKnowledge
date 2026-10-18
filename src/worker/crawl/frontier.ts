@@ -52,10 +52,11 @@ function relevance(url: string, label: string, pathPrefix = ''): number {
     if (prefixDepth > 0 && path.split('/').filter(Boolean).length === prefixDepth + 1) {
       return 70;
     }
-    return 0;
+    // Lowest plain-path score; stays above VARIANT_SCORE so checkpoint scores are never negative.
+    return 1;
 }
-/** Query-string variants of a path rank below every plain path. */
-const VARIANT_SCORE = -1;
+/** Query-string variants of a path rank below every plain path (0 keeps scores non-negative). */
+const VARIANT_SCORE = 0;
 export class Frontier {
     readonly scope: string[];
     readonly pathPrefix: string;

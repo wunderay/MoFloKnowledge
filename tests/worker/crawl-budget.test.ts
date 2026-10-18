@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { runCrawl } from "../../src/worker/crawl/run-crawl";
 import { Frontier } from "../../src/worker/crawl/frontier";
+import { CrawlCheckpointSchema } from "../../src/contracts/jobs";
 import { stableId } from "../../src/lib/identity";
 import type { Job, JobRepository } from "../../src/worker/job-repository";
 import type { fetchDocument } from "../../src/worker/network/pinned-transport";
@@ -70,4 +71,20 @@ it("selects funnel pages before legal pages", () => {
   const selected = [frontier.next(), frontier.next(), frontier.next()].map((item) => new URL(item?.url ?? "").pathname);
   expect(selected.slice(0, 2).sort()).toEqual(["/appointment", "/firm-background/referrals"]);
   expect(selected).not.toContain("/firm-background/privacy-policy");
+});
+
+it("saves a checkpoint whose frontier holds a query-variant link", () => {
+  const frontier = new Frontier("https://github.com/wunderay");
+  frontier.next();
+  frontier.add("/wunderay?tab=repositories", "Repositories", 1);
+  frontier.add("/wunderay/chattr", "chattr", 1);
+  const checkpoint = {
+    frontier: frontier.snapshot(),
+    budgets: { documents: 1, htmlBytes: 0, designBytes: 0, startedAt: 0, limitsReached: [] },
+    captured_source_ids: [],
+    errors: [],
+  };
+  expect(() => CrawlCheckpointSchema.parse(checkpoint)).not.toThrow();
+  const selected = [frontier.next(), frontier.next()].map((item) => item?.url);
+  expect(selected).toEqual(["https://github.com/wunderay/chattr", "https://github.com/wunderay?tab=repositories"]);
 });
