@@ -1,4 +1,4 @@
-// Acceptance: the Key People section of /knowledge/view (Quest Q9, criteria C1, C2, C3, C7, C8, C9).
+// Acceptance: the Key People section of /knowledge/view.
 // Static server markup through the real page. Assertions use headings, labels, displayed values,
 // accessible names, aria state, image sources and link hrefs only; none depends on class names or
 // markup depth. Interactions (create, delete, portrait upload) are in knowledge-view-people-actions.
@@ -65,8 +65,7 @@ describe("fixtures", () => {
   });
 });
 
-describe("C1 heading, count, add control and list", () => {
-  // behavioural
+describe("heading, count, add control and list", () => {
   it("shows a Key People heading with a count badge equal to the number of people", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     const badge = countBadge(page, "Key People", peopleList(page));
@@ -74,13 +73,11 @@ describe("C1 heading, count, add control and list", () => {
     expect(badge.count).toBe(4);
   });
 
-  // behavioural
   it("an editable draft has an 'Add person' button or link", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     expect(controls(page, ADD_PERSON), 'a control named "Add person"').toHaveLength(1);
   });
 
-  // behavioural
   it("lists every person in order, each with the name and the position as a subtitle", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     const all = rows(page);
@@ -94,7 +91,6 @@ describe("C1 heading, count, add control and list", () => {
     expect(texts[2]).toContain("Priya Nair");
   });
 
-  // behavioural
   it("Edge case: a person without a name is listed as 'Untitled person ...', with no 'null' for a missing position", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     const all = rows(page);
@@ -106,7 +102,6 @@ describe("C1 heading, count, add control and list", () => {
     expect(textOf(page, all[0])).not.toContain("Untitled person");
   });
 
-  // behavioural
   it("selects the first person by default, and only that one", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     rows(page);
@@ -114,7 +109,6 @@ describe("C1 heading, count, add control and list", () => {
     expect(shown(page, "Name")).toContain(MAYA.name);
   });
 
-  // behavioural
   it.each([1, 2, 3])("the person URL parameter selects person %i, and only that one", async (index) => {
     const page = await openPeople({ draft: peopleDraft(), person: PERSON_IDS[index] });
     rows(page);
@@ -122,7 +116,6 @@ describe("C1 heading, count, add control and list", () => {
     expect(shown(page, "Description")).toContain(PEOPLE[index].background_or_relevance ?? "No description");
   });
 
-  // behavioural
   it.each(["00000000-0000-4000-8000-00000ffdead0", "not-an-id", "", "<script>alert(1)</script>"])(
     "Edge case: an unknown person parameter (%j) falls back to the first person",
     async (person) => {
@@ -133,7 +126,6 @@ describe("C1 heading, count, add control and list", () => {
     },
   );
 
-  // behavioural
   it("Edge case: a company with no people shows the heading with 0, an empty state with a link to the editor, and no rows", async () => {
     const page = await openPeople({ draft: buildEmptyDraft() });
     const badge = countBadge(page, "Key People");
@@ -145,7 +137,6 @@ describe("C1 heading, count, add control and list", () => {
     expect(links).toContain(personAddHref(EMPTY_COMPANY_ID));
   });
 
-  // behavioural
   it("the list is operable from the keyboard: one button per person, none nested in another control", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     rows(page).forEach((row, i) => {
@@ -157,15 +148,13 @@ describe("C1 heading, count, add control and list", () => {
   });
 });
 
-describe("C2 detail", () => {
-  // behavioural
+describe("detail", () => {
   it("shows Name, Position, Age, Gender, Nationality and Description labels, each heading its own card", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     const d = detail(page);
     expect(new Set(Object.values(d)).size).toBe(DETAIL.length);
   });
 
-  // behavioural
   it("shows the selected person's values", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     expect(shown(page, "Name")).toContain(MAYA.name);
@@ -180,7 +169,6 @@ describe("C2 detail", () => {
     }
   });
 
-  // behavioural
   it("Edge case: age 0 is shown as 0, not as an empty state", async () => {
     const page = await openPeople({ draft: peopleDraft(), person: PERSON_IDS[1] });
     expect(shown(page, "Age")).toMatch(/(^|\D)0(\D|$)/);
@@ -188,7 +176,6 @@ describe("C2 detail", () => {
     expect(shown(page, "Age")).not.toMatch(/\bno age\b/i);
   });
 
-  // behavioural
   it("Edge case: every empty field has a '+ Add' empty state opening the editor on this person", async () => {
     const page = await openPeople({ draft: peopleDraft(), person: PERSON_IDS[2] });
     const href = `${personAddHref(COMPANY_ID)}&entryId=${PERSON_IDS[2]}`;
@@ -199,7 +186,6 @@ describe("C2 detail", () => {
     }
   });
 
-  // behavioural
   it("Edge case: an unnamed person shows the Name empty state and the other values", async () => {
     const page = await openPeople({ draft: peopleDraft(), person: PERSON_IDS[3] });
     expect(addLinksOf(page, detailGroup(page, "Name")!)).toEqual([`${personAddHref(COMPANY_ID)}&entryId=${PERSON_IDS[3]}`]);
@@ -207,7 +193,6 @@ describe("C2 detail", () => {
     expect(shown(page, "Description")).toContain(UNNAMED.background_or_relevance);
   });
 
-  // behavioural
   it("Edge case: text is escaped, never parsed as markup", async () => {
     const page = await openPeople({ draft: hostileDraft() });
     expect(page.$("script").toArray().filter((s) => page.$(s).text().includes('alert'))).toHaveLength(0);
@@ -220,8 +205,7 @@ describe("C2 detail", () => {
   });
 });
 
-describe("C3 portrait or initials", () => {
-  // behavioural
+describe("portrait or initials", () => {
   it("a person with a portrait shows that image, served from the company's uploads URL; one without shows initials and no image", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     const all = rows(page);
@@ -232,7 +216,6 @@ describe("C3 portrait or initials", () => {
     expect(showsInitials(page, all[0], "MO"), "a portrait replaces the initials").toBe(false);
   });
 
-  // behavioural
   it("every image has an alt attribute, and the detail of a person with a portrait shows the same image", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     const all = imgs(page);
@@ -243,7 +226,6 @@ describe("C3 portrait or initials", () => {
     }
   });
 
-  // behavioural
   it("the detail of a person without a portrait shows no image at all", async () => {
     const page = await openPeople({ draft: peopleDraft(), person: PERSON_IDS[1] });
     expect(shown(page, "Name")).toContain(TOMAS.name);
@@ -251,13 +233,11 @@ describe("C3 portrait or initials", () => {
     expect(page.$("img").length).toBe(inRows.length);
   });
 
-  // behavioural
   it("Edge case: an unnamed person shows a placeholder avatar without 'null' or 'undefined'", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     expect(textOf(page, rows(page)[3])).not.toMatch(BAD);
   });
 
-  // behavioural
   it("Safety: an image source is only the same-origin uploads URL built from the reference id, never a stored address", async () => {
     const page = await openPeople({ draft: hostileDraft() });
     const srcs = imgs(page).map((i) => i.src);
@@ -273,11 +253,10 @@ describe("C3 portrait or initials", () => {
   });
 });
 
-describe.each(["snapshot", "viewer"] as const)("C7 read only (%s)", (kind) => {
+describe.each(["snapshot", "viewer"] as const)("read only (%s)", (kind) => {
   const open = (extra: { person?: string } = {}) =>
     kind === "snapshot" ? openPeople({ snapshot: peopleSnapshot(), ...extra }) : openPeople({ draft: viewerDraft(), ...extra });
 
-  // behavioural
   it("still lists and shows the people", async () => {
     const page = await open();
     expect(rows(page)).toHaveLength(4);
@@ -286,7 +265,6 @@ describe.each(["snapshot", "viewer"] as const)("C7 read only (%s)", (kind) => {
     expect(imgs(page).map((i) => i.src)).toContain(PORTRAIT_URL);
   });
 
-  // behavioural
   it("offers no way to add a person, delete one or upload a portrait", async () => {
     const page = await open();
     expect(rows(page), "the people are listed").toHaveLength(4);
@@ -298,8 +276,7 @@ describe.each(["snapshot", "viewer"] as const)("C7 read only (%s)", (kind) => {
   });
 });
 
-describe("C7 an owner's draft", () => {
-  // behavioural
+describe("an owner's draft", () => {
   it("offers Delete for the selected person and a portrait file input that accepts images", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     expect(controls(page, DELETE_PERSON), "one Delete control for the selected person").toHaveLength(1);
@@ -310,8 +287,7 @@ describe("C7 an owner's draft", () => {
   });
 });
 
-describe("C8 All sections", () => {
-  // behavioural
+describe("All sections", () => {
   it("shows Key People under its own heading, after Sales & Marketing and before Site Knowledge, with the same count", async () => {
     const page = await openAll({ draft: peopleDraft() });
     for (const label of ALL_ORDER) {
@@ -324,7 +300,6 @@ describe("C8 All sections", () => {
     expect(headingCount(page).count).toBe(4);
   });
 
-  // behavioural
   it("lists the same people as the section on its own, and shows the selected person's detail", async () => {
     const alone = await openPeople({ draft: peopleDraft() });
     const all = await openAll({ draft: peopleDraft() });
@@ -336,7 +311,6 @@ describe("C8 All sections", () => {
     expect(imgs(all).map((i) => i.src)).toContain(PORTRAIT_URL);
   });
 
-  // behavioural
   it("Edge case: no duplicate ids; a snapshot of All sections is read only", async () => {
     const page = await openAll({ draft: peopleDraft() });
     expect(duplicateIds(page)).toEqual([]);
@@ -347,7 +321,6 @@ describe("C8 All sections", () => {
     expect(fileInputs(snap)).toHaveLength(0);
   });
 
-  // behavioural
   it("Edge case: a company with no people shows Key People with count 0 in All sections", async () => {
     const page = await openAll({ draft: buildEmptyDraft() });
     expect(sectionHeading(page, "Key People")).not.toBeNull();
@@ -363,14 +336,12 @@ const open = {
 const controlsOf = (page: Page) =>
   page.$("button.citation-popover__trigger").toArray().map((b) => ({ name: page.$(b).attr("aria-label") ?? "", shown: norm(page.$(b).text()) }));
 
-describe.each(["draft", "snapshot"] as const)("C9 evidence (%s)", (source) => {
-  // behavioural
+describe.each(["draft", "snapshot"] as const)("evidence (%s)", (source) => {
   it("the evidence fixture carries the claims it describes", () => {
     expect(MARKS).toHaveLength(3);
     expect(evidenceFixture().claims).toHaveLength(3);
   });
 
-  // behavioural
   it("a person whose own claims are non-source carries a marker named by their name; the others have none", async () => {
     const page = await open[source]();
     const markers = rows(page).map((row) =>
@@ -384,7 +355,6 @@ describe.each(["draft", "snapshot"] as const)("C9 evidence (%s)", (source) => {
     ]);
   });
 
-  // behavioural
   it("each detail card has one control named by its field and the person", async () => {
     const page = await open[source]();
     const nouns: Record<string, string> = { Name: "name", Position: "position" };
@@ -396,14 +366,12 @@ describe.each(["draft", "snapshot"] as const)("C9 evidence (%s)", (source) => {
     expect(page.$(detailGroup(page, "Position")!).find("button.citation-popover__trigger").first().text()).toContain("User correction");
   });
 
-  // behavioural
   it("a historical inference on the description of the selected person is named in its card", async () => {
     const page = await open[source](PERSON_IDS[1]);
     expect(controlsOf(page).map((c) => c.name)).toContain(`Historical inferred: evidence for description of ${TOMAS.name}`);
     expect(norm(page.$(detailGroup(page, "Description")!).find("button.citation-popover__trigger").first().text())).toBe("Historical inferred ⓘ");
   });
 
-  // behavioural
   it.each([undefined, PERSON_IDS[1], PERSON_IDS[3]])("no evidence control is named by a raw id or path (person=%s)", async (person) => {
     const page = await open[source](person);
     const all = controlsOf(page);
@@ -415,7 +383,6 @@ describe.each(["draft", "snapshot"] as const)("C9 evidence (%s)", (source) => {
     }
   });
 
-  // behavioural
   it("empty or not-found fields print their coverage reason; found values print none", async () => {
     const page = await open[source](PERSON_IDS[2]);
     expect(shown(page, "Age")).toContain(`Not found in checked pages — ${REASONS.noAge}`);
@@ -424,7 +391,6 @@ describe.each(["draft", "snapshot"] as const)("C9 evidence (%s)", (source) => {
     expect(shown(page, "Name")).not.toMatch(/Unknown|Partial|Conflicting|Not found/);
   });
 
-  // behavioural
   it("a filled field that is only partly found prints its reason next to the value", async () => {
     const page = await open[source]();
     expect(shown(page, "Description")).toContain(MAYA.background_or_relevance!);
@@ -433,8 +399,7 @@ describe.each(["draft", "snapshot"] as const)("C9 evidence (%s)", (source) => {
   });
 });
 
-describe("C9 draft and snapshot agree", () => {
-  // behavioural
+describe("draft and snapshot agree", () => {
   it("a snapshot shows the same evidence controls as its draft", async () => {
     for (const person of [undefined, PERSON_IDS[1]]) {
       const fromDraft = controlsOf(await open.draft(person));

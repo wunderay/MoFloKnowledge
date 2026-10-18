@@ -1,10 +1,10 @@
-// Quest Q20 provenance-origin-hardening (security): every member write path checks the origin of every value it stores.
+// Provenance origin hardening (security): every member write path checks the origin of every value it stores.
 // An editor calling the RPCs directly (as PostgREST does) cannot label any value, changed or not, as source_backed,
 // inferred or generated unless that very claim (origin, evidence rows, sources, based_on) already supported that value in
 // the entry's history (carried over from the previous revision, or restored with the evidence rows the earlier revision
 // had), or it comes from a selected stored candidate, an applied proposal or a worker import. create_entry by a member
 // takes person-authored values only. Refusals reach the API as a clear 422 (mapDatabaseError), never as a 503.
-// Tests named "guard" lock legitimate paths and pass on the base; the others fail on the base, where the forgery is accepted.
+// The legitimate paths (UI edits, import, revert, undo) must keep working; the other tests are forgeries that must be refused.
 //   TEST_DATABASE_URL=postgres://.../anything_test node --test tests/db/provenance-origin-hardening.test.mjs
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
@@ -178,8 +178,8 @@ function relabel(revision,leaf,claim,{evidence=[],sources=[]}={}){
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// C3 / C1: save_entry_revision called directly cannot relabel an unchanged value.
-test('C3: an unchanged user_provided value cannot be relabelled source_backed with a genuine captured excerpt',async()=>{
+// save_entry_revision called directly cannot relabel an unchanged value.
+test('an unchanged user_provided value cannot be relabelled source_backed with a genuine captured excerpt',async()=>{
  const f=await imported();const r=await revisionOf(f.c,f.ids.foundation);const leaf='/company_foundation/business_model';
  const forged=textEvidence(f.home,SEGMENTS[1]);
  const outcome=await directSave(f.c,f.ids.foundation,r.revision,r.content,relabel(r,leaf,sourced(f.ids.foundation,[leaf],'source_backed',[forged]),{evidence:[forged]}));
@@ -188,51 +188,51 @@ test('C3: an unchanged user_provided value cannot be relabelled source_backed wi
  // Control: the same request with the value left as the person's own claim is accepted.
  accepted(await directSave(f.c,f.ids.foundation,r.revision,r.content,r.provenance),'unchanged save of the same revision');
 });
-test('C1: an unchanged user_provided value cannot be relabelled inferred',async()=>{
+test('an unchanged user_provided value cannot be relabelled inferred',async()=>{
  const f=await imported();const r=await revisionOf(f.c,f.ids.foundation);const leaf='/company_foundation/business_model';
  const forged=textEvidence(f.home,SEGMENTS[1]);
  clear422(await directSave(f.c,f.ids.foundation,r.revision,r.content,relabel(r,leaf,sourced(f.ids.foundation,[leaf],'inferred',[forged],[],'Inferred from the sales page.'),{evidence:[forged]})),'relabel user_provided → inferred');
 });
-test('C1: an unchanged user_provided value cannot be relabelled generated (based on a genuine claim)',async()=>{
+test('an unchanged user_provided value cannot be relabelled generated (based on a genuine claim)',async()=>{
  const f=await imported();let r=await revisionOf(f.c,f.ids.positioning);const leaf='/positioning/company_pitch';
  accepted(await uiSave(api.editor,f.c,f.ids.positioning,{expectedRevision:r.revision,content:{...r.content,company_pitch:'Coffee that cafes love.'},provenance:r.provenance,reviewStatus:'unreviewed',reason:'Typed the pitch'}),'UI edit of the pitch');
  r=await revisionOf(f.c,f.ids.positioning);assert.equal(claimFor(r,leaf).origin,'user_provided');
  const forged=textEvidence(f.home,OVERVIEW);
  clear422(await directSave(f.c,f.ids.positioning,r.revision,r.content,relabel(r,leaf,sourced(f.ids.positioning,[leaf],'generated',[forged],[f.overviewClaim.id],'Generated.'),{evidence:[forged],sources:[sourceRow(f.home)]})),'relabel user_provided → generated');
 });
-test('C1: an unchanged inferred value cannot be upgraded to source_backed with the same evidence',async()=>{
+test('an unchanged inferred value cannot be upgraded to source_backed with the same evidence',async()=>{
  const f=await imported();const r=await revisionOf(f.c,f.ids.foundation);const leaf='/company_foundation/industry';
  clear422(await directSave(f.c,f.ids.foundation,r.revision,r.content,relabel(r,leaf,{...claimFor(r,leaf),id:randomUUID(),targets:[leaf],origin:'source_backed',note:'From the website'})),'upgrade inferred → source_backed');
 });
-test('C3: the evidence row of a carried claim cannot be swapped for another genuine excerpt',async()=>{
+test('the evidence row of a carried claim cannot be swapped for another genuine excerpt',async()=>{
  const f=await imported();const r=await revisionOf(f.c,f.ids.foundation);
  const p=structuredClone(r.provenance);p.evidence=p.evidence.map(e=>e.id===f.ev.overview.id?{...e,excerpt:SEGMENTS[1]}:e);
  // Same claim (id, origin, evidence id), same value; only the excerpt behind the evidence id changed.
  clear422(await directSave(f.c,f.ids.foundation,r.revision,r.content,p),'excerpt swap under a carried claim');
  assert.equal((await revisionOf(f.c,f.ids.foundation)).provenance.evidence.find(e=>e.id===f.ev.overview.id).excerpt,OVERVIEW);
 });
-test('C3: the evidence row of a carried claim cannot be moved to another captured page',async()=>{
+test('the evidence row of a carried claim cannot be moved to another captured page',async()=>{
  const f=await imported();const r=await revisionOf(f.c,f.ids.foundation);
  const p=structuredClone(r.provenance);p.evidence=p.evidence.map(e=>e.id===f.ev.overview.id?{...e,source_page_id:f.mirror.id}:e);p.sources=[sourceRow(f.mirror)];
  clear422(await directSave(f.c,f.ids.foundation,r.revision,r.content,p),'source swap under a carried claim');
 });
-test('C3: another value\'s evidence cannot be attached to an unchanged user_provided value',async()=>{
+test('another value\'s evidence cannot be attached to an unchanged user_provided value',async()=>{
  const f=await imported();const r=await revisionOf(f.c,f.ids.foundation);const leaf='/company_foundation/business_model';
  // The overview's own (unchanged, previously recorded) evidence row, cited by a new claim on the business model.
  clear422(await directSave(f.c,f.ids.foundation,r.revision,r.content,relabel(r,leaf,sourced(f.ids.foundation,[leaf],'source_backed',[f.ev.overview]))),'borrowed evidence');
 });
-test('C1: a carried generated claim cannot be re-pointed at other supporting claims',async()=>{
+test('a carried generated claim cannot be re-pointed at other supporting claims',async()=>{
  const f=await imported();const r=await revisionOf(f.c,f.ids.positioning);const leaf='/positioning/company_pitch';
  const old=claimFor(r,leaf);
  clear422(await directSave(f.c,f.ids.positioning,r.revision,r.content,relabel(r,leaf,{...old,id:randomUUID(),targets:[leaf],based_on_claim_ids:[f.industryClaim.id]})),'based_on swap');
 });
-test('C1: a changed value cannot carry a non-user origin (refused, and as a clear 422)',async()=>{
- // Refused on the base too (edited_leaf_requires_user_origin); C5 demands that the API answers it with 422, not 503.
+test('a changed value cannot carry a non-user origin (refused, and as a clear 422)',async()=>{
+ // Refused by edited_leaf_requires_user_origin; the API must answer it with 422, not 503.
  const f=await imported();const r=await revisionOf(f.c,f.ids.foundation);const leaf='/company_foundation/business_model';
  const forged=textEvidence(f.home,SEGMENTS[1]);
  clear422(await directSave(f.c,f.ids.foundation,r.revision,{...r.content,business_model:'Wholesale to offices'},relabel(r,leaf,sourced(f.ids.foundation,[leaf],'source_backed',[forged]),{evidence:[forged]})),'changed value labelled source_backed');
 });
-test('C1: a member cannot plant a non-user conflict candidate and then select it',async()=>{
+test('a member cannot plant a non-user conflict candidate and then select it',async()=>{
  const f=await imported();let r=await revisionOf(f.c,f.ids.foundation);const target='/company_foundation/business_model';
  const forged=textEvidence(f.home,SEGMENTS[1]);
  const planted={id:randomUUID(),target,material:false,candidates:[{id:randomUUID(),value:'Wholesale to offices',origin:'source_backed',evidence_ids:[forged.id],based_on_claim_ids:[]},{id:randomUUID(),value:'Wholesale coffee',origin:'user_provided',evidence_ids:[],based_on_claim_ids:[]}]};
@@ -260,42 +260,42 @@ function restoreProvenance(f,r2,evidenceRow,sources){
  p.evidence=[...p.evidence,evidenceRow];p.sources=[...p.sources,...sources.filter(s=>!p.sources.some(x=>x.id===s.id))];
  return p;
 }
-test('C1 (0021): an Undo restore cannot bring the claim back with a different excerpt behind its evidence id',async()=>{
+test('0021: an Undo restore cannot bring the claim back with a different excerpt behind its evidence id',async()=>{
  const f=await imported();const {r1,r2}=await removedBuyer(f);
  const p=restoreProvenance(f,r2,{...f.ev.cafes,excerpt:'specialty coffee'},[sourceRow(f.home)]);
  clear422(await directSave(f.c,f.ids.market,r2.revision,r1.content,p),'restore with a swapped excerpt');
 });
-test('C1 (0021): an Undo restore cannot bring the claim back with its evidence moved to another page',async()=>{
+test('0021: an Undo restore cannot bring the claim back with its evidence moved to another page',async()=>{
  const f=await imported();const {r1,r2}=await removedBuyer(f);
  const p=restoreProvenance(f,r2,{...f.ev.cafes,source_page_id:f.mirror.id},[sourceRow(f.mirror)]);
  clear422(await directSave(f.c,f.ids.market,r2.revision,r1.content,p),'restore with a moved evidence row');
 });
 
-// C2: create_entry by a member takes person-authored values only.
+// create_entry by a member takes person-authored values only.
 async function crawledOnly(name){const c=await company(name);const {job,home}=await crawl(c);await call(worker,'private.fail_job',[job.id,c,job.lease_token,{code:'fixture',url:null,retryable:false,message:'Fixture crawl ends here'}]);return {c,home};}
-test('C2: create_entry refuses a source_backed value',async()=>{
+test('create_entry refuses a source_backed value',async()=>{
  const {c,home}=await crawledOnly('Create source');const e=randomUUID();const ev=textEvidence(home,OVERVIEW);
  const content={...defaults.company_foundation,overview:OVERVIEW};
  clear422(await directCreate(c,'company_foundation',content,{sources:[sourceRow(home)],evidence:[ev],claims:[sourced(e,['/company_foundation/overview'],'source_backed',[ev])],coverage:coverageOf('company_foundation',e),operations:[],conflicts:[],decisions:[]}),'create_entry source_backed');
  // Control: the same value typed by the person is accepted.
  accepted(await directCreate(c,'company_foundation',content,{sources:[],evidence:[],claims:[typed(e,['/company_foundation/overview'],editorId)],coverage:coverageOf('company_foundation',e),operations:[],conflicts:[],decisions:[]}),'create_entry user_provided');
 });
-test('C2: create_entry refuses an inferred value',async()=>{
+test('create_entry refuses an inferred value',async()=>{
  const {c,home}=await crawledOnly('Create inferred');const e=randomUUID();const ev=textEvidence(home,OVERVIEW);
  clear422(await directCreate(c,'company_foundation',{...defaults.company_foundation,industry:'Coffee roasting'},{sources:[sourceRow(home)],evidence:[ev],claims:[sourced(e,['/company_foundation/industry'],'inferred',[ev],[],'Inferred.')],coverage:coverageOf('company_foundation',e),operations:[],conflicts:[],decisions:[]}),'create_entry inferred');
 });
-test('C2: create_entry refuses a generated value',async()=>{
+test('create_entry refuses a generated value',async()=>{
  const {c,home}=await crawledOnly('Create generated');const e=randomUUID();const ev=textEvidence(home,OVERVIEW);
  const story=sourced(e,['/positioning/founding_story'],'source_backed',[textEvidence(home,SEGMENTS[2])]);
  const evidence=[ev,{...textEvidence(home,SEGMENTS[2]),id:story.evidence_ids[0]}];
  clear422(await directCreate(c,'positioning',{...defaults.positioning,company_pitch:'Coffee for cafes.',founding_story:SEGMENTS[2]},{sources:[sourceRow(home)],evidence,claims:[story,sourced(e,['/positioning/company_pitch'],'generated',[ev],[story.id],'Generated.')],coverage:coverageOf('positioning',e),operations:[],conflicts:[],decisions:[]}),'create_entry generated');
 });
-test('C2: create_entry of a key person refuses a source_backed name in a company that has imported entries',async()=>{
+test('create_entry of a key person refuses a source_backed name in a company that has imported entries',async()=>{
  const f=await imported('Create person');const person=randomUUID();const ev=textEvidence(f.home,'Ada Lovelace');
  const content={id:person,name:'Ada Lovelace',title:null,role:null,gender:null,background_or_relevance:null,age:null,nationality:null,portrait:null};
  clear422(await directCreate(f.c,'key_person',content,{sources:[sourceRow(f.home)],evidence:[ev],claims:[sourced(person,[`/key_people/@${person}/name`],'source_backed',[ev])],coverage:coverageOf('key_person',person),operations:[],conflicts:[],decisions:[]}),'create_entry key person source_backed');
 });
-test('C2: create_entry cannot carry a non-user conflict candidate that is selected afterwards',async()=>{
+test('create_entry cannot carry a non-user conflict candidate that is selected afterwards',async()=>{
  const f=await imported('Create conflict');const person=randomUUID();const ev=textEvidence(f.home,'Ada Lovelace');const target=`/key_people/@${person}/name`;
  const conflict={id:randomUUID(),target,material:false,candidates:[{id:randomUUID(),value:'Ada Lovelace',origin:'source_backed',evidence_ids:[ev.id],based_on_claim_ids:[]},{id:randomUUID(),value:'A. Lovelace',origin:'user_provided',evidence_ids:[],based_on_claim_ids:[]}]};
  const content={id:person,name:'A. Lovelace',title:null,role:null,gender:null,background_or_relevance:null,age:null,nationality:null,portrait:null};
@@ -306,7 +306,7 @@ test('C2: create_entry cannot carry a non-user conflict candidate that is select
  p.claims=[{...sourced(person,[target],'source_backed',[ev]),note:'Selected'}];
  clear422(await directSave(f.c,person,r.revision,{...content,name:'Ada Lovelace'},p),'selecting a candidate planted through create_entry');
 });
-test('C2 guard: create_entry accepts person-authored values (UI path) and an entry with no claims',async()=>{
+test('create_entry accepts person-authored values (UI path) and an entry with no claims',async()=>{
  const f=await imported('Create guard');
  const person=randomUUID();const content={id:person,name:'Grace Hopper',title:'Head of sales',role:null,gender:null,background_or_relevance:null,age:null,nationality:null,portrait:null};
  const requestId=randomUUID();const body=server.CreateEntrySchema.parse({kind:'key_person',content,provenance:{sources:[],evidence:[],claims:[],coverage:[],operations:[]},requestId});
@@ -318,15 +318,15 @@ test('C2 guard: create_entry accepts person-authored values (UI path) and an ent
  assert.equal(bare.revision,1);
 });
 
-// C4 guards: the legitimate paths keep working (they pass on the base and must still pass).
-test('C4 guard: first import (finish_job) stores source_backed, inferred and generated values',async()=>{
+// The legitimate paths keep working.
+test('first import (finish_job) stores source_backed, inferred and generated values',async()=>{
  const f=await imported('Import guard');
  const foundation=await revisionOf(f.c,f.ids.foundation);const positioning=await revisionOf(f.c,f.ids.positioning);
  assert.equal(claimFor(foundation,'/company_foundation/overview').origin,'source_backed');
  assert.equal(claimFor(foundation,'/company_foundation/industry').origin,'inferred');
  assert.equal(claimFor(positioning,'/positioning/company_pitch').origin,'generated');
 });
-test('C4 guard: an ordinary UI edit keeps the unchanged values\' claims, evidence and origins',async()=>{
+test('an ordinary UI edit keeps the unchanged values\' claims, evidence and origins',async()=>{
  const f=await imported('Edit guard');const r=await revisionOf(f.c,f.ids.foundation);
  const saved=accepted(await uiSave(api.editor,f.c,f.ids.foundation,{expectedRevision:r.revision,content:{...r.content,year_founded:2015},provenance:r.provenance,reviewStatus:'unreviewed',reason:'Typed the founding year'}),'UI edit');
  assert.equal(claimFor(saved,'/company_foundation/year_founded').origin,'user_provided');
@@ -337,7 +337,7 @@ test('C4 guard: an ordinary UI edit keeps the unchanged values\' claims, evidenc
  const edited=accepted(await uiSave(api.editor,f.c,f.ids.foundation,{expectedRevision:saved.revision,content:{...saved.content,overview:'Acme roasts coffee.'},provenance:saved.provenance,reviewStatus:'unreviewed',reason:'Shortened'}),'UI edit of a source-backed value');
  assert.equal(claimFor(edited,'/company_foundation/overview').origin,'user_provided');
 });
-test('C4 guard: approving unchanged imported entries through the UI path, then publishing',async()=>{
+test('approving unchanged imported entries through the UI path, then publishing',async()=>{
  const f=await imported('Publish guard');
  for(const entry of Object.values(f.ids)){
   const r=await revisionOf(f.c,entry);
@@ -349,16 +349,16 @@ test('C4 guard: approving unchanged imported entries through the UI path, then p
  const origins=snapshot.payload.provenance.claims.map(x=>x.origin);
  for(const origin of ['source_backed','inferred','generated','user_provided'])assert.ok(origins.includes(origin),`the snapshot keeps a ${origin} claim`);
 });
-test('C4 guard: a direct save that changes nothing but the review status carries every claim over',async()=>{
+test('a direct save that changes nothing but the review status carries every claim over',async()=>{
  const f=await imported('Carry guard');
  for(const entry of [f.ids.foundation,f.ids.positioning,f.ids.market]){const r=await revisionOf(f.c,entry);accepted(await directSave(f.c,entry,r.revision,r.content,r.provenance,'approved'),'direct no-op approval');}
 });
-test('C4 guard: revert_entry restores an earlier revision with its source-backed claims',async()=>{
+test('revert_entry restores an earlier revision with its source-backed claims',async()=>{
  const f=await imported('Revert guard');const r=await revisionOf(f.c,f.ids.foundation);
  const reverted=accepted(await attempt(api.editor,'revert_entry',{p_company:f.c,p_entry:f.ids.foundation,p_from_revision:1,p_expected_revision:r.revision,p_request:randomUUID()}),'revert');
  assert.equal(reverted.content.business_model,null);assert.deepEqual(claimFor(reverted,'/company_foundation/overview'),f.overviewClaim);
 });
-test('C4 guard: an Undo through the UI path restores a removed item with its original claim and evidence',async()=>{
+test('an Undo through the UI path restores a removed item with its original claim and evidence',async()=>{
  const f=await imported('Undo guard');const {r1,r2}=await removedBuyer(f);const leaf=f.buyerLeaf(f.buyers[0].id);
  const back=accepted(await uiSave(api.editor,f.c,f.ids.market,{expectedRevision:r2.revision,content:r1.content,provenance:r2.provenance,reviewStatus:'unreviewed',reason:'Undo',restoreFrom:{revision:1,itemIds:[f.buyers[0].id]}}),'UI Undo');
  const claim=claimFor(back,leaf);assert.equal(claim.origin,'source_backed');assert.deepEqual(claim.evidence_ids,[f.ev.cafes.id]);
@@ -367,7 +367,7 @@ test('C4 guard: an Undo through the UI path restores a removed item with its ori
  const {r2:again}=await removedBuyer(f);
  accepted(await directSave(f.c,f.ids.market,again.revision,r1.content,restoreProvenance(f,again,f.ev.cafes,[sourceRow(f.home)])),'direct restore with the earlier evidence row');
 });
-test('C4 guard: an applied proposal with a conflict, then the UI switching to the other stored candidate',async()=>{
+test('an applied proposal with a conflict, then the UI switching to the other stored candidate',async()=>{
  const f=await imported('Proposal guard');const before=await revisionOf(f.c,f.ids.foundation);const target='/company_foundation/overview';
  const enqueued=await call(owner,'public.enqueue_scrape',[f.c,'https://acme.example',{max_pages:10,max_depth:2},randomUUID()]);
  const job=(await worker.query("SELECT private.claim_job('origin-hardening-proposal') AS job")).rows[0].job;assert.equal(job.id,enqueued.id);
@@ -387,7 +387,7 @@ test('C4 guard: an applied proposal with a conflict, then the UI switching to th
  // And the selected entry can still be approved unchanged.
  accepted(await uiSave(api.editor,f.c,f.ids.foundation,{expectedRevision:switched.revision,content:switched.content,provenance:switched.provenance,reviewStatus:'approved',reason:'Reviewed'}),'approval after selection');
 });
-test('C1 guard: an origin outside the contract (historical_*) is refused as a validation error',async()=>{
+test('an origin outside the contract (historical_*) is refused as a validation error',async()=>{
  const f=await imported('Historical');const r=await revisionOf(f.c,f.ids.foundation);const leaf='/company_foundation/business_model';
  clear422(await directSave(f.c,f.ids.foundation,r.revision,r.content,relabel(r,leaf,{...sourced(f.ids.foundation,[leaf],'historical_import',[f.ev.overview])})),'historical_* origin');
 });

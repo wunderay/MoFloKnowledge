@@ -8,7 +8,7 @@ import {
   type Site,
 } from "../helpers/crawl-deadline-site";
 
-// Q12 crawl-deadline, criterion C2: createPinnedFetcher must check the task's
+// Crawl deadline: createPinnedFetcher must check the task's
 // abort signal before AND after awaiting onRequest, so an expired signal never
 // issues the network request. Real transport, loopback server, no external network.
 
@@ -23,8 +23,8 @@ const start = async () => {
   return site;
 };
 
-describe("C2 createPinnedFetcher honours the task signal around onRequest", () => {
-  it("C2 an already-expired signal rejects with its reason without calling onRequest or touching the network", async () => {
+describe("createPinnedFetcher honours the task signal around onRequest", () => {
+  it("an already-expired signal rejects with its reason without calling onRequest or touching the network", async () => {
     const { fetcher, hits } = await start();
     const reason = new Error("task deadline already passed");
     let hookCalls = 0;
@@ -44,7 +44,7 @@ describe("C2 createPinnedFetcher honours the task signal around onRequest", () =
     expect(hits).toEqual([]);
   });
 
-  it("C2 an already-expired signal never reaches the network even when onRequest is instantaneous", async () => {
+  it("an already-expired signal never reaches the network even when onRequest is instantaneous", async () => {
     const { fetcher, hits } = await start();
     await expect(
       fetcher("http://example.com/page", {
@@ -56,7 +56,7 @@ describe("C2 createPinnedFetcher honours the task signal around onRequest", () =
     expect(hits).toEqual([]);
   });
 
-  it("C2 a signal that expires while onRequest is pending rejects and never issues the request", async () => {
+  it("a signal that expires while onRequest is pending rejects and never issues the request", async () => {
     const { fetcher, hits } = await start();
     const controller = new AbortController();
     const reason = new Error("deadline");
@@ -77,7 +77,7 @@ describe("C2 createPinnedFetcher honours the task signal around onRequest", () =
     expect(hits, "the request was issued after the signal expired").toEqual([]);
   });
 
-  it("C2 the transport's own timeoutMs deadline is honoured the same way", async () => {
+  it("the transport's own timeoutMs deadline is honoured the same way", async () => {
     const { fetcher, hits } = await start();
     const outcome = await settle(
       fetcher("http://example.com/page", {
@@ -91,7 +91,7 @@ describe("C2 createPinnedFetcher honours the task signal around onRequest", () =
     expect(hits).toEqual([]);
   });
 
-  it("C2 an expiry between the redirect hops stops the second hop before its onRequest and request", async () => {
+  it("an expiry between the redirect hops stops the second hop before its onRequest and request", async () => {
     let calls = 0;
     const controller = new AbortController();
     const seen = await startSite((request, response) => {
@@ -122,7 +122,7 @@ describe("C2 createPinnedFetcher honours the task signal around onRequest", () =
     expect(seen.hits.map((hit) => hit.path)).toEqual(["/first"]);
   });
 
-  it("C2 a hook that rejects (for example robots_blocked) aborts the fetch before any request", async () => {
+  it("a hook that rejects (for example robots_blocked) aborts the fetch before any request", async () => {
     const { fetcher, hits } = await start();
     await expect(
       fetcher("http://example.com/page", {
@@ -134,7 +134,7 @@ describe("C2 createPinnedFetcher honours the task signal around onRequest", () =
     expect(hits).toEqual([]);
   });
 
-  it("C2 non-regression: a live signal calls onRequest once per hop and issues exactly one request", async () => {
+  it("non-regression: a live signal calls onRequest once per hop and issues exactly one request", async () => {
     const { fetcher, hits } = await start();
     const urls: string[] = [];
     const response = await fetcher("http://example.com/page", {

@@ -1,4 +1,4 @@
-// Acceptance tests for Quest Q1 "sitelinks-model": the save path (manual creation provenance) accepts site_links (C4).
+// The save path (manual creation provenance) accepts site_links.
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn() }));
@@ -17,7 +17,7 @@ const content = {
   ],
 };
 
-describe("C4 [behavioural] manual creation of a site_links entry", () => {
+describe("manual creation of a site_links entry", () => {
   it("records user-provided claims for every populated link field, and coverage for /site_links/links", () => {
     const provenance = prepareManualCreation(KIND, content as never, request, actor);
     const targets = provenance.claims.flatMap((claim) => claim.targets).sort();

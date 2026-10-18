@@ -16,7 +16,7 @@ import {
   type Site,
 } from "../helpers/crawl-deadline-site";
 
-// Q12 crawl-deadline, criterion C3 (lease half): "the worker stops renewing its
+// Crawl deadline, lease half: "the worker stops renewing its
 // lease for a job whose deadline passed". The production worker wiring is used
 // as-is (runWorker + runCrawl, as in src/worker/main.ts minus the database).
 // Deadlines run in real, accelerated time (CRAWL_LIMITS.jobMs); only the
@@ -32,8 +32,8 @@ afterEach(async () => {
   site = undefined;
 });
 
-describe("C3 the worker does not keep renewing the lease of a job that is past its deadline", () => {
-  it("C3 hostile Crawl-delay: 86400 ends the job at its deadline and no heartbeat renews the lease afterwards", async () => {
+describe("the worker does not keep renewing the lease of a job that is past its deadline", () => {
+  it("hostile Crawl-delay: 86400 ends the job at its deadline and no heartbeat renews the lease afterwards", async () => {
     const jobMs = 400;
     restore = accelerateLimits({ jobMs, fetchMs: 5000 });
     site = await startSite((request, response) =>

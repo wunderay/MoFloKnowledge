@@ -1,7 +1,5 @@
-// Acceptance tests for Quest Q1 "sitelinks-model": the singleton `site_links` knowledge entry kind.
-// Written from the acceptance criteria alone (C1-C4, C6 here; C5 in tests/knowledge, DB part of C3 in tests/db).
-// Every `site_links` string reaches the code under test through a cast so that the base commit fails on
-// assertions, never on import or type errors.
+// The singleton `site_links` knowledge entry kind.
+// The document export is covered in tests/knowledge and the database part in tests/db.
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -50,11 +48,11 @@ function rejectsOnlyBecauseOfVariant(valid: unknown, variant: unknown) {
   expect(accepted(variant), "variant must be rejected").toBe(false);
 }
 
-describe("C1 [behavioural] site_links is a singleton entry kind with an empty default", () => {
+describe("site_links is a singleton entry kind with an empty default", () => {
   it("EntryKindSchema accepts site_links and still rejects unknown kinds", () => {
     expect(EntryKindSchema.safeParse("site_links").success).toBe(true);
     expect(EntryKindSchema.options).toContain("site_links");
-    // Existing kinds are untouched (non-regression part of the same criterion).
+    // Existing kinds are untouched.
     for (const kind of [
       "company_foundation", "positioning", "market_and_customers", "branding_and_style",
       "online_presence", "key_person", "offering",
@@ -101,13 +99,13 @@ describe("C1 [behavioural] site_links is a singleton entry kind with an empty de
     expect(BusinessSchema.safeParse({ ...empty, site_links: content(link(1)), rogue: true }).success).toBe(false);
   });
 
-  it("[non-regression] entryRoot and entryBusiness treat site_links as a singleton root", () => {
+  it("entryRoot and entryBusiness treat site_links as a singleton root", () => {
     expect(entryRoot(KIND, id(9))).toBe("/site_links");
     expect(entryBusiness(KIND, content(link(1)) as never)).toEqual({ site_links: content(link(1)) });
   });
 });
 
-describe("C2 [behavioural] link item shape: { id: uuid, title, url: absolute http(s), note: string | null }", () => {
+describe("link item shape: { id: uuid, title, url: absolute http(s), note: string | null }", () => {
   it("accepts valid items (null note, text note, several links, empty list)", () => {
     expect(accepted(content(link(1)))).toBe(true);
     expect(accepted(content(link(1, { note: "Reviewed by legal" })))).toBe(true);
@@ -172,8 +170,8 @@ describe("C2 [behavioural] link item shape: { id: uuid, title, url: absolute htt
     }
   });
 
-  it("Edge case (DECISION): a URL carrying credentials is rejected, like every other URL in the knowledge base", () => {
-    // C2 says "absolute http(s) URL"; the repo's only definition of that (URLSchema in primitives.ts and
+  it("Edge case: a URL carrying credentials is rejected, like every other URL in the knowledge base", () => {
+    // The spec says "absolute http(s) URL"; the repo's only definition of that (URLSchema in primitives.ts and
     // private.valid_url in SQL) is "absolute HTTP(S) URL without credentials", so userinfo must not be stored.
     const valid = content(link(1));
     for (const url of ["https://user:secret@acme.example/admin", "http://admin@acme.example/"]) {
@@ -248,11 +246,11 @@ describe("C2 [behavioural] link item shape: { id: uuid, title, url: absolute htt
   });
 });
 
-describe("C3 [behavioural + non-regression] database contract inputs", () => {
+describe("[behavioural + non-regression] database contract inputs", () => {
   const read = (relative: string) => readFileSync(resolve(root, relative), "utf8");
   const migrations = readdirSync(resolve(root, "supabase/migrations")).filter((name) => name.endsWith(".sql")).sort();
 
-  it("[behavioural] the generated SQL contract sources know the kind (schema, default, registry)", () => {
+  it("the generated SQL contract sources know the kind (schema, default, registry)", () => {
     const schemas = JSON.parse(read("src/contracts/json-schemas.json")) as Record<string, any>;
     expect(Object.keys(schemas)).toContain("site_links");
     expect(schemas.site_links?.type).toBe("object");
@@ -265,7 +263,7 @@ describe("C3 [behavioural + non-regression] database contract inputs", () => {
     expect(registry.map((field) => field.path)).toContain("/site_links/links");
   });
 
-  it("[behavioural] a NEW migration (numbered after 0016) allows knowledge_entries.kind = 'site_links'", () => {
+  it("a NEW migration (numbered after 0016) allows knowledge_entries.kind = 'site_links'", () => {
     const added = migrations.filter((name) => Number.parseInt(name.split("_")[0], 10) > 16);
     expect(added.length).toBeGreaterThan(0);
     const mentioning = added.filter((name) => read(`supabase/migrations/${name}`).includes('site_links'));
@@ -273,26 +271,26 @@ describe("C3 [behavioural + non-regression] database contract inputs", () => {
     expect(mentioning.some((name) => read(`supabase/migrations/${name}`).includes('knowledge_entries'))).toBe(true);
   });
 
-  it("[non-regression] already-applied migrations 0001 (baseline CHECK) and 0009 (first import) are byte-identical", () => {
+  it("already-applied migrations 0001 (baseline CHECK) and 0009 (first import) are byte-identical", () => {
     const sha = (name: string) => createHash("sha256").update(readFileSync(resolve(root, "supabase/migrations", name))).digest("hex");
     expect(migrations).toContain("0009_finalization.sql");
     expect(sha("0009_finalization.sql")).toBe("23e4b3e5f281077096ff1e541ab5d83231f0e1e2392e14a6123e7bea894bd555");
     expect(sha("0001_baseline.sql")).toBe("e6deb46ce4ff470789ce93c323730be4b27a0212eb196b78f5c43b6e91b953d6");
   });
 
-  it("[non-regression] 0009 still demands exactly the five original singletons for a first import (site_links stays optional)", () => {
+  it("0009 still demands exactly the five original singletons for a first import (site_links stays optional)", () => {
     const text = read("supabase/migrations/0009_finalization.sql");
     expect(text).toContain("ARRAY['company_foundation','positioning','market_and_customers','branding_and_style','online_presence']");
     expect(text).not.toMatch(/site_links/);
   });
 
-  it("[non-regression -> must stay green] node scripts/generate-sql-contract.mjs --check passes", () => {
+  it("node scripts/generate-sql-contract.mjs --check passes", () => {
     const result = spawnSync(process.execPath, ["scripts/generate-sql-contract.mjs", "--check"], { cwd: root, encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
   });
 });
 
-describe("C4 [behavioural] field registry, provenance and coverage accept /site_links/links", () => {
+describe("field registry, provenance and coverage accept /site_links/links", () => {
   it("FIELD_REGISTRY has the /site_links/links field with an empty-list default", () => {
     const field = FIELD_REGISTRY.find((item) => item.path === "/site_links/links");
     expect(field).toBeDefined();
@@ -325,12 +323,12 @@ describe("C4 [behavioural] field registry, provenance and coverage accept /site_
     }
   });
 
-  it("an empty business requires coverage for /site_links/links exactly once (DECISION: every registry field is coverage-required)", () => {
+  it("an empty business requires coverage for /site_links/links exactly once (every registry field is coverage-required)", () => {
     const targets = requiredCoverageTargets(createEmptyBusiness());
     expect(targets.filter((target) => target === "/site_links/links")).toHaveLength(1);
   });
 
-  it("[non-regression] the original 41 registry fields are still present", () => {
+  it("the original 41 registry fields are still present", () => {
     // The six model fields (revenue, phone, age, nationality, portrait, images) came later and have their own tests.
     const later = ["/company_foundation/revenue", "/online_presence/phone", "/key_people/@id/age", "/key_people/@id/nationality", "/key_people/@id/portrait", "/offerings/@id/images"];
     const original = FIELD_REGISTRY.filter((item) => (item.kind as string) !== "site_links" && !later.includes(item.path));
@@ -339,7 +337,7 @@ describe("C4 [behavioural] field registry, provenance and coverage accept /site_
   });
 });
 
-describe("C6 [behavioural] CATEGORY_SPECS.site_links lets the editor edit the list", () => {
+describe("CATEGORY_SPECS.site_links lets the editor edit the list", () => {
   it("has the Site links label and a description/icon like every other category", () => {
     const spec = CATEGORY_SPECS.site_links;
     expect(spec).toBeDefined();
@@ -366,7 +364,7 @@ describe("C6 [behavioural] CATEGORY_SPECS.site_links lets the editor edit the li
     }
   });
 
-  it("[non-regression] existing categories keep their labels", () => {
+  it("existing categories keep their labels", () => {
     expect(CATEGORY_SPECS.online_presence.label).toBe("Online presence");
     expect(CATEGORY_SPECS.key_person.label).toBe("Key people");
     expect(CATEGORY_SPECS.offering.label).toBe("Offerings");

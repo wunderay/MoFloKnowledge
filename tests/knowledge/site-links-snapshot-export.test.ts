@@ -1,4 +1,4 @@
-// Acceptance tests for Quest Q1 "sitelinks-model": snapshots, provenance/coverage and document export (C1, C4, C5).
+// Snapshots, provenance/coverage and document export.
 // Uses its own fixture (tests/contracts/site-links-export.json) so it does not depend on the shared illustrative export.
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
@@ -90,7 +90,7 @@ function assembleOk(rows: SnapshotEntry[]) {
 }
 const linksOf = (snapshot: unknown) => (snapshot as { site_links?: { links?: unknown[] } }).site_links?.links;
 
-describe("C1 [behavioural] export snapshots carry site_links", () => {
+describe("export snapshots carry site_links", () => {
   it("KnowledgeBaseExportSchema accepts a snapshot with a populated site_links section", () => {
     expect(KnowledgeBaseExportSchema.safeParse(fixture).success).toBe(true);
     expect(KnowledgeBaseExportSchema.safeParse(withoutLinks()).success).toBe(true);
@@ -133,7 +133,7 @@ describe("C1 [behavioural] export snapshots carry site_links", () => {
   });
 });
 
-describe("C4 [behavioural] provenance and coverage accept /site_links/links", () => {
+describe("provenance and coverage accept /site_links/links", () => {
   it("a complete user-provided claim + coverage assessment for the links validates with no issues", () => {
     expect(validateProvenance(business() as never, fixture.provenance as never)).toEqual([]);
   });
@@ -169,7 +169,7 @@ describe("C4 [behavioural] provenance and coverage accept /site_links/links", ()
   });
 });
 
-describe("C1/C4 [behavioural] snapshot assembly treats site_links like any approved singleton", () => {
+describe("snapshot assembly treats site_links like any approved singleton", () => {
   it("includes approved links in order, the entry in the manifest, its claims and its coverage", () => {
     const snapshot = assembleOk(entries());
     expect(linksOf(snapshot)).toEqual(fixture.site_links.links);
@@ -200,7 +200,7 @@ describe("C1/C4 [behavioural] snapshot assembly treats site_links like any appro
     expect(coverage).toMatchObject({ status: "not_checked", reason: "No approved entry assessed this field." });
   });
 
-  it("[non-regression] an unreviewed site_links entry blocks publication like any other kind", () => {
+  it("an unreviewed site_links entry blocks publication like any other kind", () => {
     const rows = entries();
     siteLinksEntry(rows).review_status = "unreviewed";
     expect(previewPublication(rows).canPublish).toBe(false);
@@ -238,7 +238,7 @@ describe("C1/C4 [behavioural] snapshot assembly treats site_links like any appro
   });
 });
 
-describe("C5 [behavioural] document export renders a 'Site links' section", () => {
+describe("document export renders a 'Site links' section", () => {
   const paragraphsOf = (snapshot: unknown) => documentParagraphs({ kind: "snapshot", snapshot: snapshot as never });
   const sectionOf = (snapshot: unknown, title: string) => {
     const paragraphs = paragraphsOf(snapshot);
@@ -298,7 +298,7 @@ describe("C5 [behavioural] document export renders a 'Site links' section", () =
     expect(paragraphs.some((item) => item.heading === "section" && item.text === "Site links")).toBe(false);
   });
 
-  it("[non-regression] other sections are unaffected by the new section", () => {
+  it("other sections are unaffected by the new section", () => {
     const withSection = paragraphsOf(fixture).filter((item) => item.heading === "section" && item.text !== "Site links").map((item) => item.text);
     const without = paragraphsOf(withoutLinks()).filter((item) => item.heading === "section").map((item) => item.text);
     expect(withSection).toEqual(without);

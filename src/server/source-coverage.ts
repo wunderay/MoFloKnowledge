@@ -36,8 +36,7 @@ export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]):
   const aliases = new Map(frontier.success ? frontier.data.aliases : []);
   const resolve = (input: string) => {
     const visited = new Set<string>();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-    while (aliases.has(input) && !visited.has(input)) { visited.add(input); input = aliases.get(input)!; }
+    for (let next = aliases.get(input); next !== undefined && !visited.has(input); next = aliases.get(input)) { visited.add(input); input = next; }
     return input;
   };
   const pages = new Map<string, SourceCoverage["pages"][number]>();

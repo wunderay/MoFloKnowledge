@@ -1,9 +1,9 @@
-// Acceptance tests for Quest Q9 "key-people", the database side of deleting a key person (migration 0020).
+// The database side of deleting a key person (migration 0020).
 // Needs a disposable PostgreSQL (see scripts/test-db.mjs):
 //   TEST_DATABASE_URL=postgres://.../anything_test node --test tests/db/entry-delete.test.mjs
 // Without TEST_DATABASE_URL this file reports NOT_RUN (it never passes silently).
 //
-// DECISIONs (coordinator, Q9):
+// Behaviour:
 //  - Deleting is an archive (soft delete): the entry row and every revision stay, existing snapshots are untouched, and a
 //    tombstone (archived_at, archived_by, archive_request_id) hides the entry from members, drafts, the next snapshot, the
 //    publication manifest and the worker's resume bundle. public.archive_entry sets it; nothing else can.

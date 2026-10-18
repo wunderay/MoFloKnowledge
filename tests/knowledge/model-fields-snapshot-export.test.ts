@@ -1,14 +1,14 @@
-// Acceptance tests for Quest Q5 "model-fields": snapshots, provenance/coverage and the document export
-// (C6 provenance/coverage, C8 document export, and the snapshot half of C3/C4 validation).
+// Snapshots, provenance/coverage and the document export
+// (and the snapshot half of the field validation).
 // Uses its own fixture (tests/contracts/model-fields-export.json) so it does not depend on the shared illustrative export.
 //
-// DECISIONS recorded here (also in the report):
-//  D6 document export: the business body shows "Revenue", "Phone" (formatted "(555) 010-0199"), "Age" and "Nationality"
+// Notes:
+//  - Document export: the business body shows "Revenue", "Phone" (formatted "(555) 010-0199"), "Age" and "Nationality"
 //     when populated and omits them when null. Image references (portrait, offering images) are not rendered: no image
 //     binary is embedded in DOCX or PDF, and no storage path, object id, content type or byte size appears in the document
 //     (internal storage identifiers are not for readers). Mentioning only a count, or nothing, are both fine.
-//  D4 (snapshot half) the company segment of every storage path equals the snapshot's company_id.
-//  D7 pre-0018 entry revisions saved without the new keys still assemble into a snapshot (defaults are filled in).
+//  - The company segment of every storage path equals the snapshot's company_id.
+//  - Pre-0018 entry revisions saved without the new keys still assemble into a snapshot (defaults are filled in).
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
 import { load } from "cheerio";
@@ -74,7 +74,7 @@ const NEW_TARGETS = [
   `/offerings/@${OFFERING}/images`,
 ];
 
-describe("C6 [behavioural] snapshots carry the new fields and validate", () => {
+describe("snapshots carry the new fields and validate", () => {
   it("KnowledgeBaseExportSchema accepts a snapshot with every new field populated, and BusinessSchema its sections", () => {
     const parsed = KnowledgeBaseExportSchema.safeParse(fixture);
     expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues.slice(0, 3))).toBe(true);
@@ -158,7 +158,7 @@ describe("C6 [behavioural] snapshots carry the new fields and validate", () => {
   });
 });
 
-describe("C3/C4/C2/C1 [behavioural] the export schema enforces the new rules", () => {
+describe("the export schema enforces the new rules", () => {
   it("Edge case: invalid age, nationality, revenue and phone make the export invalid", () => {
     const mutate = (change: (snapshot: Json) => void) => { const snapshot = clone(); change(snapshot); return snapshot; };
     for (const age of [-1, 151, 2.5, "42", Number.NaN]) {
@@ -198,7 +198,7 @@ describe("C3/C4/C2/C1 [behavioural] the export schema enforces the new rules", (
     }), "21 images");
   });
 
-  it("Edge case (DECISION D4): a storage path under another company's folder is refused in the export", () => {
+  it("Edge case: a storage path under another company's folder is refused in the export", () => {
     expect(exportOk(fixture), "valid control").toBe(true);
     expect(COMPANY).not.toBe(OTHER_COMPANY);
     const portrait = clone();
@@ -274,7 +274,7 @@ function assembleOk(rows: SnapshotEntry[]) {
 const entryOf = (rows: SnapshotEntry[], kind: string) => rows.find((row) => row.kind === kind)!;
 const coverageFor = (snapshot: Json, target: string) => snapshot.provenance.coverage.filter((row: Json) => row.targets.includes(target));
 
-describe("C6 [behavioural] snapshot assembly treats the new fields like any other approved field", () => {
+describe("snapshot assembly treats the new fields like any other approved field", () => {
   it("includes the new fields, their claims and exactly one coverage row per new target", () => {
     const snapshot = assembleOk(entries()) as unknown as Json;
     expect(snapshot.company_foundation.revenue).toBe("€2.3M (FY2025)");
@@ -348,7 +348,7 @@ describe("C6 [behavioural] snapshot assembly treats the new fields like any othe
     }
   });
 
-  it("Edge case (beyond the literal criteria, see report): entry revisions saved before 0018 (no new keys) still assemble with defaults", () => {
+  it("Edge case: entry revisions saved before 0018 (no new keys) still assemble with defaults", () => {
     const rows = entries();
     for (const row of rows) {
       const content = row.content as unknown as Json;
@@ -414,7 +414,7 @@ const docxXml = async (snapshot: unknown) => {
   return { zip, xml: await zip.file("word/document.xml")!.async("string") };
 };
 
-describe("C8 [behavioural] document export shows Revenue, Phone (formatted), Age and Nationality when present", () => {
+describe("document export shows Revenue, Phone (formatted), Age and Nationality when present", () => {
   it("shows Revenue under Company details, exactly as written", () => {
     const lines = section(fixture, "Company details");
     expect(lines, "a 'Company details' section").not.toBeNull();
@@ -476,7 +476,7 @@ describe("C8 [behavioural] document export shows Revenue, Phone (formatted), Age
   });
 });
 
-describe("C8 [behavioural] document export omits empty new fields", () => {
+describe("document export omits empty new fields", () => {
   const labelPattern: Record<string, RegExp> = { revenue: /^Revenue: /, phone: /^Phone: /, age: /^Age: /, nationality: /^Nationality: / };
   const businessLines = (snapshot: unknown) => body(snapshot).map(lineOf);
 
@@ -516,7 +516,7 @@ describe("C8 [behavioural] document export omits empty new fields", () => {
   });
 });
 
-describe("C8 [behavioural] document export does not embed image binaries or list storage paths (DECISION D6)", () => {
+describe("document export does not embed image binaries or list storage paths", () => {
   const imageStrings = [PORTRAIT.path, ...IMAGES.map((item) => item.path), PORTRAIT.id, ...IMAGES.map((item) => item.id), "offering-images/", "portraits/", "image/webp", "image/jpeg", String(PORTRAIT.size_bytes)];
 
   it("the document projection lists no storage path, id, content type or size", () => {

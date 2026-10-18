@@ -45,8 +45,8 @@ export default [
         { ignorePrimitives: { string: true, number: true, boolean: true, bigint: true } },
       ],
 
-      // Left off: ~105 hits are deliberate runtime guards for legacy snapshots, JSON/DB rows and values mutated in
-      // closures (flags TS cannot see change). Removing them would change behaviour; see the Q29 hand-back notes.
+      // Left off: ~105 hits are deliberate runtime guards for JSON/DB rows and values mutated in
+      // closures (flags TS cannot see change). Removing them would change behaviour.
       "@typescript-eslint/no-unnecessary-condition": "off",
 
       "no-empty": ["error", { allowEmptyCatch: false }],

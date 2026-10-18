@@ -26,7 +26,6 @@ const markerNames = (page: Page, li: ReturnType<Page["$"]>) =>
 const bannerCell = (page: Page, label: string) => textOf(page, labelGroup(page, label, CELLS, brandBanner(page, COMPANY_NAME)!)!);
 
 describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) => {
-  // behavioural
   it("only the user-corrected item of each list carries a marker, named by the item's own text", async () => {
     const page = await open[source]();
     // The source-backed first item and the untouched third item of each list have no marker.
@@ -43,7 +42,6 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
     expect(markerNames(page, itemOf(page, "Fonts", "Inter"))).toEqual(["User correction: evidence for Inter"]);
   });
 
-  // behavioural
   it("every card keeps its field-level evidence control", async () => {
     const page = await open[source]();
     for (const title of CARDS) {
@@ -53,7 +51,6 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
     }
   });
 
-  // behavioural
   it("no evidence control is named by a raw id or path", async () => {
     const page = await open[source]();
     const names = page.$(".knowledge-view__panel button.citation-popover__trigger").toArray().map((b) => page.$(b).attr("aria-label") ?? "");
@@ -64,7 +61,6 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
     }
   });
 
-  // behavioural
   it("images have meaningful alt text naming the company and the logo, never the address", async () => {
     const page = await open[source]();
     const all = imagesIn(page, page.$(".knowledge-view__panel")[0]);
@@ -77,21 +73,18 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
     });
   });
 
-  // behavioural
   it("colour swatches in the banner are named by colour name and hex", async () => {
     const page = await open[source]();
     const swatches = page.$(labelGroup(page, "Palette", CELLS, brandBanner(page, COMPANY_NAME)!)!).find("[role=img]").toArray().map((el) => page.$(el).attr("aria-label"));
     expect(swatches).toEqual(["Primary #1F4E79", "Roast red #C8553D", "Tertiary #F2E8CF"]);
   });
 
-  // behavioural
   it("a partly found field prints its reason in the banner cell and in the card", async () => {
     const page = await open[source]();
     expect(bannerCell(page, "Logo")).toContain(`Partial — ${REASONS.logos}`);
     expect(textOf(page, cardOf(page, "Logos"))).toContain(`Partial — ${REASONS.logos}`);
   });
 
-  // behavioural
   it("empty colours and fonts print their reasons in the banner cells and the cards", async () => {
     const page = await open[source](noColorsOrFonts);
     expect(bannerCell(page, "Palette")).toContain(`Unknown · Not assessed — ${REASONS.noColors}`);
@@ -100,7 +93,6 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
     expect(textOf(page, cardOf(page, "Fonts"))).toContain(`Not found in checked pages — ${REASONS.noFonts}`);
   });
 
-  // behavioural
   it("empty fields with no assessment say so instead of staying silent", async () => {
     const page = await open[source]({ ...noColorsOrFonts, coverage: () => [] });
     for (const title of ["Colors", "Fonts"]) {
@@ -111,7 +103,6 @@ describe.each(["draft", "snapshot"] as const)("brand evidence (%s)", (source) =>
 });
 
 describe("brand evidence, draft and snapshot agree", () => {
-  // behavioural
   it("a snapshot shows the same controls and notes as its draft", async () => {
     const a = await open.draft();
     const b = await open.snapshot();

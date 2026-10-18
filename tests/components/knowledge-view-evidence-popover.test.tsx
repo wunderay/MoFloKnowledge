@@ -78,7 +78,6 @@ const views = {
 const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
 describe.each(["draft", "snapshot"] as const)("Sources popover content (%s)", (source) => {
-  // behavioural
   it("a cited value opens onto its exact excerpt and a link to its source", () => {
     const html = views[source]("general");
     expect(text(html)).toContain(EXCERPT);
@@ -86,7 +85,6 @@ describe.each(["draft", "snapshot"] as const)("Sources popover content (%s)", (s
     expect(text(html)).toContain("Website evidence");
   });
 
-  // behavioural
   it("a historical generated value says it was generated, not quoted from the source", () => {
     const html = text(views[source]("sales"));
     expect(html).toContain("Historical generated suggestion");
@@ -96,7 +94,6 @@ describe.each(["draft", "snapshot"] as const)("Sources popover content (%s)", (s
     expect(html).toContain(INFERRED_EXCERPT);
   });
 
-  // behavioural
   it("partial, conflicting and not-found coverage appear with their reasons", () => {
     const customers = text(views[source]("customers"));
     expect(customers).toContain(`Coverage: partial — ${REASONS.partial}`);
@@ -106,7 +103,6 @@ describe.each(["draft", "snapshot"] as const)("Sources popover content (%s)", (s
 });
 
 describe("a company without provenance", () => {
-  // behavioural
   it("Edge case: empty fields with no assessment get no popover", () => {
     const empty = buildEmptyDraft();
     const html = renderToStaticMarkup(

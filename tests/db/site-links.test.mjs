@@ -1,5 +1,5 @@
-// Acceptance tests for Quest Q1 "sitelinks-model", criterion C3 (database) plus the DB side of "same
-// save/approve/history/snapshot behaviour" (C1/C4). Needs a disposable PostgreSQL (see scripts/test-db.mjs):
+// The database side of site_links, plus "same
+// save/approve/history/snapshot behaviour". Needs a disposable PostgreSQL (see scripts/test-db.mjs):
 //   TEST_DATABASE_URL=postgres://.../anything_test node --test tests/db/site-links.test.mjs
 // Without TEST_DATABASE_URL this file reports NOT_RUN (it never passes silently).
 import {test,before,after} from 'node:test';
@@ -45,7 +45,7 @@ before(async()=>{
 });
 after(async()=>{for(const c of sessions)await c.end();if(administrator){await administrator.query(`DROP DATABASE "${database}"`);await administrator.end();}});
 
-test('C3: the kind CHECK allows site_links, unknown kinds stay rejected, and the SQL contract functions know the kind',async t=>{
+test('the kind CHECK allows site_links, unknown kinds stay rejected, and the SQL contract functions know the kind',async t=>{
  await t.test('knowledge_entries.kind CHECK lists site_links and the original kinds',async()=>{
   const {rows}=await admin.query("SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='public.knowledge_entries'::regclass AND contype='c'");
   const kindCheck=rows.map(r=>r.definition).find(d=>/kind/.test(d));assert.ok(kindCheck,'a CHECK on kind must exist');
@@ -189,7 +189,7 @@ test('Edge case: invalid link content is refused on create, and the same shape w
  });
 });
 
-test('C3: site_links is OPTIONAL in the first import, and companies without a site_links entry publish an empty one',async t=>{
+test('site_links is OPTIONAL in the first import, and companies without a site_links entry publish an empty one',async t=>{
  const user=await connect('authenticated',owner);const worker=await connect('moflo_worker');
  const c=(await call(user,'public.create_company',['Imported','https://import.example',randomUUID()])).create_company;
  const enqueued=await call(user,'public.enqueue_scrape',[c,'https://import.example',{max_pages:10,max_depth:2},randomUUID()]);
@@ -210,12 +210,12 @@ test('C3: site_links is OPTIONAL in the first import, and companies without a si
  const progress={stage:'crawling',discovered:1,selected:1,captured:1,failed:0,blocked:0,extracted:0,document_limit:10,limits_reached:[]};
  await call(worker,'private.checkpoint_job',[claimed.id,c,claimed.lease_token,{},progress]);await call(worker,'private.checkpoint_job',[claimed.id,c,claimed.lease_token,{},{...progress,stage:'extracting',extracted:1}]);
  const finished=await call(worker,'private.finish_job',[claimed.id,c,claimed.lease_token,{candidates,decisions:[]},[{targets:['/positioning/company_pitch'],status:'partial',job_id:claimed.id,reason:'Fixture limitation'}]]);
- await t.test('[non-regression] a first import with only the five original singletons succeeds and creates no site_links entry',async()=>{
+ await t.test('a first import with only the five original singletons succeeds and creates no site_links entry',async()=>{
  assert.equal(finished.proposals.initialized_entry_ids.length,5,'five singletons must be enough for a first import');
  const kinds=(await user.query('SELECT kind FROM public.knowledge_entries WHERE company_id=$1 ORDER BY kind',[c])).rows.map(r=>r.kind);
  assert.deepEqual(kinds,[...singletons].sort(),'a first import must not create or require a site_links entry');
  });
- await t.test('[behavioural] the published snapshot carries site_links = { links: [] } with a not-assessed coverage row, identical to the TypeScript assembler',async()=>{
+ await t.test('the published snapshot carries site_links = { links: [] } with a not-assessed coverage row, identical to the TypeScript assembler',async()=>{
  for(const r of (await user.query('SELECT * FROM public.knowledge_entry_versions WHERE company_id=$1',[c])).rows)await call(user,'public.save_entry_revision',[c,r.entry_id,1,r.content,r.provenance,'approved','Fixture review',randomUUID()]);
  const generation=(await user.query('SELECT draft_generation FROM public.companies WHERE id=$1',[c])).rows[0].draft_generation;
  const snapshot=await call(user,'public.publish_knowledge_base',[c,generation,randomUUID()]);

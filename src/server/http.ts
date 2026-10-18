@@ -150,7 +150,7 @@ export async function readJson<S extends z.ZodTypeAny>(
     }
   }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- the generic schema is ZodTypeAny, so parse() is typed any; the declared return type is z.output<S>
     return schema.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown);
   } catch (error) {
     const business =

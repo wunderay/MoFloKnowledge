@@ -84,10 +84,10 @@ export function companyTextCandidates(
   const organizationType = /^(?:https?:\/\/schema\.org\/)?(?:Organization|Corporation|LocalBusiness|ProfessionalService|AccountingService|LegalService|FinancialService|MedicalBusiness|Store|Restaurant|EducationalOrganization|NGO)$/;
   const organizationCount = new Set(observations.filter((o) =>
     /\/@type(?:\/\d+)?$/.test(o.property ?? "") && organizationType.test(o.value ?? ""))
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the filter above keeps only observations that have a property
     .map((o) => o.property!.replace(/\/@type(?:\/\d+)?$/, ""))).size;
   for (const o of observations.filter((item) => /^jsonld:.*\/name$/.test(item.property ?? ""))) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the loop only visits observations whose property matches /name$/
     const prefix = o.property!.slice(0, -"/name".length);
     const atPath = (key: string) => observations.filter((item) => item.property === prefix + "/" + key ||
       (key === "@type" && item.property?.startsWith(prefix + "/@type/")));
@@ -99,7 +99,7 @@ export function companyTextCandidates(
       continue;
     }
     if (identity.length && !identity.some((item) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- `identity` keeps only items that have a value
       try { return new URL(item.value!, capture.finalUrl).hostname.replace(/^www\./, "") === url.hostname.replace(/^www\./, ""); }
       catch { return false; }
     })) {

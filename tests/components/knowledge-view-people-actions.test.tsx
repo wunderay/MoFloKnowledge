@@ -1,11 +1,11 @@
-// Acceptance: Key People interactions (Quest Q9, criteria C1 selection by click, C4 create, C5 delete,
-// C6 portrait upload). The REAL page and client components run in the interactive runtime
+// Acceptance: Key People interactions (selection by click, create, delete,
+// portrait upload). The REAL page and client components run in the interactive runtime
 // (knowledge-view-site-all-runtime) against an in-memory fake of the company API that records every
 // request. Request bodies are checked against the product's own API contracts.
 //
-// DECISION (no delete route exists on main): the Quest locks the request the UI must send,
+// No delete route exists on main: the UI must send
 //   DELETE /api/companies/<companyId>/entries/<entryId>  with JSON { expectedRevision, requestId }
-// and the server route is builder work (the fake answers it here).
+// and the fake answers it here.
 import { describe, expect, it } from "vitest";
 // The runtime registers its react / next mocks when imported, so it comes before the helpers that use it.
 import { clearNavigations, focusedPath, navigations, descendants } from "../helpers/knowledge-view-site-all-runtime";
@@ -62,8 +62,7 @@ async function selectRow(view: View, index: number) {
   await view.settle(5);
 }
 
-describe("C1 selecting a person by click", () => {
-  // behavioural
+describe("selecting a person by click", () => {
   it("clicking a person selects it, shows its detail and puts ?person=<entry id> in the URL", async () => {
     const { view } = await openKeyPeople({ draft: peopleDraft() });
     expect(rowNodes(view)).toHaveLength(4);
@@ -79,7 +78,6 @@ describe("C1 selecting a person by click", () => {
     expect(lastPerson()).toBe(PERSON_IDS[2]);
   });
 
-  // behavioural
   it("selecting does not write anything", async () => {
     const { view, server } = await openKeyPeople({ draft: peopleDraft() });
     await selectRow(view, 1);
@@ -88,8 +86,7 @@ describe("C1 selecting a person by click", () => {
   });
 });
 
-describe("C4 create a person", () => {
-  // behavioural
+describe("create a person", () => {
   it("'Add person' creates a key_person entry named 'Untitled person' through the entries API", async () => {
     const { view, server } = await openKeyPeople({ draft: peopleDraft() });
     const add = need(addPersonButton(view), 'a button named "Add person"');
@@ -106,7 +103,6 @@ describe("C4 create a person", () => {
     expect(server.writes).toHaveLength(1);
   });
 
-  // behavioural
   it("the new person is listed last, counted, selected (in the URL too) and focused", async () => {
     const { view, server } = await openKeyPeople({ draft: peopleDraft() });
     clearNavigations();
@@ -122,7 +118,6 @@ describe("C4 create a person", () => {
     expect(focusedName(view), "focus moves to the new person (its row or its detail)").toContain("Untitled person");
   });
 
-  // behavioural
   it("Edge case: it works for a company with no people yet", async () => {
     const { view, server } = await openKeyPeople({ draft: noPeopleDraft() });
     expect(rowNodes(view)).toHaveLength(0);
@@ -134,7 +129,6 @@ describe("C4 create a person", () => {
     expect(selectedRows(view)).toEqual([0]);
   });
 
-  // behavioural
   it("Edge case: pressing 'Add person' twice while the first request is pending creates one person", async () => {
     const { view, server } = await openKeyPeople({ draft: peopleDraft(), configure: (s) => s.hold() });
     const add = need(addPersonButton(view), 'a button named "Add person"');
@@ -148,7 +142,6 @@ describe("C4 create a person", () => {
     expect(rowNodes(view)).toHaveLength(5);
   });
 
-  // behavioural
   it("Edge case: when the server refuses, the people are unchanged and its message is shown", async () => {
     const { view, server } = await openKeyPeople({
       draft: peopleDraft(),
@@ -165,7 +158,7 @@ describe("C4 create a person", () => {
   });
 });
 
-describe("C5 delete a person", () => {
+describe("delete a person", () => {
   const dialogOf = (view: View) => view.dialogs()[0] ?? null;
 
   async function askToDelete(view: View) {
@@ -175,7 +168,6 @@ describe("C5 delete a person", () => {
     return button;
   }
 
-  // behavioural
   it("'Delete' opens a confirmation dialog named for the person, with Cancel and Delete, and sends nothing yet", async () => {
     const { view, server } = await openKeyPeople({ draft: peopleDraft() });
     await askToDelete(view);
@@ -190,7 +182,6 @@ describe("C5 delete a person", () => {
     expect(rowNodes(view)).toHaveLength(4);
   });
 
-  // behavioural
   it("Cancel closes the dialog, deletes nothing, and returns focus to the Delete button", async () => {
     const { view, server } = await openKeyPeople({ draft: peopleDraft() });
     const opener = await askToDelete(view);
@@ -203,7 +194,6 @@ describe("C5 delete a person", () => {
     expect(focusedPath(), "focus returns to the control that opened the dialog").toBe(opener.path);
   });
 
-  // behavioural
   it("Escape cancels: the dialog closes, nothing is deleted, focus returns to the Delete button", async () => {
     const { view, server } = await openKeyPeople({ draft: peopleDraft() });
     const opener = await askToDelete(view);
@@ -215,7 +205,6 @@ describe("C5 delete a person", () => {
     expect(focusedPath()).toBe(opener.path);
   });
 
-  // behavioural
   it("confirming sends DELETE with the person's current revision, removes them and selects the first remaining person", async () => {
     const { view, api, server } = await openKeyPeople({ draft: peopleDraft() });
     clearNavigations();
@@ -236,7 +225,6 @@ describe("C5 delete a person", () => {
     expect(shown(view, "Name")).toContain(TOMAS.name);
   });
 
-  // behavioural
   it("deleting a person selected by click removes that person, not the first", async () => {
     const { view, api } = await openKeyPeople({ draft: peopleDraft() });
     await selectRow(view, 2);
@@ -251,7 +239,6 @@ describe("C5 delete a person", () => {
     expect(rowTexts(view).join(" ")).toContain(MAYA.name);
   });
 
-  // behavioural
   it("Edge case: deleting the only person leaves the empty state with the count at 0", async () => {
     const { view } = await openKeyPeople({ draft: peopleDraft([MAYA]) });
     await askToDelete(view);
@@ -262,7 +249,6 @@ describe("C5 delete a person", () => {
     expect(view.text()).toMatch(/No key people yet/i);
   });
 
-  // behavioural
   it("Edge case: pressing the dialog's Delete twice while the request is pending sends one DELETE", async () => {
     const { view, api, server } = await openKeyPeople({ draft: peopleDraft(), configure: (s) => s.hold() });
     await askToDelete(view);
@@ -276,7 +262,6 @@ describe("C5 delete a person", () => {
     expect(api.deletes).toHaveLength(1);
   });
 
-  // behavioural
   it("Edge case: when the server refuses, the person stays listed and the server's message is shown", async () => {
     const { view, api } = await openKeyPeople({
       draft: peopleDraft(),
@@ -292,10 +277,9 @@ describe("C5 delete a person", () => {
   });
 });
 
-describe("C6 portrait upload", () => {
+describe("portrait upload", () => {
   const portraitInput = (view: View) => need(fileInput(view), "a file input for the portrait");
 
-  // behavioural
   it("the portrait file input is named for the portrait and accepts images", async () => {
     const { view } = await openKeyPeople({ draft: peopleDraft() });
     const input = portraitInput(view);
@@ -303,7 +287,6 @@ describe("C6 portrait upload", () => {
     expect(String(input.props.accept ?? "")).toMatch(/image\//);
   });
 
-  // behavioural
   it("uploads to the uploads API as kind=portraits, then revises the person with the returned reference", async () => {
     const { view, api, server } = await openKeyPeople({ draft: peopleDraft() });
     await selectRow(view, 1);
@@ -327,7 +310,6 @@ describe("C6 portrait upload", () => {
     expect(server.requests.findIndex((r) => r.path.endsWith("/uploads"))).toBeLessThan(server.requests.findIndex((r) => r.path.endsWith("/revisions")));
   });
 
-  // behavioural
   it("afterwards the person shows that portrait from the same-origin uploads URL instead of initials", async () => {
     const { view, api } = await openKeyPeople({ draft: peopleDraft() });
     await selectRow(view, 1);
@@ -344,7 +326,6 @@ describe("C6 portrait upload", () => {
     expect(showsInitials(page, peopleRows(page)[1], "TL"), "the portrait replaces the initials").toBe(false);
   });
 
-  // behavioural
   it("a person who already has a portrait gets the new reference in place of the old", async () => {
     const { view, api, server } = await openKeyPeople({ draft: peopleDraft() });
     await chooseFile(view, portraitInput(view), png("new.png"));
@@ -355,7 +336,6 @@ describe("C6 portrait upload", () => {
     expect(srcs).not.toContain(PORTRAIT_URL);
   });
 
-  // behavioural
   it.each([
     [415, "unsupported_type", "Use PNG, JPG, GIF, WebP, or SVG"],
     [413, "payload_too_large", "Max 5MB"],
@@ -372,7 +352,6 @@ describe("C6 portrait upload", () => {
     expect(rowNodes(view)).toHaveLength(4);
   });
 
-  // behavioural
   it("Edge case: the error clears after a later successful upload", async () => {
     const { view, api } = await openKeyPeople({ draft: peopleDraft() });
     api.uploadFailure = { status: 415, code: "unsupported_type", message: "Use PNG, JPG, GIF, WebP, or SVG" };
@@ -384,7 +363,6 @@ describe("C6 portrait upload", () => {
     expect(api.uploads).toHaveLength(2);
   });
 
-  // behavioural
   it("Edge case: when saving the revision is refused, the server's message is shown and no portrait appears", async () => {
     const { view, server } = await openKeyPeople({
       draft: peopleDraft(),

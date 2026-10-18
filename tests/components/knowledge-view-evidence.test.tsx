@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { VERSIONS } from "../helpers/knowledge-view-fixtures";
 import { banner, card, cardText, norm, parse, textOf, type Page } from "../helpers/knowledge-view-dom";
-import { openSection, titlesOf, type LockedSection } from "../helpers/knowledge-view-spec";
+import { openSection, titlesOf, type CardSection } from "../helpers/knowledge-view-spec";
 import {
   EXCERPT,
   ITEM_MARKS,
@@ -18,11 +18,11 @@ import {
 import { renderViewPage } from "../helpers/knowledge-view-render";
 
 const open = {
-  draft: (section: LockedSection, opts?: EvidenceOptions) => openSection(section, { draft: evidenceDraft(opts) }),
-  snapshot: (section: LockedSection, opts?: EvidenceOptions) => openSection(section, { snapshot: evidenceSnapshot(opts) }),
+  draft: (section: CardSection, opts?: EvidenceOptions) => openSection(section, { draft: evidenceDraft(opts) }),
+  snapshot: (section: CardSection, opts?: EvidenceOptions) => openSection(section, { snapshot: evidenceSnapshot(opts) }),
 };
 const channelMark = markOf(ITEM_MARKS.find((m) => m.card === "Channels")!, 0);
-const inCard = (page: Page, section: LockedSection, title: string) => card(page, title, titlesOf(section))!;
+const inCard = (page: Page, section: CardSection, title: string) => card(page, title, titlesOf(section))!;
 const triggers = (page: Page, el: Parameters<Page["$"]>[0]) =>
   page.$(el as never).find("button.citation-popover__trigger").toArray().map((b) => ({
     label: norm(page.$(b).text()),
@@ -30,7 +30,6 @@ const triggers = (page: Page, el: Parameters<Page["$"]>[0]) =>
   }));
 
 describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)", (source) => {
-  // behavioural
   it("a cited value has a Sources control beside it, named for its field", async () => {
     const page = await open[source]("General Info");
     expect(triggers(page, inCard(page, "General Info", "Overview"))).toEqual([
@@ -38,7 +37,6 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
     ]);
   });
 
-  // behavioural
   it("historical generated and inferred values carry their label", async () => {
     const sales = await open[source]("Sales & Marketing", { marks: [channelMark] });
     const pitch = triggers(sales, inCard(sales, "Sales & Marketing", "Pitch"));
@@ -50,7 +48,6 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
     ]);
   });
 
-  // behavioural
   it("a partial field says so and why, next to its value", async () => {
     const page = await open[source]("Customers & Industry");
     const text = cardText(page, inCard(page, "Customers & Industry", "Business model"));
@@ -58,7 +55,6 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
     expect(text).toContain(REASONS.partial);
   });
 
-  // behavioural
   it("a conflict shows as conflicting sources with its reason, and on the control", async () => {
     const page = await open[source]("Customers & Industry");
     const el = banner(page, "Industry", "Specialty coffee roasting and retail")!;
@@ -66,7 +62,6 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
     expect(norm(page.$("body").text())).toContain(`Conflicting sources — ${REASONS.conflict}`);
   });
 
-  // behavioural
   it("an empty field shows why it is unknown, assessed or not", async () => {
     const general = await open[source]("General Info");
     const story = cardText(general, inCard(general, "General Info", "Founding story"));
@@ -84,7 +79,6 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
     expect(needs).toContain("No assessment is recorded for this field.");
   });
 
-  // behavioural
   it("the crawl source-coverage panel is reachable in the Profile view", async () => {
     const page = await open[source]("General Info");
     expect(page.$("details.source-coverage > summary").text()).toContain("source coverage");
@@ -92,14 +86,12 @@ describe.each(["draft", "snapshot"] as const)("evidence in the Profile view (%s)
 });
 
 describe("evidence is data, not decoration", () => {
-  // behavioural
   it("Edge case: a company with no provenance at all shows no source controls on empty cards, and still renders", async () => {
     const page = parse(await renderViewPage({ draft: (await import("../helpers/knowledge-view-fixtures")).buildEmptyDraft(), versions: VERSIONS }));
     expect(page.$("button.citation-popover__trigger").length).toBe(0);
     expect(norm(page.$("body").text())).toContain("Unknown · Not assessed");
   });
 
-  // behavioural
   it("the cited excerpt is not printed in the closed view (it opens from the control)", async () => {
     const page = await open.draft("General Info");
     expect(page.html).not.toContain(EXCERPT);

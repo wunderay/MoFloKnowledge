@@ -1,4 +1,4 @@
-// Non-locked hardening tests for Quest Q6: bounded chunked bodies, zero-row delete, archived-mid-request and the
+// Hardening tests for uploads: bounded chunked bodies, zero-row delete, archived-mid-request and the
 // middleware matcher that keeps the upload routes out of Next's 10 MiB middleware body buffer.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 // @ts-expect-error Next vendors its matcher compiler without type declarations.

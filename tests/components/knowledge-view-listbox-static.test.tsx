@@ -1,6 +1,6 @@
-// Acceptance (Quest Q10 navigation-listbox): the markup a visitor receives for the
-// /knowledge/view section control: C2 (default, ?section= mapping, Key People,
-// fallback), the trigger half of C3, and the C6 stylesheet hook. Rendered through the
+// Acceptance: the markup a visitor receives for the
+// /knowledge/view section control: default, ?section= mapping, Key People,
+// fallback, the trigger, and the stylesheet hook. Rendered through the
 // real server page with fixture data; assertions use roles, accessible names and text.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -48,8 +48,7 @@ const shownSection = (page: Page) => {
   return SECTIONS.map(([, label]) => label).filter((label) => norm(haystack).includes(label));
 };
 
-describe("C3 trigger (server markup)", () => {
-  // behavioural
+describe("trigger (server markup)", () => {
   it("is a button with aria-haspopup=listbox, collapsed, named 'Knowledge section'", async () => {
     const page = await draftPage();
     const trig = triggerOf(page);
@@ -57,7 +56,6 @@ describe("C3 trigger (server markup)", () => {
     expect(nameOf(page, trig)).toMatch(/^Knowledge section/i);
   });
 
-  // behavioural
   it("replaces the native <select>: no combobox is named 'Knowledge section'", async () => {
     const page = await draftPage();
     expect(page.$('select[aria-label="Knowledge section"]').length).toBe(0);
@@ -65,18 +63,15 @@ describe("C3 trigger (server markup)", () => {
   });
 });
 
-describe("C2 default and ?section= mapping", () => {
-  // behavioural
+describe("default and ?section= mapping", () => {
   it("shows General Info on the trigger by default (no section parameter)", async () => {
     expect(shownSection(await draftPage())).toEqual(["General Info"]);
   });
 
-  // behavioural
   it.each(SECTIONS)("?section=%s shows %s on the trigger", async (id, label) => {
     expect(shownSection(await draftPage(id))).toEqual([label]);
   });
 
-  // behavioural
   it.each(["not-a-section", "GENERAL", "", "__proto__", "0", "key_people", "keypeople"])(
     "Edge case: unknown ?section=%j falls back to General Info",
     async (value) => {
@@ -87,7 +82,6 @@ describe("C2 default and ?section= mapping", () => {
     },
   );
 
-  // behavioural
   it("Edge case: the trigger is present and defaults to General Info for a snapshot and for an empty company", async () => {
     const draft = buildDraft();
     const snap = parse(await renderViewPage({ snapshot: { payload: snapshotFrom(draft), versionId: SNAPSHOT_ID }, versions: VERSIONS }));
@@ -96,7 +90,6 @@ describe("C2 default and ?section= mapping", () => {
     expect(shownSection(empty)).toEqual(["General Info"]);
   });
 
-  // behavioural
   it("still shows only the chosen section's cards (sections keep their identifiers)", async () => {
     const customers = await draftPage("customers");
     expect(hasHeading(customers, "Business model")).toBe(true);
@@ -111,8 +104,7 @@ describe("C2 default and ?section= mapping", () => {
 const hasPeopleHeading = (page: Page, count?: number) =>
   headings(page).some((h) => (count === undefined ? /^key people \d+$/i : new RegExp(`^key people ${count}$`, "i")).test(h.text));
 
-describe("C2 Key People (new section; its content is built by Q9)", () => {
-  // behavioural
+describe("Key People (new section; its content has its own tests)", () => {
   it("?section=key-people renders without an error, under the company name, with a 'Key People' heading", async () => {
     const page = await draftPage("key-people");
     expect(page.html).not.toContain("knowledge is unavailable");
@@ -121,7 +113,6 @@ describe("C2 Key People (new section; its content is built by Q9)", () => {
     expect(shownSection(page)).toEqual(["Key People"]);
   });
 
-  // behavioural
   it("Edge case: Key People does not show another section's cards", async () => {
     const page = await draftPage("key-people");
     expect(hasHeading(page, "Founding story")).toBe(false);
@@ -129,7 +120,6 @@ describe("C2 Key People (new section; its content is built by Q9)", () => {
     expect(hasHeading(page, "Business model")).toBe(false);
   });
 
-  // behavioural
   it("Edge case: Key People renders for a saved snapshot and for a company with no knowledge", async () => {
     const draft = buildDraft();
     const snap = parse(
@@ -142,13 +132,13 @@ describe("C2 Key People (new section; its content is built by Q9)", () => {
   });
 });
 
-describe("C6 animation hook (stylesheet)", () => {
+describe("animation hook (stylesheet)", () => {
   const css = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
       e.isDirectory() ? css(join(dir, e.name)) : e.name.endsWith(".css") ? [readFileSync(join(dir, e.name), "utf8")] : [],
     );
 
-  // behavioural (static analysis of the shipped stylesheets: the state hook drives a transition or animation)
+  // (static analysis of the shipped stylesheets: the state hook drives a transition or animation)
   it("a [data-state=open] or [data-state=closed] rule sets a transition or animation", () => {
     const all = css(join(__dirname, "../../src")).join("\n");
     const rules = [...all.matchAll(/[^{}]*\[data-state=["']?(?:open|closed)["']?\][^{}]*\{([^}]*)\}/g)].map((m) => m[1]);

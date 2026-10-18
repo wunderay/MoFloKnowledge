@@ -1,16 +1,16 @@
-// Acceptance, Quest Q19 refresh-draft-guard, criteria C2, C3 and C4 (owner findings on PRs #13, #19, #20, #21).
+// Refresh guard: the order in which draft reads answer.
 //
 // Two saves made one after the other each re-read the draft. The server answers them in the order it likes:
 // the read that was started LAST decides what the page shows. An older read that finishes after a newer one
 // is dropped; it never puts older entries over newer ones, and when it fails it does not mark a page stale
 // that a newer read has just refreshed.
 //
-// DECISION (which read is "latest"): the one whose request was sent last. The tests start the second save
+// Which read is "latest": the one whose request was sent last. The tests start the second save
 //   only after the first one's read is on its way, so "sent last" is unambiguous.
-// DECISION (what is checked): after both answers have arrived, in either order, the page shows what BOTH
+// What is checked: after both answers have arrived, in either order, the page shows what BOTH
 //   saves wrote; no save is left "Saving…"; no dialog is left open; no stale notice is shown; nothing is
 //   blocked. When the older answer comes first, both answers are applied in turn (the last one is the newest).
-// DECISION (an ignored read is not a failure): a save whose own read was dropped because a newer read exists
+// An ignored read is not a failure: a save whose own read was dropped because a newer read exists
 //   is finished like any other (its "Saved" shows, its dialog closes); nothing is sent again.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { timing } from "../../src/components/knowledge-view/timing";
@@ -77,7 +77,6 @@ const PAIRS: [Driver, Driver][] = [
 const title = ([older, newer]: [Driver, Driver]) => `${older.name} then ${newer.name}`;
 
 describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name, older, newer) => {
-  // C2, C3
   it("the read started last wins: the older read finishing later is ignored", async () => {
     const { view, reads } = await twoSaves(older, newer);
     reads.drafts[1].release();
@@ -91,7 +90,7 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
     expectFinished(view);
   });
 
-  // C2 non-regression: answers in the order they were asked
+  // Answers in the order they were asked
   it("answers in the order they were asked: both saves are shown", async () => {
     const { view, reads } = await twoSaves(older, newer);
     reads.drafts[0].release();
@@ -104,7 +103,7 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
     expectFinished(view);
   });
 
-  // C4: a superseded read that fails does not make a freshly read page stale
+  // A superseded read that fails does not make a freshly read page stale
   it("an older read that fails after the newer one succeeded leaves no stale notice and nothing blocked", async () => {
     const { view, reads } = await twoSaves(older, newer);
     reads.drafts[1].release();
@@ -119,7 +118,7 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
     expectFinished(view);
   });
 
-  // C4: ... and neither does one that runs out of time
+  // ... and neither does one that runs out of time
   it("an older read that runs out of time after the newer one succeeded leaves no stale notice", async () => {
     timing.reread = 200;
     const { view, reads } = await twoSaves(older, newer);
@@ -134,7 +133,7 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
 });
 
 describe("inline saves behind a superseded read", () => {
-  // C4: the queue of saves of one entry is not left waiting for a read that was dropped
+  // The queue of saves of one entry is not left waiting for a read that was dropped
   it("a save whose read was dropped is finished, and the next save of that entry goes out on the new revision", async () => {
     const { view, reads } = await twoSaves(INLINE, INLINE_STORY);
     reads.drafts[1].release();

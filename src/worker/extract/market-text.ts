@@ -279,7 +279,7 @@ export function marketTextCandidates(
         channel(contactLink.url, contactLink.label, contactLink.url, ids,
         [heading, context].filter((text): text is string => Boolean(text)));
       } else if (notification || (heading && actionable.test(heading))) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- when `notification` is false, the branch condition guarantees `heading`
         const label = notification ? context : heading!;
         const url = form.action ?? page.capture.finalUrl;
         channel(`${url}|${label}`, label, url, ids, [label], 90,

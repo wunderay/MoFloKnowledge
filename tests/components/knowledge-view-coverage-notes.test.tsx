@@ -27,7 +27,6 @@ const hq = (page: Page) => cardText(page, card(page, "Headquarters", titlesOf("G
 const salesBanner = (page: Page) => textOf(page, banner(page, "Sales & Marketing", COMPANY_NAME)!);
 
 describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) => {
-  // behavioural
   it("a filled Founded stat with conflicting sources shows the conflict and its reason", async () => {
     const page = await open[source]("General Info", {
       coverage: [cov("/company_foundation/year_founded", "conflict", "The homepage says 2014 and a registry says 2012.")],
@@ -37,7 +36,6 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
     expect(founded).toContain("Conflicting sources — The homepage says 2014 and a registry says 2012.");
   });
 
-  // behavioural
   it("a filled stat that was fully found shows no note", async () => {
     const page = await open[source]("General Info", {
       coverage: [cov("/company_foundation/year_founded", "found", null)],
@@ -45,7 +43,6 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
     expect(stat(page, "Founded")).not.toMatch(/Unknown|Conflicting|Partial|Not found/);
   });
 
-  // behavioural
   it("empty stats with no assessment say 'Unknown · Not assessed'", async () => {
     const page = await open[source]("General Info", {
       coverage: [],
@@ -56,7 +53,6 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
     }
   });
 
-  // behavioural
   it("empty stats show the reason recorded for them", async () => {
     const page = await open[source]("General Info", {
       coverage: [
@@ -69,7 +65,6 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
     expect(stat(page, "Legal entity")).toContain("Partial — Only the footer was checked.");
   });
 
-  // behavioural
   it("empty social links show why, in the Sales & Marketing banner", async () => {
     const page = await open[source]("Sales & Marketing", {
       coverage: [cov("/online_presence/social_media_links", "not_checked", "No profile links were looked for.")],
@@ -81,7 +76,6 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
     expect(text).toContain("Social links: Unknown · Not assessed — No profile links were looked for.");
   });
 
-  // behavioural
   it("partly found social links keep their links and show the partial note", async () => {
     const page = await open[source]("Sales & Marketing", {
       coverage: [cov("/online_presence/social_media_links", "partial", "Only the footer was checked.")],
@@ -91,7 +85,6 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
     expect(text).toContain("Partial — Only the footer was checked.");
   });
 
-  // behavioural
   it("Headquarters with a main address but no other locations shows why the others are empty", async () => {
     const page = await open[source]("General Info", {
       coverage: [cov("/company_foundation/other_locations", "not_found", "No other sites are listed.")],
@@ -104,7 +97,6 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
     expect(text).toContain("Other locations: Not found in checked pages — No other sites are listed.");
   });
 
-  // behavioural
   it("Headquarters with other locations but no main address shows why the main one is empty", async () => {
     const page = await open[source]("General Info", {
       coverage: [cov("/company_foundation/main_address", "conflict", "Two different addresses were found.")],
@@ -115,7 +107,6 @@ describe.each(["draft", "snapshot"] as const)("coverage reasons (%s)", (source) 
     expect(hq(page)).toContain("Main address: Conflicting sources — Two different addresses were found.");
   });
 
-  // behavioural
   it("an empty Headquarters card shows the reason for both fields", async () => {
     const page = await open[source]("General Info", {
       coverage: [

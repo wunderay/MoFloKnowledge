@@ -1,4 +1,4 @@
-// Quest Q7 inline-edit-core, review follow-up (not part of the locked acceptance files): what happens to an edit
+// What happens to an edit
 // around it, not inside it.
 //  - a save that fails after the section was left is shown, with the typed text and a Retry, when it is visible again;
 //  - saves of one entry run one after another, each on the revision the view shows (no stale-revision race, one creation);
@@ -6,7 +6,7 @@
 //  - after Remove and Undo, focus goes to a chip or the Add control, never to the page body;
 //  - the "Edit <Field>" button keeps its name and is described by the value it shows;
 //  - focus is not taken back after a save when the person has moved on.
-// Undo is a new revision of the list (a revert would need the revert endpoint, which the locked tests do not allow).
+// Undo is a new revision of the list (a revert would need the revert endpoint, which the inline-edit tests do not allow).
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SNAPSHOT_ID, VERSIONS, buildEmptyDraft } from "../helpers/knowledge-view-fixtures";
 import { focusPath, focusedPath, type FakeServer, type View } from "../helpers/knowledge-view-site-all-runtime";

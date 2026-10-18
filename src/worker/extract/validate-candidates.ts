@@ -334,7 +334,7 @@ export function validateCandidates(
       );
       const structuredServiceKey = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
         selected.some((o) => o.property?.startsWith("jsonld:") && o.property.endsWith("/name") && o.value &&
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- `c.entity_key?.startsWith(...)` above is truthy only when the key is set
           normalizeIdentity(o.value) === normalizeIdentity(c.entity_key!.slice((page.capture.finalUrl + "|service:").length)) &&
           structuredEntity(o.property.slice("jsonld:".length, -"/name".length)));
       const listedService = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
@@ -459,13 +459,13 @@ export function validateCandidates(
       }
       const roleCompanyNames = observations.filter((observation) =>
         /jsonld:.*\/(?:name|legalName)$/.test(observation.property ?? "") && observation.value &&
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the filter requires a matching property
         observations.some((kind) => kind.property === observation.property!.replace(/\/(?:name|legalName)$/, "/@type") &&
           /^(?:Organization|Corporation|LocalBusiness|ProfessionalService|AccountingService)$/.test(kind.value ?? "")) &&
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the filter requires a matching property
         observations.some((url) => url.property === observation.property!.replace(/\/(?:name|legalName)$/, "/url") &&
           (() => { try { return new URL(url.value ?? "").hostname.replace(/^www\./, "") === new URL(page.capture.finalUrl).hostname.replace(/^www\./, ""); } catch { return false; } })()))
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the filter requires a value
         .map((observation) => observation.value!);
       const normalizedServiceRole = c.field === "/company_foundation/company_role" &&
         c.note === "Normalized company role from an explicit current-company service statement." &&

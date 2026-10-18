@@ -51,7 +51,6 @@ describe("observed fixtures", () => {
 });
 
 describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (source) => {
-  // behavioural
   it("every observed color is qualified and none reads as Primary, Secondary or Tertiary", async () => {
     const page = await open[source](allObserved);
     const colors = cardOf(page, "Colors");
@@ -68,7 +67,6 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
     expect(textOf(page, colors)).not.toMatch(POSITION);
   });
 
-  // behavioural
   it("every unconfirmed font is qualified, with how it was observed, and none is called Primary", async () => {
     const page = await open[source](allObserved);
     const fonts = cardOf(page, "Fonts");
@@ -80,7 +78,6 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
     expect(spaced(page, itemOf(page, "Fonts", "Fraunces"))).toMatch(/Font 1\b/);
   });
 
-  // behavioural
   it("the banner palette and font cells carry the qualifier too", async () => {
     const page = await open[source](allObserved);
     expect(cell(page, "Palette")).toContain("Observed website colors");
@@ -93,7 +90,6 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
     ]);
   });
 
-  // behavioural
   it("a confirmed color shows its role without the qualifier, next to an observed one", async () => {
     const page = await open[source](mixed);
     const red = spaced(page, itemOf(page, "Colors", COLORS[1].hex));
@@ -109,14 +105,12 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
     expect(cell(page, "Palette")).toContain("Includes observed website colors");
   });
 
-  // behavioural
   it("a brand with only confirmed values shows no qualifier anywhere", async () => {
     const page = await open[source]();
     expect(norm(page.$(".knowledge-view__panel").text())).not.toMatch(/Observed/);
     expect(spaced(page, itemOf(page, "Fonts", "Fraunces"))).toMatch(/\bPrimary\b/);
   });
 
-  // behavioural
   it("the Colors and Fonts card subtitles do not claim brand use", async () => {
     const page = await open[source](allObserved);
     for (const title of ["Colors", "Fonts"]) {
@@ -126,7 +120,6 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
 });
 
 describe.each(["draft", "snapshot"] as const)("observed brand values, evidence names (%s)", (source) => {
-  // behavioural
   it("an item's evidence control names the item and its qualifier", async () => {
     const business = (b: { branding_and_style: object }) =>
       Object.assign(b.branding_and_style, { brand_colors: allObserved.brand_colors, fonts: allObserved.fonts });

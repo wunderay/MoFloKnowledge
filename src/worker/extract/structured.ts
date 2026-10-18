@@ -215,7 +215,7 @@ export function structuredCandidates(
       /\/(?:services|products|offerings)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname)
       ? observations.find((o) => o.property === "heading" && o.value && o.value.length >= 3 &&
         (" " + normalizedName(name) + " ").includes(" " + normalizedName(o.value) + " ") &&
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the predicate above requires a non-empty value; narrowing is lost in the nested callback
         page.capture.segments.some((segment) => segment.text.includes(o.value!))) : undefined;
     const primary = (primaryLink && primaryEvidence.length === 3) || primaryHeading;
     if (primary) {

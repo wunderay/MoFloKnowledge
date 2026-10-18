@@ -8,7 +8,7 @@ import {
   makeRepository,
 } from "../helpers/crawl-deadline-site";
 
-// Review-round regressions for Q12 crawl-deadline (fake clock, in-memory fetcher).
+// Regressions for the crawl deadline (fake clock, in-memory fetcher).
 
 vi.mock("node:timers/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:timers/promises")>();

@@ -27,7 +27,7 @@ export interface PeopleApi {
   uploaded: { id: string; path: string; content_type: string; size_bytes: number; url: string }[];
 }
 
-/** Teach the fake API the routes the Quest relies on. DELETE /entries/<id> is the shape the Quest locks (builder work). */
+/** Teach the fake API the routes the people tests rely on. DELETE /entries/<id> is the request shape the UI must send. */
 export function installPeopleApi(server: FakeServer): PeopleApi {
   const api: PeopleApi = { uploads: [], deletes: [], uploadFailure: null, uploaded: [] };
   const base = server.fetch;

@@ -18,6 +18,11 @@ included in [Poppins-OFL.txt](Poppins-OFL.txt).
 | Poppins-Bold.ttf | `983676516167748b74de6f4771fb384c664fd913acb8b471122ecacf5da5ea6c` |
 
 The existing **Noto Sans** Regular and Bold files remain available for server-side
-PDF exports. Copyright 2018 The Noto Project Authors; their SIL Open Font License
+PDF exports (official [Regular](https://github.com/notofonts/noto-fonts/blob/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf), 569,208 bytes, and [Bold](https://github.com/notofonts/noto-fonts/blob/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf), 575,740 bytes). Next's output tracing includes both fonts and the license for standalone deployments; rendering never downloads fonts at runtime. Copyright 2018 The Noto Project Authors; their SIL Open Font License
 1.1 remains in [OFL.txt](OFL.txt). Changing the app font does not change PDF export
 typography or its font coverage.
+
+| File | SHA-256 |
+| --- | --- |
+| NotoSans-Regular.ttf | `b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5` |
+| NotoSans-Bold.ttf | `c976e4b1b99edc88775377fcc21692ca4bfa46b6d6ca6522bfda505b28ff9d6a` |

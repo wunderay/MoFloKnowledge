@@ -84,8 +84,8 @@ export async function renderOB(opts: OBRenderOptions): Promise<string> {
     query.set("offering", opts.offering);
   }
   state.search = query.toString();
-  // These read-only (Q3) tests look at the view as a viewer sees it: an owner's draft edits in place (Quest offerings-brand-edit,
-  // which has its own tests), and its controls are not part of what they check.
+  // These read-only tests look at the view as a viewer sees it: an owner's draft edits in place (which has its own tests),
+  // and its controls are not part of what they check.
   state.draft = opts.draft ? { ...opts.draft, company: { ...opts.draft.company, role: "viewer" } } : null;
   state.snapshot = opts.snapshot?.payload ?? null;
   state.versions = VERSIONS;

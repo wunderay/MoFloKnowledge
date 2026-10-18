@@ -112,7 +112,7 @@ export function BusinessField({
               </div>
             </div>
             <BusinessField
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- list specs always define `items`
               spec={spec.items!}
               value={item}
               name={name}
@@ -131,7 +131,7 @@ export function BusinessField({
           type="button"
           className="button"
           disabled={disabled}
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- list specs always define `items`
           onClick={() => { onChange([...list, newValue(spec.items!, true)]); }}
         >
           ＋ Add {label.toLowerCase()}

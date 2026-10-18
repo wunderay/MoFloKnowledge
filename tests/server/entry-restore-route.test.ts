@@ -1,4 +1,4 @@
-// Quest Q8, the server side of "Undo" after deleting an offering: POST /api/companies/<company>/entries/<entry>/restore.
+// The server side of "Undo" after deleting an offering: POST /api/companies/<company>/entries/<entry>/restore.
 // The database does the work (public.restore_entry, migration 0023, proven in tests/db/entry-restore.test.mjs); this file
 // proves the route in front of it: origin, session, role, body and error mapping.
 import { beforeEach, describe, expect, it, vi } from "vitest";

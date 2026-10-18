@@ -247,14 +247,13 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       value.forEach((item) => { address(item, `${path}/@${item.id}`, "Additional location: "); });
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-    if (Array.isArray(value) && ["target_buyers", "company_role", "service_locations", "alternative_company_names", "industry_groupings"].includes(path.split("/").at(-1)!)) {
+    const leafName = path.split("/").at(-1) ?? "";
+    if (Array.isArray(value) && ["target_buyers", "company_role", "service_locations", "alternative_company_names", "industry_groupings"].includes(leafName)) {
       const titles: Record<string, string> = { target_buyers: "Customers", company_role: value.length === 1 ? "Role" : "Roles",
         service_locations: value.length === 1 ? "Service area" : "Service areas", alternative_company_names: "Also known as", industry_groupings: "Customer industries" };
       const items = value.filter((item) => typeof item.text === "string")
         .map((item) => ({ text: item.text, path: `${path}/@${item.id}/text` }));
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-      collection(titles[path.split("/").at(-1)!], items);
+      collection(titles[leafName], items);
       return;
     }
     if (Array.isArray(value) && path.endsWith("/ideal_customer_personas")) {
@@ -310,11 +309,12 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       for (const item of value) {
         const classification = item.classification === "brand_guide_confirmed" ? "brand-guide-confirmed color" : "observed website color";
         const details = `${classification}; opacity ${item.alpha}${item.apparent_role ? `; apparent role: ${item.apparent_role}` : ""}`;
-        if (!groups.has(details)) {
-          groups.set(details, { colors: [], details });
+        let group = groups.get(details);
+        if (!group) {
+          group = { colors: [], details };
+          groups.set(details, group);
         }
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-        groups.get(details)!.colors.push(item.hex);
+        group.colors.push(item.hex);
       }
       for (const group of groups.values()) {
         add(`${group.colors.join(", ")} — ${group.details}.`, { muted: true });
@@ -538,11 +538,12 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     const explanation = `${label(status)}${reason ? ` — ${reason}` : ". No additional reason recorded."}`;
     const section = label(path.split("/")[1] ?? "Other");
     const key = `${section}\0${explanation}`;
-    if (!groups.has(key)) {
-      groups.set(key, { section, explanation, fields: new Set() });
+    let group = groups.get(key);
+    if (!group) {
+      group = { section, explanation, fields: new Set() };
+      groups.set(key, group);
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-    groups.get(key)!.fields.add(title.startsWith(`${section} / `) ? title.slice(section.length + 3) : title);
+    group.fields.add(title.startsWith(`${section} / `) ? title.slice(section.length + 3) : title);
   };
   for (const item of coverage) {
     if (item.status !== "found") {
@@ -626,9 +627,9 @@ export async function renderKnowledgeDocument(input: DocumentInput): Promise<Buf
       return makeParagraph(paragraph);
     }
     const rows: TableRow[] = [];
-    for (let offset = 0; offset < paragraph.palette.length; offset += 4) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-      const colors = Array.from({ length: 4 }, (_item, index) => paragraph.palette![offset + index]);
+    const palette = paragraph.palette;
+    for (let offset = 0; offset < palette.length; offset += 4) {
+      const colors = Array.from({ length: 4 }, (_item, index) => palette[offset + index]);
       rows.push(new TableRow({ height: { value: 480, rule: HeightRule.EXACT }, children: colors.flatMap((color) => color ? [
         new TableCell({ width: { size: 480, type: WidthType.DXA }, shading: { fill: color.hex.slice(1) },
           margins: { top: 0, bottom: 0, left: 0, right: 0 }, borders: Object.fromEntries(["top", "bottom", "left", "right"].map((edge) => [edge, { color: "88929B", style: BorderStyle.SINGLE, size: 4 }])),

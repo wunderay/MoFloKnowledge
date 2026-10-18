@@ -28,8 +28,7 @@ export function normalizeUrl(input: string, base?: string): string {
 export function documentScope(input: string): string[] {
     const host = new URL(normalizeUrl(input)).hostname;
     const domain = getDomain(host, { allowPrivateDomains: true });
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-    return host === domain || host === `www.${domain}` ? [domain!, `www.${domain}`] : [host];
+    return domain && (host === domain || host === `www.${domain}`) ? [domain, `www.${domain}`] : [host];
 }
 export function assertDocumentScope(input: string, scope: readonly string[]): string {
     const url = normalizeUrl(input);

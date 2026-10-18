@@ -1,5 +1,5 @@
-// Shared by the navigation-listbox acceptance tests (Quest Q10): the section order and
-// identifiers the Quest fixes, plus queries/drivers over the interactive runtime of
+// Shared by the navigation-listbox tests: the section order and
+// identifiers, plus queries/drivers over the interactive runtime of
 // knowledge-view-site-all-runtime (which can click, press keys and record navigation).
 // Import this helper OR knowledge-view-render, never both in one test file.
 import { expect } from "vitest";
@@ -17,7 +17,7 @@ import {
 } from "./knowledge-view-site-all-runtime";
 import { norm } from "./knowledge-view-dom";
 
-/** The reference order of the listbox (owner ruling) with the URL identifier of each section. */
+/** The reference order of the listbox with the URL identifier of each section. */
 export const LISTBOX_SECTIONS = [
   { id: "general", label: "General Info" },
   { id: "brand", label: "Brand Identity" },

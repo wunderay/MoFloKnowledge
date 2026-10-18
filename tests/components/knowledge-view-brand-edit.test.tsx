@@ -1,4 +1,4 @@
-// Acceptance, Quest Q8 offerings-brand-edit, B: Brand Identity edits in place (owner, draft version).
+// Brand Identity edits in place (owner, draft version).
 //
 // Public contract (roles, names, requests; no class names, no structure):
 //  - "Edit Display name" in the banner opens a text field "Display name"; Enter or blur sends PATCH /api/companies/:id

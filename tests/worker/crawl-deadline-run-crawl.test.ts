@@ -17,18 +17,17 @@ import {
   type SiteHandler,
 } from "../helpers/crawl-deadline-site";
 
-// Q12 crawl-deadline. Acceptance tests for the owner's P1: an untrusted
+// Crawl deadline. Acceptance tests: an untrusted
 // robots.txt `Crawl-delay` must not hold a worker beyond its deadlines.
 // Production deadlines are accelerated through CRAWL_LIMITS (jobMs = scheduler
 // deadline, fetchMs = per-HTTP-task deadline); the transport is the real
 // createPinnedFetcher against a loopback server (no external network).
 //
-// Criteria labels used in test names:
-//   C1 deadline expiry aborts pending robots check / robots pacing / onRequest pacing promptly
-//   C2 (see crawl-deadline-transport.test.ts)
-//   C3 hostile Crawl-delay cannot push a crawl past its job/item deadline; pages recorded as not fetched
-//   C4 outer cancellation still aborts everything
-//   C5 (see crawl-deadline-pacing.test.ts)
+// Covered here:
+//   - deadline expiry aborts pending robots check / robots pacing / onRequest pacing promptly
+//   - hostile Crawl-delay cannot push a crawl past its job/item deadline; pages recorded as not fetched
+//   - outer cancellation still aborts everything
+// See also crawl-deadline-transport.test.ts and crawl-deadline-pacing.test.ts.
 
 const ROOT = "http://example.com/";
 const REASON = /deadline|crawl[-_ ]?delay|time[-_ ]?(?:out|limit)|timed out/i;
@@ -187,8 +186,8 @@ describe("harness control", () => {
   });
 });
 
-describe("C1/C3 hostile Crawl-delay vs the job deadline", () => {
-  it("C3 Crawl-delay: 86400 settles by the job deadline, records the page as not fetched with a reason and never issues the page request", async () => {
+describe("hostile Crawl-delay vs the job deadline", () => {
+  it("Crawl-delay: 86400 settles by the job deadline, records the page as not fetched with a reason and never issues the page request", async () => {
     const jobMs = 400;
     const { outcome, records, site } = await run(hostileRobots("86400"), {
       jobMs,
@@ -205,7 +204,7 @@ describe("C1/C3 hostile Crawl-delay vs the job deadline", () => {
     expectHooksReleasedPromptly(records);
   });
 
-  it("C1 the per-request onRequest pacing is released at the task (fetch) deadline, not the job deadline", async () => {
+  it("the per-request onRequest pacing is released at the task (fetch) deadline, not the job deadline", async () => {
     const fetchMs = 150;
     const { outcome, records, site } = await run(hostileRobots("86400"), {
       jobMs: 5000,
@@ -220,7 +219,7 @@ describe("C1/C3 hostile Crawl-delay vs the job deadline", () => {
   });
 
   it.each(["1000000000", "99999999999999999999"])(
-    "C3 absurd finite Crawl-delay %s settles by the job deadline",
+    "absurd finite Crawl-delay %s settles by the job deadline",
     async (delay) => {
       const jobMs = 400;
       const { outcome } = await run(hostileRobots(delay), {
@@ -233,8 +232,8 @@ describe("C1/C3 hostile Crawl-delay vs the job deadline", () => {
   );
 });
 
-describe("C1 deadline expiring during the robots.txt fetch", () => {
-  it("C1/C3 a robots.txt that never answers cannot hold the crawl past the job deadline", async () => {
+describe("deadline expiring during the robots.txt fetch", () => {
+  it("a robots.txt that never answers cannot hold the crawl past the job deadline", async () => {
     const jobMs = 400;
     const { outcome, records, site } = await run(
       (request, response) => {
@@ -253,7 +252,7 @@ describe("C1 deadline expiring during the robots.txt fetch", () => {
   });
 });
 
-describe("C1/C3 multiple hosts", () => {
+describe("multiple hosts", () => {
   const WWW_PAGE = "http://www.example.com/team";
   const fixture =
     (wwwRobots: (response: Parameters<SiteHandler>[1]) => void): SiteHandler =>
@@ -275,7 +274,7 @@ describe("C1/C3 multiple hosts", () => {
       );
     };
 
-  it("C3 a hostile Crawl-delay on one host does not stop healthy hosts and is recorded for the hostile pages only", async () => {
+  it("a hostile Crawl-delay on one host does not stop healthy hosts and is recorded for the hostile pages only", async () => {
     // fetchMs must stay above the fixed 500 ms same-host gap or healthy pages cannot be paced.
     const jobMs = 2000;
     const { outcome, rows, records, site } = await run(
@@ -297,7 +296,7 @@ describe("C1/C3 multiple hosts", () => {
     expectHooksReleasedPromptly(records);
   });
 
-  it("C1/C3 a robots.txt that hangs on one host is released at the job deadline and the healthy host stays captured", async () => {
+  it("a robots.txt that hangs on one host is released at the job deadline and the healthy host stays captured", async () => {
     const jobMs = 2000;
     const { outcome, rows, records, site } = await run(
       fixture(() => undefined), // www robots.txt never answers
@@ -311,13 +310,13 @@ describe("C1/C3 multiple hosts", () => {
   });
 });
 
-describe("C4 outer cancellation still aborts everything", () => {
+describe("outer cancellation still aborts everything", () => {
   const cancelled = (outcome: Settled<CrawlResult>) => {
     expect(outcome.state, `runCrawl is ${outcome.state} ${outcome.elapsedMs} ms after outer cancellation`).toBe("rejected");
     expect((outcome as Extract<Settled<CrawlResult>, { state: "rejected" }>).reason).toBe("cancelled");
   };
 
-  it("C4 cancelling during a satisfiable Crawl-delay sleep rejects with the cancellation reason and issues no page request", async () => {
+  it("cancelling during a satisfiable Crawl-delay sleep rejects with the cancellation reason and issues no page request", async () => {
     // Crawl-delay 3 fits inside the 5 s deadlines, so the crawl really sleeps
     // (about 3 s before the first page) and the cancel at 100 ms lands in that sleep.
     const { outcome, records, site } = await run(hostileRobots("3"), {
@@ -331,7 +330,7 @@ describe("C4 outer cancellation still aborts everything", () => {
     expectHooksReleasedPromptly(records);
   });
 
-  it("C4 cancelling during a robots.txt fetch rejects with the cancellation reason", async () => {
+  it("cancelling during a robots.txt fetch rejects with the cancellation reason", async () => {
     const { outcome, records, site } = await run(
       (request, response) => {
         if (request.path === "/robots.txt") {
@@ -346,7 +345,7 @@ describe("C4 outer cancellation still aborts everything", () => {
     expectHooksReleasedPromptly(records);
   });
 
-  it("C4 an already-cancelled job issues no request at all", async () => {
+  it("an already-cancelled job issues no request at all", async () => {
     const { outcome, site } = await run(hostileRobots("2"), {
       jobMs: 5000,
       fetchMs: 5000,

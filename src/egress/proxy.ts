@@ -124,9 +124,10 @@ export function createEgressProxy(options: ProxyOptions) {
               return;
             }
             const address = approved.addresses[0];
-            upstream = net.connect({ host: address.address, port: 443, family: address.family });
-            upstream.once('error', cleanup);
-            upstream.once('close', cleanup);
+            const target = net.connect({ host: address.address, port: 443, family: address.family });
+            upstream = target;
+            target.once('error', cleanup);
+            target.once('close', cleanup);
             let bytes = head.length;
             const count = (chunk: Buffer) => {
                 bytes += chunk.length;
@@ -135,20 +136,17 @@ export function createEgressProxy(options: ProxyOptions) {
                 }
             };
             client.on('data', count);
-            upstream.on('data', count);
-            upstream.once('connect', () => {
+            target.on('data', count);
+            target.once('connect', () => {
                 if (finished) {
                   return;
                 }
                 client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
                 if (head.length) {
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-                  upstream!.write(head);
+                  target.write(head);
                 }
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-                client.pipe(upstream!);
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-                upstream!.pipe(client);
+                client.pipe(target);
+                target.pipe(client);
             });
         }
         catch {

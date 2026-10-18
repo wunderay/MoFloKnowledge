@@ -1,4 +1,4 @@
-// Acceptance, Quest Q21 viewer-polish, item 2: Key People detail shows a read-only Role under Position,
+// Key People detail shows a read-only Role under Position,
 // and the paired fields do not stretch to the tallest one.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -6,7 +6,7 @@ import { openPeople } from "../helpers/knowledge-view-people-render";
 import { peopleDraft } from "../helpers/knowledge-view-people-fixtures";
 import { norm } from "../helpers/knowledge-view-dom";
 
-describe("Q21 key people polish", () => {
+describe("key people polish", () => {
   it("shows the person's role as a Role field after Position and before Age", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     const text = norm(page.$('section[aria-label^="Details of"]').first().text());

@@ -67,7 +67,7 @@ export function applyConflictDecision<T>(
   const current = (parent as Record<string, unknown>)[last];
   const value =
     decision.action === "select"
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- validateConflictDecision rejects an unknown candidate id
       ? conflict.candidates.find((c) => c.id === decision.candidate_id)!.value
       : decision.action === "clear"
         ? Array.isArray(current)

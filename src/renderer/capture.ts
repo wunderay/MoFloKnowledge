@@ -54,10 +54,10 @@ export async function captureRenderedPage(
           break;
         }
         const tag = current.tagName.toLowerCase();
+        const currentTag = current.tagName;
         const siblings = current.parentElement
           ? [...current.parentElement.children].filter(
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-              (sibling) => sibling.tagName === current!.tagName,
+              (sibling) => sibling.tagName === currentTag,
             )
           : [current];
         parts.unshift(`${tag}:nth-of-type(${siblings.indexOf(current) + 1})`);
@@ -130,7 +130,7 @@ export async function captureRenderedPage(
       )
       .slice(0, 100)
       .map((entry) => ({
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the filter above keeps only entries whose URL parses
         url: safeURL(entry.name)!,
         loaded: (entry as PerformanceResourceTiming).responseEnd > 0,
       }));
@@ -142,8 +142,7 @@ export async function captureRenderedPage(
         (element) =>
           !element.closest("a")?.hostname ||
           [location.hostname, "www." + location.hostname].includes(
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-            (element.closest("a")!).hostname,
+            element.closest("a")?.hostname ?? "",
           ),
       )
       .map((element) => {

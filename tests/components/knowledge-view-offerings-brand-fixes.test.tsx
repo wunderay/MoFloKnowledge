@@ -1,9 +1,8 @@
-// Acceptance, Quest Q8 offerings-brand-edit, C: three fixes to the Brand Identity and Business Offerings views,
+// Three fixes to the Brand Identity and Business Offerings views,
 // checked in a viewer's draft (read only) and in an editable draft.
-//  C1 a color whose hex is not #RRGGBB, and a font without a family, stay visible as "unavailable" (never painted).
-//  C2 a logo whose address is not http(s) shows no image and says why; a logo without a variant is captioned "Logo".
-//     (The "Logo 3" wording in the Q3 tests is changed to "Logo" for this; see brand.test.tsx and brand-evidence.test.tsx.)
-//  C3 the Cost evidence control follows the field the cost text is built from.
+//  - A color whose hex is not #RRGGBB, and a font without a family, stay visible as "unavailable" (never painted).
+//  - A logo whose address is not http(s) shows no image and says why; a logo without a variant is captioned "Logo".
+//  - The Cost evidence control follows the field the cost text is built from.
 import { describe, expect, it, vi } from "vitest";
 import { COMPANY_NAME, draftFrom } from "../helpers/knowledge-view-fixtures";
 import { card, deepestContaining, norm, textOf, type Page } from "../helpers/knowledge-view-dom";
@@ -31,7 +30,7 @@ async function openBrand(mode: Mode, parts: Parameters<typeof brandBusiness>[0])
 }
 const cardOf = (page: Page, title: string) => card(page, title, CARDS)!;
 
-describe("C1 unusable colors and fonts stay visible", () => {
+describe("unusable colors and fonts stay visible", () => {
   it.each([
     ["viewer", "red"],
     ["draft", "#12"],
@@ -60,7 +59,7 @@ describe("C1 unusable colors and fonts stay visible", () => {
   });
 });
 
-describe("C2 logos", () => {
+describe("logos", () => {
   it.each([
     ["viewer", "javascript:alert(1)"],
     ["draft", "data:image/png;base64,AAAA"],
@@ -80,7 +79,7 @@ describe("C2 logos", () => {
   });
 });
 
-describe("C3 Cost evidence follows the cost text's own field", () => {
+describe("Cost evidence follows the cost text's own field", () => {
   it("a cost built from the amount (raw is blank) has its source control from claims on /pricing", async () => {
     const ev = buildObEvidence({
       marks: [],

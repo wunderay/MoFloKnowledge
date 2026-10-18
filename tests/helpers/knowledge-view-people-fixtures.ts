@@ -1,4 +1,4 @@
-// Fixtures for the Key People acceptance tests (Quest Q9). Same fictional company as the other
+// Fixtures for the Key People acceptance tests. Same fictional company as the other
 // view tests (Harbor & Pine Coffee Roasters). Valid fixtures satisfy DraftResponseSchema /
 // KnowledgeBaseExportSchema (checked in knowledge-view-people-fixtures.test.ts); the hostile
 // builder breaks the schema on purpose to prove the view never trusts a stored URL.

@@ -335,7 +335,7 @@ function KnowledgeEditorContent({
       const provenance = structuredClone(
         state.provenance[entry.id] ?? entry.provenance,
       );
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the conflict id comes from this entry's rendered conflict list; a miss is reported by the surrounding catch
       const conflict = provenance.conflicts.find(
         (item) => item.id === conflictId,
       )!;
@@ -356,7 +356,7 @@ function KnowledgeEditorContent({
           target: conflict.target,
           action,
           candidate_id: candidateId,
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- conflict controls render only after the draft has loaded
           actor_id: draft!.actorId,
           decided_at: new Date().toISOString(),
           note:
@@ -391,7 +391,7 @@ function KnowledgeEditorContent({
       provenance: createEmptyProvenance(),
       review_status: "unreviewed",
     };
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the add-entry control renders only after the draft has loaded
     setDraft({ ...draft!, entries: [...draft!.entries, entry] });
     dispatch({ type: "edit", id, content: entry.content });
     if (entry.kind === "offering") {

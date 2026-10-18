@@ -1,4 +1,4 @@
-// Acceptance, Quest Q7 inline-edit-core, C2: multi-line fields of /knowledge/view edit in place.
+// Multi-line fields of /knowledge/view edit in place.
 //
 // Fields: Overview and Founding story (General Info), Business model (Customers & Industry), Pitch (Sales & Marketing).
 //  - the value is a button named "Edit <Field>" (title "Click to edit", pencil); it opens a <textarea> of 3 rows,
@@ -38,7 +38,7 @@ vi.setConfig({ testTimeout: 60_000 });
 const originalOf = (field: (typeof AREA_FIELDS)[number]) =>
   String(getAt(buildBusiness()[field.kind === "positioning" ? "positioning" : "company_foundation"], field.path));
 
-describe.each(AREA_FIELDS)("C2 textarea field: $label", (field) => {
+describe.each(AREA_FIELDS)("textarea field: $label", (field) => {
   const original = () => originalOf(field);
   const saveButton = (view: Awaited<ReturnType<typeof open>>) => buttonNamed(view, /^save\b/i);
   const cancelButton = (view: Awaited<ReturnType<typeof open>>) => buttonNamed(view, /^cancel\b/i);

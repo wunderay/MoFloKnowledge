@@ -1,5 +1,5 @@
-// Q9 key-people, the server side of "Delete <person>": DELETE /api/companies/<company>/entries/<entry>.
-// DECISION (coordinator): deleting is a soft delete done by the database (public.archive_entry, migration 0020, proven in
+// The server side of "Delete <person>": DELETE /api/companies/<company>/entries/<entry>.
+// Deleting is a soft delete done by the database (public.archive_entry, migration 0020, proven in
 // tests/db/entry-delete.test.mjs). This file proves the route in front of it: origin, session, role, body and error mapping.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));

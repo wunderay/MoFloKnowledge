@@ -16,4 +16,4 @@ Record test commands, exact host/image/kernel and service identities, expected a
 
 ## Current state
 
-No owner-selected host, private task channel, enforced proxy/firewall, service identity, sandbox deployment or egress probe evidence has been provided. The host boundary is **NOT_PROVEN**. Arbitrary URL execution must remain gated until every required control is independently verified. The example manifest under `deploy/` is explicitly unqualified and is not evidence.
+No selected host, private task channel, enforced proxy/firewall, service identity, sandbox deployment or egress probe evidence has been provided. The host boundary is **NOT_PROVEN**. Arbitrary URL execution must remain gated until every required control is independently verified. The example manifest under `deploy/` is explicitly unqualified and is not evidence.

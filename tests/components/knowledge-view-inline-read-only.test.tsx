@@ -1,4 +1,4 @@
-// Acceptance, Quest Q7 inline-edit-core, C7: nothing is editable in a saved snapshot, for a viewer, or in an archived company.
+// Nothing is editable in a saved snapshot, for a viewer, or in an archived company.
 //
 // There the three sections look and behave as before the inline editors: values are plain text (no button, no
 // tab stop, no click handler, no "Click to edit" hint), no text field exists, chip lists have no Add / Remove / Undo
@@ -68,7 +68,7 @@ function expectNoEditing(view: View) {
   nothingSent(view);
 }
 
-describe.each(STATES)("C7 read-only: %s", (_name, options) => {
+describe.each(STATES)("read-only: %s", (_name, options) => {
   describe.each(SECTIONS)("$section", ({ section, values }) => {
     it("has no editing controls and shows every value as plain text", async () => {
       const owner = await open(section);
@@ -98,7 +98,7 @@ describe.each(STATES)("C7 read-only: %s", (_name, options) => {
   });
 });
 
-describe("C7 read-only views keep the links to the advanced editor", () => {
+describe("read-only views keep the links to the advanced editor", () => {
   it("a viewer of a company without entries still sees '+ Add' links to /knowledge, and no editor", async () => {
     const draft = buildEmptyDraft();
     draft.company = { ...draft.company, role: "viewer" };

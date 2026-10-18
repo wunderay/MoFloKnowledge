@@ -1,16 +1,16 @@
-// Acceptance, Quest Q19 refresh-draft-guard, criteria C1, C3 and C4 (owner findings on PRs #13, #19, #20, #21).
+// Refresh guard: a late draft read must not change a view that has moved on.
 //
 // KnowledgeViewer re-reads the draft after every save made in the view. That read is applied to the page
 // only if the view is still showing the draft it was started for. A read that finishes after the person
 // switched to a saved version (or another company) must change nothing: not the content, the entries, the
 // selector or the notices. Switching back to the draft shows the latest draft (it is read again).
 //
-// DECISION (what "changes nothing" means): the text of the page, the value of the version selector and the
+// What "changes nothing" means: the text of the page, the value of the version selector and the
 //   notices are compared before and after the late answer; they must be identical, and the saved version's
 //   own content must not contain what the late draft answer carried.
-// DECISION (late failures): a draft read that fails, or runs out of time, after the view moved on is ignored
+// Late failures: a draft read that fails, or runs out of time, after the view moved on is ignored
 //   too: it leaves no "Saved. Reload" notice and no blocked controls on the view that is shown afterwards.
-// DECISION (the caller): the save is committed, so an ignored read is not a failure of the save: no error
+// The caller: the save is committed, so an ignored read is not a failure of the save: no error
 //   is shown for it and nothing is sent again.
 // The same four ways of saving are tried each time (inline edit, "+ Add page", import, a people action).
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -42,7 +42,6 @@ const READ_ONLY = /read only/i;
 const ids = (view: { server: { writes: unknown[] } }) => view.server.writes.length;
 
 describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to a saved version", (driver: Driver) => {
-  // C1, C3
   it("changes nothing that is shown: content, selector and notices stay the saved version's", async () => {
     const { view, reads } = await openGuarded(driver.sectionId);
     expect(driver.shows(view), "the saved change is not shown yet").toBe(false);
@@ -70,7 +69,6 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
     expect(ids(view), "the save is not sent again").toBe(writes);
   });
 
-  // C1, C3
   it("switching back to the draft reads it again and shows the latest draft", async () => {
     const { view, reads } = await openGuarded(driver.sectionId);
     reads.holdNext();
@@ -92,7 +90,7 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
     expect(driver.ready(view), "editing is available again").toBe(true);
   });
 
-  // C1: the saved version is still loading when the late draft answer arrives
+  // The saved version is still loading when the late draft answer arrives
   it("does not put the draft's content on the page while the saved version is still loading", async () => {
     const { view, reads } = await openGuarded(driver.sectionId);
     reads.holdNext();
@@ -119,7 +117,7 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
     expect(driver.shows(view), "the saved version shows the saved version").toBe(false);
   });
 
-  // C1, C4: a late failure and a late time-out are ignored too
+  // A late failure and a late time-out are ignored too
   it.each([
     ["fails", async (reads: Awaited<ReturnType<typeof openGuarded>>["reads"]) => reads.drafts[0].fail()],
     [
@@ -152,7 +150,6 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
 });
 
 describe("a draft refresh that resolves after the company changed", () => {
-  // C1
   it("changes nothing of the other company's view", async () => {
     const other = buildDraft();
     other.company = { ...other.company, id: OTHER_COMPANY_ID, name: "Quay Street Tea" };

@@ -14,8 +14,8 @@ export async function extractAndFinish(
   signal: AbortSignal,
 ) {
   const checkpoint = { ...crawl.checkpoint };
-  // Model-era checkpoints are deliberately reparsed from immutable captures. Their
-  // completed IDs and validated candidates must never enter this source-only run.
+  // A checkpoint from another extractor version is reparsed from immutable captures; its
+  // completed IDs and validated candidates must never enter this run.
   const compatible = checkpoint.extractor_version === EXTRACTOR_VERSION;
   const completed = new Set(
     compatible
@@ -50,7 +50,7 @@ export async function extractAndFinish(
         ...c,
         page,
         // Match validateCandidates ordering so resumed evidence is byte-stable.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- candidates with an unknown observation id are dropped by the check above
         observations: c.observation_ids.map((id) => observationsById.get(id)!),
       }];
     })
@@ -60,14 +60,7 @@ export async function extractAndFinish(
       completed.delete(sourceId);
     }
   }
-  // Legacy counters and model failures are never active configuration or errors.
-  delete checkpoint.model_tokens;
-  delete checkpoint.model_successes;
-  delete checkpoint.model_failures;
-  const errors = crawl.errors.filter(
-    (error) => compatible ||
-      !["model_not_configured", "page_extraction_failed"].includes(error.code),
-  );
+  const errors = [...crawl.errors];
   let partial = errors.length > 0 || crawl.progress.limits_reached.length > 0;
   crawl.progress.stage = "extracting";
   crawl.progress.extracted = completed.size;

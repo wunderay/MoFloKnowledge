@@ -1,6 +1,6 @@
 // Guard for the interactive runtime the Site Knowledge / All sections tests drive: it must behave like a
 // browser for the ways a dialog can reasonably be built (state, effects with cleanup, refs and focus,
-// portals, document-level Escape, native <dialog>, forms, async fetches). These tests pass on the base commit.
+// portals, document-level Escape, native <dialog>, forms, async fetches).
 import { describe, expect, it } from "vitest";
 // The runtime registers its react / react-dom mocks when it is imported, so it comes before them.
 import { mountElement } from "../helpers/knowledge-view-site-all-runtime";

@@ -1,19 +1,19 @@
-// Acceptance: "Import from website" on the Site Knowledge card (Quest knowledge-view-site-and-all):
-// C3 the picker and the saves it makes through the entries API, C6 the dialog's accessibility,
-// C7 the import never sends a non-http(s) URL. The tests drive the real client components through
+// Acceptance: "Import from website" on the Site Knowledge card:
+// the picker and the saves it makes through the entries API, the dialog's accessibility,
+// and that the import never sends a non-http(s) URL. The tests drive the real client components through
 // the interactive runtime (tests/helpers/knowledge-view-site-all-runtime.tsx), click the controls,
 // and inspect (a) the markup the visitor would see and (b) the requests the UI sent to a fake
 // company API, validated against the API's own request schemas, parseBusinessEntry and validateProvenance.
 //
-// DECISION: provenance of imported links may use any origin the field registry allows for site_links
+// Provenance of imported links may use any origin the field registry allows for site_links
 //   (user_provided with actor/time/note, or source_backed); the tests require only that the sent
 //   provenance validates against the sent content, coverage included.
-// DECISION: order among the newly added links is not specified; they must come after the stored ones.
-// DECISION: reviewStatus of a revision is not constrained.
-// DECISION: the UI must not send more than 500 links; it disables or limits the selection and says so
+// Order among the newly added links is not specified; they must come after the stored ones.
+// ReviewStatus of a revision is not constrained.
+// The UI must not send more than 500 links; it disables or limits the selection and says so
 //   in text (any wording naming a limit, a maximum, "only N more" or 500).
-// DECISION: after a successful save the dialog closes and the card lists the new links.
-// DECISION: after a failed save the dialog stays open with its pages; selection need not be kept
+// After a successful save the dialog closes and the card lists the new links.
+// After a failed save the dialog stays open with its pages; selection need not be kept
 //   (the retry test re-checks whatever is unchecked).
 import { describe, expect, it, vi } from "vitest";
 import { norm } from "../helpers/knowledge-view-dom";
@@ -62,8 +62,7 @@ const full = () => ({ inventory: FULL_INVENTORY() });
 const LIMIT_MSG = /\b500\b|\bonly \d+ more\b|\blimit\b|\bmaximum\b|\bat most\b|too many|no more than/i;
 const withoutGenerated = (text: string) => text.replace(/Generated page \d+/g, "");
 
-describe("C3 the picker", () => {
-  // C3 behavioural
+describe("the picker", () => {
   it("Import from website opens a named dialog; it is closed until asked for", async () => {
     const view = await openSite(full());
     expect(view.dialogs()).toHaveLength(0);
@@ -72,7 +71,6 @@ describe("C3 the picker", () => {
     expect(view.server.gets.map((r) => r.path)).toContain(SOURCES_PATH);
   });
 
-  // C3 behavioural
   it("lists the captured pages that are not stored links yet, each by title (or URL when it has none) with its URL, and a checkbox named by that label", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);
@@ -85,7 +83,6 @@ describe("C3 the picker", () => {
     expect(boxFor(view, dialog, PAGES.untitled)!.props.checked ?? false, "nothing is pre-selected").toBe(false);
   });
 
-  // C3 behavioural
   it("leaves out pages that were not captured and pages whose URL is already a stored link", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);
@@ -97,7 +94,6 @@ describe("C3 the picker", () => {
     }
   });
 
-  // C3 behavioural
   it("Edge case: a company without any site_links entry is offered every captured page", async () => {
     const view = await openSite({ ...full(), draft: noSiteDraft() });
     const dialog = await openPicker(view);
@@ -107,7 +103,6 @@ describe("C3 the picker", () => {
     }
   });
 
-  // C3 behavioural
   it.each([
     ["no page at all", inventory([])],
     ["only pages that were not captured", inventory([PAGES.failed, PAGES.blocked, PAGES.pending, PAGES.linked])],
@@ -125,7 +120,6 @@ describe("C3 the picker", () => {
     expect(view.server.writes).toEqual([]);
   });
 
-  // C3 behavioural
   it("Add selected with nothing checked sends nothing", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);
@@ -136,7 +130,6 @@ describe("C3 the picker", () => {
     expect(view.server.writes).toEqual([]);
   });
 
-  // C3 behavioural
   it("Cancel closes the dialog and sends nothing, even with pages checked", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);
@@ -150,7 +143,6 @@ describe("C3 the picker", () => {
     void dialog;
   });
 
-  // C3 behavioural
   it("Edge case: the crawl inventory cannot be read: the error is shown and nothing can be saved", async () => {
     const view = await openSite({ ...full(), configure: (s) => { s.sourcesFailure = { status: 500, message: "The crawl inventory is unavailable." }; } });
     await view.click(importButton(view));
@@ -163,7 +155,6 @@ describe("C3 the picker", () => {
     expect(view.server.writes).toEqual([]);
   });
 
-  // C3 behavioural
   it("Edge case: a second click on Import from website does not open a second dialog", async () => {
     const view = await openSite(full());
     await openPicker(view);
@@ -176,8 +167,7 @@ describe("C3 the picker", () => {
   });
 });
 
-describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisions)", () => {
-  // C3 behavioural
+describe("saving into an existing site_links entry (POST /entries/<id>/revisions)", () => {
   it("sends one revision with expectedRevision = the current revision, the stored links first, and a new link per checked page", async () => {
     const view = await openSite(full());
     await openPicker(view);
@@ -203,7 +193,6 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
     expect(new Set(links.map((l) => l.id)).size, "unique ids").toBe(links.length);
   });
 
-  // C3 behavioural
   it("an entry that exists with no links is revised too (never created again)", async () => {
     const view = await openSite({ ...full(), draft: emptySiteDraft() });
     await openPicker(view);
@@ -215,7 +204,6 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
     expect(sent.content.links.map((l) => l.url)).toEqual([PAGES.workshops.url]);
   });
 
-  // C3 behavioural
   it("after success the dialog is closed and the card lists the stored links followed by the new ones", async () => {
     const view = await openSite(full());
     await openPicker(view);
@@ -233,7 +221,6 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
     expect(view.byRole("button", /^import from website$/i)).toHaveLength(1);
   });
 
-  // C3 behavioural
   it("importing twice: the second picker no longer offers the first import's pages, and ids stay unique", async () => {
     const view = await openSite(full());
     await openPicker(view);
@@ -253,7 +240,6 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
     expect(next.content.links.at(-1)!.url).toBe(PAGES.subscribe.url);
   });
 
-  // C3 behavioural
   it("Edge case: a title that is only blank space is replaced so the saved link still validates", async () => {
     const blank: Page = { ...PAGES.shop, title: "   " };
     const view = await openSite({ inventory: inventory([blank]) });
@@ -267,8 +253,7 @@ describe("C3 saving into an existing site_links entry (POST /entries/<id>/revisi
   });
 });
 
-describe("C3 creating the site_links entry (POST /entries)", () => {
-  // C3 behavioural
+describe("creating the site_links entry (POST /entries)", () => {
   it("with no entry yet, creates it with kind site_links and only the new links", async () => {
     const view = await openSite({ ...full(), draft: noSiteDraft() });
     await openPicker(view);
@@ -290,7 +275,6 @@ describe("C3 creating the site_links entry (POST /entries)", () => {
     }
   });
 
-  // C3 behavioural
   it("after success the card shows the new links instead of the empty state", async () => {
     const view = await openSite({ ...full(), draft: noSiteDraft() });
     await openPicker(view);
@@ -304,8 +288,7 @@ describe("C3 creating the site_links entry (POST /entries)", () => {
   });
 });
 
-describe("C3 selection, repeats and failures", () => {
-  // C3 behavioural
+describe("selection, repeats and failures", () => {
   it("Edge case: checking a page twice (on, off, on) adds it once; unchecking removes it", async () => {
     const view = await openSite(full());
     await openPicker(view);
@@ -324,7 +307,6 @@ describe("C3 selection, repeats and failures", () => {
     expect(sent.content.links.slice(LINKS.length).map((l) => l.url).sort()).toEqual([PAGES.shop.url, PAGES.workshops.url].sort());
   });
 
-  // C3 behavioural
   it("Edge case: the same URL captured twice is saved once", async () => {
     const twin: Page = { ...PAGES.shop, sourceId: PAGES.subscribe.sourceId, title: "Shop (second capture)" };
     const view = await openSite({ inventory: inventory([PAGES.shop, twin, PAGES.workshops]) });
@@ -340,7 +322,6 @@ describe("C3 selection, repeats and failures", () => {
     expect(urls).toEqual(expect.arrayContaining([PAGES.shop.url, PAGES.workshops.url]));
   });
 
-  // C3 behavioural
   it("Edge case: a double click on Add selected sends one request", async () => {
     const view = await openSite({ ...full(), configure: (s) => s.hold() });
     const dialog = await openPicker(view);
@@ -358,7 +339,6 @@ describe("C3 selection, repeats and failures", () => {
     validated(view.server.writes[0], "revise");
   });
 
-  // C3 behavioural
   it("Edge case: a double click when the entry does not exist yet creates it once", async () => {
     const view = await openSite({ ...full(), draft: noSiteDraft(), configure: (s) => s.hold() });
     const dialog = await openPicker(view);
@@ -373,7 +353,6 @@ describe("C3 selection, repeats and failures", () => {
     expect(view.server.writesTo("entries")).toHaveLength(1);
   });
 
-  // C3 behavioural
   it("Edge case: a 409 (the entry changed elsewhere) shows an error that says to reload, keeps the dialog and its pages, and does not retry", async () => {
     const view = await openSite({ ...full(), configure: (s) => { s.writeFailure = { status: 409, message: "Conflict." }; } });
     const asked = (text: string) => (text.match(/reload|refresh/gi) ?? []).length;
@@ -390,7 +369,6 @@ describe("C3 selection, repeats and failures", () => {
     }
   });
 
-  // C3 behavioural
   it("Edge case: a failed save shows the server's message, keeps the dialog, and a retry can succeed", async () => {
     const view = await openSite({ ...full(), configure: (s) => { s.writeFailure = { status: 500, message: "Sitemap storage is offline." }; } });
     await openPicker(view);
@@ -419,7 +397,6 @@ describe("C3 selection, repeats and failures", () => {
     expect(retried.content.links.slice(LINKS.length).map((l) => l.url).sort()).toEqual([PAGES.shop.url, PAGES.workshops.url].sort());
   });
 
-  // C3 behavioural
   it("Edge case: the 409 from a really stale revision (the entry moved on) is handled the same way", async () => {
     const view = await openSite({
       ...full(),
@@ -443,13 +420,12 @@ describe("C3 selection, repeats and failures", () => {
   });
 });
 
-describe("C3 the 500-link limit", () => {
+describe("the 500-link limit", () => {
   const nearlyFull = () => ({
     inventory: inventory([PAGES.shop, PAGES.subscribe, PAGES.workshops]),
     draft: siteDraft({ links: manyLinks(499) }),
   });
 
-  // C3 behavioural
   it("Edge case: with 499 links, one more page is saved (500 links), and a second is not sent", async () => {
     const view = await openSite(nearlyFull());
     await openPicker(view);
@@ -475,7 +451,6 @@ describe("C3 the 500-link limit", () => {
     }
   });
 
-  // C3 behavioural
   it("Edge case: with 499 links, exactly one page can still be imported, giving 500 links", async () => {
     const view = await openSite(nearlyFull());
     await openPicker(view);
@@ -486,7 +461,6 @@ describe("C3 the 500-link limit", () => {
     expect(sent.content.links.at(-1)!.url).toBe(PAGES.workshops.url);
   });
 
-  // C3 behavioural
   it("Edge case: with 500 links nothing can be imported, and the person is told why", async () => {
     const view = await openSite({ inventory: inventory([PAGES.shop, PAGES.subscribe]), draft: siteDraft({ links: manyLinks(500) }) });
     const button = importButton(view);
@@ -509,7 +483,7 @@ describe("C3 the 500-link limit", () => {
   });
 });
 
-describe("C7 the import never sends a non-http(s) URL", () => {
+describe("the import never sends a non-http(s) URL", () => {
   const hostilePages = (): Page[] => [
     { ...PAGES.shop, url: "javascript:alert(document.cookie)", title: "Javascript page" },
     { ...PAGES.shop, url: "data:text/html;base64,PHNjcmlwdD4=", title: "Data page" },
@@ -521,7 +495,6 @@ describe("C7 the import never sends a non-http(s) URL", () => {
     PAGES.workshops,
   ];
 
-  // C7 behavioural
   it("a captured page whose URL is not plain http(s) is not listed, and everything that is listed is saved as http(s)", async () => {
     const view = await openSite({ inventory: inventory(hostilePages()) });
     const dialog = await openPicker(view);
@@ -544,7 +517,6 @@ describe("C7 the import never sends a non-http(s) URL", () => {
     }
   });
 
-  // C7 behavioural
   it("a page title with markup is shown as text and saved verbatim", async () => {
     const view = await openSite({ inventory: inventory(hostilePages()) });
     const dialog = await openPicker(view);
@@ -559,8 +531,7 @@ describe("C7 the import never sends a non-http(s) URL", () => {
   });
 });
 
-describe("C6 the dialog is keyboard operable", () => {
-  // C6 behavioural
+describe("the dialog is keyboard operable", () => {
   it("is a modal dialog: a native <dialog> or role=dialog with aria-modal", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);
@@ -569,14 +540,12 @@ describe("C6 the dialog is keyboard operable", () => {
     expect(view.nameOf(dialog)).not.toBe("");
   });
 
-  // C6 behavioural
   it("moves focus into the dialog when it opens", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);
     expect(view.focusMovedInto(dialog), "autoFocus, a focus() call inside the dialog, or showModal() on a native dialog").toBe(true);
   });
 
-  // C6 behavioural
   it("Escape closes the dialog without saving", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);
@@ -587,7 +556,6 @@ describe("C6 the dialog is keyboard operable", () => {
     expect(view.server.writes).toEqual([]);
   });
 
-  // C6 behavioural
   it("Cancel and Add selected are buttons in the dialog, and nothing clickable in it is out of reach of the keyboard", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);
@@ -605,7 +573,6 @@ describe("C6 the dialog is keyboard operable", () => {
     }
   });
 
-  // C6 behavioural
   it("every checkbox is named by its page's title (or URL) and the names are distinct", async () => {
     const view = await openSite(full());
     const dialog = await openPicker(view);

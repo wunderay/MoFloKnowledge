@@ -1,6 +1,6 @@
 # MoFlo Cloud interface
 
-The application uses the owner's MoFlo Cloud screenshots as its visual reference: a compact header, a narrow icon navigation rail, blue accents, a light gray canvas, and white cards with rounded borders. The existing company knowledge, evidence and export functions remain the source of truth.
+The application uses the MoFlo Cloud screenshots as its visual reference: a compact header, a narrow icon navigation rail, blue accents, a light gray canvas, and white cards with rounded borders. The existing company knowledge, evidence and export functions remain the source of truth.
 
 ## Figma references
 
@@ -9,7 +9,7 @@ The following frames were read through the Figma connector:
 - [Cloud workspace and company cards, frame 24:2697](https://www.figma.com/design/QwMAzEWQTK8nSiFjojBfQS/MoFlo?node-id=24-2697) documents the signed-in workspace, navigation, General Info, brand presentation and observed typography. It specifies Poppins for the application, a 30px / 37.5px company title at weight 600, and uppercase 14px / 20px card headings at weight 600.
 - [Public Knowledge page audit, frame 7:300](https://www.figma.com/design/QwMAzEWQTK8nSiFjojBfQS/MoFlo?node-id=7-300) records the public marketing page's section layout and evidence. It describes a different page from the authenticated workspace.
 
-These are design audit boards. Their Inter annotation typography and decorative board backgrounds are not application components. The owner's screenshots provide the application layout reference; the workspace audit supplies the documented typography and component observations. Poppins is served locally, while the existing Noto Sans files remain available to document exports.
+These are design audit boards. Their Inter annotation typography and decorative board backgrounds are not application components. The screenshots provide the application layout reference; the workspace audit supplies the documented typography and component observations. Poppins is served locally, while the existing Noto Sans files remain available to document exports.
 
 ## Navigation and page layout
 
@@ -37,6 +37,12 @@ These are design audit boards. Their Inter annotation typography and decorative 
 - "Import from website" appears beside "+ Add page" only in an editable draft (not in a saved version, for a viewer, or for an archived company). It opens a modal dialog that lists the latest crawl's captured pages that are plain http(s) addresses without credentials and are not already stored links, each as a checkbox labelled with the page title (or its address) and showing the address. "Add selected" saves the checked pages after the stored links, one new link each (fresh id, the page title or address as title, no note), as a new entry when none exists or as the next revision of the existing one, with the same request shapes and provenance handling as the editor; the dialog then closes and the card shows the new links. Nothing is sent when nothing is checked or on Cancel or Escape, a second click while saving is ignored, a failed save shows the server's message and keeps the dialog, and a 409 asks the person to reload. A list never grows beyond 500 links: the picker stops accepting checks at the limit and says "Only N more pages can be added (maximum 500 links)."
 - All sections stacks the seven sections (including Key People) in listbox order, each under a visible heading (Business Offerings and Key People keep their own headings with their counts), with the same cards as the section alone and a single "Import from website" control.
 - The version selector, company switcher, display modes (Profile, Cards, Table, Detail, Json), document export, JSON download and "Open current draft" sit in a slim toolbar above the card. Profile is the reference layout; the other modes keep their search and filter row. In a draft, a collapsed "Review draft entries" list under the tip bar offers Edit draft, History and Remove from future versions for every entry.
+
+## Document export
+
+Word and PDF produce a formatted company profile: a centered title, blue section headings, short factual bullets, grouped address and contact details, complete business information, named people and offerings, and meaningful lists. Exact narrative already present in the overview is shown once, narratives split at clear sentence boundaries, and recognized company statements use fixed neutral fact labels; modalities, conditions and qualifications stay intact. Observed colors appear in a horizontal palette with hex labels. Small superscript citation numbers link to numbered end references. All populated business fields are kept, with compact coverage and unknown notes; viewer filters and collapsed previews do not limit the document.
+
+A draft export reads saved revisions, so save editor changes first; a saved-version export uses only that immutable snapshot. JSON is the complete saved draft or the exact canonical snapshot, including claims, exact supporting quotes and technical provenance. Documents are created on the server without AI, external conversion services or full captured page bodies. PDFs embed a `knowledge.json` attachment with the exact original data; characters missing from the bundled font appear as `[U+XXXX]` in PDF text. The bundled PDF fonts, their sources and checksums are listed in [public/fonts/README.md](../public/fonts/README.md).
 
 ## Scope
 

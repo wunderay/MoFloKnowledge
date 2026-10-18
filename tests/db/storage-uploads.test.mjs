@@ -1,4 +1,4 @@
-// Acceptance tests for Quest Q6 "storage-uploads", criterion C7 (bucket + policies) and the database side of C4/C5/C6
+// The storage bucket and its policies, and the database side of serving and deleting uploads
 // (tenant isolation, write roles, archived company). Needs a disposable PostgreSQL (see scripts/test-db.mjs):
 //   TEST_DATABASE_URL=postgres://.../anything_test node --test tests/db/storage-uploads.test.mjs
 // Without TEST_DATABASE_URL this file reports NOT_RUN (it never passes silently).
@@ -7,7 +7,7 @@
 // `storage` schema (buckets, objects with path_tokens, foldername/filename/extension, RLS switched on, Supabase-style
 // broad grants). What this proves: the migration's bucket row and storage.objects policies, evaluated by PostgreSQL
 // row level security for the `authenticated` and `anon` roles. What it cannot prove: that the real Storage API,
-// which sets owner/owner_id/metadata itself and authenticates by JWT, hits these same policies (see the hand-back).
+// which sets owner/owner_id/metadata itself and authenticates by JWT, hits these same policies.
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -53,7 +53,7 @@ before(async()=>{
 });
 after(async()=>{for(const c of sessions)await c.end();if(administrator){await administrator.query(`DROP DATABASE "${database}"`);await administrator.end();}});
 
-test('C7: a new migration provisions the private knowledge-assets bucket',async t=>{
+test('a new migration provisions the private knowledge-assets bucket',async t=>{
  await t.test('the migration set grew beyond 0017 and one new file names the bucket',async()=>{
   const files=(await readdir(new URL('../../supabase/migrations/',import.meta.url))).filter(x=>x.endsWith('.sql'));
   const added=files.filter(f=>Number(f.split('_')[0])>17);
@@ -67,7 +67,7 @@ test('C7: a new migration provisions the private knowledge-assets bucket',async 
   assert.equal(rows[0].id,BUCKET);assert.equal(rows[0].name,BUCKET);
   assert.equal(rows[0].public,false,'the bucket must be private: no public bucket URL');
  });
- await t.test('bucket-level limits, if any, are never looser than the criteria',async()=>{
+ await t.test('bucket-level limits, if any, are never looser than the application limits',async()=>{
   const {rows}=await admin.query('SELECT file_size_limit,allowed_mime_types FROM storage.buckets WHERE id=$1',[BUCKET]);
   assert.equal(rows.length,1,'the bucket row must exist');
   if(rows[0].file_size_limit!==null)assert.ok(Number(rows[0].file_size_limit)<=10*1024*1024,'file_size_limit must be at most 10 MiB');
@@ -83,7 +83,7 @@ test('C7: a new migration provisions the private knowledge-assets bucket',async 
  });
 });
 
-test('C4/C6/C7: reads follow company membership through the second path segment',async t=>{
+test('reads follow company membership through the second path segment',async t=>{
  await bucketReady();
  const user=await connect('authenticated',owner),ed=await connect('authenticated',editor),view=await connect('authenticated',viewer),stranger=await connect('authenticated',outsider),other=await connect('authenticated',rival),anon=await connect('anon');
  const mine={logos:await seed(file('logos',A)),portraits:await seed(file('portraits',A)),offering:await seed(file('offering-images',A))};
@@ -129,7 +129,7 @@ test('C4/C6/C7: reads follow company membership through the second path segment'
  });
 });
 
-test('C6/C7: writes need an owner or editor of the company in the path',async t=>{
+test('writes need an owner or editor of the company in the path',async t=>{
  await bucketReady();
  const user=await connect('authenticated',owner),ed=await connect('authenticated',editor),view=await connect('authenticated',viewer),stranger=await connect('authenticated',outsider),other=await connect('authenticated',rival),anon=await connect('anon');
  await t.test('owner and editor can add objects for their company; viewer, outsider and anon cannot',async()=>{
@@ -170,7 +170,7 @@ test('C6/C7: writes need an owner or editor of the company in the path',async t=
  });
 });
 
-test('C6/C7: revoking membership or archiving the company takes effect immediately',async t=>{
+test('revoking membership or archiving the company takes effect immediately',async t=>{
  await bucketReady();
  const ed=await connect('authenticated',editor),gone=await connect('authenticated',removed),user=await connect('authenticated',owner),view=await connect('authenticated',viewer);
  await t.test('removing a member ends their read and write access to the company folder',async()=>{
@@ -196,9 +196,9 @@ test('C6/C7: revoking membership or archiving the company takes effect immediate
  });
 });
 
-test('C7: the optional uploads metadata table, if the design adds one, is tenant-isolated',async t=>{
+test('the optional uploads metadata table, if the design adds one, is tenant-isolated',async t=>{
  const exists=(await admin.query("SELECT to_regclass('public.uploads') AS t")).rows[0].t;
- if(!exists){t.diagnostic('DECISION: design keeps no public.uploads table; metadata lives in storage.objects');return;}
+ if(!exists){t.diagnostic('design keeps no public.uploads table; metadata lives in storage.objects');return;}
  const user=await connect('authenticated',owner),view=await connect('authenticated',viewer),stranger=await connect('authenticated',outsider),other=await connect('authenticated',rival),anon=await connect('anon');
  await t.test('columns include id, company_id, kind, path, content_type, size_bytes, created_by, created_at',async()=>{
   const cols=(await admin.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='uploads'")).rows.map(r=>r.column_name);

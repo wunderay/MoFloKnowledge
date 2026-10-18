@@ -1,4 +1,4 @@
-// Helpers for the inline-editing acceptance tests (Quest Q7 inline-edit-core).
+// Helpers for the inline-editing acceptance tests.
 //
 // Everything here works on public output only: the roles and accessible names of the rendered
 // elements, the events a browser would deliver (typing, keys, blur, click), and the HTTP requests the

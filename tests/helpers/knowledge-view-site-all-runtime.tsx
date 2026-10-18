@@ -1,4 +1,4 @@
-// A small interactive runtime for /knowledge/view, for the Site Knowledge / All sections Quest.
+// A small interactive runtime for /knowledge/view, for the Site Knowledge / All sections tests.
 //
 // The repository has no DOM environment (vitest runs in node; there is no jsdom, happy-dom or
 // testing-library). The older view helpers therefore render to static markup, which cannot show
@@ -86,13 +86,11 @@ vi.mock("@/server/read-model", () => ({
   readDraft: async () => structuredClone(shared.server!.draft),
 }));
 vi.mock("@/server/snapshots", async () => {
-  // The real reader upgrades a snapshot saved before `site_links` existed, then validates it.
-  const { upgradeLegacySnapshot } = await import("../../src/knowledge/legacy-snapshot");
   const { KnowledgeBaseExportSchema } = await import("../../src/contracts");
   return {
     readVersionSummaries: async () => shared.server!.versions,
     readSnapshot: async () => ({
-      payload: KnowledgeBaseExportSchema.parse(upgradeLegacySnapshot(structuredClone(shared.server!.snapshot))),
+      payload: KnowledgeBaseExportSchema.parse(structuredClone(shared.server!.snapshot)),
     }),
   };
 });

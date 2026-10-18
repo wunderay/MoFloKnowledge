@@ -1,4 +1,4 @@
-// Quest Q19 follow-up: a superseded draft read is aborted when it is superseded, and a Reload that never
+// A superseded draft read is aborted when it is superseded, and a Reload that never
 // answers is bounded by timing.reload (its button comes back with the failure message).
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { timing } from "../../src/components/knowledge-view/timing";

@@ -1,11 +1,10 @@
-// Acceptance: "All sections" of /knowledge/view (Quest knowledge-view-site-and-all, C5; C3/C4 from the
-// All view). Selecting "All sections" renders every section in selector order, each under a visible
+// Acceptance: "All sections" of /knowledge/view. Selecting "All sections" renders every section in selector order, each under a visible
 // section heading, with the same cards and values as the section on its own, for a draft and for a
 // saved snapshot; no two elements share an id and the import control appears once.
 //
-// DECISION: a section heading is a heading whose text is the selector's label (a count may follow it,
+// A section heading is a heading whose text is the selector's label (a count may follow it,
 //   as "Business Offerings 4" does today); headings hidden with sr-only classes do not count.
-// DECISION: "the same content as the individual section" is compared as the normalized text of the
+// "the same content as the individual section" is compared as the normalized text of the
 //   section's banner and cards (and the offerings list and detail, and the Site Knowledge card), with
 //   the draft-only "Import from website" label removed.
 import { describe, expect, it, vi } from "vitest";
@@ -47,7 +46,6 @@ import {
   LINKS,
   buildSiteEvidence,
   emptySiteDraft,
-  legacySnapshot,
   noSiteDraft,
   siteAddHref,
   siteDraft,
@@ -140,15 +138,13 @@ const sectionOfKey = (key: string) => Object.keys(INDIVIDUAL).find((s) => key.st
 const addPageButtons = (page: Page, el: Parameters<typeof addPageLinks>[1]) =>
   page.$(el as never).find("button").toArray().filter((b) => /^\+\s*add page$/i.test(norm(page.$(b).text())));
 
-describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: Source) => {
-  // C5 behavioural
+describe.each(["draft", "snapshot"] as const)("All sections (%s)", (source: Source) => {
   it("is selected by the selector and no longer shows the placeholder notice", async () => {
     const page = (await sources[source]("All sections")).page();
     expect(selectedSection(page)).toEqual(["All sections"]);
     expect(norm(page.$.root().text())).not.toMatch(/is not shown in this view yet/i);
   });
 
-  // C5 behavioural
   it("renders a visible heading for every section, in selector order", async () => {
     const page = (await sources[source]("All sections")).page();
     const selectorLabels = selectorItems(page).map((i) => i.label).filter((l) => l !== "All sections");
@@ -164,7 +160,6 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
     expect(new Set(positions).size).toBe(ALL_ORDER.length);
   });
 
-  // C5 behavioural
   it("each section's content lies under its own heading, before the next section's", async () => {
     const page = (await sources[source]("All sections")).page();
     const index = orderIndex(page);
@@ -192,7 +187,6 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
     });
   });
 
-  // C5 behavioural
   it("shows the same banners, cards and values as each section on its own", async () => {
     const all = signature((await sources[source]("All sections")).page());
     for (const [key, value] of Object.entries(all)) {
@@ -207,7 +201,6 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
     }
   });
 
-  // C5 behavioural
   it("no two elements share an id", async () => {
     const draft = buildSiteEvidence().draft;
     const page = (source === "draft" ? await openView({ section: "All sections", draft }) : await openView({ section: "All sections", snapshot: buildSiteEvidence().snapshot() })).page();
@@ -219,7 +212,6 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
     expect(duplicateIds(page)).toEqual([]);
   });
 
-  // C5 behavioural
   it("contains the Site Knowledge card with its links and \"+ Add page\" (a link to the editor; a button on an editable draft)", async () => {
     const page = (await sources[source]("All sections")).page();
     const siteEl = siteCard(page);
@@ -237,11 +229,10 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
   });
 });
 
-describe("C5 All sections, draft and snapshot agree", () => {
-  // C5 behavioural
+describe("All sections, draft and snapshot agree", () => {
   it("a snapshot shows the same sections as the draft it was made from", async () => {
     const fx = buildSiteEvidence();
-    // An owner's draft edits three of the sections in place (Quest inline-edit-core), which a snapshot cannot; a viewer's draft reads like one.
+    // An owner's draft edits three of the sections in place, which a snapshot cannot; a viewer's draft reads like one.
     const readOnlyDraft = { ...fx.draft, company: { ...fx.draft.company, role: "viewer" as const } };
     const fromDraft = signature((await openView({ section: "All sections", draft: readOnlyDraft })).page());
     const fromSnapshot = signature((await openView({ section: "All sections", snapshot: fx.snapshot() })).page());
@@ -249,7 +240,6 @@ describe("C5 All sections, draft and snapshot agree", () => {
     expect(fromSnapshot).toEqual(fromDraft);
   });
 
-  // C5 behavioural
   it("Edge case: a company with no entries still shows every section heading, the Site Knowledge empty state and no crash", async () => {
     const draft = buildEmptyDraft();
     const page = (await openView({ section: "All sections", draft })).page();
@@ -264,17 +254,6 @@ describe("C5 All sections, draft and snapshot agree", () => {
     expect(addPageButtons(page, siteEl), 'one "+ Add page" button').toHaveLength(1);
   });
 
-  // C5 behavioural
-  it("Edge case: a snapshot saved before site_links existed shows every section and an empty Site Knowledge card", async () => {
-    const page = (await openView({ section: "All sections", snapshot: legacySnapshot() })).page();
-    for (const label of ALL_ORDER) {
-      expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
-    }
-    expect(siteCardText(page, siteCard(page)!)).toMatch(/no (internal )?(links|pages)/i);
-    expect(importControls(page)).toHaveLength(0);
-  });
-
-  // C5 behavioural
   it("Edge case: a company with no offerings, no links and no brand data renders all six sections", async () => {
     const business = buildBusiness();
     business.offerings = [];
@@ -289,8 +268,7 @@ describe("C5 All sections, draft and snapshot agree", () => {
   });
 });
 
-describe("C3/C4 the import control in All sections", () => {
-  // C5 behavioural
+describe("the import control in All sections", () => {
   it.each([
     ["links", siteDraft()],
     ["no links", emptySiteDraft()],
@@ -302,7 +280,6 @@ describe("C3/C4 the import control in All sections", () => {
     expect(view.dialogs()).toHaveLength(0);
   });
 
-  // C4 behavioural
   it.each([
     ["a saved snapshot", () => sources.snapshot("All sections")],
     ["a viewer", () => sources.draft("All sections", siteDraft({ role: "viewer" }))],
@@ -313,7 +290,6 @@ describe("C3/C4 the import control in All sections", () => {
     expect(siteCard(view.page()), "the Site Knowledge card is still shown").not.toBeNull();
   });
 
-  // C3 behavioural
   it("the import works from All sections: one dialog, one save, and the new links appear in the Site Knowledge card", async () => {
     const view: View = await openView({
       section: "All sections",
@@ -335,8 +311,7 @@ describe("C3/C4 the import control in All sections", () => {
   });
 });
 
-describe("C5 the individual sections are unchanged", () => {
-  // C5 non-regression
+describe("the individual sections are unchanged", () => {
   it("each individual section is selected alone, General Info without the Site Knowledge card", async () => {
     for (const label of SIX) {
       expect(selectedSection((await sources.draft(label)).page())).toEqual([label]);

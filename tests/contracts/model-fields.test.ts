@@ -1,25 +1,21 @@
-// Acceptance tests for Quest Q5 "model-fields": company_foundation.revenue, online_presence.phone,
+// Company_foundation.revenue, online_presence.phone,
 // key_person.age / nationality / portrait and offering.images.
-// Written from the acceptance criteria alone. Criteria covered here: C1, C2, C3, C4 (schemas and defaults),
-// C5 (contract sources and migration files), C6 (field registry). Export/provenance/coverage-cap/legacy/document tests
-// live in tests/knowledge, tests/server and tests/db (see the other model-fields-* files).
+// Covered here: schemas and defaults, contract sources and migration files, field registry. Export/provenance/
+// coverage-cap/legacy/document tests live in tests/knowledge, tests/server and tests/db (see the other model-fields-* files).
 //
-// Every new field reaches the code under test through plain object spreads and casts, so the base commit fails on
-// assertions ("valid control must be accepted"), never on import or type errors.
-//
-// DECISIONS (each also reported to the coordinator):
-//  D1 phone: the validated/stored form is exactly 10 ASCII digits ("exactly 10 digits after stripping punctuation/spaces
+// Notes:
+//  - Phone: the validated/stored form is exactly 10 ASCII digits ("exactly 10 digits after stripping punctuation/spaces
 //     (store the 10 digits)"). Punctuated input such as "(555) 010-0199" is either rejected or normalised to the 10 digits;
 //     it is never stored punctuated. An 11-digit number (e.g. a +1 / leading-1 prefix) is REJECTED, not stripped: it has
 //     eleven digits, not "exactly 10".
-//  D2 a display formatter is NOT locked as a public helper; the formatted display "(555) 010-0199" is locked through the
-//     document export (C8) only.
-//  D3 content_type must agree with the path extension (png->image/png, jpg|jpeg->image/jpeg, gif->image/gif,
+//  - A display formatter is not a public helper; the formatted display "(555) 010-0199" is checked through the
+//     document export only.
+//  - content_type must agree with the path extension (png->image/png, jpg|jpeg->image/jpeg, gif->image/gif,
 //     webp->image/webp, svg->image/svg+xml); a mismatch is rejected.
-//  D4 the company segment of a path is a UUID in the pure per-entry schema (it cannot know the company); equality with the
-//     owning company is locked where the company is known (database functions, snapshot export).
-//  D5 whether parseBusinessEntry itself accepts content that omits the new keys is deliberately not locked here; what is
-//     locked (D7) is that entry revisions saved before 0018, which omit them, still read as defaults (draft endpoint, snapshot
+//  - The company segment of a path is a UUID in the pure per-entry schema (it cannot know the company); equality with the
+//     owning company is checked where the company is known (database functions, snapshot export).
+//  - Whether parseBusinessEntry itself accepts content that omits the new keys is deliberately not tested here; what is
+//     tested is that entry revisions saved before 0018, which omit them, still read as defaults (draft endpoint, snapshot
 //     assembly, database publication) - see model-fields-legacy-drafts, model-fields-snapshot-export and tests/db.
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
@@ -77,7 +73,7 @@ function rejectsOnlyBecauseOfVariant(kind: EntryKind, valid: unknown, variant: u
   expect(parses(kind, variant), `${label} must be rejected`).toBe(false);
 }
 
-describe("C1 [behavioural] company_foundation.revenue: nullable non-blank text, default null", () => {
+describe("company_foundation.revenue: nullable non-blank text, default null", () => {
   it("defaults to null in the empty business and in the entry default", () => {
     expect(createEmptyBusiness().company_foundation).toHaveProperty("revenue", null);
     expect(createEntryDefault("company_foundation")).toHaveProperty("revenue", null);
@@ -108,7 +104,7 @@ describe("C1 [behavioural] company_foundation.revenue: nullable non-blank text, 
   });
 });
 
-describe("C2 [behavioural] online_presence.phone: nullable, exactly 10 digits, stored as the 10 digits", () => {
+describe("online_presence.phone: nullable, exactly 10 digits, stored as the 10 digits", () => {
   it("defaults to null in the empty business and in the entry default", () => {
     expect(createEmptyBusiness().online_presence).toHaveProperty("phone", null);
     expect(createEntryDefault("online_presence")).toHaveProperty("phone", null);
@@ -129,7 +125,7 @@ describe("C2 [behavioural] online_presence.phone: nullable, exactly 10 digits, s
     }
   });
 
-  it("Edge case (DECISION D1): an 11-digit number starting with 1 / a +1 country prefix is rejected, not stripped", () => {
+  it("Edge case: an 11-digit number starting with 1 / a +1 country prefix is rejected, not stripped", () => {
     // Spec: "exactly 10 digits after stripping punctuation/spaces". "+1 (555) 010-0199" leaves ELEVEN digits.
     const valid = online({ phone: "5550100199" });
     for (const phone of ["15550100199", "+15550100199", "+1 555 010 0199", "+1 (555) 010-0199", "1-555-010-0199", "1 (555) 010-0199", "001 555 010 0199"]) {
@@ -158,7 +154,7 @@ describe("C2 [behavioural] online_presence.phone: nullable, exactly 10 digits, s
     }
   });
 
-  it("Edge case (DECISION D1): punctuated input is rejected or normalised to the 10 digits, never stored punctuated", () => {
+  it("Edge case: punctuated input is rejected or normalised to the 10 digits, never stored punctuated", () => {
     expect(parses("online_presence", online({ phone: "5550100199" })), "valid control must be accepted").toBe(true);
     for (const phone of ["(555) 010-0199", "555-010-0199", "555.010.0199", "555 010 0199", " 5550100199", "5550100199 ", "5550100199\n"]) {
       const result = parsedOrUndefined("online_presence", online({ phone }));
@@ -173,7 +169,7 @@ describe("C2 [behavioural] online_presence.phone: nullable, exactly 10 digits, s
   });
 });
 
-describe("C3 [behavioural] key_person.age: nullable integer 0-150; nationality: nullable non-blank text", () => {
+describe("key_person.age: nullable integer 0-150; nationality: nullable non-blank text", () => {
   it("both default to null in the entry default", () => {
     expect(createEntryDefault("key_person", uid(1))).toMatchObject({ age: null, nationality: null });
   });
@@ -253,7 +249,7 @@ const placements = [
 ];
 const TYPE_BY_EXTENSION: [string, string][] = [["png", "image/png"], ["jpg", "image/jpeg"], ["jpeg", "image/jpeg"], ["gif", "image/gif"], ["webp", "image/webp"], ["svg", "image/svg+xml"]];
 
-describe.each(placements)("C4 [behavioural] storage reference shape at $label", ({ kind, folder, put }) => {
+describe.each(placements)("storage reference shape at $label", ({ kind, folder, put }) => {
   const valid = () => put(ref(folder));
   const reject = (variant: unknown, label: string) => rejectsOnlyBecauseOfVariant(kind, valid(), put(variant), label);
 
@@ -319,14 +315,14 @@ describe.each(placements)("C4 [behavioural] storage reference shape at $label", 
     reject(without(ref(folder), "path"), "missing path");
   });
 
-  it("Edge case (DECISION D3): content type must be one of the five image types", () => {
+  it("Edge case: content type must be one of the five image types", () => {
     for (const contentType of ["image/bmp", "image/tiff", "image/x-icon", "image/jpg", "image/avif", "image/svg", "text/html", "text/plain", "application/pdf", "application/octet-stream", "IMAGE/PNG", "image/png; charset=binary", "image/png ", "", " ", null, 5, {}, ["image/png"]]) {
       reject(ref(folder, { content_type: contentType }), JSON.stringify(contentType));
     }
     reject(without(ref(folder), "content_type"), "missing content_type");
   });
 
-  it("Edge case (DECISION D3): content type that disagrees with the extension is rejected", () => {
+  it("Edge case: content type that disagrees with the extension is rejected", () => {
     for (const [ext, type] of [["png", "image/jpeg"], ["jpg", "image/png"], ["jpeg", "image/webp"], ["gif", "image/png"], ["webp", "image/gif"], ["svg", "image/png"], ["png", "image/svg+xml"], ["jpg", "image/svg+xml"]]) {
       reject(ref(folder, { path: path(folder, ext), content_type: type }), `${ext} + ${type}`);
     }
@@ -362,7 +358,7 @@ describe.each(placements)("C4 [behavioural] storage reference shape at $label", 
   });
 });
 
-describe("C4 [behavioural] key_person.portrait and offering.images containers", () => {
+describe("key_person.portrait and offering.images containers", () => {
   it("portrait defaults to null and accepts null; images default to a fresh empty list", () => {
     expect(createEntryDefault("key_person", uid(1))).toHaveProperty("portrait", null);
     const first = createEntryDefault("offering", uid(2)) as unknown as { images: unknown[] };
@@ -427,7 +423,7 @@ describe("C4 [behavioural] key_person.portrait and offering.images containers", 
     expect(BusinessSchema.safeParse(badImages).success).toBe(false);
   });
 
-  it("[non-regression] branding logos keep their existing `url` field and gain no storage reference", () => {
+  it("branding logos keep their existing `url` field and gain no storage reference", () => {
     const logo = { id: uid(30), url: "https://acme.example/logo.svg", variant: null, kind: "company_logo" };
     const branding = base("branding_and_style");
     expect(parses("branding_and_style", { ...branding, logos: [logo] })).toBe(true);
@@ -436,7 +432,7 @@ describe("C4 [behavioural] key_person.portrait and offering.images containers", 
   });
 });
 
-describe("C6 [behavioural] field registry knows every new field", () => {
+describe("field registry knows every new field", () => {
   const NEW: { path: string; kind: string; field: string; default: unknown }[] = [
     { path: "/company_foundation/revenue", kind: "company_foundation", field: "revenue", default: null },
     { path: "/online_presence/phone", kind: "online_presence", field: "phone", default: null },
@@ -465,7 +461,7 @@ describe("C6 [behavioural] field registry knows every new field", () => {
     expect(new Set(FIELD_REGISTRY.map((item) => item.path)).size).toBe(48);
   });
 
-  it("[non-regression guard] registry fields and entry defaults describe the same keys for every kind (nothing unregistered, nothing phantom)", () => {
+  it("registry fields and entry defaults describe the same keys for every kind (nothing unregistered, nothing phantom)", () => {
     const kinds = [...new Set(FIELD_REGISTRY.map((item) => item.kind))];
     expect(kinds.sort()).toEqual(["branding_and_style", "company_foundation", "key_person", "market_and_customers", "offering", "online_presence", "positioning", "site_links"]);
     for (const kind of kinds) {
@@ -475,7 +471,7 @@ describe("C6 [behavioural] field registry knows every new field", () => {
     }
   });
 
-  it("[non-regression guard] every registry default equals the matching entry default", () => {
+  it("every registry default equals the matching entry default", () => {
     for (const field of FIELD_REGISTRY) {
       const defaults = createEntryDefault(field.kind, uid(41)) as unknown as Json;
       expect(defaults[field.field], field.path).toEqual(field.default);
@@ -524,11 +520,11 @@ describe("C6 [behavioural] field registry knows every new field", () => {
   });
 });
 
-describe("C5 contract sources and migration files for the SQL contract", () => {
+describe("contract sources and migration files for the SQL contract", () => {
   const migrations = readdirSync(resolve(root, "supabase/migrations")).filter((name) => name.endsWith(".sql")).sort();
   const schemas = () => JSON.parse(read("src/contracts/json-schemas.json")) as Record<string, any>;
 
-  it("[behavioural] json-schemas.json knows every new field (the structural boundary used by SQL)", () => {
+  it("json-schemas.json knows every new field (the structural boundary used by SQL)", () => {
     const all = schemas();
     expect(Object.keys(all.company_foundation.properties)).toContain("revenue");
     expect(Object.keys(all.online_presence.properties)).toContain("phone");
@@ -544,7 +540,7 @@ describe("C5 contract sources and migration files for the SQL contract", () => {
     expect(Object.keys(exported.offerings.items.properties)).toContain("images");
   });
 
-  it("[behavioural] defaults.json and field-registry.json carry the new fields and defaults", () => {
+  it("defaults.json and field-registry.json carry the new fields and defaults", () => {
     const defaults = JSON.parse(read("src/contracts/defaults.json"));
     expect(defaults.company_foundation).toHaveProperty("revenue", null);
     expect(defaults.online_presence).toHaveProperty("phone", null);
@@ -554,17 +550,17 @@ describe("C5 contract sources and migration files for the SQL contract", () => {
     }
   });
 
-  it("[behavioural] a NEW migration exists (0018, or 0019 when Q6's 0018_knowledge_assets_storage.sql is present), holds the generated contract block and names the new fields", () => {
-    // Q6 (storage uploads) owns 0018_knowledge_assets_storage.sql when it has landed; Q5 then takes the next free number.
+  it("a NEW migration exists (0018, or 0019 when 0018_knowledge_assets_storage.sql is present), holds the generated contract block and names the new fields", () => {
+    // The storage uploads migration owns 0018_knowledge_assets_storage.sql when present; the model-fields migration then takes the next free number.
     const q6 = "0018_knowledge_assets_storage.sql";
-    // Later Quests add their own migrations (0020 archives entries); only the two numbers this Quest could take count here.
+    // Later migrations (0020 archives entries) are ignored; only the two numbers this migration could take count here.
     const added = migrations.filter((name) => {
       const number = Number.parseInt(name.split("_")[0], 10);
       return number >= 18 && number <= 19 && name !== q6;
     });
-    expect(added.length, "exactly one Q5 migration numbered above the migrations that came before it").toBe(1);
+    expect(added.length, "exactly one model-fields migration numbered above the migrations that came before it").toBe(1);
     const expected = migrations.includes(q6) ? "0019_" : "0018_";
-    expect(added[0].startsWith(expected), `Q5's migration is the first free number ${expected.slice(0, 4)} (found ${added[0]})`).toBe(true);
+    expect(added[0].startsWith(expected), `the model-fields migration is the first free number ${expected.slice(0, 4)} (found ${added[0]})`).toBe(true);
     const text = read(`supabase/migrations/${added[0]}`);
     expect(text).toContain("-- BEGIN GENERATED CONTRACT (scripts/generate-sql-contract.mjs; do not edit)");
     expect(text).toContain("-- END GENERATED CONTRACT");
@@ -573,7 +569,7 @@ describe("C5 contract sources and migration files for the SQL contract", () => {
     }
   });
 
-  it("[non-regression guard] migrations 0001-0017 are byte-identical (applied migrations are never edited)", () => {
+  it("migrations 0001-0017 are byte-identical (applied migrations are never edited)", () => {
     const frozen: Record<string, string> = {
       "0001_baseline.sql": "e6deb46ce4ff470789ce93c323730be4b27a0212eb196b78f5c43b6e91b953d6",
       "0002_security.sql": "ca2db420b30c92744ae89966789f17c5ffed741b64a931993fbbb7143609bbc6",
@@ -599,7 +595,7 @@ describe("C5 contract sources and migration files for the SQL contract", () => {
     }
   });
 
-  it("[non-regression -> must stay green] node scripts/generate-sql-contract.mjs --check passes", () => {
+  it("node scripts/generate-sql-contract.mjs --check passes", () => {
     const result = spawnSync(process.execPath, ["scripts/generate-sql-contract.mjs", "--check"], { cwd: root, encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
   });

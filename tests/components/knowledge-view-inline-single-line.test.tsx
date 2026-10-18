@@ -1,4 +1,4 @@
-// Acceptance, Quest Q7 inline-edit-core, C1: single-line fields of /knowledge/view edit in place.
+// Single-line fields of /knowledge/view edit in place.
 //
 // Public contract (roles, names, requests; no class names, no structure):
 //  - an editable draft shows the value as a button named "Edit <Field>" with title="Click to edit" and a pencil
@@ -8,8 +8,8 @@
 //  - while the request runs a role=status element says "Saving…"; afterwards role=status says "✓ Saved".
 //  - fields: Legal entity (General Info), Industry (Customers & Industry); Founded and Employees are in the
 //    validation file because they have contract rules of their own.
-// DECISION: emptying a field and saving it stores null (the contract's "no value"); it is not an error.
-// DECISION: the value is trimmed before it is compared and saved.
+// Emptying a field and saving it stores null (the contract's "no value"); it is not an error.
+// The value is trimmed before it is compared and saved.
 import { describe, expect, it, vi } from "vitest";
 import {
   INDUSTRY,
@@ -42,7 +42,7 @@ import { buildBusiness } from "../helpers/knowledge-view-fixtures";
 
 vi.setConfig({ testTimeout: 60_000 });
 
-describe.each(SINGLE_FIELDS)("C1 single-line field: $label", (field) => {
+describe.each(SINGLE_FIELDS)("single-line field: $label", (field) => {
   const original = () => String(buildBusiness().company_foundation[field.path[0] as "industry" | "legal_entity_type"]);
 
   it("shows the value as a button named 'Edit <Field>' with title 'Click to edit' and a pencil, and no text field", async () => {
@@ -194,7 +194,7 @@ describe.each(SINGLE_FIELDS)("C1 single-line field: $label", (field) => {
 
 const getValue = (content: any, path: string[]) => path.reduce((v, k) => v?.[k], content);
 
-describe("C1 single-line fields are independent", () => {
+describe("single-line fields are independent", () => {
   it("editing Legal entity leaves the other values of the section as they were", async () => {
     const view = await open(LEGAL.section);
     const before = stored(view, LEGAL.kind);
