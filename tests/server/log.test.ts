@@ -27,6 +27,8 @@ describe("logError", () => {
     const line = String(write.mock.calls[0][0]);
     expect(line).toContain("password=[redacted]");
     expect(line).not.toContain("secret\"");
-    for (const leaked of ["abc123", "dXNlcjpw", "s3 ", "hunter2"]) expect(line).not.toContain(leaked);
+    for (const leaked of ["abc123", "dXNlcjpw", "s3 ", "hunter2"]) {
+      expect(line).not.toContain(leaked);
+    }
   });
 });
