@@ -1,7 +1,8 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { serviceTextCandidates } from "./services-text";
-import { parseEmployeeCount } from "./text";
+import { isPersonName, parseEmployeeCount } from "./text";
+import { pronounGender } from "../../contracts";
 
 /** Explicit labels only: semantic categories are never guessed from prose. */
 export function visibleCandidates(
@@ -85,6 +86,51 @@ export function visibleCandidates(
       if (description) {
         add("/key_people/@id/background_or_relevance", description.value,
         [source.id], [description.id], entity);
+      }
+    }
+  }
+  // Any other page whose first H1 is a person's name and which the site links to by that name is a profile.
+  // The title is the short line right after the name (or a "Name, title of Company" metadata pattern);
+  // the bio is the next paragraphs; gender is read only from third-person pronouns in that bio.
+  const { pathname } = new URL(page.capture.finalUrl);
+  const headings = page.capture.observations.headings;
+  const firstH1 = Array.isArray(headings)
+    ? (headings as { level: number; text: string }[]).find((h) => h.level === 1)?.text : undefined;
+  const words = firstH1?.split(" ") ?? [];
+  const link = firstH1 ? page.capture.links.find((item) => item.label === firstH1 &&
+    item.url.replace(/[#?].*$/, "").replace(/\/$/, "") === page.capture.finalUrl.replace(/\/$/, "")) : undefined;
+  const nameIndex = page.capture.segments.findIndex((s) => s.text === firstH1);
+  const heading = observations.find((o) => o.property === "heading" && o.value === firstH1);
+  if (!result.some((c) => c.field === "/key_people/@id/name") && firstH1 && link && heading && nameIndex >= 0 && pathname !== "/" && firstH1 !== page.capture.publisher &&
+      words.length >= 2 && words.length <= 4 && isPersonName(firstH1) &&
+      words.every((word) => /^\p{Lu}[\p{L}'’.-]*$/u.test(word)) &&
+      !observations.some((o) => /\/@type(?:\/\d+)?$/.test(o.property ?? "") && /^(?:https?:\/\/schema\.org\/)?Person$/.test(o.value ?? ""))) {
+    const name = firstH1;
+    const after = page.capture.segments.slice(nameIndex + 1);
+    const shortLine = (text: string) => text.split(" ").length <= 6 && !/[.!?]$/.test(text);
+    const metadata = observations.filter((o) => o.property === "page-title" || o.property === "meta-description");
+    const declared = metadata.map((o) => ({ o, text: new RegExp("^" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+      "\\s*(?:,|[-–—])\\s*(.+?)(?:\\s+(?:of|at)\\s|[.|]|$)").exec(o.value ?? "")?.[1]?.trim() }))
+      .find((item) => item.text && shortLine(item.text));
+    const adjacent = after[0] && shortLine(after[0].text) ? after[0] : undefined;
+    const bio = after.slice(adjacent ? 1 : 0).filter((s) => s.text.length >= 40).slice(0, 3);
+    const bioText = bio.map((s) => s.text).join("\n\n");
+    if (bio.length && bioText.length <= 4000 && (bioText.includes(name) || bioText.includes(words[0]))) {
+      const entity = `${page.capture.finalUrl}|${name}|${page.capture.segments[nameIndex].id}`;
+      const linkEvidence = observations.filter((o) =>
+        (o.property === "href" && o.value === link.url) ||
+        (o.property === "anchor-label" && o.value === link.label && o.asset_url === link.url));
+      const named = [heading.id, ...linkEvidence.map((o) => o.id)];
+      add("/key_people/@id/name", name, [page.capture.segments[nameIndex].id], named, entity);
+      if (adjacent) {
+        add("/key_people/@id/title", adjacent.text, [adjacent.id], [], entity);
+      } else if (declared?.text) {
+        add("/key_people/@id/title", declared.text, [], [declared.o.id], entity);
+      }
+      add("/key_people/@id/background_or_relevance", bioText, bio.map((s) => s.id), [], entity);
+      const gender = pronounGender(bioText);
+      if (gender) {
+        add("/key_people/@id/gender", gender, bio.filter((s) => pronounGender(s.text) === gender).map((s) => s.id), [], entity);
       }
     }
   }

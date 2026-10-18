@@ -19,3 +19,9 @@ export const PersonSchema = z
     "Cannot create wholly empty person",
   );
 export type Person = z.infer<typeof PersonSchema>;
+
+/** Female or Male when the text refers to one person with only she/her or only he/him/his; otherwise null. */
+export function pronounGender(text: string): "Female" | "Male" | null {
+  const female = /\b(?:she|her|hers|herself)\b/i.test(text), male = /\b(?:he|him|his|himself)\b/i.test(text);
+  return female === male ? null : female ? "Female" : "Male";
+}

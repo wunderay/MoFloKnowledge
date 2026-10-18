@@ -163,6 +163,8 @@ Every source the extractor reads is listed here. "Field" is the registered field
 | `<address>` and `itemprop="address"` elements (or the renderer's address list) | `company_foundation/main_address` (raw text) | Up to 30 elements. |
 | Person profile page: page address ends `/team/<slug>`, `/people/<slug>`, `/staff/<slug>`, `/about-us/<slug>` or `/about/<slug>` | `key_people/@id/name`, `title` | The title reads "Name - Role" (or "Name | Role") with Role one of Co-Founder, Founder, CEO, Chief Executive Officer, Owner, President or Director, or the slug matches the name and exactly one heading is such a role. A visible heading must equal the name. The page must not also carry JSON-LD `Person` data. |
 
+| Person profile page at any path depth: first H1 is 2-4 capitalised words (no digits, `@` or underscores, not the home page or the site name) and the page links to itself with that same text (navigation, team block or footer) | `key_people/@id/name`, `title`, `background_or_relevance`, `gender` | Used when the rule above did not apply. The title is the short line after the name, or "Name, title of Company" / "Name - title" in the page title or meta description (up to 6 words). The bio is the next one to three paragraphs. Gender is Female or Male only when the bio uses only she/her or only he/him/his; never from the name. The page must not also carry JSON-LD `Person` data. |
+
 On a shared-platform profile (start URL with a path prefix), item utility pages (`/<prefix>/<item>/actions`, `issues`, `pulls`, `security`, `blob`, `tree`, `commits`, `releases`, `wiki`, `settings` and the like, and anything deeper) are neither crawled nor extracted. A repository page takes the first paragraph after its README heading word for word as the offering description, even when that heading is the repository name; a microdata `Person` whose name is the first line of the profile heading is a key person (name, `jobTitle`, `description` verbatim).
 
 **Offerings (`services-text.ts`, `capture/html.ts`)**
@@ -227,7 +229,7 @@ These rules do not run on blog, article, news, learning-center, privacy or terms
 | `<img>` elements inside a header, navigation, banner or element with a "logo" class or id, whose class, id, alt text or address contains "logo" | `branding_and_style/logos` | Up to 20. Images whose address, class or text contains partner, sponsor, client or favicon (or brandfetch), images inside partner, sponsor, client-logo or customer containers, and hidden images are skipped. Only logos recorded in a header or footer context, or declared in JSON-LD, become a field candidate. |
 | Links to `linkedin.com`, `facebook.com`, `instagram.com`, `youtube.com`, `twitter.com`, `x.com`, `tiktok.com` | `online_presence/social_media_links` | The path must not be the site root or a share, intent, sharer or dialog link. LinkedIn must be a `/company/`, `/school/` or `/showcase/` page. Links whose text sits in a section headed partners, sponsors, clients, suppliers, vendors or affiliates are skipped. |
 
-Fields not listed here (for example gender and most other registered fields) have no extraction rule yet. They stay `not_checked` until a person fills them in.
+Fields not listed here (for example most other registered fields) have no extraction rule yet. They stay `not_checked` until a person fills them in.
 
 ### Other captured content
 

@@ -18,7 +18,7 @@ The bounded resume schema in `supabase/generated/worker-checkpoint.schema.json` 
 
 Membership validation relies on existing Auth foreign keys rather than selecting the RLS-protected Auth roster. Even removal of a valid non-member performs a transactional FK check without leaving a membership behind. The domain owner has no Auth-user SELECT grant.
 
-Extracted gender requires a cited captured text excerpt containing explicit self-description and the selected original wording. A provenance note alone does not establish source support. User-provided gender still requires the actor/time and explicit attestation note.
+Extracted gender requires a cited captured text excerpt containing explicit self-description and the selected original wording, or third-person pronouns (only she/her or only he/him/his) in the cited bio of that person. A provenance note alone does not establish source support. User-provided gender still requires the actor/time and explicit attestation note.
 
 Draft saves may retain source origin when the user explicitly selects an exact candidate from the prior stored conflict. The protected edit validator verifies that stored candidate, selected value, actor, origin and evidence; an invented caller-side candidate does not establish source support.
 

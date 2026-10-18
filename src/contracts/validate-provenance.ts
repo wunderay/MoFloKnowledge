@@ -1,5 +1,6 @@
 import type { EntryProvenance, ExportProvenance, Claim } from "./provenance";
 import { parseBusinessEntry, type EntryKind } from "./business";
+import { pronounGender } from "./person";
 import { canonicalStringify } from "../knowledge/canonical-json";
 import { AggregateProvenanceSchema, EntryProvenanceSchema, ExportProvenanceSchema } from "./provenance";
 import {
@@ -247,10 +248,10 @@ export function validateProvenance(
             ? /(?:self[- ]descri|self[- ]identif|explicit (?:public )?(?:gender|attestation))/i.test(
                 claim.note ?? "",
               )
-            : /(?:I (?:identify|describe myself) as|self[- ]descri|self[- ]identif|gender\s*:)/i.test(
+            : (/(?:I (?:identify|describe myself) as|self[- ]descri|self[- ]identif|gender\s*:)/i.test(
                 original,
               // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
-              ) && original.includes(String(value));
+              ) && original.includes(String(value))) || pronounGender(original) === value;
         if (!attested) {
           add(
             "gender_attestation",

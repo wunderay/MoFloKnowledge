@@ -1,6 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
-import { nameKey as normalizedName, parseEmployeeCount } from "./text";
+import { isPersonName, nameKey as normalizedName, parseEmployeeCount } from "./text";
 import { serviceEntityKey } from "./services-text";
 import { bareTenDigitPhone, stripTrackingParams } from "./identity";
 import { structuredData } from "./structured-data";
@@ -221,7 +221,7 @@ export function structuredCandidates(
       continue;
     }
     const name = text(value.name);
-    if (!name) {
+    if (!name || (person && !isPersonName(name))) {
       continue;
     }
     const context = [leaf(path + "/name"), ...evidence(path + "/@type")]

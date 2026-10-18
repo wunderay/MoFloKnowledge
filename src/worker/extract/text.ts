@@ -36,3 +36,6 @@ export function parseEmployeeCount(employee: string) {
     min: validRange ? min : null, max: validRange ? max : null, as_of: null,
   };
 }
+
+/** Not a person: an e-mail or URL, a @handle, a token with digits or underscores, or one all-lowercase word. */
+export const isPersonName = (name: string) => !/[@\d_/]/.test(name) && !(!/\s/.test(name.trim()) && name === name.toLowerCase());

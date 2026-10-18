@@ -18,7 +18,7 @@ export const SUPPORTED_FIELDS: readonly string[] = [
   "/company_foundation/year_founded", "/company_foundation/employee_count", "/company_foundation/main_address",
   "/company_foundation/service_locations", "/company_foundation/alternative_company_names",
   "/positioning/company_pitch", "/market_and_customers/target_buyers",
-  "/key_people/@id/name", "/key_people/@id/title", "/key_people/@id/background_or_relevance",
+  "/key_people/@id/name", "/key_people/@id/title", "/key_people/@id/background_or_relevance", "/key_people/@id/gender",
   "/offerings/@id/name", "/offerings/@id/description", "/offerings/@id/category",
   "/offerings/@id/url", "/offerings/@id/pricing",
   "/online_presence/social_media_links", "/online_presence/phone", FONTS_FIELD,
