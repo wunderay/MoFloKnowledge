@@ -40,3 +40,30 @@ it("aborts superseded attempts and never calls terminal write with stale authori
   expect(fail).not.toHaveBeenCalled();
   expect(work).toHaveBeenCalledTimes(1);
 });
+
+it("stops a job that runs past the time limit and records a non-retryable timeout failure", async () => {
+  vi.useFakeTimers();
+  const stop = new AbortController();
+  const fail = vi.fn().mockResolvedValue(job);
+  const repository = {
+    claim: vi.fn().mockResolvedValueOnce(job),
+    heartbeat: vi.fn().mockResolvedValue(job),
+    fail,
+  } as unknown as JobRepository;
+  const work = (_j: Job, signal: AbortSignal) =>
+    new Promise<void>((_resolve, reject) =>
+      signal.addEventListener("abort", () => reject(signal.reason), { once: true }),
+    );
+  const running = runWorker(repository, work, {
+    workerId: "worker-test",
+    signal: stop.signal,
+    onEvent: (event) => {
+      if (event.event === "job_stopped") {
+        stop.abort();
+      }
+    },
+  });
+  await vi.advanceTimersByTimeAsync(10 * 60_000);
+  await running;
+  expect(fail).toHaveBeenCalledWith(job, expect.objectContaining({ code: "timeout", retryable: false }));
+});

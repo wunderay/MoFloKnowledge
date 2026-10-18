@@ -71,8 +71,12 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
   const features = (entity: string, texts: string[], context: string[], priority = 90, excluded: string[] = []) => {
     for (const original of [...new Set(texts)].slice(0, 80)) {
       const first = exactSentences(original)[0] ?? "";
-      const text = selectExactSentences(original, { maxSentences: first.length < 80 ? 2 : 1, maxCharacters: 300 }).join(" ");
-      if (text && text.length <= 4000 && !excluded.includes(text) && !promotional.test(text) && !hasNegation(text) && idsFor([original]).length) {
+      const excerpt = selectExactSentences(original, { maxSentences: first.length < 80 ? 2 : 1, maxCharacters: 300 }).join(" ");
+      // A "Term - description" paragraph always keeps its term, even when the description excerpt is unusable.
+      const term = /^([^-–—:.!?]{2,60}?) [-–—] \S/.exec(original)?.[1];
+      const usable = (text: string) => text && text.length <= 4000 && !excluded.includes(text) && !promotional.test(text) && !hasNegation(text);
+      const text = usable(excerpt) ? excerpt : term && usable(term) ? term : "";
+      if (text && idsFor([original]).length) {
         add("features", [{ text }], entity, [...context, original], [], priority);
       }
     }
@@ -180,50 +184,15 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
       ...(section !== primary ? (section.paragraphs ?? []).filter((text) => actionable.test(text)) : []),
     ]).concat(paragraphs.flatMap(exactSentences).filter((text) => !descriptionParts.includes(text) && /\b(?:we(?:[’']ll| will| can)?\s+(?:also\s+)?(?:perform|provide|handle|monitor|adhere|offer|help)|our (?:services|team)|(?:services|functions) (?:include|are))\b/i.test(text))), context, 90, descriptionParts);
 
-    // A specialized named return or start-up service can be marketed within a broader
-    // preparation page. Ordinary return variants remain features of the parent service.
-    for (const name of detail.flatMap((section) => section.listItems ?? [])) {
-      const specializedReturn = /\b(?:estate|gift|trust)\b/i.test(name) && /\b(?:returns?|preparation)\b/i.test(name);
-      const startup = /\bbusiness start[- ]?ups?\b/i.test(name) && paragraphs.some((p) =>
-        /\b(?:we|I)\s+(?:also\s+)?(?:offer|provide|help|assist)\b/i.test(p) && /\bstart[- ]?ups?\b/i.test(p));
-      if (!specializedReturn && !startup) {
-        continue;
+    // A prose list ("such as a, b and c") in the offering's own detail page becomes features of that offering.
+    for (const sentence of paragraphs.flatMap(exactSentences)) {
+      const list = /\b(?:we|I)\s+(?:also\s+)?(?:perform|provide|offer|handle|manage)\b[^.!?]*?\b(?:such as|including)\s+([^.!?]+)$/i.exec(sentence.replace(/[.!?]$/, ""));
+      const items = list ? list[1].split(/,\s*(?:and\s+)?|\s+and\s+(?=[^,]*$)/).map((item) => item.trim()).filter(Boolean) : [];
+      if (items.length >= 3) {
+        for (const item of items) {
+          add("features", [{ text: item }], finalUrl, [...context, sentence], [], 90);
+        }
       }
-      const section = detail.find((s) => s.listItems?.includes(name));
-      if (!section || ![...(section.paragraphs ?? []), ...(section.heading ? [section.heading] : [])]
-        .some((text) => /\b(?:services? include|preparation|we (?:offer|provide))\b/i.test(text))) {
-        continue;
-      }
-      const entity = serviceEntityKey(finalUrl, name);
-      const childContext = [...context, name, ...(section.paragraphs ?? []).filter((p) => /services? include/i.test(p))];
-      const childParagraphs = startup ? paragraphs.filter((p) => /\bstart[- ]?ups?\b/i.test(p)) : [];
-      const childDescription = serviceDescription(childParagraphs, name).join("\n\n");
-      add("name", name, entity, childContext, [], 85);
-      if (childDescription) {
-        add("description", childDescription, entity, [...childContext, ...childParagraphs], [], 85);
-      }
-      add("category", primary.heading, entity, childContext, [], 85);
-      const childFeatures = childParagraphs.flatMap(exactSentences).filter((sentence) => !childDescription.includes(sentence));
-      features(entity, childFeatures, [...childContext, ...childParagraphs]);
-    }
-  }
-
-  // First-person professional biographies can explicitly market interim support.
-  // A client-industry list, testimonial or article is never a provider declaration.
-  if (!topicPath(finalUrl) && /\/(?:about(?:-us)?|team|people|staff)(?:\/|$)/i.test(new URL(finalUrl).pathname)) {
-    for (const section of sections) {
-      for (const paragraph of section.paragraphs ?? []) {
-      const match = /\b(?:I|we)\s+(?:can\s+)?(?:provide|offer)\s+((?:part[- ]time|interim)[^.!?]{4,160}?\bservices)\b/i.exec(paragraph);
-      if (!match) {
-        continue;
-      }
-      const name = match[1];
-      const entity = serviceEntityKey(finalUrl, name);
-      add("name", name, entity, [paragraph], [], 85);
-      const description = selectExactSentences(paragraph, { maxSentences: 2, maxCharacters: 600 }).join("\n\n");
-      add("description", description, entity, [paragraph], [], 95);
-      features(entity, exactSentences(paragraph).filter((sentence) => !description.includes(sentence) && !promotional.test(sentence)), [paragraph]);
-    }
     }
   }
 

@@ -1,6 +1,6 @@
 # Readable company profile: requirements and baseline evaluation
 
-This document defines acceptance for the readable-profile milestone. It complements [the no-AI redesign](no-ai-redesign.md): extraction remains deterministic, exact-source, and non-generative. Account-it evidence was checked on 2026-10-16 against the previous capped product run and separately fetched first-party pages. The evidence decisions below keep those sets separate: a fact present on the website is not evidence that a product run captured it.
+This document defines acceptance for the readable-profile milestone. It complements [how the crawler works](crawler.md): extraction remains deterministic, exact-source, and non-generative. Account-it evidence was checked on 2026-10-16 against the previous capped product run and separately fetched first-party pages. The evidence decisions below keep those sets separate: a fact present on the website is not evidence that a product run captured it.
 
 ## Recommendation
 

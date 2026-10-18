@@ -2,7 +2,6 @@ import { route, readJson, rpc } from "../../../server/http";
 import { IdSchema } from "../../../contracts/api-common";
 export const runtime = "nodejs";
 import { CreateCompanySchema } from "../../../contracts/api-companies";
-import { kickWorker } from "../../../server/kick-worker";
 import { logError } from "../../../server/log";
 export const POST = route(async (request, _context, { client }, requestId) => {
   const b = await readJson(request, CreateCompanySchema);
@@ -33,7 +32,6 @@ async function startFirstCrawl(
       p_options: { max_pages: 10, max_depth: 2 },
       p_request: b.requestId,
     })) as { id: string };
-    kickWorker();
     return job.id;
   } catch (error) {
     logError("could not start the first crawl", { requestId, error });

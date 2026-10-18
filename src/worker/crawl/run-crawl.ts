@@ -10,6 +10,7 @@ import {
 } from "./budgets";
 import { DeadlineError, Scheduler, type Deadline } from "./scheduler";
 import { RobotsCache } from "./robots";
+import { createLinkPicker } from "../agent/client";
 import { fetchDocument } from "../network/pinned-transport";
 import { technicalObservations } from "../extract/observations";
 import {
@@ -68,6 +69,8 @@ export async function runCrawl(
     },
   );
   const scheduler = new Scheduler(signal);
+  // Undefined unless the optional crawl agent is enabled; it only orders or narrows the next links.
+  const pickLinks = createLinkPicker();
   const jobDeadlineAt = Date.now() + CRAWL_LIMITS.jobMs;
   let timedOut = false;
   // Time kept free for the request itself once pacing is done.
@@ -380,8 +383,14 @@ export async function runCrawl(
         },
       });
       captures.push({ id: String(row.id), retrievedAt, capture });
-      for (const link of capture.links) {
-        frontier.add(link.url, link.label, item.depth + 1);
+      if (pickLinks) {
+        const candidates = capture.links.filter((link) => frontier.isNew(link.url));
+        const ordered = await pickLinks(item.url, candidates, frontier.remaining, scheduler.signal);
+        ordered.forEach((link, rank) => frontier.add(link.url, link.label, item.depth + 1, rank));
+      } else {
+        for (const link of capture.links) {
+          frontier.add(link.url, link.label, item.depth + 1);
+        }
       }
       if (capture.truncated) {
         errors.push({

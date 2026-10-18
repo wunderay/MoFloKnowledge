@@ -9,7 +9,6 @@ vi.mock("../../src/lib/supabase/server", () => ({
 import { POST } from "../../src/app/api/companies/route";
 it("enqueues a default scrape of the website after creating the company and returns its jobId", async () => {
   process.env.APP_ORIGIN = "https://app.example";
-  delete process.env.CRON_SECRET;
   state.rpc.mockImplementation((name: string) =>
     Promise.resolve(
       name === "create_company"

@@ -8,7 +8,7 @@ import { addHref, Banner, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Sou
 const SAMPLE = "The quick brown fox jumps over the lazy dog";
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 const POSITIONS = ["Primary", "Secondary", "Tertiary"];
-// Website observations are not brand guidance unless marked confirmed (docs/no-ai-redesign.md).
+// Website observations are not brand guidance unless marked confirmed.
 const OBSERVED_COLOR = "Observed website color";
 const OBSERVED_FONT = "Observed, not confirmed as brand guidance";
 const METHODS: Record<string, string> = {
