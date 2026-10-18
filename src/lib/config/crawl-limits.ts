@@ -32,7 +32,7 @@ function read(env: Env, name: string, fallback: number, kind: Kind, min = 1, rem
 export function readCrawlLimits(env: Env = process.env) {
   return {
     maxPages: read(env, "CRAWL_MAX_PAGES", 25, "count"),
-    defaultPages: read(env, "CRAWL_DEFAULT_PAGES", 10, "count", 1, false),
+    defaultPages: read(env, "CRAWL_DEFAULT_PAGES", 15, "count", 1, false),
     maxDepth: read(env, "CRAWL_MAX_DEPTH", 3, "count"),
     defaultDepth: read(env, "CRAWL_DEFAULT_DEPTH", 2, "count", 0, false),
     maxDiscovered: read(env, "CRAWL_MAX_DISCOVERED", 200, "count"),
