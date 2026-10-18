@@ -32,7 +32,7 @@ The migration runner refuses database names without the `_test` suffix unless an
 
 Run the persistent worker separately with `WORKER_DATABASE_URL` set to a dedicated login that has only the `moflo_worker` grants. Do not use the migration administrator or a service-role credential for the worker. `npm run worker` starts it. The worker uses deterministic evidence extraction; unsupported or inconclusive fields remain unknown and require human review. Renderer use also requires `RENDERER_URL` and `RENDERER_TOKEN`, plus a separately qualified renderer/proxy deployment.
 
-To run the crawl without a VM, deploy on Vercel Hobby with Supabase Free: see [Deploy on Vercel](docs/deploy-vercel.md).
+To run the crawler on a free always-on VM, see [Deploy the crawler on Oracle Cloud](docs/deploy-oracle.md).
 
 See [worker behavior](src/worker/README.md), [runtime support](docs/runtime-support.md), [provider and Auth setup](docs/provider-setup.md), and [deployment requirements](docs/deployment.md).
 
