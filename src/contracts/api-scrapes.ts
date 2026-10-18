@@ -1,13 +1,15 @@
 import { z } from "zod";
 import { IdSchema } from "./api-common";
 import { WebsiteSchema } from "./api-companies";
+import { crawlLimits } from "../lib/config/crawl-limits";
+const limits = crawlLimits();
 export const EnqueueSchema = z
   .object({
     url: WebsiteSchema,
     options: z
       .object({
-        documentLimit: z.number().int().min(1).max(25).optional(),
-        depthLimit: z.number().int().min(0).max(3).optional(),
+        documentLimit: z.number().int().min(1).max(limits.maxPages).optional(),
+        depthLimit: z.number().int().min(0).max(limits.maxDepth).optional(),
       })
       .strict()
       .optional(),

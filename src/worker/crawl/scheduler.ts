@@ -1,5 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { CRAWL_LIMITS } from './budgets';
+import { crawlLimits } from '../../lib/config/crawl-limits';
 const MAX_TIMER_MS = 2 ** 31 - 1; // larger timer delays overflow and fire after 1 ms
 /** A required pacing wait that cannot fit before the task/job deadline. */
 export interface Deadline { at: number; scope: 'job' | 'task' }
@@ -29,13 +30,13 @@ class Semaphore {
     }
 }
 export class Scheduler {
-    private http = new Semaphore(3);
-    private render = new Semaphore(1);
+    private http = new Semaphore(crawlLimits().httpConcurrency);
+    private render = new Semaphore(crawlLimits().renderConcurrency);
     private hostQueues = new Map<string, Promise<void>>();
     private starts = new Map<string, number>();
     readonly signal: AbortSignal;
     constructor(signal?: AbortSignal, remainingMs: number = CRAWL_LIMITS.jobMs) { this.signal = AbortSignal.any([AbortSignal.timeout(Math.max(1, Math.min(CRAWL_LIMITS.jobMs, remainingMs))), ...(signal ? [signal] : [])]); }
-    async pace(input: string, gapMs = 500, signal = this.signal, deadline?: Deadline) { const host = new URL(input).hostname; const prior = this.hostQueues.get(host) ?? Promise.resolve(); let release!: () => void; const turn = new Promise<void>(resolve => { release = resolve; }); this.hostQueues.set(host, turn); try {
+    async pace(input: string, gapMs = crawlLimits().hostGapMs, signal = this.signal, deadline?: Deadline) { const host = new URL(input).hostname; const prior = this.hostQueues.get(host) ?? Promise.resolve(); let release!: () => void; const turn = new Promise<void>(resolve => { release = resolve; }); this.hostQueues.set(host, turn); try {
         // The wait for earlier same-host requests is abortable; our turn is still released only after they finish.
         await new Promise<void>((resolve, reject) => {
             if (signal.aborted) {
@@ -46,7 +47,7 @@ export class Scheduler {
             void prior.then(() => { signal.removeEventListener('abort', abort); resolve(); });
         });
         signal.throwIfAborted();
-        const wait = (this.starts.get(host) ?? 0) + Math.min(MAX_TIMER_MS, Math.max(500, gapMs)) - Date.now();
+        const wait = (this.starts.get(host) ?? 0) + Math.min(MAX_TIMER_MS, Math.max(crawlLimits().hostGapMs, gapMs)) - Date.now();
         if (wait > 0 && deadline && Date.now() + wait > deadline.at) {
           throw new DeadlineError(undefined, deadline.scope);
         }
@@ -60,7 +61,7 @@ export class Scheduler {
           this.hostQueues.delete(host);
         } });
     } }
-    runHttp<T>(url: string, callback: (signal: AbortSignal) => Promise<T>, delayMs = 500, signal?: AbortSignal, skipInitialPacing = false, deadline?: Deadline): Promise<T> { const combined = AbortSignal.any([this.signal, ...(signal ? [signal] : [])]); return this.http.run(async () => { if (!skipInitialPacing) {
+    runHttp<T>(url: string, callback: (signal: AbortSignal) => Promise<T>, delayMs = crawlLimits().hostGapMs, signal?: AbortSignal, skipInitialPacing = false, deadline?: Deadline): Promise<T> { const combined = AbortSignal.any([this.signal, ...(signal ? [signal] : [])]); return this.http.run(async () => { if (!skipInitialPacing) {
       await this.pace(url, delayMs, combined, deadline);
     } return callback(AbortSignal.any([combined, AbortSignal.timeout(CRAWL_LIMITS.fetchMs)])); }, combined); }
     runRender<T>(callback: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal): Promise<T> { const combined = AbortSignal.any([this.signal, ...(signal ? [signal] : [])]); return this.render.run(() => callback(AbortSignal.any([combined, AbortSignal.timeout(CRAWL_LIMITS.renderMs)])), combined); }

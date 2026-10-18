@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use */
+import { crawlLimits } from "@/lib/config/crawl-limits";
 import "server-only";
 import type { verifiedSession } from "../lib/supabase/server";
 import { FrontierSnapshotSchema, ProgressSchema, SafeJobErrorSchema, JobStatusSchema } from "../contracts/jobs";
@@ -30,7 +31,7 @@ export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]):
   const status = parseResponse(JobStatusSchema, job.status);
   const progress = parseResponse(ProgressSchema, {
     discovered: 0, selected: 0, captured: 0, failed: 0, blocked: 0, extracted: 0,
-    document_limit: job.options.max_pages ?? 10, limits_reached: [], ...job.progress, stage: status,
+    document_limit: job.options.max_pages ?? crawlLimits().defaultPages, limits_reached: [], ...job.progress, stage: status,
   });
   const limitsReached = [...new Set([...progress.limits_reached, ...(frontier.success ? frontier.data.limitsReached : [])])];
   const aliases = new Map(frontier.success ? frontier.data.aliases : []);

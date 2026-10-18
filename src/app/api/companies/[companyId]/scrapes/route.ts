@@ -1,3 +1,4 @@
+import { crawlLimits } from "@/lib/config/crawl-limits";
 import { route, readJson, rpc, HttpError } from "../../../../../server/http";
 import { IdSchema } from "../../../../../contracts/api-common";
 export const runtime = "nodejs";
@@ -19,8 +20,8 @@ export const POST = route(async (r, c, { client }) => {
     p_company: IdSchema.parse((await c.params).companyId),
     p_url: normalizedUrl,
     p_options: {
-      max_pages: b.options?.documentLimit ?? 10,
-      max_depth: b.options?.depthLimit ?? 2,
+      max_pages: b.options?.documentLimit ?? crawlLimits().defaultPages,
+      max_depth: b.options?.depthLimit ?? crawlLimits().defaultDepth,
     },
     p_request: b.requestId,
   })) as { id: string; status: string };

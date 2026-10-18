@@ -1,4 +1,5 @@
 import { clampDepthLimit, clampDocumentLimit } from './budgets';
+import { crawlLimits } from '../../lib/config/crawl-limits';
 import { assertDocumentScope, documentPathPrefix, documentScope, normalizeUrl } from '../network/url-scope';
 export interface FrontierItem {
     url: string;
@@ -114,7 +115,7 @@ export class Frontier {
             this.limitsReached.add('depth');
             return false;
         }
-        if (this.seen.size >= 200) {
+        if (this.seen.size >= crawlLimits().maxDiscovered) {
             this.limitsReached.add('discovery');
             return false;
         }

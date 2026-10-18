@@ -1,5 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { logError } from "../server/log";
+import { crawlLimits } from "../lib/config/crawl-limits";
 import type { SafeJobError } from "../contracts";
 import type { Job, JobRepository } from "./job-repository";
 
@@ -50,14 +51,9 @@ function recordFailure(repository: JobRepository, job: Job, error: unknown, canc
   });
 }
 
-const MINUTE_MS = 60_000;
-
-/** Hard wall-clock limit for one job (crawl and extraction): WORKER_JOB_TIMEOUT_MS, default 10 minutes, clamped to 1-30 minutes. */
+/** Hard wall-clock limit for one job (crawl and extraction): WORKER_JOB_TIMEOUT_MS, default 10 minutes, `none` removes it. */
 function jobTimeoutMs() {
-  const configured = Number(process.env.WORKER_JOB_TIMEOUT_MS);
-  return Number.isFinite(configured) && configured > 0
-    ? Math.min(30 * MINUTE_MS, Math.max(MINUTE_MS, configured))
-    : 10 * MINUTE_MS;
+  return crawlLimits().jobTimeoutMs;
 }
 
 export async function runWorker(

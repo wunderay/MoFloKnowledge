@@ -35,7 +35,7 @@ Create `/etc/moflo-worker.env`, owned by root with mode 0600:
 ```sh
 WORKER_DATABASE_URL=postgresql://worker_user:...@<supabase-pooler-host>:5432/postgres
 WORKER_ID=oracle-1
-# Optional: hard limit for one job in milliseconds (default 600000 = 10 minutes, clamped to 1-30 minutes).
+# Optional: hard limit for one job in milliseconds (default 600000 = 10 minutes; `none` removes it).
 # WORKER_JOB_TIMEOUT_MS=600000
 ```
 

@@ -24,7 +24,7 @@ import { api, ApiError, companyPath, write } from "../shared/api-client";
 import { CATEGORY_SPECS, labelOf, summarizeValue } from "./business-fields";
 import { BusinessField } from "./business-form";
 import { EmptyState, Notice, StatusBadge, useHydrated } from "../shared/ui";
-import { ScrapeProgress } from "./scrape-progress";
+import { ScrapeProgress, type CaptureLimits } from "./scrape-progress";
 import { EntryHistory } from "./entry-history";
 import { PublicationDialog } from "./publication-dialog";
 import { CompanySettings } from "./company-settings";
@@ -67,6 +67,7 @@ type Draft = Omit<DraftResponse, "company" | "entries"> & {
 export function KnowledgeEditor(props: {
   companyId: string;
   initialDraft?: Draft;
+  captureLimits?: CaptureLimits;
 }) {
   return (
     <CompanyDraftProvider key={props.companyId} companyId={props.companyId}>
@@ -77,9 +78,11 @@ export function KnowledgeEditor(props: {
 function KnowledgeEditorContent({
   companyId,
   initialDraft,
+  captureLimits,
 }: {
   companyId: string;
   initialDraft?: Draft;
+  captureLimits?: CaptureLimits;
 }) {
   const [draft, setDraft] = useState<Draft | null>(initialDraft ?? null);
   const { state, dispatch } = useCompanyDraft();
@@ -858,6 +861,7 @@ function KnowledgeEditorContent({
         website={draft.company.website_url}
         canEdit={canEdit}
         onComplete={refresh}
+        limits={captureLimits}
       />
       </div>
       {history && (

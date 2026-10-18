@@ -1,3 +1,4 @@
+import { crawlLimits } from "@/lib/config/crawl-limits";
 import { route, readJson, rpc } from "../../../server/http";
 import { IdSchema } from "../../../contracts/api-common";
 export const runtime = "nodejs";
@@ -29,7 +30,7 @@ async function startFirstCrawl(
     const job = (await rpc(client, "enqueue_scrape", {
       p_company: companyId,
       p_url: b.website,
-      p_options: { max_pages: 10, max_depth: 2 },
+      p_options: { max_pages: crawlLimits().defaultPages, max_depth: crawlLimits().defaultDepth },
       p_request: b.requestId,
     })) as { id: string };
     return job.id;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IdSchema } from "./api-common";
 import { InstantSchema, URLSchema } from "./primitives";
+import { crawlLimits } from "../lib/config/crawl-limits";
 import { JobStatusSchema, ProgressSchema, SafeJobErrorSchema } from "./jobs";
 
 const captureStatus = z.enum(["captured", "failed", "blocked", "unsupported"]);
@@ -10,7 +11,7 @@ export const SourceCoverageSchema = z.object({
     status: JobStatusSchema,
     createdAt: InstantSchema,
     updatedAt: InstantSchema,
-    documentLimit: z.number().int().min(1).max(25),
+    documentLimit: z.number().int().min(1).max(crawlLimits().maxPages),
     progress: ProgressSchema,
     limitsReached: z.array(z.string()).max(100),
     errors: z.array(SafeJobErrorSchema).max(200),
@@ -24,7 +25,7 @@ export const SourceCoverageSchema = z.object({
     retrievedAt: InstantSchema.nullable(),
     reason: z.string().nullable(),
     score: z.number().int().nonnegative().nullable(),
-    depth: z.number().int().min(0).max(3).nullable(),
+    depth: z.number().int().min(0).max(crawlLimits().maxDepth).nullable(),
   }).strict()).max(1000),
 }).strict();
 export type SourceCoverage = z.infer<typeof SourceCoverageSchema>;
