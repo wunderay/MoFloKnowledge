@@ -7,6 +7,7 @@ import { metadataCandidates } from "./metadata-fields";
 import { visibleCandidates } from "./visible";
 import { companyTextCandidates, COMPANY_TEXT_FIELDS } from "./company-text";
 import { marketTextCandidates, MARKET_TEXT_SUPPORTED_FIELDS } from "./market-text";
+import { isUtilitySubpage } from "../network/url-scope";
 import { inProfileScope, platformProfileCandidates, profileScope } from "./platform-profile";
 const FONTS_FIELD = "/branding_and_style/fonts";
 export const SUPPORTED_FIELDS: readonly string[] = [
@@ -30,6 +31,10 @@ export function deterministicCandidates(
   startUrl?: string,
 ): FieldCandidate[] {
   const scope = profileScope(startUrl);
+  // A platform utility page (actions, issues, ...) of a profile item is not the profile owner's content.
+  if (scope && isUtilitySubpage(new URL(page.capture.finalUrl).pathname, scope.prefix)) {
+    return [];
+  }
   const result: FieldCandidate[] = [
     ...structuredCandidates(page, observations),
     ...visibleCandidates(page, observations),

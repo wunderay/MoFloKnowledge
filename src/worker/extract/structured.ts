@@ -241,7 +241,8 @@ export function structuredCandidates(
             .some((v) => object(v)?.["@id"] && object(v)?.["@id"] === value["@id"]),
         ),
       );
-      const headingMatch = observations.some((o) => o.property === "heading" && o.value === name);
+      const headingMatch = observations.some((o) => o.property === "heading" &&
+        (o.value === name || o.value?.split(/\n+/)[0] === name));
       if (!nested && !referred && !belongs(value.worksFor) && !headingMatch) {
         continue;
       }

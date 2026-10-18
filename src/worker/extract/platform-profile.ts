@@ -92,7 +92,9 @@ function pinnedRepositories({ page, scope, sections, add, segmentsWith, observed
 /** A repository page: its About text, else the first paragraph under a README heading, describes the offering. */
 function repositoryPage({ page, sections, add, segmentsWith, observed }: Context, slug: string) {
   const section = sections.find((s) => s.heading && /^About$/i.test(s.heading) && s.paragraphs[0] && !/^No description/i.test(s.paragraphs[0])) ??
-    sections.find((s) => s.heading && /^README(?:\.md)?$/i.test(s.heading) && s.paragraphs[0]);
+    sections.find((s) => s.heading && /^README(?:\.md)?$/i.test(s.heading) && s.paragraphs[0]) ??
+    // A README whose first heading is just the repository name.
+    sections.find((s) => s.heading && nameKey(s.heading) === nameKey(slug) && s.paragraphs[0]);
   const description = section?.paragraphs[0].trim();
   // A link from the page to itself, with its label, is what identifies the page as that offering.
   const self = page.capture.links.find((l) => l.url === page.capture.finalUrl && l.label.trim());
