@@ -36,8 +36,8 @@ export function loadCrawlAgentConfig(env: Env = process.env, read: (name: string
   if (missing.length || !apiKey || !model || !baseUrl || !promptName) {
     return { status: "invalid", problem: `crawl agent is enabled but ${missing.join(", ")} is not set` };
   }
-  if (!/^https?:\/\//i.test(baseUrl) || !URL.canParse(baseUrl)) {
-    return { status: "invalid", problem: "CRAWL_AGENT_BASE_URL is not an http(s) URL" };
+  if (!/^https:\/\//i.test(baseUrl) || !URL.canParse(baseUrl)) {
+    return { status: "invalid", problem: "CRAWL_AGENT_BASE_URL is not an https URL" };
   }
   if (!PROMPT_NAME.test(promptName)) {
     return { status: "invalid", problem: "CRAWL_AGENT_PROMPT must be a file name in prompts/" };

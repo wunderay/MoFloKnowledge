@@ -23,6 +23,10 @@ describe("crawl agent config", () => {
     expect(JSON.stringify(loadCrawlAgentConfig(env, () => { throw new Error("missing"); }))).not.toContain("test-key-value");
   });
 
+  it("requires an https base URL", () => {
+    expect(loadCrawlAgentConfig({ ...env, CRAWL_AGENT_BASE_URL: "http://llm.example.com/v1" }, () => "p").status).toBe("invalid");
+  });
+
   it("is ready with a complete setting and a prompt file", () => {
     expect(loadCrawlAgentConfig(env, () => "Choose links.")).toMatchObject({ status: "ready", baseUrl: "https://llm.example.com/v1" });
   });

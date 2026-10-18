@@ -385,7 +385,7 @@ export async function runCrawl(
       captures.push({ id: String(row.id), retrievedAt, capture });
       if (pickLinks) {
         const candidates = capture.links.filter((link) => frontier.isNew(link.url));
-        const ordered = await pickLinks(item.url, candidates, frontier.remaining);
+        const ordered = await pickLinks(item.url, candidates, frontier.remaining, scheduler.signal);
         ordered.forEach((link, rank) => frontier.add(link.url, link.label, item.depth + 1, rank));
       } else {
         for (const link of capture.links) {

@@ -6,7 +6,7 @@ export interface CandidateLink {
   label: string;
 }
 
-export type LinkPicker = (pageUrl: string, candidates: CandidateLink[], remaining: number) => Promise<CandidateLink[]>;
+export type LinkPicker = (pageUrl: string, candidates: CandidateLink[], remaining: number, signal?: AbortSignal) => Promise<CandidateLink[]>;
 
 const TIMEOUT_MS = 10_000;
 
@@ -21,6 +21,7 @@ export async function pickLinks(
   candidates: CandidateLink[],
   remaining: number,
   fetcher: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<CandidateLink[] | null> {
   const response = await fetcher(`${config.baseUrl}/chat/completions`, {
     method: "POST",
@@ -33,7 +34,7 @@ export async function pickLinks(
         { role: "user", content: JSON.stringify({ page: pageUrl, remainingPages: remaining, links: candidates }) },
       ],
     }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.any([AbortSignal.timeout(TIMEOUT_MS), ...(signal ? [signal] : [])]),
   });
   if (!response.ok) {
     throw new Error(`crawl agent request failed with status ${response.status}`);
@@ -70,13 +71,16 @@ export function createLinkPicker(env: Record<string, string | undefined> = proce
     return undefined;
   }
   let failed = false;
-  return async (pageUrl, candidates, remaining) => {
+  return async (pageUrl, candidates, remaining, signal) => {
     if (failed || !candidates.length) {
       return candidates;
     }
     try {
-      return (await pickLinks(config, pageUrl, candidates, remaining, fetcher)) ?? candidates;
+      return (await pickLinks(config, pageUrl, candidates, remaining, fetcher, signal)) ?? candidates;
     } catch (error) {
+      if (signal?.aborted) {
+        return candidates;
+      }
       // One error per crawl; the rest of the crawl keeps its normal order.
       failed = true;
       logError("crawl agent failed; using the normal link order", { error: error instanceof Error ? new Error(error.name) : undefined });
