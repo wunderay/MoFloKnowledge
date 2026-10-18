@@ -3,6 +3,7 @@ import { createTaskServer } from './task-server';
 const allowed = new Set(['PATH', 'LANG', 'NODE_ENV', 'RENDERER_TOKEN', 'RENDERER_BIND', 'RENDERER_PORT', 'RENDERER_BOUNDARY_REPORT', 'EGRESS_URL', 'EGRESS_TOKEN', 'CHROMIUM_PATH']);
 for (const key of Object.keys(process.env)) {
   if (!allowed.has(key)) {
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- environment scrub: drops every variable that is not on the allow-list
     delete process.env[key];
   }
 }

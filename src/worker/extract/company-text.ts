@@ -70,6 +70,7 @@ export function companyTextCandidates(
   const rawSections = capture.observations.contentSections;
   const sections: Section[] = Array.isArray(rawSections)
     ? rawSections.filter((item): item is Section => Boolean(item && typeof item === "object" &&
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
       Array.isArray(item.paragraphs) && item.paragraphs.every((p: unknown) => typeof p === "string")))
     : capture.segments.map((s) => ({ heading: s.heading ?? null, level: 2,
       paragraphs: s.text.split(/\n\n/).filter((p) => p.length >= 40) }));
@@ -83,8 +84,10 @@ export function companyTextCandidates(
   const organizationType = /^(?:https?:\/\/schema\.org\/)?(?:Organization|Corporation|LocalBusiness|ProfessionalService|AccountingService|LegalService|FinancialService|MedicalBusiness|Store|Restaurant|EducationalOrganization|NGO)$/;
   const organizationCount = new Set(observations.filter((o) =>
     /\/@type(?:\/\d+)?$/.test(o.property ?? "") && organizationType.test(o.value ?? ""))
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     .map((o) => o.property!.replace(/\/@type(?:\/\d+)?$/, ""))).size;
   for (const o of observations.filter((item) => /^jsonld:.*\/name$/.test(item.property ?? ""))) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     const prefix = o.property!.slice(0, -"/name".length);
     const atPath = (key: string) => observations.filter((item) => item.property === prefix + "/" + key ||
       (key === "@type" && item.property?.startsWith(prefix + "/@type/")));
@@ -96,6 +99,7 @@ export function companyTextCandidates(
       continue;
     }
     if (identity.length && !identity.some((item) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       try { return new URL(item.value!, capture.finalUrl).hostname.replace(/^www\./, "") === url.hostname.replace(/^www\./, ""); }
       catch { return false; }
     })) {

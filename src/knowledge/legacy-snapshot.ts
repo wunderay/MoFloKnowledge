@@ -21,7 +21,7 @@ export function upgradeLegacySnapshot(stored: unknown): unknown {
     return withAddedFields(kind, value);
   };
   const items = (kind: EntryKind, value: unknown, root: string): unknown =>
-    Array.isArray(value) ? value.map((item) => fill(kind, item, isObject(item) ? `${root}/@${item.id}` : root)) : value;
+    Array.isArray(value) ? value.map((item) => fill(kind, item, isObject(item) ? `${root}/@${String(item.id)}` : root)) : value;
   if (!Object.hasOwn(stored, "site_links")) {
     targets.push("/site_links/links");
   }
@@ -38,10 +38,12 @@ export function upgradeLegacySnapshot(stored: unknown): unknown {
   if (!provenance || !coverage) {
     return upgraded;
   }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
   const covered = new Set(coverage.flatMap((row) => (Array.isArray(row?.targets) ? row.targets : [])));
   return {
     ...upgraded,
     provenance: { ...provenance, coverage: [
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
       ...coverage,
       ...targets.filter((target) => !covered.has(target)).map((target) => ({
         targets: [target], status: "not_checked", job_id: null, reason: "No approved entry assessed this field.",

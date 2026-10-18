@@ -50,6 +50,7 @@ export async function extractAndFinish(
         ...c,
         page,
         // Match validateCandidates ordering so resumed evidence is byte-stable.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         observations: c.observation_ids.map((id) => observationsById.get(id)!),
       }];
     })

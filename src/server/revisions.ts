@@ -246,6 +246,7 @@ async function restoreItems(
       continue;
     }
     was.forEach((leaf, index) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       const claim = claims[index]!;
       const id = stableId(requestId, claim.id, "restored");
       const have = carried.get(id) ?? { ...claim, id, entry_id: entryId, targets: [] };

@@ -39,7 +39,7 @@ export class Renderer {
         }
         finally {
             combined.removeEventListener('abort', abort);
-            await context?.close().catch(() => { });
+            await context?.close().catch(() => undefined);
             this.busy = false;
         }
     }

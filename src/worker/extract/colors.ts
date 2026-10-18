@@ -8,6 +8,7 @@ export function normalizeColor(
   if (hex) {
     let h = hex[1];
     if (h.length <= 4) {
+      // eslint-disable-next-line @typescript-eslint/no-misused-spread -- spreading a string by code point is intended (no grapheme splitting needed)
       h = [...h].map((c) => c + c).join("");
     }
     if (h.length === 8) {

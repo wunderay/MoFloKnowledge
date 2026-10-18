@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use */
 import { ArrowUpRight } from "../shared/icons";
 import type { CitationContext, EntryProvenance } from "@/contracts";
 import { CitationPopover, safeHref } from "../shared/citation-popover";

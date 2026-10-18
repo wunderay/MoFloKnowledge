@@ -33,7 +33,7 @@ export function PublicationDialog({
     setError("");
     api<Preview>(companyPath(companyId, "/preview"))
       .then(setPreview)
-      .catch((e) => { setError(e.message); });
+      .catch((e: unknown) => { setError((e as Error).message); });
   }
   useEffect(load, [companyId]);
   async function publish() {

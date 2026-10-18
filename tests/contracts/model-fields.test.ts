@@ -53,6 +53,7 @@ const offering = (over: Json = {}): Json => ({ ...base("offering", uid(2)), name
 const folderOf = { portrait: "portraits", image: "offering-images" } as const;
 const path = (folder: string, ext = "png", co = CO, object = OBJ) => `${folder}/${co}/${object}.${ext}`;
 const ref = (folder: string, over: Json = {}): Json => ({ id: OBJ, path: path(folder), content_type: "image/png", size_bytes: 2048, ...over });
+// eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- test removes a caller-chosen key from a scratch object
 const without = (value: Json, key: string): Json => { const copy = { ...value }; delete copy[key]; return copy; };
 
 function parses(kind: EntryKind, value: unknown): boolean {

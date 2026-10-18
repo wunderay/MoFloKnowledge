@@ -338,6 +338,7 @@ export function captureHtml(
     ...headings.map((item) => item.text),
     ...links.map((item) => item.label),
     ...forms.flatMap((item) => item.labels),
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
     ...forms.flatMap((item) => [item.heading ?? "", ...("context" in item ? [String(item.context ?? "")] : []), ...item.submitLabels]),
     ...content.lists.flatMap((item) => [item.intro ?? "", ...item.items]),
     ...ctas.map((item) => item.label),

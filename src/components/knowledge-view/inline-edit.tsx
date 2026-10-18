@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- entry content is a Record<string, any> by design (one editor handles every entry kind) */
 import {
   createContext,
   useContext,
@@ -198,7 +199,11 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
           waiting.current = waiting.current.filter((check) => check !== poll);
           resolve(shown);
         };
-        const poll = () => ready() && done(true);
+        const poll = () => {
+          if (ready()) {
+            done(true);
+          }
+        };
         const timer = setTimeout(() => { done(false); }, timing.fresh);
         waiting.current.push(poll);
       });
@@ -348,6 +353,7 @@ function useSavedTimer(state: EditState | null, key: string, feedback: Feedback)
     }
     const timer = setTimeout(() => { state.host.patch(key, { feedback: IDLE }); }, SAVED_MS);
     return () => { clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- restart the saved timer only when feedback changes; state/key are stable for this slot
   }, [feedback]);
 }
 
@@ -577,6 +583,7 @@ export function useTextField(spec: TextSpec, multiline = false) {
         trigger.current?.focus();
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- focus management runs only on `editing` transitions; host/key/slot.refocus must not re-trigger it
   }, [editing]);
 
   if (!state || !host) {
@@ -800,6 +807,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
     if (host && adding) {
       field.current?.focus();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- focus the field only when `adding` flips; host is stable
   }, [adding]);
   useEffect(() => {
     if (!host || !slot.focus) {
@@ -812,6 +820,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
     } else {
       removes.current.get(target)?.focus();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run only when a new focus request arrives (slot.focus); host/key are stable for this slot
   }, [slot.focus]);
   useEffect(() => {
     if (!host || !toast) {
@@ -819,6 +828,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
     }
     const timer = setTimeout(() => { host.patch(key, { toast: null }); }, UNDO_MS);
     return () => { clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- re-arm the toast timer only when the toast changes; host/key are stable for this slot
   }, [toast]);
 
   if (!state || !host) {

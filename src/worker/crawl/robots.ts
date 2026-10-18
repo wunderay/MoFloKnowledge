@@ -132,6 +132,7 @@ export class RobotsCache {
                 }
                 if (response.status === 429 && attempt === 0) {
                   await new Promise<void>((resolve, reject) => {
+                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
                         const abort = () => { clearTimeout(timer); reject(signal!.reason); };
                         const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, retryAfterMs(response.headers['retry-after']));
                         signal?.addEventListener('abort', abort, { once: true });
@@ -158,6 +159,6 @@ function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
         }
         const abort = () => { reject(signal.reason); };
         signal.addEventListener('abort', abort, { once: true });
-        promise.then(value => { signal.removeEventListener('abort', abort); resolve(value); }, error => { signal.removeEventListener('abort', abort); reject(error); });
+        promise.then(value => { signal.removeEventListener('abort', abort); resolve(value); }, (error: unknown) => { signal.removeEventListener('abort', abort); reject(error); });
     });
 }

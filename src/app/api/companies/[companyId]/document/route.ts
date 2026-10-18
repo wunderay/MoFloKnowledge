@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use */
 import { route } from "../../../../../server/http";
 import { IdSchema } from "../../../../../contracts/api-common";
 import { readDraft } from "../../../../../server/read-model";
@@ -16,8 +17,8 @@ export const GET = route(async (request, context, { client, user }) => {
   const selected = parameters.get("versionId");
   const format = z.enum(["json", "docx", "pdf"]).parse(parameters.get("format"));
   const input = selected === "draft"
-    ? { kind: "draft" as const, draft: await readDraft(client, companyId, user!.id) }
-    : await readSnapshot(client, companyId, IdSchema.parse(selected), user!.id).then((saved) => ({ kind: "snapshot" as const, snapshot: saved.payload, stored: saved.stored }));
+    ? { kind: "draft" as const, draft: await readDraft(client, companyId, user.id) }
+    : await readSnapshot(client, companyId, IdSchema.parse(selected), user.id).then((saved) => ({ kind: "snapshot" as const, snapshot: saved.payload, stored: saved.stored }));
   const name = input.kind === "draft" ? input.draft.company.name : input.snapshot.provenance.company.name;
   const version = input.kind === "draft" ? "draft" : input.snapshot.version;
   const bytes = format === "json" ? canonicalStringify(documentData(input))

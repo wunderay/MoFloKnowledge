@@ -183,7 +183,7 @@ export function reduceCandidates(
           for (const item of c.value as { id: string }[]) {
             const previous = itemValues.get(item.id),
               next = canonicalStringify(field.field === "target_buyers"
-                ? { ...item, text: buyerIdentityKey(String((item as { id: string; text: string }).text)) }
+                ? { ...item, text: buyerIdentityKey((item as { id: string; text: string }).text) }
                 : field.field === "channels" ? equivalentItem({ ...item, label: null }) : equivalentItem(item));
             if (previous && previous !== next && field.field !== "fonts") {
               collectionConflict = true;
@@ -245,6 +245,7 @@ export function reduceCandidates(
           retrieved_at: page.retrievedAt,
         });
         for (const id of c.segment_ids) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
           const segment = page.capture.segments.find((s) => s.id === id)!;
           const eid = stableId(page.id, "segment", id);
           evidenceMap.set(eid, {

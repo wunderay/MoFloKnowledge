@@ -31,6 +31,7 @@ describe("unexpected failures", () => {
     const bodies: string[] = [];
     for (const failure of [boom, new TypeError("x is undefined"), new z.ZodError([]), "plain string", null]) {
       const response = await route(async () => {
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- test deliberately throws a non-Error value to exercise the error path
         throw failure;
       })(request(), context);
       expect([400, 503]).toContain(response.status);

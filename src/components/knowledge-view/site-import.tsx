@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { ZodError } from "zod";
 import { parseBusinessEntry, type SiteLink } from "@/contracts";
 import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
@@ -154,8 +154,16 @@ export function SiteImport({
     setPages(null);
     setLoadError("");
     api<SourceCoverage>(companyPath(companyId, "/sources"))
-      .then((data) => current && setPages(data.pages))
-      .catch((error: Error) => current && setLoadError(error.message));
+      .then((data) => {
+        if (current) {
+          setPages(data.pages);
+        }
+      })
+      .catch((error: unknown) => {
+        if (current) {
+          setLoadError((error as Error).message);
+        }
+      });
     return () => {
       current = false;
     };
@@ -178,7 +186,7 @@ export function SiteImport({
   function choose(key: string, checked: boolean) {
     setSelected((now) => (checked ? (now.length >= remaining ? now : [...now.filter((k) => k !== key), key]) : now.filter((k) => k !== key)));
   }
-  async function submit(event: FormEvent) {
+  async function submit(event: SyntheticEvent) {
     event.preventDefault();
     if (saving.current || chosen.length === 0) {
       return;

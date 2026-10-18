@@ -5,7 +5,6 @@ import { CitationPopover } from "../shared/citation-popover";
 import { Notice } from "../shared/ui";
 import {
   entryRoot,
-  type EntryKind,
   type CitationContext,
   type EntryProvenance,
   type Proposal,
@@ -19,12 +18,12 @@ type ProposalItem = Proposal;
 function isHistoricalAiProposal(proposal: ProposalItem): boolean {
   const historicalOrigin = (origin: string) =>
     origin === "inferred" || origin === "generated";
-  return Boolean(
+  return (
     (proposal.model && proposal.model !== "deterministic-only") ||
       proposal.provenance.claims.some((claim) => historicalOrigin(claim.origin)) ||
       [...proposal.conflicts, ...proposal.provenance.conflicts].some((conflict) =>
         conflict.candidates.some((candidate) => historicalOrigin(candidate.origin)),
-      ),
+      )
   );
 }
 export function ProposalReview({
@@ -89,7 +88,7 @@ export function ProposalReview({
           ),
         );
       })
-      .catch((error) => { setError(error.message); });
+      .catch((error: unknown) => { setError((error as Error).message); });
   }, [companyId, entries]);
   async function act(proposal: ProposalItem, dismiss = false) {
     if (!dismiss && isHistoricalAiProposal(proposal)) {

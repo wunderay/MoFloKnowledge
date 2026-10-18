@@ -119,6 +119,7 @@ describe("SSRF", () => {
       "ftp://example.com/",
       "gopher://example.com/",
       "data:text/html,hi",
+      // secretlint-disable-next-line @secretlint/secretlint-rule-basicauth -- intentionally fake credentials: the SSRF check must reject them
       "http://user:pass@example.com/",
       "http://example.com:8080/",
       "http://localhost/",
@@ -137,8 +138,8 @@ describe("SSRF", () => {
   });
 
   it("refuses names that resolve to cloud metadata or private addresses, including IPv6 and mixed answers", async () => {
-    const answer = (...addresses: string[]) => async () =>
-      addresses.map((address) => ({ address, family: (address.includes(":") ? 6 : 4) }));
+    const answer = (...addresses: string[]) => async (): Promise<{ address: string; family: 4 | 6 }[]> =>
+      addresses.map((address) => ({ address, family: address.includes(":") ? 6 : 4 }));
     for (const address of ["169.254.169.254", "100.100.100.200", "fd00:ec2::254", "::ffff:169.254.169.254", "192.168.1.10"]) {
       await expect(approveDestination("https://metadata.example.com/", answer(address)), address).rejects.toThrow();
     }

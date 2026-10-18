@@ -18,14 +18,14 @@ export function SectionView({
   entries,
   citationContext,
   offeringId = "",
-  onSelectOffering = () => {},
+  onSelectOffering = () => undefined,
   personId = "",
-  onSelectPerson = () => {},
+  onSelectPerson = () => undefined,
   canEdit = false,
   actorId = "",
   generation = null,
   importBlocked = false,
-  onSaved = async () => {},
+  onSaved = () => Promise.resolve(),
 }: {
   section: KnowledgeSectionId;
   companyId: string;

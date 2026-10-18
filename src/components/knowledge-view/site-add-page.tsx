@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type SyntheticEvent, type KeyboardEvent } from "react";
 import type { SiteLink } from "@/contracts";
 import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
 import type { ViewSiteLinks } from "./data";
@@ -12,7 +12,7 @@ const NOTE = "Page added from the knowledge view.";
 const bareHost = (host: string) => host.toLowerCase().replace(/^www\./, "");
 
 /** The company's host from its website, or null when it has no usable website. */
-export function companyHost(website: string | null | undefined): string | null {
+function companyHost(website: string | null | undefined): string | null {
   if (!website) {
     return null;
   }
@@ -23,13 +23,13 @@ export function companyHost(website: string | null | undefined): string | null {
   }
 }
 
-export type PageCheck = { ok: true; url: string; title: string } | { ok: false; message: string };
+type PageCheck = { ok: true; url: string; title: string } | { ok: false; message: string };
 
 /**
  * Checks what was typed, in this order: an address, an http(s) scheme, a usable address (no login in it),
  * the company's own site, a page not listed yet. The first failure is the one message to show.
  */
-export function checkPage(input: { url: string; title: string }, links: SiteLink[], website: string | null | undefined): PageCheck {
+function checkPage(input: { url: string; title: string }, links: SiteLink[], website: string | null | undefined): PageCheck {
   const typed = input.url.trim();
   if (!typed) {
     return { ok: false, message: "Enter the page URL." };
@@ -180,7 +180,7 @@ function AddPageDialog({
     event.preventDefault();
     close();
   }
-  async function submit(event: FormEvent) {
+  async function submit(event: SyntheticEvent) {
     event.preventDefault();
     if (saving.current || blocker) {
       return;

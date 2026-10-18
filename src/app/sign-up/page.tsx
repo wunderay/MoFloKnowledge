@@ -5,6 +5,7 @@ export default function SignUpPage() {
   return (
     <main className="sign-in">
       <section className="sign-in__story">
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- brand link to the site root, kept as a plain anchor so navigation behaviour is unchanged */}
         <a href="/" aria-label={`${APP_NAME} home`}>
           <Brand />
         </a>

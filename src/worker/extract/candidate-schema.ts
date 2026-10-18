@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- zod 3 schema introspection (.innerType/.unwrap/.shape/.element) is typed any */
 import { z } from "zod";
 import { FIELD_REGISTRY, businessEntrySchemas } from "../../contracts";
 // Candidate values omit UUIDs. The worker assigns stable identities after local validation.
-export function candidateValueSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
+function candidateValueSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
   if (schema instanceof z.ZodEffects) {
     return candidateValueSchema(schema.innerType());
   }

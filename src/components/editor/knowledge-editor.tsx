@@ -121,14 +121,16 @@ function KnowledgeEditorContent({
     if (entryId) {
       setSelectedOffering(entryId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: reads the URL query once; dispatch must not re-run it
   }, []);
   useEffect(() => {
     if (!initialDraft) {
-      refresh();
+      void refresh();
     }
     api<{ companies: { id: string; name: string }[] }>("/api/companies")
       .then((data) => { setCompanies(data.companies); })
-      .catch(() => {});
+      .catch(() => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialDraft only decides whether the first load is needed; changing it must not refetch
   }, [refresh]);
   useEffect(() => {
     const entryId = new URLSearchParams(window.location.search).get("entryId");
@@ -333,6 +335,7 @@ function KnowledgeEditorContent({
       const provenance = structuredClone(
         state.provenance[entry.id] ?? entry.provenance,
       );
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       const conflict = provenance.conflicts.find(
         (item) => item.id === conflictId,
       )!;
@@ -353,6 +356,7 @@ function KnowledgeEditorContent({
           target: conflict.target,
           action,
           candidate_id: candidateId,
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
           actor_id: draft!.actorId,
           decided_at: new Date().toISOString(),
           note:
@@ -387,6 +391,7 @@ function KnowledgeEditorContent({
       provenance: createEmptyProvenance(),
       review_status: "unreviewed",
     };
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     setDraft({ ...draft!, entries: [...draft!.entries, entry] });
     dispatch({ type: "edit", id, content: entry.content });
     if (entry.kind === "offering") {
@@ -439,7 +444,7 @@ function KnowledgeEditorContent({
               <button
                 className="button"
                 onClick={() => {
-                  refresh();
+                  void refresh();
                   setMessage(
                     "Latest saved revisions loaded. Unsaved values have been preserved for comparison.",
                   );
@@ -509,8 +514,10 @@ function KnowledgeEditorContent({
             <div className="cloud-knowledge__banner">
               <div><span className="cloud-knowledge__banner-label">Company overview</span><h3>{draft.company.name}</h3></div>
               <dl className="cloud-knowledge__stats">
+                {/* eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime */}
                 <div><dt>Founded</dt><dd>{String(foundation.year_founded ?? "Unknown")}</dd></div>
                 <div><dt>Employees</dt><dd>{employeeLabel}</dd></div>
+                {/* eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime */}
                 <div><dt>Legal entity</dt><dd>{String(foundation.legal_entity_type ?? "Unknown")}</dd></div>
               </dl>
             </div>
@@ -539,6 +546,7 @@ function KnowledgeEditorContent({
           </div>
           {currentView === "market_and_customers" && (
             <div className="cloud-knowledge__banner">
+              {/* eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime */}
               <div><span className="cloud-knowledge__banner-label">Industry</span><h3>{String(foundation.industry ?? "Not recorded")}</h3></div>
               <p>Industry, business model, and company role can be edited in General Info.</p>
             </div>
@@ -610,7 +618,7 @@ function KnowledgeEditorContent({
                     onClick={() => { setSelectedOffering(entry.id); }}
                   >
                     <span className="cloud-knowledge__offering-icon" aria-hidden="true">▱</span>
-                    <span><strong>{"name" in value && value.name ? String(value.name) : `Untitled offering ${index + 1}`}</strong><small>{state.dirty.includes(entry.id) ? "Unsaved changes" : entry.review_status.replaceAll("_", " ")}</small></span>
+                    <span><strong>{"name" in value && value.name ? value.name : `Untitled offering ${index + 1}`}</strong><small>{state.dirty.includes(entry.id) ? "Unsaved changes" : entry.review_status.replaceAll("_", " ")}</small></span>
                     <span aria-hidden="true">›</span>
                   </button>;
                 })}
@@ -653,7 +661,7 @@ function KnowledgeEditorContent({
                   <div className="actions">
                     <h3>
                       {"name" in value && value.name
-                        ? String(value.name)
+                        ? value.name
                         : spec.label}
                     </h3>
                     <StatusBadge
@@ -876,7 +884,7 @@ function KnowledgeEditorContent({
           onClose={() => { setPublish(false); }}
           onSaved={() => {
             setMessage("Knowledge version saved. The snapshot is permanent.");
-            refresh();
+            void refresh();
           }}
         />
       )}

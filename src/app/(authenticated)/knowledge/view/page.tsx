@@ -59,6 +59,7 @@ export default async function ViewPage({
         />
       );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
     const saved = await readSnapshot(client, id.data, versionId, user.id);
     return (
       <KnowledgeViewer
@@ -69,8 +70,10 @@ export default async function ViewPage({
         initialOffering={offering}
         initialPerson={person}
         initialData={{
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
           companyName: saved.payload.provenance.company.name,
           versions,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
           snapshot: saved.payload,
         }}
       />

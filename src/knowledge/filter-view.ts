@@ -34,6 +34,7 @@ function searchable(value: unknown): string {
       .map(([, item]) => searchable(item))
       .join(" ");
   }
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
   return String(value);
 }
 // An entry matches origin/coverage only through its own claims and targets, never through provenance shared with other entries.

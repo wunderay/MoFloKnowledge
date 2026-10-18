@@ -32,7 +32,7 @@ export function EntryHistory({
       companyPath(companyId, `/entries/${entryId}/history`),
     )
       .then((data) => { setHistory(Array.isArray(data) ? data : data.revisions); })
-      .catch((e) => { setError(e.message); });
+      .catch((e: unknown) => { setError((e as Error).message); });
   }, [companyId, entryId]);
   async function restore(fromRevision: number) {
     setBusy(true);
@@ -73,6 +73,7 @@ export function EntryHistory({
           <p className="field__hint">
             {String(item.created_at)} · {String(item.author_id)}
           </p>
+          {/* eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime */}
           {item.change_reason ? <p>{String(item.change_reason)}</p> : null}
           <details>
             <summary className="field__hint">View saved values</summary>

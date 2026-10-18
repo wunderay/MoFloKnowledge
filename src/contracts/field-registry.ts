@@ -58,6 +58,7 @@ export function requiredCoverageTargets(
         }
       } else {
         for (const item of items) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
           result.push(field.path.replace("@id", `@${item.id}`));
         }
       }

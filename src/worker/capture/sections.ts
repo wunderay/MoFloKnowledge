@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-enum-comparison -- domhandler's node.type enum is compared to its string values; the enum is not exported by a direct dependency */
 import type { CheerioAPI } from "cheerio";
 import type { AnyNode, Element } from "domhandler";
 import { normalizeText, type TextSegment } from "./segments";

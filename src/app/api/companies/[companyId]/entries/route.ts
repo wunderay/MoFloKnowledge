@@ -14,7 +14,7 @@ export const POST = route(async (r, c, { client, user }) => {
       b.kind,
       b.content,
       b.requestId,
-      user!.id,
+      user.id,
       b.genderAttestation,
     ),
     p_request: b.requestId,

@@ -7,7 +7,7 @@ export const GET = route(async (_r, c, { client, user }) => {
   const draft = await readDraft(
     client,
     IdSchema.parse((await c.params).companyId),
-    user!.id,
+    user.id,
   );
   const preview = assemblePreview(
     draft.entries.map((e) => ({

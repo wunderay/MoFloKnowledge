@@ -20,7 +20,9 @@ function reducer(state: EditorState, action: Action): EditorState {
   if (action.type === "saved") {
     const values = { ...state.values };
     const provenance = { ...state.provenance };
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- reducer drops the saved entry id from a copy of the state map
     delete values[action.id];
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- reducer drops the saved entry id from a copy of the state map
     delete provenance[action.id];
     return {
       ...state,

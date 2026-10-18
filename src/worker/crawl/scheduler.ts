@@ -43,7 +43,7 @@ export class Scheduler {
             }
             const abort = () => { reject(signal.reason); };
             signal.addEventListener('abort', abort, { once: true });
-            prior.then(() => { signal.removeEventListener('abort', abort); resolve(); });
+            void prior.then(() => { signal.removeEventListener('abort', abort); resolve(); });
         });
         signal.throwIfAborted();
         const wait = (this.starts.get(host) ?? 0) + Math.min(MAX_TIMER_MS, Math.max(500, gapMs)) - Date.now();
@@ -56,7 +56,7 @@ export class Scheduler {
         this.starts.set(host, Date.now());
     }
     finally {
-        prior.then(() => { release(); if (this.hostQueues.get(host) === turn) {
+        void prior.then(() => { release(); if (this.hostQueues.get(host) === turn) {
           this.hostQueues.delete(host);
         } });
     } }

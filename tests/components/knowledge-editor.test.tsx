@@ -115,7 +115,9 @@ beforeEach(() => {
   };
   harness.dispatch.mockImplementation((action) => {
     if (action.type === "saved") {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- test removes a caller-chosen key from a scratch object
       delete harness.state.values[action.id];
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- test removes a caller-chosen key from a scratch object
       delete harness.state.provenance[action.id];
       harness.state.dirty = harness.state.dirty.filter((id: string) => id !== action.id);
     } else if (action.type === "edit") {

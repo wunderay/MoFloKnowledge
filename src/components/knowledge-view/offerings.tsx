@@ -15,6 +15,7 @@ const COST_HELP = "Enter a number, for example 49.99.";
 const costSpec = (kind: TextSpec["kind"]): TextSpec => ({
   label: "Offering cost",
   kind,
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- entry content is a Record<string, any> by design (one editor handles every entry kind)
   read: (content) => (typeof content.pricing?.amount === "string" ? content.pricing.amount : ""),
   apply: (content, text) => {
     const value = text.trim();
@@ -29,6 +30,7 @@ const costSpec = (kind: TextSpec["kind"]): TextSpec => ({
       return { error: COST_HELP };
     }
     const amount = value.replace(/^0+(?=\d)/, "");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- entry content is a Record<string, any> by design (one editor handles every entry kind)
     content.pricing = {
       billing_interval: null,
       pricing_model: null,
@@ -256,7 +258,7 @@ export function BusinessOfferings({
   onSelect,
   canEdit = false,
   blocked = false,
-  onSaved = async () => {},
+  onSaved = () => Promise.resolve(),
 }: {
   companyId: string;
   offerings: ViewOffering[];

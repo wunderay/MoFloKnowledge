@@ -29,6 +29,7 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
   const supported = new Set(regular.getCharacterSet());
   let substituted = false;
   const displayText = (value: string) => Array.from(value, (character) => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     const code = character.codePointAt(0)!;
     if (/[\r\n\t]/.test(character) || supported.has(code)) {
       return character;
@@ -209,6 +210,7 @@ export async function renderKnowledgePdf(input: DocumentInput): Promise<Uint8Arr
     }
     const annotation = pdf.context.obj({ Type: "Annot", Subtype: "Link", Rect: link.rect, Border: [0, 0, 0],
       ...(destination ? { Dest: [destination.page.ref, PDFName.of("XYZ"), margin, destination.y, null] }
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         : { A: { S: "URI", URI: PDFString.of(uri!) } }),
     });
     link.page.node.addAnnot(pdf.context.register(annotation));

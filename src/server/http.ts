@@ -29,7 +29,7 @@ export function mapDatabaseError(error: {
   const value = error.message || "";
   let details: Record<string, unknown> | undefined;
   try {
-    const parsed = JSON.parse(error.details ?? "{}");
+    const parsed = JSON.parse(error.details ?? "{}") as unknown;
     const safe = z
       .object({
         currentRevision: z.number().int().positive().optional(),
@@ -146,7 +146,8 @@ export async function readJson<S extends z.ZodTypeAny>(
     }
   }
   try {
-    return schema.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
+    return schema.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown);
   } catch (error) {
     const business =
       error instanceof z.ZodError &&
@@ -172,11 +173,14 @@ export function json(data: unknown, requestId: string, status = 200) {
   );
 }
 export interface RouteContext { params: Promise<Record<string, string>> }
+type Session = Awaited<ReturnType<typeof verifiedSession>>;
+/** The session as `route` hands it to a handler: signed-in, so `user` is never null. */
+export type SignedInSession = Session & { user: NonNullable<Session["user"]> };
 export function route(
   handler: (
     request: Request,
     context: RouteContext,
-    auth: Awaited<ReturnType<typeof verifiedSession>>,
+    auth: SignedInSession,
     requestId: string,
   ) => Promise<unknown>,
   status = 200,
@@ -189,7 +193,7 @@ export function route(
       if (!auth.user) {
         throw new HttpError(401, "signed_out", "Sign in to continue.");
       }
-      const data = await handler(request, context, auth, requestId);
+      const data = await handler(request, context, auth as SignedInSession, requestId);
       return data instanceof Response ? data : json(data, requestId, status);
     } catch (error) {
       const safe =
@@ -222,6 +226,7 @@ export async function rpc(
   name: string,
   args: Record<string, unknown>,
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
   const { data, error } = await client.rpc(name, args);
   if (error) {
     throw mapDatabaseError(error);
@@ -248,7 +253,7 @@ export async function rpc(
   ) {
     return parseResponse(RevisionResponseSchema, data);
   }
-  return data;
+  return data as unknown;
 }
 
 export function parseResponse<S extends z.ZodTypeAny>(
@@ -263,5 +268,6 @@ export function parseResponse<S extends z.ZodTypeAny>(
       "The service returned an invalid response. Please retry.",
     );
   }
-  return result.data;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
+  return result.data as z.output<S>;
 }

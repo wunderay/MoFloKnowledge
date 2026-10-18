@@ -41,9 +41,11 @@ export function UnsavedNavigationProvider({
   );
 
   useEffect(() => {
-    let currentIndex = Number(window.history.state?.[indexKey] ?? 0);
+    let currentIndex = Number((window.history.state as Record<string, unknown> | null)?.[indexKey] ?? 0);
     let restoring = false;
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- the originals are only ever invoked via .call(window.history, ...)
     const originalPush = window.history.pushState;
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- the originals are only ever invoked via .call(window.history, ...)
     const originalReplace = window.history.replaceState;
     originalReplace.call(
       window.history,
@@ -122,7 +124,7 @@ export function UnsavedNavigationProvider({
     }
     function pop(event: PopStateEvent) {
       const destinationIndex = Number(
-        event.state?.[indexKey] ?? currentIndex - 1,
+        (event.state as Record<string, unknown> | null)?.[indexKey] ?? currentIndex - 1,
       );
       if (restoring) {
         restoring = false;
@@ -141,6 +143,7 @@ export function UnsavedNavigationProvider({
     function unload(event: BeforeUnloadEvent) {
       if (dirty.current && !confirmed.current) {
         event.preventDefault();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- returnValue is still required to trigger the beforeunload prompt in some browsers
         event.returnValue = "";
       }
     }

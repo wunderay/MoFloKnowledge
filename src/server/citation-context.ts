@@ -37,8 +37,8 @@ export async function readCitationContext(
     provenance.claims.map((claim) => claim.id),
   );
   let lookups = 0;
-  for (let index = 0; index < pending.length; index++) {
-    const id = pending[index];
+  // `pending` grows while iterating (based_on_claim_ids are pushed); array iteration visits appended items.
+  for (const id of pending) {
     if (claims.has(id)) {
       continue;
     }

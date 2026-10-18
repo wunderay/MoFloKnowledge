@@ -304,5 +304,6 @@ export function summarizeValue(value: unknown): string {
           .join("; ")
       : "Unknown";
   }
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
   return String(value);
 }

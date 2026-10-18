@@ -24,7 +24,7 @@ export function SignUpForm() {
               password: form.get("password"),
             }),
           });
-          const result = await response.json();
+          const result = (await response.json()) as { error?: { message?: string }; data?: { signedIn?: boolean } };
           if (!response.ok) {
             setMessage(result.error?.message || "Unable to sign up.");
           } else if (result.data?.signedIn) {

@@ -28,7 +28,7 @@ export const claimsForLeaves = (leaves: number) => Math.ceil(leaves / MAX_CLAIM_
  * hundreds of items stays under the 500-claim cap. The ids of the first claim of each group are kept
  * (so retries with a deterministic id generator stay stable).
  */
-export function groupClaims(created: Claim[]): Claim[] {
+function groupClaims(created: Claim[]): Claim[] {
   const out: Claim[] = [];
   const targets = created.flatMap((claim) => claim.targets);
   for (let at = 0; at < targets.length; at += MAX_CLAIM_TARGETS) {

@@ -75,13 +75,14 @@ export async function installResourcePolicy(context: BrowserContext, task: Rende
         }
         catch (error) {
             limitations.push(error instanceof Error ? error.message : 'Resource blocked');
-            await route.abort('blockedbyclient').catch(() => { });
+            await route.abort('blockedbyclient').catch(() => undefined);
         }
         finally {
             release();
         }
     });
     await context.addInitScript(() => {
+        // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- init-script stub that replaces window.WebSocket
         Object.defineProperty(window, 'WebSocket', { value: class {
                 constructor() { throw new Error('WebSocket disabled'); }
             } });

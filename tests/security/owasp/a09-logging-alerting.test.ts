@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import { runWorker } from "../../../src/worker/run-loop";
 import type { Job, JobRepository } from "../../../src/worker/job-repository";
 
+// secretlint-disable-next-line @secretlint/secretlint-rule-database-connection-string -- intentionally fake credential: the test asserts it never reaches the logs
 const SECRET = "postgres://worker:hunter2@db.internal:5432/app";
 const ROOT = resolve(__dirname, "../../..");
 

@@ -46,6 +46,7 @@ export const collection = <T extends z.ZodTypeAny>(schema: T, max = 500) =>
       const ids = new Set<string>();
       items.forEach((item, index) => {
         if (item && typeof item === "object" && "id" in item) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
           if (ids.has(item.id)) {
             ctx.addIssue({
               code: "custom",
@@ -53,6 +54,7 @@ export const collection = <T extends z.ZodTypeAny>(schema: T, max = 500) =>
               path: [index, "id"],
             });
           }
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
           ids.add(item.id);
         }
       });

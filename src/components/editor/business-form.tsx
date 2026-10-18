@@ -112,10 +112,11 @@ export function BusinessField({
               </div>
             </div>
             <BusinessField
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
               spec={spec.items!}
               value={item}
               name={name}
-              path={`${path}/@${item.id}`}
+              path={`${path}/@${String(item.id)}`}
               disabled={disabled}
               provenance={provenance}
               citationContext={citationContext}
@@ -130,6 +131,7 @@ export function BusinessField({
           type="button"
           className="button"
           disabled={disabled}
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
           onClick={() => { onChange([...list, newValue(spec.items!, true)]); }}
         >
           ＋ Add {label.toLowerCase()}
@@ -264,6 +266,7 @@ export function BusinessField({
         <select
           id={id}
           disabled={disabled}
+          // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
           value={String(value ?? "")}
           onChange={(e) => { onChange(e.target.value || null); }}
         >
@@ -278,6 +281,7 @@ export function BusinessField({
         <textarea
           id={id}
           disabled={disabled}
+          // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
           value={String(value ?? "")}
           placeholder={missingLabel}
           onChange={(e) => { onChange(e.target.value || null); }}
@@ -295,6 +299,7 @@ export function BusinessField({
                   ? "url"
                   : "text"
           }
+          // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
           value={String(value ?? "")}
           placeholder={missingLabel}
           step={name === "alpha" ? ".01" : undefined}

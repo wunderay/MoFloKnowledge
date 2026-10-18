@@ -143,6 +143,7 @@ export async function runCrawl(
     (job.source_captures ?? []).reduce(
       (total, row) =>
         total +
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion -- coerces untyped JSON (observations) that may hold a numeric string
         Number(
           (
             (row.observations as Record<string, unknown>)?.design as

@@ -35,8 +35,9 @@ export function CompanySettings({
       | { members: { user_id: string; role: string }[] }
     >(companyPath(companyId, "/members"))
       .then((d) => { setMembers(Array.isArray(d) ? d : d.members); })
-      .catch((e) => { setError(e.message); });
+      .catch((e: unknown) => { setError((e as Error).message); });
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload members when the company changes only; the role is fixed for a mounted company
   useEffect(load, [companyId]);
   async function member(userId: string, body: unknown) {
     setError("");
@@ -53,7 +54,7 @@ export function CompanySettings({
       setBusy(false);
     }
   }
-  async function metadata(e: React.FormEvent<HTMLFormElement>) {
+  async function metadata(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     setBusy(true);
@@ -163,6 +164,7 @@ export function CompanySettings({
             onSubmit={(e) => {
               e.preventDefault();
               const data = new FormData(e.currentTarget);
+              // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
               void member(String(data.get("userId")), {
                 role: data.get("role"),
               });

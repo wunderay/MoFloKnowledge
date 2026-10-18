@@ -32,7 +32,7 @@ export function createProxyFetcher(config: {
             }
         }
         finally {
-            await reader.cancel().catch(() => { });
+            await reader.cancel().catch(() => undefined);
             reader.releaseLock();
         }
         const headers: Record<string, string> = {};

@@ -5,7 +5,7 @@ import { authorizeCompany } from "../../../../../server/authorize";
 export const runtime = "nodejs";
 export const GET = route(async (_request, context, { client, user }) => {
   const company = IdSchema.parse((await context.params).companyId);
-  await authorizeCompany(client, company, user!.id);
+  await authorizeCompany(client, company, user.id);
   return checked(
     client
       .from("company_members")

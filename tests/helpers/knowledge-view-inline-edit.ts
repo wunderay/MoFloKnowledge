@@ -285,6 +285,7 @@ export function creationWrite(view: View, kind: EntryKind, nth = 0) {
 export const nothingSent = (view: View, what = "nothing is sent") => expect(view.server.writes, what).toEqual([]);
 
 /** The content `before` would have with one field replaced. */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- caller-supplied result type for a cast helper
 export function withField<T>(before: Entry, path: string[], next: unknown): T {
   return setAt(structuredClone(before.content), path, next) as T;
 }

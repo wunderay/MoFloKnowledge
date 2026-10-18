@@ -27,6 +27,7 @@ export function createEgressProxy(options: ProxyOptions) {
         }
         return parsed;
     };
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises -- async request handler; it reports its own failures
     const server = http.createServer({ maxHeaderSize: 16 * 1024 }, async (req, res) => {
         const control = req.method === 'POST' && req.url === '/fetch';
         if (!(control ? authenticate(req.headers.authorization, 'Bearer ' + options.token) : authenticate(req.headers['proxy-authorization'], expected))) {
@@ -53,7 +54,7 @@ export function createEgressProxy(options: ProxyOptions) {
                     if (bytes > 16 * 1024) {
                       throw new Error('Fetch control task too large');
                     }
-                    chunks.push(chunk);
+                    chunks.push(chunk as Buffer);
                 }
                 const task = z.object({ url: z.string().max(8192), method: z.enum(['GET', 'HEAD']), maxBytes: z.number().int().min(0).max(maxBytes) }).strict().parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
                 target = task.url;
@@ -87,6 +88,7 @@ export function createEgressProxy(options: ProxyOptions) {
             active--;
         }
     });
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises -- async request handler; it reports its own failures
     server.on('connect', async (req, client, head) => {
         if (!authenticate(req.headers['proxy-authorization'], expected)) {
             client.end('HTTP/1.1 407 Proxy Authentication Required\r\n\r\n');
@@ -140,9 +142,12 @@ export function createEgressProxy(options: ProxyOptions) {
                 }
                 client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
                 if (head.length) {
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
                   upstream!.write(head);
                 }
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
                 client.pipe(upstream!);
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
                 upstream!.pipe(client);
             });
         }

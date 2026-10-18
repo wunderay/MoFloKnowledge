@@ -50,6 +50,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
     if (open) {
       document.getElementById(optionId(KNOWLEDGE_SECTIONS[active].id))?.scrollIntoView?.({ block: "nearest" });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- scroll only when `open` or `active` change; optionId is a pure id helper
   }, [open, active]);
 
   const show = () => {
@@ -120,7 +121,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
         aria-expanded={open}
         aria-controls={listId}
         aria-labelledby={`${labelId} ${triggerId}`}
-        onClick={() => { open ? close() : show(); }}
+        onClick={() => { if (open) { close(); } else { show(); } }}
         onKeyDown={onTriggerKey}
         onKeyUp={onTriggerKeyUp}
       >
@@ -148,7 +149,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
             aria-selected={item.id === value}
             className={`knowledge-view__listbox-option${index === active ? " knowledge-view__listbox-option--active" : ""}`}
             onMouseDown={(event) => { event.preventDefault(); }}
-            onMouseMove={() => active !== index && setActive(index)}
+            onMouseMove={() => { if (active !== index) { setActive(index); } }}
             onClick={() => { choose(index); }}
           >
             {item.label}

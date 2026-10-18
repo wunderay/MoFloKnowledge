@@ -59,7 +59,7 @@ function Loader() {
   const [rows, setRows] = useState<string[] | null>(null);
   const [saved, setSaved] = useState(0);
   useEffect(() => {
-    fetch("/api/companies/x/sources").then((r) => r.json()).then((b) => setRows(b.data.rows ?? ["none"]));
+    void fetch("/api/companies/x/sources").then((r) => r.json()).then((b) => setRows(b.data.rows ?? ["none"]));
   }, []);
   return (
     <form onSubmit={(e) => { e.preventDefault(); setSaved((n) => n + 1); }}>

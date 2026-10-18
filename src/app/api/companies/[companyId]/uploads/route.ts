@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 
 export const POST = route(async (request, context, { client, user }) => {
   const companyId = parseId((await context.params).companyId);
-  await authorizeUploads(client, companyId, user!.id, true);
+  await authorizeUploads(client, companyId, user.id, true);
   const form = await readUploadForm(request);
   const kind = form.get("kind");
   if (typeof kind !== "string" || !UPLOAD_KINDS.includes(kind as UploadKind)) {
@@ -46,7 +46,7 @@ export const POST = route(async (request, context, { client, user }) => {
     .from(UPLOAD_BUCKET)
     .upload(path, bytes, { contentType: image.type, upsert: false });
   if (stored.error) {
-    await authorizeUploads(client, companyId, user!.id, true); // archived or revoked mid-request: say so
+    await authorizeUploads(client, companyId, user.id, true); // archived or revoked mid-request: say so
     throw storageUnavailable();
   }
   const inserted = await client.from("uploads").insert({
@@ -56,7 +56,7 @@ export const POST = route(async (request, context, { client, user }) => {
     path,
     content_type: image.type,
     size_bytes: bytes.byteLength,
-    created_by: user!.id,
+    created_by: user.id,
   });
   if (inserted.error) {
     // No metadata row means no readable upload: take the object back out so nothing is left half-written.
@@ -65,7 +65,7 @@ export const POST = route(async (request, context, { client, user }) => {
     } catch {
       /* An unreferenced object is unreachable through the app. */
     }
-    await authorizeUploads(client, companyId, user!.id, true);
+    await authorizeUploads(client, companyId, user.id, true);
     throw mapDatabaseError(inserted.error);
   }
   return { id, path, content_type: image.type, size_bytes: bytes.byteLength, url: `/api/companies/${companyId}/uploads/${id}` };

@@ -81,7 +81,7 @@ export function formatAPACitations(
   }
   return result;
 }
-export function originLabel(
+function originLabel(
   origin: Origin | undefined,
   approved = false,
 ): string {

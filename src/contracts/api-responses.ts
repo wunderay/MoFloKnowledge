@@ -30,7 +30,7 @@ export const CompanyRowSchema = z
   })
   .strict();
 export const CompanyReadSchema = CompanyRowSchema.extend({ role }).strict();
-export const LatestJobSchema = z
+const LatestJobSchema = z
   .object({
     id: IdSchema,
     status: JobStatusSchema,
@@ -38,14 +38,14 @@ export const LatestJobSchema = z
     created_at: InstantSchema,
   })
   .strict();
-export const LatestVersionSchema = z
+const LatestVersionSchema = z
   .object({
     id: IdSchema,
     version_number: z.number().int().positive().safe(),
     created_at: InstantSchema,
   })
   .strict();
-export const CompanySummarySchema = CompanyReadSchema.extend({
+const CompanySummarySchema = CompanyReadSchema.extend({
   latestJob: LatestJobSchema.nullable(),
   latestVersion: LatestVersionSchema.nullable(),
 }).strict();
@@ -86,13 +86,13 @@ export const ArchivedEntryResponseSchema = z
 export const RestoredEntryResponseSchema = z
   .object({ id: IdSchema, kind: EntryKindSchema, revision: z.number().int().positive() })
   .strict();
-export const DraftEntryResponseSchema = RevisionResponseSchema.extend({
+const DraftEntryResponseSchema = RevisionResponseSchema.extend({
   kind: EntryKindSchema,
   current_revision: z.number().int().positive(),
   created_by: IdSchema,
   saved_at: InstantSchema,
 }).strict();
-export const SourceSummarySchema = z
+const SourceSummarySchema = z
   .object({
     id: IdSchema,
     company_id: IdSchema,

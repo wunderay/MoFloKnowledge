@@ -157,6 +157,7 @@ export function peopleFrom(
 
 /** Up to two capital letters for a person's avatar: the first letters of the first and last words of the name. */
 export function initialsOf(name: string | null): string {
+  // eslint-disable-next-line @typescript-eslint/no-misused-spread -- spreading a string by code point is intended (no grapheme splitting needed)
   const words = (name ?? "").split(/\s+/).map((word) => [...word.replace(/[^\p{L}\p{N}]/gu, "")][0]).filter(Boolean);
   if (words.length === 0) {
     return "";

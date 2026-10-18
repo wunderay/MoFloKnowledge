@@ -6,6 +6,7 @@ export function createTaskServer(token: string, render: (task: RenderTask, signa
       throw new Error('Renderer token must contain at least 32 characters');
     }
     let active = false;
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises -- async request handler; it reports its own failures
     return http.createServer({ maxHeaderSize: 8192 }, async (req, res) => {
         res.setHeader('cache-control', 'no-store');
         res.setHeader('content-type', 'application/json');
@@ -34,7 +35,7 @@ export function createTaskServer(token: string, render: (task: RenderTask, signa
                 if (bytes > 16 * 1024) {
                   throw new Error('Task too large');
                 }
-                chunks.push(chunk);
+                chunks.push(chunk as Buffer);
             }
             const task = RenderTaskSchema.parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
             const result = RenderResultSchema.parse(await render(task, abort.signal));

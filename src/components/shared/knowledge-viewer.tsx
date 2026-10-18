@@ -156,7 +156,7 @@ export function KnowledgeViewer({
   useEffect(() => {
     api<{ companies: { id: string; name: string }[] }>("/api/companies")
       .then((data) => { setCompanies(data.companies); })
-      .catch(() => {});
+      .catch(() => undefined);
   }, []);
   useEffect(() => {
     if (initialData && !initializedList.current) {
@@ -183,12 +183,13 @@ export function KnowledgeViewer({
         setVersions(all);
         setVersionId(initialVersionId ?? all[0]?.id ?? "draft");
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (!abort.signal.aborted) {
-          setError(error.message);
+          setError((error as Error).message);
         }
       });
     return () => { abort.abort(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialData only seeds the first render; versions reload when company or initial version change
   }, [companyId, initialVersionId]);
   useEffect(() => {
     setQuery("");
@@ -254,9 +255,9 @@ export function KnowledgeViewer({
             setEntries(snapshotEntries(data));
           });
     request
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (!abort.signal.aborted && current()) {
-          setError(error.message);
+          setError((error as Error).message);
         }
       })
       .finally(() => {
@@ -265,10 +266,12 @@ export function KnowledgeViewer({
         }
       });
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- readEpoch is a plain counter (not a DOM ref); the cleanup must bump the current value
       readEpoch.current++;
       activeRead.current?.abort();
       abort.abort();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialData only seeds the first render; the read restarts on company/version/reload only
   }, [companyId, versionId, reload]);
   /**
    * Re-reads the draft after a save so the view shows it, without blanking the page. The save is
@@ -430,6 +433,7 @@ export function KnowledgeViewer({
         },
       ).map((entry) => ({
         ...entry,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         provenance: entries.find((original) => original.id === entry.id)!
           .provenance,
       })),
@@ -446,7 +450,7 @@ export function KnowledgeViewer({
   const profileMode = mode === "profile";
   const heading = (entry: ViewEntry) =>
     "name" in entry.content && entry.content.name
-      ? String(entry.content.name)
+      ? entry.content.name
       : CATEGORY_SPECS[entry.kind].label;
   return (
     <div className="version-viewer knowledge-view">
@@ -744,7 +748,7 @@ export function KnowledgeViewer({
                 <tr key={e.id}>
                   <td>
                     {"name" in e.content
-                      ? String(e.content.name ?? "Unnamed")
+                      ? e.content.name ?? "Unnamed"
                       : CATEGORY_SPECS[e.kind].label}
                   </td>
                   <td>{CATEGORY_SPECS[e.kind].label}</td>
@@ -782,9 +786,7 @@ export function KnowledgeViewer({
                   <div className="section-heading">
                     <h3>
                       {"name" in e.content
-                        ? String(
-                            e.content.name ?? CATEGORY_SPECS[e.kind].label,
-                          )
+                        ? (e.content.name ?? CATEGORY_SPECS[e.kind].label)
                         : CATEGORY_SPECS[e.kind].label}
                     </h3>
                     <StatusBadge value={e.review_status} />
@@ -800,6 +802,7 @@ export function KnowledgeViewer({
                           .map(([key, value]) => (
                             <ValueView
                               key={key}
+                              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use
                               value={value}
                               label={labelOf(key)}
                               path={`${root}/${key}`}

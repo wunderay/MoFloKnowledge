@@ -2,6 +2,7 @@ import { createEgressProxy } from './proxy';
 const allowed = new Set(['PATH', 'LANG', 'NODE_ENV', 'EGRESS_TOKEN', 'EGRESS_BIND', 'EGRESS_PORT']);
 for (const key of Object.keys(process.env)) {
   if (!allowed.has(key)) {
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- environment scrub: drops every variable that is not on the allow-list
     delete process.env[key];
   }
 }

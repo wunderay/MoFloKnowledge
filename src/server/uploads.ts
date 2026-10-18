@@ -43,12 +43,14 @@ export function isStorageNotFound(error: unknown) {
   return (
     Number(value?.status) === 404 ||
     Number(value?.statusCode) === 404 ||
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
     /^object not found$/i.test(String(value?.message ?? ""))
   );
 }
 
 const startsWith = (bytes: Uint8Array, signature: number[], offset = 0) =>
   bytes.length >= offset + signature.length && signature.every((byte, index) => bytes[offset + index] === byte);
+// eslint-disable-next-line @typescript-eslint/no-misused-spread -- spreading a string by code point is intended (no grapheme splitting needed)
 const ascii = (text: string) => [...text].map((character) => character.charCodeAt(0));
 // An SVG document: optional BOM, XML prolog, comments and a DOCTYPE without an internal subset, then <svg.
 const SVG_HEAD =

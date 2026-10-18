@@ -8,7 +8,6 @@ import {
   buildBusiness,
   draftFrom,
   snapshotFrom,
-  type Draft,
 } from "./knowledge-view-fixtures";
 
 export const SOURCE_ID = "00000000-0000-4000-8000-0000000a1001";

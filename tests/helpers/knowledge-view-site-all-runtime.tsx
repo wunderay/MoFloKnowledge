@@ -20,7 +20,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, vi } from "vitest";
 import { parse, norm, type Page } from "./knowledge-view-dom";
 import type { Draft } from "./knowledge-view-fixtures";
-import type { KnowledgeBaseExport } from "../../src/contracts";
 
 const shared = vi.hoisted(() => ({
   dispatcher: null as null | Record<string, (...args: any[]) => any>,
@@ -45,7 +44,7 @@ vi.mock("react", async (original) => {
     names.map((name) => [
       name,
       (...args: unknown[]) =>
-        shared.dispatcher && shared.dispatcher[name]
+        shared.dispatcher?.[name]
           ? shared.dispatcher[name](...args)
           : (base[name] as (...a: unknown[]) => unknown)(...args),
     ]),
@@ -131,6 +130,7 @@ export interface HNode {
   parent: HNode | null;
 }
 interface Inst { hooks: any[]; cursor: number }
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- mirrors React's EffectCallback type
 interface EffectRec { create: () => void | (() => void); deps?: unknown[]; cleanup?: void | (() => void) }
 export interface FakeNode {
   path: string;
@@ -264,6 +264,7 @@ class App {
     if (this.error) {
       const error = this.error;
       this.error = null;
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- rethrows whatever the rendered component threw
       throw error;
     }
   }
@@ -277,6 +278,7 @@ class App {
       if (this.error) {
         const error = this.error;
         this.error = null;
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- rethrows whatever the rendered component threw
         throw error;
       }
     }
@@ -379,6 +381,7 @@ class App {
     let entry = this.fakes.get(node.path);
     if (!entry) {
       const meta: FakeNode = { path: node.path, focusCalls: 0, showModalCalls: 0, closeCalls: 0, selection: null };
+      // eslint-disable-next-line @typescript-eslint/no-this-alias -- test double needs the outer instance inside nested function scopes
       const app = this;
       // A text control's value as the browser holds it: what the user typed (see View.type), else the rendered value.
       let typed: string | undefined;
@@ -398,7 +401,7 @@ class App {
           return currentValue();
         },
         set value(next: string) {
-          typed = String(next);
+          typed = next;
         },
         get selectionStart() {
           return meta.selection?.[0] ?? currentValue().length;
@@ -493,6 +496,7 @@ class App {
 
   // -- hooks -----------------------------------------------------------------------------------
   dispatcher: Record<string, (...args: any[]) => any> = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- test double needs the outer instance inside nested function scopes
     const app = this;
     const slot = <T,>(init: () => T): [T, number, Inst] => {
       const inst = app.current;
@@ -507,6 +511,7 @@ class App {
     };
     const same = (a?: unknown[], b?: unknown[]) =>
       !!a && !!b && a.length === b.length && a.every((value, i) => Object.is(value, b[i]));
+    // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- mirrors React's EffectCallback type
     const effect = (create: () => void | (() => void), deps?: unknown[]) => {
       const [rec, , inst] = slot<EffectRec & { first: boolean }>(() => ({ create, deps: undefined, first: true }));
       if (rec.first || !deps || !same(deps, rec.deps)) {
@@ -608,7 +613,7 @@ export class FakeServer {
   /** While set, writes wait for `release()` before they are answered. */
   gate: { promise: Promise<void>; release: () => void } | null = null;
 
-  constructor(init: { draft?: Draft; snapshot?: KnowledgeBaseExport | unknown; versions?: unknown[] }) {
+  constructor(init: { draft?: Draft; snapshot?: unknown; versions?: unknown[] }) {
     this.draft = init.draft ? structuredClone(init.draft) : null;
     this.snapshot = init.snapshot ? structuredClone(init.snapshot) : null;
     this.versions = (init.versions as any[]) ?? [];
@@ -1078,7 +1083,7 @@ export class View {
 export interface OpenOptions {
   section?: SectionLabel;
   draft?: Draft;
-  snapshot?: { payload: KnowledgeBaseExport | unknown; versionId: string };
+  snapshot?: { payload: unknown; versionId: string };
   versions?: { id: string; version_number: number; created_at: string }[];
   /** A raw `section` URL value (used instead of `section`), e.g. an identifier or an unknown value. */
   rawSection?: string;
@@ -1107,6 +1112,7 @@ export async function openView(opts: OpenOptions): Promise<View> {
   const server = new FakeServer({ draft: opts.draft, snapshot: opts.snapshot?.payload, versions: opts.versions ?? [] });
   opts.server?.(server);
   shared.server = server;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- rawSection: null must keep winning over the section lookup
   const sectionId = opts.rawSection !== undefined ? opts.rawSection : opts.section ? SECTION_IDS[opts.section] : undefined;
   const versionParam = opts.snapshot ? opts.snapshot.versionId : "draft";
   const clientQuery = new URLSearchParams(

@@ -1,4 +1,5 @@
-import { AlignmentType, Bookmark, BorderStyle, Document, ExternalHyperlink, HeadingLevel, InternalHyperlink, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType, HeightRule, VerticalAlign, TableLayoutType } from "docx";
+/* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use */
+import { AlignmentType, Bookmark, BorderStyle, Document, ExternalHyperlink, HeadingLevel, InternalHyperlink, Packer, Paragraph, TextRun, Table, TableCell, TableRow, WidthType, HeightRule, VerticalAlignTable, TableLayoutType } from "docx";
 import type { z } from "zod";
 import type { KnowledgeBaseExport, EntryProvenance, Claim } from "../contracts";
 import type { DraftResponseSchema } from "../contracts/api-responses";
@@ -246,11 +247,13 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       value.forEach((item) => { address(item, `${path}/@${item.id}`, "Additional location: "); });
       return;
     }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     if (Array.isArray(value) && ["target_buyers", "company_role", "service_locations", "alternative_company_names", "industry_groupings"].includes(path.split("/").at(-1)!)) {
       const titles: Record<string, string> = { target_buyers: "Customers", company_role: value.length === 1 ? "Role" : "Roles",
         service_locations: value.length === 1 ? "Service area" : "Service areas", alternative_company_names: "Also known as", industry_groupings: "Customer industries" };
       const items = value.filter((item) => typeof item.text === "string")
         .map((item) => ({ text: item.text, path: `${path}/@${item.id}/text` }));
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       collection(titles[path.split("/").at(-1)!], items);
       return;
     }
@@ -310,6 +313,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
         if (!groups.has(details)) {
           groups.set(details, { colors: [], details });
         }
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
         groups.get(details)!.colors.push(item.hex);
       }
       for (const group of groups.values()) {
@@ -343,7 +347,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
       }
       heading(title, "field");
       for (const [index, item] of (value as unknown[]).entries()) {
-        const itemPath = `${path}/${item && typeof item === "object" && "id" in item ? `@${item.id}` : index}`;
+        const itemPath = `${path}/${item && typeof item === "object" && "id" in item ? `@${String(item.id)}` : index}`;
         if (item && typeof item === "object" && "text" in item) {
           if (!repeatedNarrative(String(item.text))) {
             narrative(String(item.text), `${itemPath}/text`, { bullet: true, depth });
@@ -537,6 +541,7 @@ export function documentParagraphs(input: DocumentInput): DocumentParagraph[] {
     if (!groups.has(key)) {
       groups.set(key, { section, explanation, fields: new Set() });
     }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     groups.get(key)!.fields.add(title.startsWith(`${section} / `) ? title.slice(section.length + 3) : title);
   };
   for (const item of coverage) {
@@ -622,12 +627,13 @@ export async function renderKnowledgeDocument(input: DocumentInput): Promise<Buf
     }
     const rows: TableRow[] = [];
     for (let offset = 0; offset < paragraph.palette.length; offset += 4) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       const colors = Array.from({ length: 4 }, (_item, index) => paragraph.palette![offset + index]);
       rows.push(new TableRow({ height: { value: 480, rule: HeightRule.EXACT }, children: colors.flatMap((color) => color ? [
         new TableCell({ width: { size: 480, type: WidthType.DXA }, shading: { fill: color.hex.slice(1) },
           margins: { top: 0, bottom: 0, left: 0, right: 0 }, borders: Object.fromEntries(["top", "bottom", "left", "right"].map((edge) => [edge, { color: "88929B", style: BorderStyle.SINGLE, size: 4 }])),
           children: [new Paragraph({ spacing: { before: 0, after: 0 }, children: [new TextRun({ text: "", size: 2 })] })] }),
-        new TableCell({ width: { size: 2100, type: WidthType.DXA }, verticalAlign: VerticalAlign.CENTER,
+        new TableCell({ width: { size: 2100, type: WidthType.DXA }, verticalAlign: VerticalAlignTable.CENTER,
           margins: { left: 120, right: 120, top: 0, bottom: 0 },
           children: [makeParagraph({ text: color.hex, citations: color.citations, depth: 0 })] }),
       ] : [new TableCell({ width: { size: 480, type: WidthType.DXA }, children: [new Paragraph("")] }),

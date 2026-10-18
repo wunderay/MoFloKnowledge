@@ -53,7 +53,7 @@ export function ScrapeProgress({
         setError("");
         delay = 2000;
         if (active.includes(result.status)) {
-          timer = setTimeout(poll, delay);
+          timer = setTimeout(() => { void poll(); }, delay);
         } else {
           onComplete();
         }
@@ -61,7 +61,7 @@ export function ScrapeProgress({
         if (!stopped) {
           setError((e as Error).message);
           delay = Math.min(delay * 2, 30000);
-          timer = setTimeout(poll, delay);
+          timer = setTimeout(() => { void poll(); }, delay);
         }
       }
     }
@@ -71,7 +71,7 @@ export function ScrapeProgress({
       clearTimeout(timer);
     };
   }, [companyId, jobId, onComplete]);
-  async function start(e: React.FormEvent) {
+  async function start(e: React.SyntheticEvent) {
     e.preventDefault();
     if (
       !Number.isInteger(documentLimit) ||

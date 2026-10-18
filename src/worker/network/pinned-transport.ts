@@ -5,7 +5,7 @@ import type { Readable } from 'node:stream';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
 import { approveDestination, type Address } from './destination-policy';
 import { assertDocumentScope, normalizeUrl, NetworkPolicyError } from './url-scope';
-export const BOT_USER_AGENT = 'MoFloKnowledgeBot/1.0';
+const BOT_USER_AGENT = 'MoFloKnowledgeBot/1.0';
 export interface FetchResult {
     requestedUrl: string;
     finalUrl: string;
@@ -62,6 +62,7 @@ export function createPinnedFetcher(approve: DestinationApprover) {
                     }
                     if ([301, 302, 303, 307, 308].includes(response.statusCode ?? 0)) {
                         response.destroy();
+                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
                         resolve({ requestedUrl, finalUrl: current, status: response.statusCode!, headers, body: Buffer.alloc(0), redirects: [...redirects] });
                         return;
                     }

@@ -5,6 +5,7 @@ import { structuredCandidates } from "./structured";
 import { visibleCandidates } from "./visible";
 import { companyTextCandidates, COMPANY_TEXT_FIELDS } from "./company-text";
 import { marketTextCandidates, MARKET_TEXT_SUPPORTED_FIELDS } from "./market-text";
+const FONTS_FIELD = "/branding_and_style/fonts";
 export const SUPPORTED_FIELDS: readonly string[] = [
   ...COMPANY_TEXT_FIELDS, ...MARKET_TEXT_SUPPORTED_FIELDS,
   "/offerings/@id/features",
@@ -16,7 +17,7 @@ export const SUPPORTED_FIELDS: readonly string[] = [
   "/key_people/@id/name", "/key_people/@id/title", "/key_people/@id/background_or_relevance",
   "/offerings/@id/name", "/offerings/@id/description", "/offerings/@id/category",
   "/offerings/@id/url", "/offerings/@id/pricing",
-  "/online_presence/social_media_links", "/branding_and_style/fonts",
+  "/online_presence/social_media_links", FONTS_FIELD,
   "/branding_and_style/brand_colors", "/branding_and_style/logos",
 ];
 export function deterministicCandidates(
@@ -36,7 +37,7 @@ export function deterministicCandidates(
     origin: FieldCandidate["origin"] = "source_backed",
     note: string | null = null,
   ) => {
-    if (field === "/branding_and_style/fonts") {
+    if (field === FONTS_FIELD) {
       value = (value as { family: string }[]).flatMap((font) => {
         const family = font.family.replace(/\s*!important\s*$/i, "").trim();
         return !family || /^(?:inherit|initial|unset|revert|revert-layer)$/i.test(family) || /^var\(/i.test(family)
@@ -64,7 +65,7 @@ export function deterministicCandidates(
   for (const o of observations) {
     if (o.property === "font-family" && o.value) {
       add(
-        "/branding_and_style/fonts",
+        FONTS_FIELD,
         [
           {
             family: o.value,
@@ -79,7 +80,7 @@ export function deterministicCandidates(
     if (o.property === "stylesheet" && o.value) {
       for (const match of o.value.matchAll(/font-family\s*:\s*([^;}]+)/gi)) {
         add(
-          "/branding_and_style/fonts",
+          FONTS_FIELD,
           [
             {
               family: match[1].trim(),
@@ -109,7 +110,7 @@ export function deterministicCandidates(
           );
           if (loaded) {
             add(
-              "/branding_and_style/fonts",
+              FONTS_FIELD,
               [
                 {
                   family,

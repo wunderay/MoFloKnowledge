@@ -51,9 +51,9 @@ export function CompanyDashboard({
         ]);
         setNextCursor(data.nextCursor);
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (!abort.signal.aborted) {
-          setError(error.message);
+          setError((error as Error).message);
         }
       })
       .finally(() => {
@@ -62,6 +62,7 @@ export function CompanyDashboard({
         }
       });
     return () => { abort.abort(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initialData only seeds the first render; the list refetches when the archived filter flips
   }, [archived]);
   async function loadMore() {
     if (!nextCursor) {
@@ -83,7 +84,7 @@ export function CompanyDashboard({
       setLoading(false);
     }
   }
-  async function create(event: React.FormEvent<HTMLFormElement>) {
+  async function create(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");

@@ -165,7 +165,7 @@ async function main() {
     await repository.close();
   }
 }
-main().catch((error) => {
+main().catch((error: unknown) => {
   process.stderr.write(
     `Controlled fixture worker stopped: ${error instanceof Error ? error.name : "error"}\n`,
   );

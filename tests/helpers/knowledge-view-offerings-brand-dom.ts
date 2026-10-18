@@ -32,7 +32,7 @@ export function spaced(page: Page, el: AnyNode): string {
     if (n.type === "text") {
       parts.push((n as unknown as { data: string }).data);
     } else if (n.type === "tag" && ["script", "style"].includes((n).name)) {
-      
+      // script and style text is not content
     } else if ("children" in n) {
       (n.children as AnyNode[]).forEach(walk);
     }

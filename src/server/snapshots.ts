@@ -13,6 +13,7 @@ export async function readSnapshot(
   user: string,
 ) {
   await authorizeCompany(client, company, user);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
   const saved = await checked(
     client
       .from("knowledge_base_versions")
@@ -25,6 +26,7 @@ export async function readSnapshot(
     throw new HttpError(404, "unavailable", "Resource unavailable.");
   }
   // `payload` is the validated, current-shape view for rendering; `stored` is exactly what was frozen (hash, downloads).
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
   return { ...saved, payload: KnowledgeBaseExportSchema.parse(upgradeLegacySnapshot(saved.payload)), stored: saved.payload as unknown };
 }
 

@@ -194,6 +194,7 @@ export class World {
   readonly client: Record<string, unknown>;
 
   constructor() {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- test double needs the outer instance inside nested function scopes
     const world = this;
     this.client = {
       from: (table: string) => new Query(world, table),
@@ -231,6 +232,7 @@ export class World {
   }
 
   private bucket(name: string) {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- test double needs the outer instance inside nested function scopes
     const world = this;
     const record = (call: Omit<StorageCall, "bucket">) => world.storageCalls.push({ bucket: name, ...call });
     const wrong = () => (name === BUCKET ? null : { data: null, error: { message: "Bucket not found", statusCode: "404" } });

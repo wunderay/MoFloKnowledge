@@ -64,6 +64,7 @@ export class PostgresJobRepository implements JobRepository {
       "select private.claim_job($1) as job",
       [workerId],
     );
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
     return result.rows[0]?.job as Job | null;
   }
   heartbeat(j: Job) {

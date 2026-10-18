@@ -8,6 +8,6 @@ export const GET = route(async (_r, c, { client, user }) => {
     client,
     IdSchema.parse(p.companyId),
     IdSchema.parse(p.jobId),
-    user!.id,
+    user.id,
   );
 });

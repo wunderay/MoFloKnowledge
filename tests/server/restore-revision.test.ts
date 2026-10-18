@@ -51,7 +51,7 @@ const clientOver = (stored: Row[], ignoreFilters = false) => ({
         const data =
           table === "knowledge_entries"
             ? { kind: "market_and_customers", current_revision: 2 }
-            : (stored.find((row) => ignoreFilters || filters.every(([column, value]) => (row as Record<string, unknown>)[column] === value)) ?? null);
+            : (stored.find((row) => ignoreFilters || filters.every(([column, value]) => (row as unknown as Record<string, unknown>)[column] === value)) ?? null);
         return Promise.resolve({ data, error: null });
       },
     };

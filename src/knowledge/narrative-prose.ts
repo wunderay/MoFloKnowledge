@@ -7,6 +7,7 @@ const quoted = (text: string) => /["“”«»‘’]/u.test(text)
 // Literal tokens (email, URL, www host, host/path, @handle, #hashtag) must reach the reader byte-for-byte.
 const literalShape = [/^[^\s@]+@[^\s@]+$/u, /^\w+:\/\//u, /^www\./iu,
   /^[^\s/@.#?]+(?:\.[^\s/@.#?]+)*\.(?:\p{L}{2,}|xn--[a-z0-9-]+)(?:[/?#]\S*)?$/iu, /^[@#][\p{L}\p{N}_.'’-]+$/u];
+// eslint-disable-next-line @typescript-eslint/no-misused-spread -- spreading a string by code point is intended (no grapheme splitting needed)
 const trailing = new Set([...".,;:!?)]>'\"…*_`~"]);
 const literalToken = (token: string) => {
   const link = token.lastIndexOf("](");

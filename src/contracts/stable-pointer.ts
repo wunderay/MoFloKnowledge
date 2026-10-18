@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- walks untyped JSON (unknown narrowed by Array.isArray/in checks to any); values are checked structurally at each use */
 import { UUIDSchema } from "./primitives";
 export function escapePointerSegment(value: string): string {
   return value.replace(/~/g, "~0").replace(/\//g, "~1");

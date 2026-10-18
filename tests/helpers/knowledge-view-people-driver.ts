@@ -122,7 +122,7 @@ export function rowNodes(view: View): HNode[] {
   return items.filter((n) => !items.some((o) => o !== n && descendants(o).includes(n)));
 }
 /** The thing a user presses to select the row: its first button, else the row. */
-export const rowTarget = (view: View, row: HNode): HNode => descendants(row).find((n) => roleOf(n) === "button" || roleOf(n) === "link") ?? row;
+export const rowTarget = (_view: View, row: HNode): HNode => descendants(row).find((n) => roleOf(n) === "button" || roleOf(n) === "link") ?? row;
 export const rowTexts = (view: View) => rowNodes(view).map((r) => view.text(r));
 
 export function buttons(view: View, pattern: RegExp, within?: HNode): HNode[] {

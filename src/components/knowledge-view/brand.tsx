@@ -100,6 +100,7 @@ export function BrandIdentity({
                 <>
                   {primaryLogo ? (
                     primaryLogo.src ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- user-supplied remote image URLs; next/image would need remotePatterns for arbitrary hosts
                       <img className="knowledge-view__banner-logo" src={primaryLogo.src} alt={logoAlt(primaryLogo.label)} />
                     ) : (
                       primaryLogo.label
@@ -186,6 +187,7 @@ export function BrandIdentity({
                 {logos.map((logo, index) => (
                   <li className="knowledge-view__tile" key={logo.id}>
                     <span className="knowledge-view__logo-frame">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- user-supplied remote image URLs; next/image would need remotePatterns for arbitrary hosts */}
                       {logo.src ? <img src={logo.src} alt={logoAlt(logo.label)} /> : <small>{UNAVAILABLE_LOGO}</small>}
                     </span>
                     <span className="knowledge-view__tile-caption">
@@ -238,7 +240,7 @@ export function BrandIdentity({
                     </span>
                     {color.valid && color.observed && <small className="knowledge-view__qualifier">{OBSERVED_COLOR}</small>}
                     {!color.valid && <small>Color unavailable: it is not a valid #RRGGBB value.</small>}
-                    {edit ? <ColorHex id={color.id} position={index + 1} hex={String(color.hex)} /> : color.valid && <small>{color.hex}</small>}
+                    {edit ? <ColorHex id={color.id} position={index + 1} hex={color.hex} /> : color.valid && <small>{color.hex}</small>}
                   </li>
                 ))}
                 <li className="knowledge-view__tile">

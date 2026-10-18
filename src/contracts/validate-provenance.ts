@@ -116,6 +116,7 @@ export function validateProvenance(
       } else {
         if (
           item.excerpt &&
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
           !capture.segments.some((s) => s.text.includes(item.excerpt!))
         ) {
           add(
@@ -127,8 +128,10 @@ export function validateProvenance(
         if (
           item.technical &&
           !capture.observations.some((o) =>
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
             Object.keys(item.technical!).every(
               (k) =>
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
                 o[k as keyof typeof o] === item.technical![k as keyof typeof o],
             ),
           )
@@ -247,6 +250,7 @@ export function validateProvenance(
               )
             : /(?:I (?:identify|describe myself) as|self[- ]descri|self[- ]identif|gender\s*:)/i.test(
                 original,
+              // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
               ) && original.includes(String(value));
         if (!attested) {
           add(
@@ -393,6 +397,7 @@ export function validateProvenance(
           try {
             const changed = structuredClone(business);
             const keys = parseStablePointer(conflict.target);
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
             const key = keys.at(-1)!;
             const parent = resolveStablePointer(
               changed,

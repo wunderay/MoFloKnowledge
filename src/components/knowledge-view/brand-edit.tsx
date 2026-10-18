@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- entry content is a Record<string, any> by design (one editor handles every entry kind) */
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MAX_TEXT_LENGTH } from "@/contracts/primitives";
 import { ApiError, api, companyPath, write } from "../shared/api-client";
@@ -15,6 +16,7 @@ function normalizeHex(text: string): string | null {
     return value.toUpperCase();
   }
   if (/^#[0-9a-f]{3}$/i.test(value)) {
+    // eslint-disable-next-line @typescript-eslint/no-misused-spread -- spreading a string by code point is intended (no grapheme splitting needed)
     return `#${[...value.slice(1)].map((digit) => digit + digit).join("").toUpperCase()}`;
   }
   return null;
@@ -162,6 +164,7 @@ export function useDisplayName(
       back.current = false;
       trigger.current?.focus();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- focus management runs only on `editing` transitions; `rename` changing must not steal focus
   }, [editing]);
 
   const open = () => {
@@ -207,6 +210,7 @@ export function useDisplayName(
       return;
     }
     try {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
       await rename!.onRenamed();
     } catch {
       // The name is saved; the view marks itself stale and offers a reload.

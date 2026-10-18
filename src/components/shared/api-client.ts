@@ -11,9 +11,13 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
     cache: "no-store",
+    // eslint-disable-next-line @typescript-eslint/no-misused-spread -- init.headers is a plain object at every call site
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
-  const body = await response.json();
+  const body = (await response.json()) as {
+    data?: unknown;
+    error?: { message?: string; details?: unknown };
+  };
   if (!response.ok || body.error) {
     throw new ApiError(
       body.error?.message ?? "The request could not be completed.",

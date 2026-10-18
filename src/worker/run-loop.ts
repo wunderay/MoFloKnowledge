@@ -18,13 +18,13 @@ export async function runWorker(
       options.onEvent?.({ event: "claim_unavailable" });
       await delay(options.idleMs ?? 2000, undefined, {
         signal: options.signal,
-      }).catch(() => {});
+      }).catch(() => undefined);
       continue;
     }
     if (!job) {
       await delay(options.idleMs ?? 2000, undefined, {
         signal: options.signal,
-      }).catch(() => {});
+      }).catch(() => undefined);
       continue;
     }
     const attempt = new AbortController();
@@ -73,7 +73,7 @@ export async function runWorker(
                 ? "The website or redirect did not pass the public website policy."
                 : "The worker could not complete the job.",
           })
-          .catch(() => {});
+          .catch(() => undefined);
       }
       options.onEvent?.({
         event: leaseLost ? "lease_lost" : "job_stopped",

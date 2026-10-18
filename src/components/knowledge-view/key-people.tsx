@@ -28,6 +28,7 @@ function Avatar({ companyId, person, label, large = false }: { companyId: string
   const size = large ? " knowledge-view__avatar--large" : "";
   // In the list the name sits next to the avatar, so the image is decorative there.
   if (src) {
+    // eslint-disable-next-line @next/next/no-img-element -- user-supplied remote image URLs; next/image would need remotePatterns for arbitrary hosts
     return <img className={`knowledge-view__avatar${size}`} src={src} alt={large ? `Portrait of ${label}` : ""} />;
   }
   const initials = initialsOf(person.name);
@@ -132,7 +133,7 @@ export function KeyPeople({
   onSelect,
   canEdit = false,
   blocked = false,
-  onSaved = async () => {},
+  onSaved = () => Promise.resolve(),
 }: {
   companyId: string;
   people: ViewPerson[];

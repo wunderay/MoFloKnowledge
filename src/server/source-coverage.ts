@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use */
 import "server-only";
 import type { verifiedSession } from "../lib/supabase/server";
 import { FrontierSnapshotSchema, ProgressSchema, SafeJobErrorSchema, JobStatusSchema } from "../contracts/jobs";
@@ -35,6 +36,7 @@ export function projectSourceCoverage(job: JobRow | null, sources: SourceRow[]):
   const aliases = new Map(frontier.success ? frontier.data.aliases : []);
   const resolve = (input: string) => {
     const visited = new Set<string>();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
     while (aliases.has(input) && !visited.has(input)) { visited.add(input); input = aliases.get(input)!; }
     return input;
   };
