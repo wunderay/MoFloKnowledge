@@ -71,7 +71,7 @@ test('A02 Security Misconfiguration: SECURITY DEFINER functions pin search_path 
  await t.test('anonymous callers cannot enter the private schema, and signed-in users cannot run the worker functions',async()=>{
   assert.equal((await admin.query("SELECT has_schema_privilege('anon','private','USAGE') ok")).rows[0].ok,false);
   const user=await connect('authenticated',owner);
-  for(const name of ['claim_job(text)','heartbeat_job(uuid,uuid,uuid)','finish_job(uuid,uuid,uuid,jsonb,jsonb)','fail_job(uuid,uuid,uuid,jsonb)'])
+  for(const name of ['claim_job(text)','heartbeat_job(uuid,uuid,uuid)','finish_job(uuid,uuid,uuid,jsonb,jsonb)','fail_job(uuid,uuid,uuid,jsonb)','release_job(uuid,uuid,uuid)'])
    assert.equal((await admin.query('SELECT has_function_privilege($1,$2::regprocedure,$3) ok',['authenticated','private.'+name,'EXECUTE'])).rows[0].ok,false,name);
   await rejected(user.query("SELECT private.claim_job('intruder')"),/permission denied/);
  });

@@ -94,7 +94,7 @@ export function CompanyDashboard({
       requestIds.current.set(key, crypto.randomUUID());
     }
     try {
-      const data = await api<{ companyId: string }>(
+      const data = await api<{ companyId: string; jobId: string | null }>(
         "/api/companies",
         write("POST", {
           name: form.get("name"),
@@ -102,7 +102,9 @@ export function CompanyDashboard({
           requestId: requestIds.current.get(key),
         }),
       );
-      window.location.assign(`/knowledge?companyId=${data.companyId}`);
+      window.location.assign(
+        `/knowledge?companyId=${data.companyId}${data.jobId ? `&jobId=${data.jobId}` : ""}`,
+      );
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
