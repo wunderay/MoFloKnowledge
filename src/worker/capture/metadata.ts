@@ -42,11 +42,12 @@ const METADATA_CAPS = {
   images: 50,
   embeds: 20,
   valueLength: 1000,
-  totalCharacters: 200000,
+  totalBytes: 150000,
 } as const;
 
 const secretName = /(?:csrf|xsrf|token|nonce|secret|passw|api[-_.]?key|access[-_.]?key|session|signature|credential|authorization)/i;
 const secretValue = /(?:\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{8,}|\bAKIA[0-9A-Z]{16}\b|\bgh[pousr]_[A-Za-z0-9]{20,}|\bxox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,})/;
+const signedParam = /sig|signature|token|key|credential|policy/i;
 const wantedRels = new Set(["canonical", "alternate", "icon", "shortcut", "apple-touch-icon", "apple-touch-icon-precomposed", "manifest", "me", "author"]);
 const chrome = 'nav,footer,aside,[role="navigation"],[role="contentinfo"],[role="complementary"],script,style,noscript,template,svg,canvas,[hidden],[aria-hidden="true"]';
 
@@ -68,10 +69,24 @@ function embedFor(url: string): { provider: "youtube" | "vimeo"; url: string } |
 /** Verbatim, bounded page metadata read from the raw document (not from rendered state). */
 export function capturePageMetadata(
   $: CheerioAPI,
-  safeLink: SafeLink,
+  checkedLink: SafeLink,
   jsonLd: unknown[],
 ): { metadata: PageMetadata; truncated: boolean; oversized: boolean } {
   const caps = METADATA_CAPS;
+  // Stored URLs lose query parameters that look like credentials or signatures.
+  const safeLink: SafeLink = (raw) => {
+    const link = checkedLink(raw);
+    if (!link) {
+      return null;
+    }
+    const url = new URL(link);
+    for (const key of [...url.searchParams.keys()]) {
+      if (secretName.test(key) || signedParam.test(key)) {
+        url.searchParams.delete(key);
+      }
+    }
+    return url.href;
+  };
   let truncated = false;
   const cap = <T>(items: T[], max: number): T[] => {
     if (items.length > max) {
@@ -125,7 +140,7 @@ export function capturePageMetadata(
       return clean(attr("content"));
     }
     if (tag === "a" || tag === "link" || tag === "area") {
-      return safeLink(attr("href")) ?? clean(attr("href"), 300);
+      return safeLink(attr("href")) ?? "";
     }
     if (["img", "source", "audio", "video", "iframe", "embed"].includes(tag)) {
       return safeLink(attr("src")) ?? "";
@@ -200,7 +215,7 @@ export function capturePageMetadata(
       return clean(explicit);
     }
     const resource = el.attr("resource") ?? el.attr("href") ?? el.attr("src");
-    return resource !== undefined && !el.text().trim() ? (safeLink(resource) ?? clean(resource, 300)) : clean(el.text());
+    return resource !== undefined && !el.text().trim() ? (safeLink(resource) ?? "") : clean(el.text());
   };
   const rdfa = cap(
     flatten(
@@ -381,7 +396,7 @@ export function capturePageMetadata(
   // Bound the total: drop the tail of the largest list until the serialized size fits.
   let oversized = false;
   const listKeys = Object.keys(metadata).filter((key) => Array.isArray(metadata[key as keyof PageMetadata])) as (keyof PageMetadata)[];
-  while (JSON.stringify(metadata).length > caps.totalCharacters) {
+  while (Buffer.byteLength(JSON.stringify(metadata), "utf8") > caps.totalBytes) {
     oversized = true;
     const largest = listKeys
       .map((key) => ({ key, size: JSON.stringify(metadata[key]).length, length: (metadata[key] as unknown[]).length }))

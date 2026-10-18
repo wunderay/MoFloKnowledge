@@ -206,3 +206,16 @@ ${filler}</main>
   ]);
   expect(o.limitations).toContain("Structured page metadata exceeded a capture limit.");
 });
+
+it("strips signed query parameters and bounds metadata by bytes", () => {
+  const capture = captureHtml({
+    requestedUrl: "https://example.com", finalUrl: "https://example.com/",
+    body: `<main><p>Hello</p><img src="/a.png?w=10&X-Amz-Signature=deadbeef&token=abc" alt="A"><a itemscope itemtype="https://schema.org/Thing" href="ftp://x.example.com/f"><span itemprop="url"><a href="javascript:alert(1)">x</a></span></a>${Array.from({ length: 50 }, (_v, i) => `<dl><dt>${"語".repeat(190)}${i}</dt><dd>${"語".repeat(900)}</dd></dl>`).join("")}</main>`,
+  });
+  const o = capture.observations as Record<string, any>;
+  expect(o.images).toEqual([{ src: "https://example.com/a.png?w=10", alt: "A" }]);
+  expect(JSON.stringify(o)).not.toMatch(/deadbeef|javascript:/);
+  const bytes = Buffer.byteLength(JSON.stringify({ labelValuePairs: o.labelValuePairs, images: o.images }), "utf8");
+  expect(bytes).toBeLessThanOrEqual(150000);
+  expect(o.limitations).toContain("Structured page metadata exceeded the capture size limit and was truncated.");
+});

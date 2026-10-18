@@ -72,7 +72,7 @@ Each fetched or rendered page is stored as a source capture (`insert_source_capt
 
 Extraction (`src/worker/extract/`) maps explicit website evidence to registered fields with fixed rules. Page capture (`src/worker/capture/`) first keeps the page's text as exact segments, plus structured observations: headings, content sections and lists, links, forms, buttons, addresses, price text, JSON-LD, the meta description, declared styles and logos.
 
-Capture also records bounded, verbatim page metadata under these observation keys (read from the page's own HTML, for fetched and rendered pages alike; every list is capped and anything cut adds a limitation note; the new keys together are held to 200,000 characters, and values that look like secrets or token-named meta tags are skipped; script contents are never kept):
+Capture also records bounded, verbatim page metadata under these observation keys (read from the page's own HTML, for fetched and rendered pages alike; every list is capped and anything cut adds a limitation note; the new keys together are held to 150,000 bytes, and values that look like secrets, token-named meta tags and credential-like URL query parameters (signatures, keys, tokens) are skipped or removed; script contents are never kept):
 
 | Key | Content | Cap |
 | --- | --- | --- |
