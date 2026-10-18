@@ -3,6 +3,7 @@ import { PostgresJobRepository } from "./job-repository";
 import { runWorker } from "./run-loop";
 import { runCrawl } from "./crawl/run-crawl";
 import { extractAndFinish } from "./extract/pipeline";
+import { logError } from "../server/log";
 import { createRendererClient } from "../renderer/client";
 async function main() {
   const connectionString = process.env.WORKER_DATABASE_URL;
@@ -43,9 +44,7 @@ async function main() {
     await repository.close();
   }
 }
-main().catch(() => {
-  process.stderr.write(
-    "MoFloKnowledge worker stopped: verify worker configuration and database availability.\n",
-  );
+main().catch((error: unknown) => {
+  logError("worker stopped", { error });
   process.exitCode = 1;
 });

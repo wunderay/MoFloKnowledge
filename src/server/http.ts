@@ -3,6 +3,7 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { appOrigin } from "../lib/config/server";
 import { verifiedSession } from "../lib/supabase/server";
+import { logError } from "./log";
 import { IdSchema } from "../contracts/api-common";
 import {
   ArchivedEntryResponseSchema,
@@ -98,6 +99,9 @@ export function mapDatabaseError(error: {
       "Review the supplied values and approval requirements.",
     );
   }
+  logError("unmapped database error", {
+    error: Object.assign(new Error(value), { code: error.code }),
+  });
   return new HttpError(
     503,
     "unavailable",
@@ -176,6 +180,14 @@ export interface RouteContext { params: Promise<Record<string, string>> }
 type Session = Awaited<ReturnType<typeof verifiedSession>>;
 /** The session as `route` hands it to a handler: signed-in, so `user` is never null. */
 export type SignedInSession = Session & { user: NonNullable<Session["user"]> };
+function unexpected(error: unknown, requestId: string) {
+  logError("unexpected route error", { requestId, error });
+  return new HttpError(
+    503,
+    "unavailable",
+    "The service is temporarily unavailable. Please retry.",
+  );
+}
 export function route(
   handler: (
     request: Request,
@@ -201,11 +213,7 @@ export function route(
           ? error
           : error instanceof z.ZodError
             ? new HttpError(400, "invalid_input", "Check the request fields.")
-            : new HttpError(
-                503,
-                "unavailable",
-                "The service is temporarily unavailable. Please retry.",
-              );
+            : unexpected(error, requestId);
       const body: ApiError = {
         code: safe.code,
         message: safe.message,

@@ -1,4 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
+import { logError } from "../server/log";
 import type { Job, JobRepository } from "./job-repository";
 export async function runWorker(
   repository: JobRepository,
@@ -14,7 +15,8 @@ export async function runWorker(
     let job: Job | null;
     try {
       job = await repository.claim(options.workerId);
-    } catch {
+    } catch (error) {
+      logError("job claim failed", { error });
       options.onEvent?.({ event: "claim_unavailable" });
       await delay(options.idleMs ?? 2000, undefined, {
         signal: options.signal,
@@ -57,6 +59,7 @@ export async function runWorker(
       await work(job, attempt.signal);
       options.onEvent?.({ event: "job_finished", jobId: job.id });
     } catch (error) {
+      logError("job failed", { jobId: job.id, error });
       if (!leaseLost && !options.signal.aborted) {
         await repository
           .fail(job, {
@@ -73,7 +76,9 @@ export async function runWorker(
                 ? "The website or redirect did not pass the public website policy."
                 : "The worker could not complete the job.",
           })
-          .catch(() => undefined);
+          .catch((failError: unknown) => {
+            logError("could not record job failure", { jobId: job.id, error: failError });
+          });
       }
       options.onEvent?.({
         event: leaseLost ? "lease_lost" : "job_stopped",
