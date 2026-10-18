@@ -26,6 +26,8 @@ const API_ROOT = resolve(__dirname, "../../../src/app/api");
 const ORIGIN = "https://app.example";
 // Sign-in and sign-up are the only routes that run before a session exists.
 const PUBLIC_ROUTES = ["auth/sign-in/route.ts", "auth/sign-up/route.ts"];
+// The one route without a session: Vercel cron and the app's own kick call it with `Authorization: Bearer $CRON_SECRET`.
+const BEARER_ROUTES = ["worker/run/route.ts"];
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
 function routeFiles(dir: string): string[] {
@@ -36,6 +38,30 @@ function routeFiles(dir: string): string[] {
         ? [join(dir, entry.name)]
         : [],
   );
+}
+
+// Refused without CRON_SECRET configured, without a bearer and with a wrong one, however the request is made.
+async function expectBearerRefusals(
+  handler: (request: Request, context: unknown) => Promise<Response>,
+  method: string,
+  url: string,
+  context: unknown,
+  name: string,
+) {
+  for (const secret of [undefined, "a-secret-for-the-test"]) {
+    if (secret) {
+      process.env.CRON_SECRET = secret;
+    } else {
+      delete process.env.CRON_SECRET;
+    }
+    for (const authorization of [undefined, "Bearer wrong", "Bearer"]) {
+      const refused = await handler(
+        new Request(url, { method, headers: authorization ? { authorization } : {}, ...(method === "GET" ? {} : { body: "{}" }) }),
+        context,
+      );
+      expect(refused.status, `${method} ${name} bearer ${String(authorization)} secret ${String(secret)}`).toBe(401);
+    }
+  }
 }
 
 describe("every API route", () => {
@@ -57,6 +83,11 @@ describe("every API route", () => {
         }
         handlers++;
         const url = `${ORIGIN}/api/${name}`;
+        if (BEARER_ROUTES.includes(name)) {
+          await expectBearerRefusals(handler, method, url, context, name);
+          delete process.env.CRON_SECRET;
+          continue;
+        }
         if (method !== "GET") {
           const forged = await handler(
             new Request(url, {
