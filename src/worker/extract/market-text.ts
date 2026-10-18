@@ -6,7 +6,7 @@ import { exactSentences, hasNegation } from "./source-excerpts";
 const root = "/market_and_customers/";
 export const MARKET_TEXT_SUPPORTED_FIELDS = [
   "target_buyers", "customer_needs", "ideal_customer_personas",
-  "industry_groupings", "channels", "ctas", "suppliers_and_partners",
+  "industry_groupings", "channels", "ctas", "suppliers_and_partners", "funnels",
 ].map((field) => root + field);
 
 interface Section {
@@ -45,6 +45,12 @@ const sentenceAt = (paragraph: string, index: number): string => {
   }
   return paragraph;
 };
+
+export const FUNNEL_NAMES = ["Contact form", "Newsletter signup", "Appointment scheduler", "Client referrals"];
+const messageField = /\b(?:message|inquiry|enquiry|comments?|questions?)\b/i;
+const subscribeText = /\b(?:newsletter|subscribe|subscription|notify me|weekly articles|email updates)\b/i;
+const appointmentText = /\b(?:appointments?|schedul\w*|booking|book(?:ing)? online)\b/i;
+const referralText = /\breferrals?\b/i;
 
 /** Literal passages and observed controls only. These rules never invent a buyer or a conversion step. */
 export function marketTextCandidates(
@@ -285,6 +291,34 @@ export function marketTextCandidates(
           90, form.action ? "Observed form entrypoint; submission was not performed." :
             "Observed form location; its submission destination was unavailable. Submission was not performed.");
       }
+    }
+  }
+  // Funnels come only from an explicit form field or a page whose path or heading names the funnel.
+  const funnel = (name: string, ids: string[]) => {
+    if (ids.length) {
+      add("funnels", [{ name, steps: [] }], [], ids);
+    }
+  };
+  if (Array.isArray(raw.forms)) {
+    for (const form of raw.forms as { action?: string | null; labels?: string[]; heading?: string | null; context?: string | null; submitLabels?: string[] }[]) {
+      const formIds = (property: string, values: string[]) => observations.filter((item) => item.property === property &&
+        values.includes(item.value ?? "") && (!form.action || item.asset_url === form.action)).map((item) => item.id);
+      const messages = (form.labels ?? []).filter((label) => messageField.test(label));
+      funnel("Contact form", formIds("form-label", messages));
+      const subscribes = (form.submitLabels ?? []).filter((label) => subscribeText.test(label) || subscribeText.test(form.context ?? ""));
+      funnel("Newsletter signup", formIds("form-submit-label", subscribes));
+    }
+  }
+  if (marketing) {
+    const headings = (Array.isArray(raw.headings) ? raw.headings as { text?: unknown; level?: number }[] : [])
+      .flatMap((item) => typeof item.text === "string" && (item.level ?? 6) <= 2 ? [item.text] : []);
+    const pathText = new URL(page.capture.finalUrl).pathname.replace(/[-_/]+/g, " ");
+    const urlIds = observations.filter((item) => item.property === "url" && item.value === page.capture.finalUrl).map((item) => item.id);
+    for (const [name, pattern] of [["Appointment scheduler", appointmentText], ["Client referrals", referralText]] as const) {
+      funnel(name, [
+        ...(pattern.test(pathText) ? urlIds : []),
+        ...observations.filter((item) => item.property === "heading" && headings.includes(item.value ?? "") && pattern.test(item.value ?? "")).map((item) => item.id),
+      ]);
     }
   }
   for (const item of channels.values()) {

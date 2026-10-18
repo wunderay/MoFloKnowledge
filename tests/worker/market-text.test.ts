@@ -56,7 +56,7 @@ describe("literal market and conversion extraction", () => {
     expect(candidates.some((candidate) => candidate.field.endsWith("/employee_count"))).toBe(false);
   });
 
-  it("copies observed CTAs and channels without treating links or form inputs as funnel stages", () => {
+  it("copies observed CTAs and channels and names a funnel only from an explicit message field", () => {
     const { values, page, observations } = extract(`<main><a href="/appointment">Schedule Appointment</a><a href="/contact">Get started</a><a href="/contact">Contact</a>
       <a href="/privacy">Privacy Policy</a><button>Open menu</button><button>2</button>
       <form action="/inquiries"><label>Email</label><label>Message</label><button type="submit">Submit</button></form></main>`);
@@ -67,8 +67,9 @@ describe("literal market and conversion extraction", () => {
     expect(values("ctas").map((value) => (value as { label: string }).label))
       .not.toEqual(expect.arrayContaining(["Open menu", "Privacy Policy", "2"]));
     expect(values("channels")).toEqual([]);
-    expect(values("funnels")).toEqual([]);
-    expect(MARKET_TEXT_SUPPORTED_FIELDS).not.toContain("/market_and_customers/funnels");
+    // Only the form's explicit Message field names a funnel; the links and the other inputs add none.
+    expect(values("funnels")).toEqual([{ name: "Contact form", steps: [] }]);
+    expect(MARKET_TEXT_SUPPORTED_FIELDS).toContain("/market_and_customers/funnels");
     // A capture can expose its own form submit without a separate page-level CTA observation.
     page.capture.observations.forms = [{ action: "https://example.com/inquiries", submitLabels: ["Send request\n\nSending..."] }];
     observations.push({ id: "form-submit", selector: "form", property: "form-submit-label",

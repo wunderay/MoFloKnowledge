@@ -13,7 +13,7 @@ import { normalizeColor } from "./colors";
 import { documentScope } from "../network/url-scope";
 import { canonicalStringify } from "../../knowledge/canonical-json";
 import { exactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
-import { buyerIdentityKey } from "./market-text";
+import { buyerIdentityKey, FUNNEL_NAMES } from "./market-text";
 import { FOUNDER_STATEMENT_NOTE, founderStatement } from "./text";
 export type ValidatedCandidate = FieldCandidate & {
   id: string;
@@ -38,6 +38,9 @@ function itemIdentity(value: unknown, fieldPath = "", note: string | null = null
   }
   if (fieldPath === "/market_and_customers/channels" && item.url && !note?.startsWith("Observed form")) {
     return "channel:" + String(item.url);
+  }
+  if (fieldPath === "/market_and_customers/funnels" && item.name) {
+    return "funnel:" + String(item.name);
   }
   if (item.family) {
     return "family:" + normalizeIdentity(String(item.family));
@@ -505,6 +508,10 @@ export function validateCandidates(
             // Fixed names for an observed newsletter or contact form; the form itself is the cited evidence.
             if (field.field === "channels" && key === "label" && c.note?.startsWith("Observed form") &&
               ["Email newsletter", "Website contact form"].includes(value)) {
+              return;
+            }
+            // Fixed funnel names; the cited form field, heading or page address is the evidence.
+            if (field.field === "funnels" && key === "name" && FUNNEL_NAMES.includes(value)) {
               return;
             }
             if (/^https?:/.test(value)) {
