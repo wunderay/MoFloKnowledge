@@ -16,6 +16,7 @@ export interface FetchResult {
 }
 export interface FetchOptions {
     scope?: readonly string[];
+    pathPrefix?: string;
     signal?: AbortSignal;
     maxBytes?: number;
     timeoutMs?: number;
@@ -37,7 +38,7 @@ export function createPinnedFetcher(approve: DestinationApprover) {
         const maxBytes = Math.min(options.maxBytes ?? 2 * 1024 * 1024, 15 * 1024 * 1024);
         for (;;) {
             if (options.scope) {
-              assertDocumentScope(current, options.scope);
+              assertDocumentScope(current, options.scope, options.pathPrefix);
             }
             signal.throwIfAborted();
             await options.onRequest?.(current);
@@ -102,7 +103,7 @@ export function createPinnedFetcher(approve: DestinationApprover) {
             }
             const next = normalizeUrl(result.headers.location, current);
             if (options.scope) {
-              assertDocumentScope(next, options.scope);
+              assertDocumentScope(next, options.scope, options.pathPrefix);
             }
             redirects.push(next);
             current = next;

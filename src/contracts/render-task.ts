@@ -9,6 +9,7 @@ export const RenderTaskSchema = z
   .object({
     url: z.string().max(8192),
     scope: z.array(z.string().min(1).max(253)).min(1).max(2),
+    pathPrefix: z.string().max(2048).regex(/^(\/.*[^/])?$/).optional(),
     timeoutMs: z.number().int().min(1).max(25000).default(25000),
     maxDesignBytes: z
       .number()
@@ -20,7 +21,7 @@ export const RenderTaskSchema = z
   .strict()
   .superRefine((task, ctx) => {
     try {
-      assertDocumentScope(normalizeUrl(task.url), task.scope);
+      assertDocumentScope(normalizeUrl(task.url), task.scope, task.pathPrefix);
       if (task.scope.some((host) => !documentScope(task.url).includes(host))) {
         throw new Error("Unrelated scope");
       }
