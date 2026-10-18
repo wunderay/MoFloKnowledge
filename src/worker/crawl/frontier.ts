@@ -1,5 +1,5 @@
 import { clampDepthLimit, clampDocumentLimit } from './budgets';
-import { assertDocumentScope, documentScope, normalizeUrl } from '../network/url-scope';
+import { assertDocumentScope, documentPathPrefix, documentScope, normalizeUrl } from '../network/url-scope';
 export interface FrontierItem {
     url: string;
     depth: number;
@@ -48,6 +48,7 @@ function relevance(url: string, label: string): number {
 }
 export class Frontier {
     readonly scope: string[];
+    readonly pathPrefix: string;
     readonly limitsReached = new Set<string>();
     private pending: FrontierItem[] = [];
     private seen = new Set<string>();
@@ -60,6 +61,7 @@ export class Frontier {
         depthLimit?: number;
     } = {}, snapshot?: FrontierSnapshot) {
         this.scope = documentScope(root);
+        this.pathPrefix = documentPathPrefix(root);
         this.documentLimit = clampDocumentLimit(options.documentLimit);
         this.depthLimit = clampDepthLimit(options.depthLimit);
         if (snapshot) {
@@ -79,7 +81,7 @@ export class Frontier {
     /** True when the link is in scope and has not been seen yet. */
     isNew(input: string): boolean {
         try {
-            const url = assertDocumentScope(normalizeUrl(input, this.root), this.scope);
+            const url = assertDocumentScope(normalizeUrl(input, this.root), this.scope, this.pathPrefix);
             return !this.seen.has(url) && !this.aliases.has(url);
         }
         catch {
@@ -91,7 +93,7 @@ export class Frontier {
     add(input: string, label: string, depth: number, rank?: number): boolean {
         let url: string;
         try {
-            url = assertDocumentScope(normalizeUrl(input, this.root), this.scope);
+            url = assertDocumentScope(normalizeUrl(input, this.root), this.scope, this.pathPrefix);
         }
         catch {
             return false;
@@ -129,7 +131,7 @@ export class Frontier {
         }
         return next;
     }
-    alias(from: string, to: string) { const normalized = assertDocumentScope(to, this.scope); if (from !== normalized) {
+    alias(from: string, to: string) { const normalized = assertDocumentScope(to, this.scope, this.pathPrefix); if (from !== normalized) {
       this.aliases.set(normalizeUrl(from), normalized);
     } this.seen.add(normalized); this.pending = this.pending.filter(item => item.url !== normalized); }
     snapshot(): FrontierSnapshot { return { root: this.root, pending: [...this.pending], seen: [...this.seen], aliases: [...this.aliases], selected: this.selected, limitsReached: [...this.limitsReached] }; }

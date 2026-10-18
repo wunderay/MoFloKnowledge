@@ -222,6 +222,7 @@ export async function runCrawl(
                   : { at: taskAt - fetchMargin(), scope: "task" };
               return fetcher(item.url, {
                 scope: frontier.scope,
+                pathPrefix: frontier.pathPrefix,
                 signal: taskSignal,
                 onRequest: async (url) => {
                   const rule = await robots.check(url, taskSignal);
@@ -314,6 +315,7 @@ export async function runCrawl(
                 {
                   url: document.finalUrl,
                   scope: frontier.scope,
+                  pathPrefix: frontier.pathPrefix,
                   timeoutMs: 25000,
                   maxDesignBytes: remaining,
                 },
@@ -351,7 +353,9 @@ export async function runCrawl(
       finished = true;
       frontier.alias(item.url, capture.finalUrl);
       if (item.depth === 0) {
-        effectiveRoot = new URL(capture.finalUrl).origin;
+        effectiveRoot =
+          new URL(capture.finalUrl).origin +
+          (frontier.pathPrefix ? `${frontier.pathPrefix}/` : "");
       }
       const retrievedAt = new Date().toISOString();
       const row = await repository.source(job, {
