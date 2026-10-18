@@ -54,4 +54,4 @@ The database suite creates disposable databases and requires a test migration lo
 
 - Extracted facts are tied to captured evidence and presented for human review; unknowns are not filled by inference.
 - Publishing creates an immutable company snapshot; it does not publish a public company website.
-- Hosted Supabase and production deployment remain owner-selected setup and release steps.
+- Hosted Supabase and production deployment remain manual setup and release steps.

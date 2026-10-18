@@ -1,6 +1,6 @@
 # MoFlo Cloud interface
 
-The application uses the owner's MoFlo Cloud screenshots as its visual reference: a compact header, a narrow icon navigation rail, blue accents, a light gray canvas, and white cards with rounded borders. The existing company knowledge, evidence and export functions remain the source of truth.
+The application uses the MoFlo Cloud screenshots as its visual reference: a compact header, a narrow icon navigation rail, blue accents, a light gray canvas, and white cards with rounded borders. The existing company knowledge, evidence and export functions remain the source of truth.
 
 ## Figma references
 
@@ -9,7 +9,7 @@ The following frames were read through the Figma connector:
 - [Cloud workspace and company cards, frame 24:2697](https://www.figma.com/design/QwMAzEWQTK8nSiFjojBfQS/MoFlo?node-id=24-2697) documents the signed-in workspace, navigation, General Info, brand presentation and observed typography. It specifies Poppins for the application, a 30px / 37.5px company title at weight 600, and uppercase 14px / 20px card headings at weight 600.
 - [Public Knowledge page audit, frame 7:300](https://www.figma.com/design/QwMAzEWQTK8nSiFjojBfQS/MoFlo?node-id=7-300) records the public marketing page's section layout and evidence. It describes a different page from the authenticated workspace.
 
-These are design audit boards. Their Inter annotation typography and decorative board backgrounds are not application components. The owner's screenshots provide the application layout reference; the workspace audit supplies the documented typography and component observations. Poppins is served locally, while the existing Noto Sans files remain available to document exports.
+These are design audit boards. Their Inter annotation typography and decorative board backgrounds are not application components. The screenshots provide the application layout reference; the workspace audit supplies the documented typography and component observations. Poppins is served locally, while the existing Noto Sans files remain available to document exports.
 
 ## Navigation and page layout
 
