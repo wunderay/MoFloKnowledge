@@ -10,6 +10,7 @@ import {
 } from "./budgets";
 import { DeadlineError, Scheduler, type Deadline } from "./scheduler";
 import { RobotsCache } from "./robots";
+import { crawlLimits } from "../../lib/config/crawl-limits";
 import { createLinkPicker } from "../agent/client";
 import { fetchDocument } from "../network/pinned-transport";
 import { technicalObservations } from "../extract/observations";
@@ -44,8 +45,8 @@ export async function runCrawl(
   const frontier = new Frontier(
     root,
     {
-      documentLimit: job.options.max_pages ?? 10,
-      depthLimit: job.options.max_depth ?? 2,
+      documentLimit: job.options.max_pages ?? crawlLimits().defaultPages,
+      depthLimit: job.options.max_depth ?? crawlLimits().defaultDepth,
     },
     saved.frontier as FrontierSnapshot | undefined,
   );
@@ -57,8 +58,8 @@ export async function runCrawl(
         : Date.now();
   const budgets = new CrawlBudgets(
     {
-      documentLimit: job.options.max_pages ?? 10,
-      depthLimit: job.options.max_depth ?? 2,
+      documentLimit: job.options.max_pages ?? crawlLimits().defaultPages,
+      depthLimit: job.options.max_depth ?? crawlLimits().defaultDepth,
     },
     (saved.budgets as BudgetSnapshot | undefined) ?? {
       documents: 0,
@@ -79,7 +80,7 @@ export async function runCrawl(
   // Job-level signal (outer cancellation + job deadline) bounds robots loads and their pacing.
   const robots = new RobotsCache(
     fetcher,
-    (url) => scheduler.pace(url, 500, scheduler.signal),
+    (url) => scheduler.pace(url, crawlLimits().hostGapMs, scheduler.signal),
     scheduler.signal,
   );
   // A deadline outcome: an unsatisfiable pacing wait, or the job deadline aborting this very operation.
@@ -239,7 +240,7 @@ export async function runCrawl(
                   }
                   await scheduler.pace(
                     url,
-                    Math.max(500, rule.delayMs),
+                    Math.max(crawlLimits().hostGapMs, rule.delayMs),
                     taskSignal,
                     hopDeadline,
                   );
@@ -309,9 +310,9 @@ export async function runCrawl(
           try {
             const rendered = await scheduler.runRender(async (taskSignal) => {
               const usedBefore = designUsed;
-              const remaining = Math.max(
-                0,
-                CRAWL_LIMITS.designBytes - designUsed,
+              const remaining = Math.min(
+                15 * 1024 * 1024,
+                Math.max(0, CRAWL_LIMITS.designBytes - designUsed),
               );
               designUsed = CRAWL_LIMITS.designBytes;
               await persist();
@@ -320,7 +321,8 @@ export async function runCrawl(
                   url: document.finalUrl,
                   scope: frontier.scope,
                   pathPrefix: frontier.pathPrefix,
-                  timeoutMs: 25000,
+                  // The browser service has its own fixed ceilings (25 s, 15 MiB).
+                  timeoutMs: Math.min(25000, CRAWL_LIMITS.renderMs),
                   maxDesignBytes: remaining,
                 },
                 taskSignal,

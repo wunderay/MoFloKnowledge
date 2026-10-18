@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use */
+import { crawlLimits } from "@/lib/config/crawl-limits";
 import "server-only";
 import { authorizeCompany } from "./authorize";
 import { checked } from "./read-model";
@@ -37,7 +38,7 @@ export async function readJob(
       failed: 0,
       blocked: 0,
       extracted: 0,
-      document_limit: options?.max_pages ?? 10,
+      document_limit: options?.max_pages ?? crawlLimits().defaultPages,
       limits_reached: [],
       ...job.progress,
       stage: job.status,

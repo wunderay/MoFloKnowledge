@@ -3,6 +3,10 @@ import { UUIDSchema, URLSchema, TextSchema } from "./primitives";
 import { EntryKindSchema } from "./business";
 import { FIELD_REGISTRY } from "./field-registry";
 import { JSONValueSchema } from "./provenance";
+import { crawlLimits } from "../lib/config/crawl-limits";
+const limits = crawlLimits();
+/** A removed limit (Infinity) becomes the largest safe integer so the schema stays valid. */
+const cap = (value: number) => Math.min(value, Number.MAX_SAFE_INTEGER);
 export const JobStatusSchema = z.enum([
   "queued",
   "validating",
@@ -23,7 +27,7 @@ export const ProgressSchema = z
     failed: count,
     blocked: count,
     extracted: count,
-    document_limit: count.max(25),
+    document_limit: count.max(cap(limits.maxPages)),
     limits_reached: z.array(TextSchema).max(100),
   })
   .strict();
@@ -42,21 +46,21 @@ export const FrontierSnapshotSchema = z
     pending: z
       .array(
         z
-          .object({ url: URLSchema, depth: count.max(3), score: count })
+          .object({ url: URLSchema, depth: count.max(cap(limits.maxDepth)), score: count })
           .strict(),
       )
-      .max(200),
-    seen: z.array(URLSchema).max(225),
-    aliases: z.array(z.tuple([URLSchema, URLSchema])).max(25),
-    selected: count.max(25),
+      .max(cap(limits.maxDiscovered)),
+    seen: z.array(URLSchema).max(cap(limits.maxDiscovered + 25)),
+    aliases: z.array(z.tuple([URLSchema, URLSchema])).max(cap(limits.maxPages)),
+    selected: count.max(cap(limits.maxPages)),
     limitsReached: z.array(TextSchema).max(100),
   })
   .strict();
 export const CrawlBudgetSnapshotSchema = z
   .object({
-    documents: count.max(25),
-    htmlBytes: count.max(25 * 2 * 1024 * 1024),
-    designBytes: count.max(15 * 1024 * 1024),
+    documents: count.max(cap(limits.maxPages)),
+    htmlBytes: count.max(cap(limits.maxPages * limits.maxHtmlBytes)),
+    designBytes: count.max(cap(limits.maxDesignBytes)),
     startedAt: count,
     limitsReached: z.array(TextSchema).max(100),
   })
@@ -91,13 +95,13 @@ export const CrawlCheckpointSchema = z
     effectiveRoot: URLSchema.optional(),
     frontier: FrontierSnapshotSchema,
     budgets: CrawlBudgetSnapshotSchema,
-    captured_source_ids: z.array(UUIDSchema).max(25),
-    extracted_source_ids: z.array(UUIDSchema).max(25).optional(),
+    captured_source_ids: z.array(UUIDSchema).max(cap(limits.maxPages)),
+    extracted_source_ids: z.array(UUIDSchema).max(cap(limits.maxPages)).optional(),
     extractor_version: z.string().min(1).max(100).optional(),
     errors: z.array(SafeJobErrorSchema).max(200),
     model_tokens: count.max(120000).optional(),
-    model_successes: count.max(25).optional(),
-    model_failures: count.max(25).optional(),
+    model_successes: count.max(cap(limits.maxPages)).optional(),
+    model_failures: count.max(cap(limits.maxPages)).optional(),
     validated_candidates: z
       .array(CheckpointCandidateSchema)
       .max(5000)

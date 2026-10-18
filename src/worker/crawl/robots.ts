@@ -1,4 +1,6 @@
 import { fetchDocument, type FetchOptions, type FetchResult } from '../network/pinned-transport';
+import { crawlLimits } from '../../lib/config/crawl-limits';
+const gap = () => crawlLimits().hostGapMs;
 export type Fetcher = (url: string, options?: FetchOptions) => Promise<FetchResult>;
 export interface RobotsDecision {
     allowed: boolean;
@@ -32,7 +34,7 @@ export function parseRobots(text: string): {
         const key = line.slice(0, colon).trim().toLowerCase(), value = line.slice(colon + 1).trim();
         if (key === 'user-agent') {
             if (!group || directives) {
-                group = { agents: [], rules: [], delayMs: 500 };
+                group = { agents: [], rules: [], delayMs: gap() };
                 groups.push(group);
                 directives = false;
             }
@@ -47,14 +49,14 @@ export function parseRobots(text: string): {
                 group.rules.push({ allow: key === 'allow', pattern: value });
             }
             if (key === 'crawl-delay' && Number.isFinite(Number(value))) {
-              group.delayMs = Math.min(MAX_CRAWL_DELAY_MS, Math.max(500, Number(value) * 1000));
+              group.delayMs = Math.min(MAX_CRAWL_DELAY_MS, Math.max(gap(), Number(value) * 1000));
             }
         }
     }
     const specificity=(agents:string[])=>Math.max(0,...agents.filter(agent=>agent&&agent!=='*'&&'mofloknowledgebot'.startsWith(agent)).map(agent=>agent.length));
     const maximum=Math.max(0,...groups.map(group=>specificity(group.agents)));
     const selected=maximum?groups.filter(group=>specificity(group.agents)===maximum):groups.filter(group=>group.agents.includes('*'));
-    return { rules: selected.flatMap(g => g.rules), delayMs: Math.max(500, ...selected.map(g => g.delayMs)) };
+    return { rules: selected.flatMap(g => g.rules), delayMs: Math.max(gap(), ...selected.map(g => g.delayMs)) };
 }
 // RFC 9309 octet comparison: encode non-ASCII and normalize only unreserved
 // percent encodings. Reserved encoded separators remain distinct from '/'.
@@ -119,16 +121,16 @@ export class RobotsCache {
             try {
                 const response = await this.fetcher(origin + '/robots.txt', { scope: [new URL(origin).hostname], signal, maxBytes: 512 * 1024, onRequest: this.onRequest });
                 if (response.status === 404) {
-                  return { rules: [], delayMs: 500 };
+                  return { rules: [], delayMs: gap() };
                 }
                 if ([401, 403].includes(response.status)) {
-                  return { rules: [], delayMs: 500, blocked: 'robots access denied' };
+                  return { rules: [], delayMs: gap(), blocked: 'robots access denied' };
                 }
                 if (response.status >= 200 && response.status < 300) {
                   return parseRobots(response.body.toString('utf8'));
                 }
                 if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-                  return { rules: [], delayMs: 500, blocked: 'robots unavailable' };
+                  return { rules: [], delayMs: gap(), blocked: 'robots unavailable' };
                 }
                 if (response.status === 429 && attempt === 0) {
                   await new Promise<void>((resolve, reject) => {
@@ -144,7 +146,7 @@ export class RobotsCache {
                 }
             }
         }
-        return { rules: [], delayMs: 500, blocked: 'robots indeterminate after retry' };
+        return { rules: [], delayMs: gap(), blocked: 'robots indeterminate after retry' };
     }
 }
 

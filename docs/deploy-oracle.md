@@ -32,7 +32,7 @@ The worker settings live in `/etc/moflo/worker.env`, owned by root with mode 060
 WORKER_DATABASE_URL=postgresql://worker_login.<project-ref>:...@<supabase-pooler-host>:5432/postgres
 WORKER_ID=oracle-1
 NODE_EXTRA_CA_CERTS=/opt/moflo/deploy/supabase-ca.crt
-# Optional: hard limit for one job in milliseconds (default 600000 = 10 minutes, clamped to 1-30 minutes).
+# Optional: hard limit for one job in milliseconds (default 600000 = 10 minutes; `none` removes it).
 # WORKER_JOB_TIMEOUT_MS=600000
 ```
 
