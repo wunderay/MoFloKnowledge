@@ -30,9 +30,15 @@ export function documentScope(input: string): string[] {
     const domain = getDomain(host, { allowPrivateDomains: true });
     return domain && (host === domain || host === `www.${domain}`) ? [domain, `www.${domain}`] : [host];
 }
-export function assertDocumentScope(input: string, scope: readonly string[]): string {
+/** Start URL path without a trailing slash ("" for the site root). */
+export function documentPathPrefix(input: string): string {
+    return new URL(normalizeUrl(input)).pathname.replace(/\/+$/, '');
+}
+/** Pages are in scope at the prefix itself or below it; "" allows the whole host. */
+export function assertDocumentScope(input: string, scope: readonly string[], pathPrefix = ''): string {
     const url = normalizeUrl(input);
-    if (!scope.includes(new URL(url).hostname)) {
+    const { hostname, pathname } = new URL(url);
+    if (!scope.includes(hostname) || (pathPrefix && pathname !== pathPrefix && !pathname.startsWith(`${pathPrefix}/`))) {
       throw new NetworkPolicyError('Document redirect or link is outside company scope');
     }
     return url;

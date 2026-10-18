@@ -33,7 +33,7 @@ export async function installResourcePolicy(context: BrowserContext, task: Rende
               throw new Error('Resource method/type blocked');
             }
             if (request.isNavigationRequest()) {
-                assertDocumentScope(url, task.scope);
+                assertDocumentScope(url, task.scope, task.pathPrefix);
                 if (!allowedNavigations.has(url)) {
                   throw new Error('Unrequested document navigation blocked');
                 }
@@ -68,7 +68,7 @@ export async function installResourcePolicy(context: BrowserContext, task: Rende
             }
             if (request.isNavigationRequest() && [301, 302, 303, 307, 308].includes(response.status)) {
                 const target = normalizeUrl(response.headers.location ?? '', url);
-                assertDocumentScope(target, task.scope);
+                assertDocumentScope(target, task.scope, task.pathPrefix);
                 allowedNavigations.add(target);
             }
             await route.fulfill({ status: response.status, body, headers: response.headers });

@@ -1,6 +1,8 @@
 import { KnowledgeViewer } from "@/components/shared/knowledge-viewer";
 import { verifiedSession } from "@/lib/supabase/server";
 import { readDraft } from "@/server/read-model";
+import { readCapturedExtras } from "@/server/captured-extras";
+import { CapturedExtrasSection } from "@/components/knowledge-view/captured-extras";
 import { readSnapshot, readVersionSummaries } from "@/server/snapshots";
 import { UUIDSchema } from "@/contracts";
 import { parseSection } from "@/components/knowledge-view/sections";
@@ -20,7 +22,8 @@ export default async function ViewPage({
   const params = await searchParams;
   const section = parseSection(params.section);
   // The selected offering's entry id; one that matches no offering selects the first.
-  const offering = typeof params.offering === "string" ? params.offering : undefined;
+  const offering =
+    typeof params.offering === "string" ? params.offering : undefined;
   // The selected key person's entry id; one that matches nobody selects the first person.
   const person = typeof params.person === "string" ? params.person : undefined;
   const id = UUIDSchema.safeParse(params.companyId);
@@ -45,6 +48,10 @@ export default async function ViewPage({
   try {
     const versions = await readVersionSummaries(client, id.data, user.id);
     const versionId = params.versionId ?? versions[0]?.id ?? "draft";
+    const extras = await readCapturedExtras(client, id.data).catch(() => ({
+      faqs: [],
+      contacts: [],
+    }));
     if (versionId === "draft") {
       const draft = await readDraft(client, id.data, user.id);
       return (
@@ -55,6 +62,7 @@ export default async function ViewPage({
           initialSection={section}
           initialOffering={offering}
           initialPerson={person}
+          capturedExtras={<CapturedExtrasSection extras={extras} />}
           initialData={{ companyName: draft.company.name, versions, draft }}
         />
       );
@@ -69,6 +77,7 @@ export default async function ViewPage({
         initialSection={section}
         initialOffering={offering}
         initialPerson={person}
+        capturedExtras={<CapturedExtrasSection extras={extras} />}
         initialData={{
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
           companyName: saved.payload.provenance.company.name,
