@@ -84,3 +84,9 @@ export function normalizeColor(
     alpha,
   };
 }
+/** Shades within a couple of steps per channel are one colour for a palette. */
+export function nearDuplicateColor(a: string, b: string): boolean {
+  const channels = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [x, y] = [channels(a), channels(b)];
+  return x.every((value, i) => Math.abs(value - y[i]) <= 2);
+}

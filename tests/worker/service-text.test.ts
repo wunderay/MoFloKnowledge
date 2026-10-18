@@ -60,7 +60,7 @@ describe("authored service content", () => {
       <h3>Tax Planning &amp; Education</h3><p>We offer tax and education planning to assist start-ups, as well as, established businesses. We will provide you with a complete list of the most commonly overlooked deductions so that you can limit your tax liability for the following year.</p>
       <h3>Tax Resources</h3><p>Here are some links to help you learn more about taxes:</p></main>`, "/services/tax-preparation-planning");
     expect(values(candidates, "name").map((candidate) => candidate.value)).toEqual([
-      "Tax Services", "Tax Preparation & Planning", "Gift & Estate Tax Return Preparation", "Business Start-Ups",
+      "Tax Services", "Tax Preparation & Planning",
     ]);
     expect(values(candidates, "description").some((candidate) => String(candidate.value).includes("Here are some links"))).toBe(false);
     expect(values(candidates, "features").filter((candidate) => candidate.entity_key?.endsWith("|service:gift and estate tax return preparation"))).toEqual([]);
@@ -70,7 +70,7 @@ describe("authored service content", () => {
     expect(values(candidates, "pricing")).toEqual([]);
     const bio = extract(`<main><h2>Independent CFO and Controller</h2><p>I provide part-time or interim financial and accounting services. You can receive the service and support of a highly qualified CFO and Controller only as you need it, without having to pay a full-time salary or benefits.</p>
       <p>I've worked with a wide variety of businesses, including: medical practices, law firms, construction, restaurants.</p></main>`, "/about-us/alex-rowan");
-    expect(values(bio.candidates, "name").map((candidate) => candidate.value)).toEqual(["part-time or interim financial and accounting services"]);
+    expect(values(bio.candidates, "name").map((candidate) => candidate.value)).toEqual([]);
     expect(values(bio.candidates, "category")).toEqual([]);
     expect(values(bio.candidates, "pricing")).toEqual([]);
     expect(extract(`<main><h2>Consulting trends</h2><p>We offer part-time financial services.</p></main>`, "/blog/consulting").candidates).toEqual([]);

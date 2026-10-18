@@ -8,7 +8,7 @@ import {
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { TechnicalObservation, FieldCandidate } from "./types";
 import { fieldCandidateSchemas } from "./candidate-schema";
-import { stableId } from "./identity";
+import { stableId, stripTrackingParams, bareTenDigitPhone } from "./identity";
 import { normalizeColor } from "./colors";
 import { documentScope } from "../network/url-scope";
 import { canonicalStringify } from "../../knowledge/canonical-json";
@@ -434,6 +434,10 @@ export function validateCandidates(
           }
         }
       }
+      if (field.field === "phone" && !selected.some((o) =>
+        /^jsonld:.*\/telephone$/.test(o.property ?? "") && bareTenDigitPhone(o.value ?? "") === String(c.value))) {
+        throw new Error("phone_not_observed");
+      }
       if (field.field === "social_media_links") {
         for (const social of c.value as {
           platform: string;
@@ -444,7 +448,7 @@ export function validateCandidates(
             /\/(?:share|intent|sharer|dialog)(?:\/|$)/i.test(url.pathname) ||
             (social.platform.toLowerCase() === "linkedin" && !/^\/(?:company|school|showcase)\/[^/]+/i.test(url.pathname)) ||
             !(
-              page.capture.links.some((l) => l.url === social.profile_url) ||
+              page.capture.links.some((l) => stripTrackingParams(l.url) === social.profile_url) ||
               selected.some((o) =>
                 o.property?.startsWith("jsonld:") && o.value === social.profile_url,
               )
@@ -479,6 +483,7 @@ export function validateCandidates(
           "kind",
           "classification",
           "observations",
+          "channel_type",
           "amount",
           "min_amount",
           "max_amount",
@@ -494,10 +499,15 @@ export function validateCandidates(
             if (["hex", "platform"].includes(key)) {
               return;
             }
+            // Fixed names for an observed newsletter or contact form; the form itself is the cited evidence.
+            if (field.field === "channels" && key === "label" && c.note?.startsWith("Observed form") &&
+              ["Email newsletter", "Website contact form"].includes(value)) {
+              return;
+            }
             if (/^https?:/.test(value)) {
               if (
                 value !== page.capture.finalUrl &&
-                !page.capture.links.some((link) => link.url === value) &&
+                !page.capture.links.some((link) => link.url === value || stripTrackingParams(link.url) === value) &&
                 !selected.some(
                   (o) => o.asset_url === value || o.value === value,
                 )
@@ -521,7 +531,10 @@ export function validateCandidates(
             }
           }
         };
-        check(c.value);
+        // The phone is bare digits of the cited telephone observation, checked above.
+        if (field.field !== "phone") {
+          check(c.value);
+        }
       }
       let entity = c.entity_key ?? "singleton";
       if (field.kind === "key_person" && c.entity_key) {

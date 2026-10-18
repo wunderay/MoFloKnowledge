@@ -41,7 +41,6 @@ export interface JobRepository {
   finish(job: Job, proposals: Proposal[], coverage: unknown[]): Promise<Job>;
   fail(job: Job, error: SafeJobError): Promise<Job>;
   /** Hands the lease back so the next claim resumes the job from its checkpoint. */
-  release(job: Job): Promise<Job>;
   close(): Promise<void>;
 }
 /** Connection must be a dedicated restricted worker login, never a service-role key. */
@@ -106,9 +105,6 @@ export class PostgresJobRepository implements JobRepository {
       j.lease_token,
       JSON.stringify(error),
     ]);
-  }
-  release(j: Job) {
-    return this.call<Job>("release_job", [j.id, j.company_id, j.lease_token]);
   }
   close() {
     return this.pool.end();
