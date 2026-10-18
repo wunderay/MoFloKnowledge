@@ -1,10 +1,10 @@
-import { KnowledgeViewer } from "@/components/knowledge-viewer";
+import { KnowledgeViewer } from "@/components/shared/knowledge-viewer";
 import { verifiedSession } from "@/lib/supabase/server";
 import { readDraft } from "@/server/read-model";
 import { readSnapshot, readVersionSummaries } from "@/server/snapshots";
 import { UUIDSchema } from "@/contracts";
 import { parseSection } from "@/components/knowledge-view/sections";
-import { Notice } from "@/components/ui";
+import { Notice } from "@/components/shared/ui";
 import { redirect } from "next/navigation";
 export default async function ViewPage({
   searchParams,

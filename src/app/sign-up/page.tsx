@@ -1,6 +1,6 @@
 import { APP_NAME } from "../../lib/brand";
-import { Brand } from "@/components/icons";
-import { SignUpForm } from "@/components/sign-up-form";
+import { Brand } from "@/components/shared/icons";
+import { SignUpForm } from "@/components/auth/sign-up-form";
 export default function SignUpPage() {
   return (
     <main className="sign-in">

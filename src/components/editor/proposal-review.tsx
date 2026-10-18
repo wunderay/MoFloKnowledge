@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, companyPath, write } from "./api-client";
-import { CitationPopover } from "./citation-popover";
-import { Notice } from "./ui";
+import { api, companyPath, write } from "../shared/api-client";
+import { CitationPopover } from "../shared/citation-popover";
+import { Notice } from "../shared/ui";
 import {
   entryRoot,
   type EntryKind,
@@ -12,7 +12,7 @@ import {
   entryBusiness,
   resolveStablePointer,
 } from "@/contracts";
-import { mergeCitationContexts } from "./citation-context";
+import { mergeCitationContexts } from "../shared/citation-context";
 import { ValueView } from "./entry-value";
 import { labelOf, summarizeValue } from "./business-fields";
 type ProposalItem = Proposal;

@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, ApiError, companyPath, write } from "./api-client";
-import { Dialog, Notice } from "./ui";
+import { api, ApiError, companyPath, write } from "../shared/api-client";
+import { Dialog, Notice } from "../shared/ui";
 type Preview = {
   draftGeneration: number;
   payloadPreview: unknown;

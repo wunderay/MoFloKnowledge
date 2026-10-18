@@ -1,7 +1,7 @@
 "use client";
 import { useId } from "react";
 import type { CitationContext, EntryProvenance } from "@/contracts";
-import { CitationPopover } from "./citation-popover";
+import { CitationPopover } from "../shared/citation-popover";
 import { labelOf, newValue, type FieldSpec } from "./business-fields";
 type Props = {
   spec: FieldSpec;

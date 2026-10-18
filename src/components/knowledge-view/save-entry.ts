@@ -8,7 +8,7 @@ import {
   type EntryProvenance,
 } from "@/contracts";
 import { MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, reviseProvenance } from "@/knowledge/revise-provenance";
-import { api, companyPath, write } from "../api-client";
+import { api, companyPath, write } from "../shared/api-client";
 
 /** The stored entry a save revises: its id, the revision the page holds, and what it holds. */
 export type StoredEntry = {

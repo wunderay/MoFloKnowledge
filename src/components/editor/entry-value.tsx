@@ -1,7 +1,7 @@
 "use client";
-import { ArrowUpRight } from "./icons";
+import { ArrowUpRight } from "../shared/icons";
 import type { CitationContext, EntryProvenance } from "@/contracts";
-import { CitationPopover, safeHref } from "./citation-popover";
+import { CitationPopover, safeHref } from "../shared/citation-popover";
 import { labelOf } from "./business-fields";
 export function ValueView({
   value,

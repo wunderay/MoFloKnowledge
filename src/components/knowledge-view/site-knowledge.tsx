@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { safeHref } from "../citation-popover";
+import { safeHref } from "../shared/citation-popover";
 import { textOrNull, type ViewSiteLinks } from "./data";
 import { addHref, CoverageNote, ItemSource, Source } from "./parts";
 import { SiteAddPage } from "./site-add-page";

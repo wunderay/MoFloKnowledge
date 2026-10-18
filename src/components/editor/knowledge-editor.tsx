@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
-import { ArrowUpRight } from "./icons";
-import "./cloud-knowledge.css";
+import { ArrowUpRight } from "../shared/icons";
+import "./knowledge-editor.css";
 import { ZodError } from "zod";
 import { useUnsavedNavigation } from "./unsaved-navigation";
 import { ValueView } from "./entry-value";
-import { CitationPopover } from "./citation-popover";
+import { CitationPopover } from "../shared/citation-popover";
 import { CompanyDraftProvider, useCompanyDraft } from "./company-draft-context";
 import { applyConflictDecision } from "@/knowledge/conflict-decisions";
 import { useCallback, useEffect, useState } from "react";
@@ -20,10 +20,10 @@ import {
   type CitationContext,
   type EntryKind,
 } from "@/contracts";
-import { api, ApiError, companyPath, write } from "./api-client";
+import { api, ApiError, companyPath, write } from "../shared/api-client";
 import { CATEGORY_SPECS, labelOf, summarizeValue } from "./business-fields";
 import { BusinessField } from "./business-form";
-import { EmptyState, Notice, StatusBadge, useHydrated } from "./ui";
+import { EmptyState, Notice, StatusBadge, useHydrated } from "../shared/ui";
 import { ScrapeProgress } from "./scrape-progress";
 import { EntryHistory } from "./entry-history";
 import { PublicationDialog } from "./publication-dialog";

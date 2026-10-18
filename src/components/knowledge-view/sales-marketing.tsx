@@ -1,4 +1,4 @@
-import { safeHref } from "../citation-popover";
+import { safeHref } from "../shared/citation-popover";
 import { socialHandle, textOrNull, type ViewProfile } from "./data";
 import { FIELDS, InlineArea, InlineChips, LISTS, useEdit } from "./inline-edit";
 import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, StatAdd, Stats } from "./parts";

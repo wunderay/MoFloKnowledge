@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, companyPath, write } from "./api-client";
-import { Dialog, Notice, StatusBadge } from "./ui";
+import { api, companyPath, write } from "../shared/api-client";
+import { Dialog, Notice, StatusBadge } from "../shared/ui";
 export function CompanySettings({
   companyId,
   company,

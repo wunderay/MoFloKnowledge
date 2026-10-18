@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MAX_TEXT_LENGTH } from "@/contracts/primitives";
-import { ApiError, api, companyPath, write } from "../api-client";
-import { Icon } from "../icons";
+import { ApiError, api, companyPath, write } from "../shared/api-client";
+import { Icon } from "../shared/icons";
 import { InlineLine, useEntryAction, useTextField, type TextSpec } from "./inline-edit";
 
 const KIND = "branding_and_style";

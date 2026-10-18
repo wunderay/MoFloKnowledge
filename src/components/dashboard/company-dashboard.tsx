@@ -1,9 +1,9 @@
 "use client";
-import { ArrowUpRight, Icon } from "./icons";
+import { ArrowUpRight, Icon } from "../shared/icons";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { api, write } from "./api-client";
-import { Dialog, EmptyState, Notice, StatusBadge, useHydrated } from "./ui";
+import { api, write } from "../shared/api-client";
+import { Dialog, EmptyState, Notice, StatusBadge, useHydrated } from "../shared/ui";
 import type { CompanySummary } from "@/contracts/api-types";
 type Company = CompanySummary;
 export function CompanyDashboard({

@@ -5,7 +5,7 @@ import { parseBusinessEntry, type SiteLink } from "@/contracts";
 import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
 import type { SourceCoverage } from "@/contracts/source-coverage";
 import { MAX_CLAIM_TARGETS, MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, OPERATIONS_PER_SAVE } from "@/knowledge/revise-provenance";
-import { ApiError, api, companyPath } from "../api-client";
+import { ApiError, api, companyPath } from "../shared/api-client";
 import type { ViewSiteLinks } from "./data";
 import { prepareEntrySave, sendEntrySave } from "./save-entry";
 

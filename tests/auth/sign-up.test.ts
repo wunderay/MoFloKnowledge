@@ -13,11 +13,11 @@ vi.mock("../../src/lib/supabase/server", () => ({
 // The pages import components through the "@/" tsconfig alias, which this
 // vitest config does not resolve. Stub those leaf components so the page
 // markup itself (headings, links) can be rendered and inspected.
-vi.mock("@/components/icons", () => ({ Brand: () => null }));
-vi.mock("@/components/sign-in-form", () => ({
+vi.mock("@/components/shared/icons", () => ({ Brand: () => null }));
+vi.mock("@/components/auth/sign-in-form", () => ({
   SignInForm: () => createElement("form", null, createElement("input", { name: "email" })),
 }));
-vi.mock("@/components/sign-up-form", () => ({
+vi.mock("@/components/auth/sign-up-form", () => ({
   SignUpForm: () => createElement("form", null, createElement("input", { name: "email" })),
 }));
 

@@ -2,8 +2,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { UnsavedNavigationProvider } from "./unsaved-navigation";
-import { APP_NAME } from "../lib/brand";
+import { UnsavedNavigationProvider } from "../editor/unsaved-navigation";
+import { APP_NAME } from "../../lib/brand";
 import { Brand, Icon, type IconName } from "./icons";
 
 export function AppShell({ children }: { children: React.ReactNode }) {

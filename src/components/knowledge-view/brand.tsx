@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { safeHref } from "../citation-popover";
+import { safeHref } from "../shared/citation-popover";
 import { AddItem, ColorHex, RemoveItem, useDisplayName } from "./brand-edit";
 import { textOrNull, type ViewProfile } from "./data";
 import { useEdit } from "./inline-edit";

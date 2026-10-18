@@ -31,7 +31,7 @@ function visibleText(html: string): string {
 
 // Brand (C1): the component renders the new name.
 it("C1 brand component renders MoFlo Knowledge", async () => {
-  const icons = await import("../../src/components/icons").catch(() => null);
+  const icons = await import("../../src/components/shared/icons").catch(() => null);
   expect(icons).not.toBeNull();
   const Brand = (icons as Record<string, unknown> | null)?.Brand;
   expect(typeof Brand).toBe("function");
@@ -84,7 +84,7 @@ it("C1 layout metadata title is MoFlo Knowledge", async () => {
 // Sign-up status (C2): the check-email message carries a success modifier;
 // the passwords-do-not-match error does not.
 it("C2 check-email message has a success modifier; mismatch error does not", async () => {
-  const mod = await import("../../src/components/sign-up-form").catch(() => null);
+  const mod = await import("../../src/components/auth/sign-up-form").catch(() => null);
   expect(mod).not.toBeNull();
   expect(typeof mod?.SignUpForm).toBe("function");
   const SignUpForm = mod!.SignUpForm;

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Icon } from "../icons";
+import { Icon } from "../shared/icons";
 import { addressText, employeeText, textOrNull, type ViewProfile } from "./data";
 import { FIELDS, InlineArea, InlineChips, InlineLine, LISTS, useEdit } from "./inline-edit";
 import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, StatAdd, Stats } from "./parts";

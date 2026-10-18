@@ -10,11 +10,11 @@ vi.mock("react", async (original) => ({
     return [harness.slots[index], (value: unknown) => { harness.slots[index] = value; }];
   },
 }));
-vi.mock("../../src/components/api-client", async (original) => ({
-  ...await original<typeof import("../../src/components/api-client")>(), api: harness.api,
+vi.mock("../../src/components/shared/api-client", async (original) => ({
+  ...await original<typeof import("../../src/components/shared/api-client")>(), api: harness.api,
 }));
-vi.mock("../../src/components/citation-popover", () => ({ safeHref: (value: string) => value }));
-import { SourceCoverage } from "../../src/components/source-coverage";
+vi.mock("../../src/components/shared/citation-popover", () => ({ safeHref: (value: string) => value }));
+import { SourceCoverage } from "../../src/components/editor/source-coverage";
 
 const inventory = {
   job: {

@@ -1,8 +1,8 @@
-import { KnowledgeEditor } from "@/components/knowledge-editor";
+import { KnowledgeEditor } from "@/components/editor/knowledge-editor";
 import { verifiedSession } from "@/lib/supabase/server";
 import { readDraft } from "@/server/read-model";
 import { UUIDSchema } from "@/contracts";
-import { Notice } from "@/components/ui";
+import { Notice } from "@/components/shared/ui";
 import { redirect } from "next/navigation";
 export default async function KnowledgePage({
   searchParams,

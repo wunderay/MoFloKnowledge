@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { ApiError, api, companyPath, write } from "../api-client";
+import { ApiError, api, companyPath, write } from "../shared/api-client";
 import type { ViewPerson } from "./data";
 
 /** The reference the uploads API returns for a stored image; only these four fields are saved with the person. */
