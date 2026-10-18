@@ -214,6 +214,7 @@ describe("the draft read", () => {
           eq: () => query,
           in: () => query,
           order: () => query,
+          limit: () => query,
           maybeSingle: async () =>
             table === "company_members"
               ? { data: { role: "owner" }, error: null }
