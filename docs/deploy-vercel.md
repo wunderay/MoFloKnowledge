@@ -57,6 +57,8 @@ Deploy. The cron appears under Project, Settings, Cron Jobs.
 ## Limits
 
 - Hobby is non-commercial; functions stop at 300 s (the worker stops itself at 240 s and resumes); cron runs at most daily.
+- A paused run does not count as a failed attempt for the first 15 minutes after the job started; after that every run counts, so a job that keeps pausing ends at the 3-attempt cap.
+- The call that starts a run does not wait for it (it gives up after 10 s). On a preview deploy, verify that a kicked run completes after its caller disconnects.
 - Each crawl run uses function time on your plan. Keep the page limit modest on the free plans.
 - No renderer or outbound proxy is deployed, so JavaScript-only pages are not captured.
 - Supabase Free projects pause after a period of inactivity and have small database and storage quotas; check the current plan terms.

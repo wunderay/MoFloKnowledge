@@ -16,7 +16,10 @@ export const POST = route(async (request, _context, { client }, requestId) => {
   return { companyId, role: "owner", jobId: await startFirstCrawl(client, companyId, b, requestId) };
 }, 201);
 
-/** The crawl starts as soon as the company has a website. The company exists either way, so a failure here is only logged. */
+/**
+ * The crawl starts as soon as the company has a website. The company exists either way, so a failure here is only logged.
+ * The website already passed WebsiteSchema (http(s), no credentials); the worker applies the full public-host policy when it crawls.
+ */
 async function startFirstCrawl(
   client: Parameters<typeof rpc>[0],
   companyId: string,

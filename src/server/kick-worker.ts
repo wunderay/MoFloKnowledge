@@ -17,8 +17,13 @@ export function kickWorker() {
       await fetch(`${appOrigin()}/api/worker/run`, {
         method: "POST",
         headers: { authorization: `Bearer ${secret}` },
+        // Only start the run; its response is not waited for.
+        signal: AbortSignal.timeout(10_000),
       });
     } catch (error) {
+      if (error instanceof DOMException && error.name === "TimeoutError") {
+        return;
+      }
       logError("could not start the worker", { error });
     }
   });

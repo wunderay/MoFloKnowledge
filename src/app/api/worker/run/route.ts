@@ -50,7 +50,7 @@ async function handle(request: Request) {
       },
       { workerId: randomUUID(), budgetMs: BUDGET_MS },
     );
-    if (result.status === "paused" || result.status === "finished") {
+    if (result.status !== "idle") {
       kickWorker();
     }
     return Response.json({ data: result }, { headers: { "Cache-Control": "private, no-store" } });
