@@ -199,7 +199,7 @@ export function validateCandidates(
           max: number | null;
         };
         if (
-          !quotes.includes(v.raw) ||
+          !(quotes.includes(v.raw) || selected.some((o) => o.property?.startsWith("jsonld:") && o.value === v.raw)) ||
           (v.exact !== null &&
             (/\d\s*(?:[-–—]|to)\s*\d/.test(v.raw) ||
               /about|approx|around|over|more than|less than/i.test(v.raw))) ||
@@ -438,7 +438,7 @@ export function validateCandidates(
         }
       }
       if (field.field === "phone" && !selected.some((o) =>
-        /^jsonld:.*\/telephone$/.test(o.property ?? "") && bareTenDigitPhone(o.value ?? "") === String(c.value))) {
+        (/^jsonld:.*\/telephone$/.test(o.property ?? "") || o.property === "tel") && bareTenDigitPhone(o.value ?? "") === String(c.value))) {
         throw new Error("phone_not_observed");
       }
       if (field.field === "social_media_links") {

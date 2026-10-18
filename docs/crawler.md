@@ -107,6 +107,14 @@ Every source the extractor reads is listed here. "Field" is the registered field
 | JSON-LD `Person`: `name`, `jobTitle`, `description` | `key_people/@id/name`, `title`, `background_or_relevance` | The person must be nested under, or referenced by `@id` from, an organization's `founder`, `employee` or `member`, or have `worksFor` pointing to the company, or have a name that matches a visible heading. |
 | JSON-LD `Service` or `Product`: `name`, `description`, `category`, `url` | `offerings/@id/name`, `description`, `category`, `url` | A `provider`, `url` or `@id` must be on the company's site when present. The `url` is used only when it is the page itself or a link on the page. On a single-service detail page under `/services/`, `/products/` or `/offerings/`, a matching self-link or heading makes that page the offering's address. |
 | `offers` on a service or product: `price` and `priceCurrency` | `offerings/@id/pricing` | The price must be a plain non-negative number (`0` stays a paid amount, never "free"). The currency is kept only as a three-letter capital code, otherwise left empty. |
+| Same organization, `foundingDate` | `company_foundation/year_founded` | The value starts with a four-digit year between 1000 and the current year. |
+| Same organization, `numberOfEmployees` (a number, a number or range as text, or an object's `value`) | `company_foundation/employee_count` | Only a whole number or a range such as `25-50`; anything else is left out. |
+| Same organization, `sameAs` (text or list) | `online_presence/social_media_links` | The same platform rules as page links: LinkedIn only for `/company/`, `/school/` or `/showcase/` pages, no share links, no tracking parameters. |
+| Same organization, `slogan` | `positioning/company_pitch` | Kept verbatim. |
+| Same organization, `knowsAbout` (text or list) | `market_and_customers/industry_groupings` | One entry per value, verbatim. |
+| Same organization, `email` | `market_and_customers/channels` (type "Email", label is the address) | Plain address. |
+| An `Offer` that presents a `Service` or `Product` as `itemOffered` (for example under `makesOffer` or an offer catalog): `price`, `priceCurrency` | `offerings/@id/pricing` | Same price rules as `offers` on a service. The service's name, description and category are read as above. |
+| Microdata items with a schema.org `itemtype` | the same fields as JSON-LD | Each item is read like a JSON-LD object (props flattened, nested scopes are separate items). |
 | JSON-LD organization `logo` (text, or an object's `url` or `contentUrl`) | `branding_and_style/logos` | Organization types `Organization`, `LocalBusiness`, `Corporation`, `ProfessionalService`, `AccountingService`, `LegalService`, `MedicalBusiness`, `Store`, `Restaurant` with a same-site `url`, inspected on top level or `@graph` entries only. A logo address containing `favicon` or `brandfetch` is skipped. Only `Organization` and `LocalBusiness` logos become a field candidate (`deterministic.ts`). |
 
 **Page metadata and visible labels (`visible.ts`, `deterministic.ts`)**
@@ -115,6 +123,9 @@ Every source the extractor reads is listed here. "Field" is the registered field
 |---|---|---|
 | Final address of each captured page | `company_foundation/website` | Every captured page. |
 | Meta description (`description`, else `og:description`) | `company_foundation/overview` | Only on the home page (path `/`). |
+| `og:site_name` or `application-name` meta tag | `company_foundation/alternative_company_names` | Verbatim, and only when it differs from the site's host label (ignoring a legal suffix). Not read on a shared-platform profile. |
+| `mailto:` links | `market_and_customers/channels` (type "Email", label is the address) | Recorded address only; not read on a shared-platform profile. |
+| `tel:` links | `online_presence/phone` | The first number the existing ten-digit US rule accepts; not read on a shared-platform profile. |
 | Meta description | `offerings/@id/description` | Only on a page whose address is a linked offering (see "Offering links"). |
 | Meta description that contains a person's name | `key_people/@id/background_or_relevance` | Only on a person profile page (see below). |
 | A line starting `Industry:` | `company_foundation/industry` | Each line is matched from its start; value 4000 characters or fewer. |
