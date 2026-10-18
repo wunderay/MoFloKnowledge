@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- entry content is a Record<string, any> by design (one editor handles every entry kind) */
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MAX_TEXT_LENGTH } from "@/contracts/primitives";
-import { ApiError, api, companyPath, write } from "../shared/api-client";
+import { ApiError, api, errorMessage, companyPath, write } from "../shared/api-client";
 import { Icon } from "../shared/icons";
 import { InlineLine, useEntryAction, useTextField, type TextSpec } from "./inline-edit";
 
@@ -205,7 +205,7 @@ export function useDisplayName(
       setProblem(
         failure instanceof ApiError && failure.status === 409
           ? "The company changed since the page was loaded. Reload the page to get the latest, then try again."
-          : (failure as Error).message || "The name could not be saved.",
+          : errorMessage(failure, "The name could not be saved."),
       );
       return;
     }

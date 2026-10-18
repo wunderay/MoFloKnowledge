@@ -5,7 +5,7 @@ import { parseBusinessEntry, type SiteLink } from "@/contracts";
 import { MAX_TEXT_LENGTH, URLSchema } from "@/contracts/primitives";
 import type { SourceCoverage } from "@/contracts/source-coverage";
 import { MAX_CLAIM_TARGETS, MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, OPERATIONS_PER_SAVE } from "@/knowledge/revise-provenance";
-import { ApiError, api, companyPath } from "../shared/api-client";
+import { ApiError, api, errorMessage, companyPath } from "../shared/api-client";
 import type { ViewSiteLinks } from "./data";
 import { prepareEntrySave, sendEntrySave } from "./save-entry";
 
@@ -106,7 +106,7 @@ export const errorText = (error: unknown, again = "import again") =>
     ? `This list changed since the page was loaded. Reload the page to get the latest links, then ${again}.`
     : error instanceof ZodError
       ? error.issues.map((issue) => issue.message).join("; ")
-      : (error as Error).message;
+      : errorMessage(error);
 
 /** "Import from website" and the dialog that lists the captured pages that are not links yet. */
 export function SiteImport({

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { ApiError, api, companyPath, write } from "../shared/api-client";
+import { api, companyPath, write } from "../shared/api-client";
 import type { ViewPerson } from "./data";
 
 /** The reference the uploads API returns for a stored image; only these four fields are saved with the person. */
@@ -11,20 +11,11 @@ async function uploadPortrait(companyId: string, file: File): Promise<Stored> {
   const form = new FormData();
   form.append("kind", "portraits");
   form.append("file", file);
-  // No Content-Type header: the browser adds the multipart boundary.
-  const response = await fetch(companyPath(companyId, "/uploads"), { method: "POST", body: form, cache: "no-store" });
-  const body = (await response.json().catch(() => null)) as {
-    data?: Stored | null;
-    error?: { message?: string } | null;
-  } | null;
-  if (!response.ok || body?.error || !body?.data) {
-    throw new ApiError(body?.error?.message ?? "The photo could not be uploaded.", response.status);
-  }
-  const { id, path, content_type, size_bytes } = body.data;
+  const { id, path, content_type, size_bytes } = await api<Stored>(companyPath(companyId, "/uploads"), { method: "POST", body: form });
   return { id, path, content_type, size_bytes };
 }
 
-/** A failed request in words: the server's own message. */
+/** A failed request in words: the server's own message, even for a stale revision. */
 const messageOf = (error: unknown) => (error as Error)?.message || "The request could not be completed.";
 
 /**

@@ -2,6 +2,7 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { structuredCandidates } from "./structured";
 import { visibleCandidates } from "./visible";
+import { collapseWhitespace as normalized } from "./text";
 import { exactSentences, selectExactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
 
 export const COMPANY_TEXT_FIELDS: readonly string[] = [
@@ -20,7 +21,6 @@ interface Section {
   paragraphs: string[];
 }
 type RankedCandidate = FieldCandidate & { priority?: number };
-const normalized = (text: string) => text.replace(/\s+/g, " ").trim();
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const excluded = /\b(?:articles?|news|blog|testimonials?|reviews?|privacy|terms|cookies?|accessibility)\b/i;
 const companyRoute = /^\/(?:$|(?:services|products|offerings)\/?$|(?:about(?:-us)?|company|firm(?:-background)?|our-story|contact|team|people|staff)(?:\/|$))/i;
