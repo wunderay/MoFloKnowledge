@@ -1,0 +1,22 @@
+[Unit]
+Description=MoFlo crawl worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=moflo
+Group=moflo
+WorkingDirectory=/opt/moflo
+EnvironmentFile=/etc/moflo/worker.env
+ExecStart=/usr/local/bin/npm run worker
+Restart=always
+RestartSec=5
+MemoryMax=2G
+CPUQuota=200%
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
