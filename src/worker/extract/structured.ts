@@ -1,11 +1,12 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
-import { nameKey as normalizedName } from "./text";
+import { nameKey as normalizedName, parseEmployeeCount } from "./text";
 import { serviceEntityKey } from "./services-text";
-import { bareTenDigitPhone } from "./identity";
+import { bareTenDigitPhone, stripTrackingParams } from "./identity";
+import { structuredData } from "./structured-data";
 import { legalSuffix } from "./company-text";
 
-const nameKey = (name: string) =>
+export const nameKey = (name: string) =>
   name.replace(new RegExp(legalSuffix.source, "gi"), "").replace(/\bco\.?(?=\s*$)/i, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 type ObjectValue = Record<string, unknown>;
@@ -52,10 +53,7 @@ export function structuredCandidates(
       );
     }
   };
-  const jsonLd = page.capture.observations.jsonLd;
-  if (Array.isArray(jsonLd)) {
-    jsonLd.forEach((value, index) => { visit(value, String(index)); });
-  }
+  structuredData(page.capture.observations).forEach((value, index) => { visit(value, String(index)); });
   const leaf = (path: string) =>
     observations.find((o) => o.property === "jsonld:" + path);
   const evidence = (path: string): TechnicalObservation[] =>
@@ -123,6 +121,42 @@ export function structuredCandidates(
       if (string && observed?.value === string && nameKey(string) !== hostLabel) {
         add("/company_foundation/alternative_company_names", [{ text: string }], [observed]);
       }
+    }
+    // Declared facts are mapped only when the exact value was captured as a leaf observation.
+    const scalar = (raw: unknown) => (typeof raw === "number" ? String(raw) : text(raw));
+    const founded = scalar(value.foundingDate), foundedLeaf = leaf(path + "/foundingDate");
+    const foundedYear = founded ? /^(\d{4})(?:-|$)/.exec(founded) : null;
+    if (foundedYear && foundedLeaf?.value === founded && Number(foundedYear[1]) >= 1000 &&
+      Number(foundedYear[1]) <= new Date().getUTCFullYear()) {
+      add("/company_foundation/year_founded", Number(foundedYear[1]), [foundedLeaf]);
+    }
+    const staff = object(value.numberOfEmployees), staffPath = path + "/numberOfEmployees" + (staff ? "/value" : "");
+    const staffRaw = scalar(staff ? staff.value : value.numberOfEmployees), staffLeaf = leaf(staffPath);
+    const employeeCount = staffRaw ? parseEmployeeCount(staffRaw) : null;
+    if (employeeCount && (employeeCount.exact !== null || employeeCount.min !== null) && staffLeaf?.value === staffRaw) {
+      add("/company_foundation/employee_count", employeeCount, [staffLeaf]);
+    }
+    addText("/positioning/company_pitch", value.slogan, path + "/slogan");
+    const listed = (raw: unknown): { item: unknown; at: string }[] => (Array.isArray(raw) ? raw as unknown[] : [raw]).map((item, i) =>
+      ({ item, at: Array.isArray(raw) ? "/" + i : "" }));
+    for (const { item, at } of listed(value.knowsAbout)) {
+      const topic = text(item), observed = leaf(path + "/knowsAbout" + at);
+      if (topic && observed?.value === topic) {
+        add("/market_and_customers/industry_groupings", [{ text: topic }], [observed]);
+      }
+    }
+    for (const { item, at } of listed(value.sameAs)) {
+      const url = text(item), observed = leaf(path + "/sameAs" + at);
+      const link = url && observed?.value === url && stripTrackingParams(url) === url && URL.canParse(url) ? new URL(url) : null;
+      const platform = link ? /^(?:www\.)?(linkedin|facebook|instagram|youtube|twitter|x|tiktok)\.com$/.exec(link.hostname)?.[1] : null;
+      if (url && observed && link && platform && link.pathname !== "/" && !/\/(?:share|intent|sharer|dialog)(?:\/|$)/i.test(link.pathname) &&
+        (platform !== "linkedin" || /^\/(?:company|school|showcase)\/[^/]+/i.test(link.pathname))) {
+        add("/online_presence/social_media_links", [{ platform, profile_url: url }], [observed]);
+      }
+    }
+    const email = text(value.email), emailLeaf = leaf(path + "/email");
+    if (email && emailLeaf?.value === email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      add("/market_and_customers/channels", [{ channel_type: "Email", label: email, url: null }], [emailLeaf]);
     }
     const telephone = text(value.telephone), phoneObserved = leaf(path + "/telephone");
     const phone = telephone ? bareTenDigitPhone(telephone) : null;
@@ -266,13 +300,18 @@ export function structuredCandidates(
       } else if (value.url === page.capture.finalUrl || page.capture.links.some((l) => l.url === value.url)) {
         addText(prefix + "url", value.url, path + "/url", entity, context);
       }
-      const offers = Array.isArray(value.offers) ? value.offers : [value.offers];
-      offers.forEach((rawOffer, i) => {
+      // Offers declared on the offering, or the Offer that presents it (makesOffer/itemOffered).
+      const parentPath = path.endsWith("/itemOffered") ? path.slice(0, -"/itemOffered".length) : null;
+      const offers: [unknown, string][] = [
+        ...(Array.isArray(value.offers) ? value.offers : [value.offers]).map((o, i): [unknown, string] =>
+          [o, path + "/offers" + (Array.isArray(value.offers) ? "/" + i : "")]),
+        ...(parentPath ? nodes.filter((n) => n.path === parentPath).map((n): [unknown, string] => [n.value, parentPath]) : []),
+      ];
+      offers.forEach(([rawOffer, offerPath]) => {
         const offer = object(rawOffer);
         if (!offer) {
           return;
         }
-        const offerPath = path + "/offers" + (Array.isArray(value.offers) ? "/" + i : "");
         const price = offer.price;
         const raw = typeof price === "number" || typeof price === "string" ? String(price) : "";
         const priceObservation = leaf(offerPath + "/price");

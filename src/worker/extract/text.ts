@@ -18,3 +18,21 @@ export function founderStatement(sentence: string): { year: number; place: strin
   const year = Number(match[1]);
   return year >= 1000 && year <= new Date().getUTCFullYear() ? { year, place: since?.[2]?.trim() ?? null } : null;
 }
+
+/** An employee count written as a whole number or a range ("25-50", "25 to 50 people"); the wording is kept as `raw`. */
+export function parseEmployeeCount(employee: string) {
+  const integer = "(?:0|[1-9]\\d*|[1-9]\\d{0,2}(?:,\\d{3})+)";
+  const units = "(?:\\s*(?:employees|people|staff(?: members)?))?";
+  const numericText = employee.replace(/\.$/, "");
+  const exact = new RegExp("^(" + integer + ")" + units + "$", "i").exec(numericText);
+  const range = new RegExp("^(" + integer + ")\\s*(?:[-–—]|to)\\s*(" + integer + ")" + units + "$", "i").exec(numericText);
+  const number = (raw: string) => Number(raw.replace(/,/g, ""));
+  const exactNumber = exact ? number(exact[1]) : null;
+  const min = range ? number(range[1]) : null, max = range ? number(range[2]) : null;
+  const validRange = min !== null && max !== null &&
+    Number.isSafeInteger(min) && Number.isSafeInteger(max) && min <= max;
+  return {
+    raw: employee, exact: Number.isSafeInteger(exactNumber) ? exactNumber : null,
+    min: validRange ? min : null, max: validRange ? max : null, as_of: null,
+  };
+}

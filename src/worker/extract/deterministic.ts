@@ -3,6 +3,7 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import { normalizeColor, nearDuplicateColor } from "./colors";
 import { stripTrackingParams } from "./identity";
 import { structuredCandidates } from "./structured";
+import { metadataCandidates } from "./metadata-fields";
 import { visibleCandidates } from "./visible";
 import { companyTextCandidates, COMPANY_TEXT_FIELDS } from "./company-text";
 import { marketTextCandidates, MARKET_TEXT_SUPPORTED_FIELDS } from "./market-text";
@@ -38,7 +39,7 @@ export function deterministicCandidates(
       const link = /\/(?:ctas|channels)$/.test(c.field) && Array.isArray(c.value) ? (c.value[0] as { url?: string | null } | undefined)?.url : null;
       return !scope || !link || inProfileScope(scope, link);
     }),
-    ...(scope ? platformProfileCandidates(page, observations, scope) : []),
+    ...(scope ? platformProfileCandidates(page, observations, scope) : metadataCandidates(page, observations)),
   ];
   const add = (
     field: string,

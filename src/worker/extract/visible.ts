@@ -1,6 +1,7 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { serviceTextCandidates } from "./services-text";
+import { parseEmployeeCount } from "./text";
 
 /** Explicit labels only: semantic categories are never guessed from prose. */
 export function visibleCandidates(
@@ -31,20 +32,7 @@ export function visibleCandidates(
       }
       const employee = /^Employee count\s*:\s*(.+)$/i.exec(line)?.[1]?.trim();
       if (employee && employee.length <= 4000) {
-        const integer = "(?:0|[1-9]\\d*|[1-9]\\d{0,2}(?:,\\d{3})+)";
-        const units = "(?:\\s*(?:employees|people|staff(?: members)?))?";
-        const numericText = employee.replace(/\.$/, "");
-        const exact = new RegExp("^(" + integer + ")" + units + "$", "i").exec(numericText);
-        const range = new RegExp("^(" + integer + ")\\s*(?:[-–—]|to)\\s*(" + integer + ")" + units + "$", "i").exec(numericText);
-        const number = (raw: string) => Number(raw.replace(/,/g, ""));
-        const exactNumber = exact ? number(exact[1]) : null;
-        const min = range ? number(range[1]) : null, max = range ? number(range[2]) : null;
-        const validRange = min !== null && max !== null &&
-          Number.isSafeInteger(min) && Number.isSafeInteger(max) && min <= max;
-        add("/company_foundation/employee_count", {
-          raw: employee, exact: Number.isSafeInteger(exactNumber) ? exactNumber : null,
-          min: validRange ? min : null, max: validRange ? max : null, as_of: null,
-        }, [segment.id]);
+        add("/company_foundation/employee_count", parseEmployeeCount(employee), [segment.id]);
       }
       const founding = /^(?:Founded|Established)\s*(?::|in)?\s*(\d{4})(?:\b|$)/i.exec(line) ??
         /^Since\s+(\d{4})\.?$/i.exec(line);

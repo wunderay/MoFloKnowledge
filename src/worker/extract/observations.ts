@@ -3,6 +3,8 @@ import type { TechnicalObservation } from "./types";
 import type { RenderResult } from "../../contracts/render-task";
 import { stableId, stripTrackingParams } from "./identity";
 import type { DeclaredLogo, DeclaredStyle } from "../capture/sections";
+import { structuredData } from "./structured-data";
+const SITE_NAME_TAGS = ["og:site_name", "application-name"];
 /** Bounded plain observations, never executable metadata or provider instructions. */
 export function technicalObservations(
   page: StoredCapture,
@@ -187,8 +189,23 @@ export function technicalObservations(
         .forEach(([key, item]) => { visit(item, path + "/" + key, depth + 1); });
     }
   };
-  if (Array.isArray(raw.jsonLd)) {
-    raw.jsonLd.forEach((value, index) => { visit(value, String(index)); });
+  structuredData(raw).forEach((value, index) => { visit(value, String(index)); });
+  // Captured metadata the extractor reads: the site's own names and its mailto/tel contact links.
+  if (Array.isArray(raw.metaTags)) {
+    for (const tag of raw.metaTags as { name?: unknown; content?: unknown }[]) {
+      if (typeof tag.name === "string" && SITE_NAME_TAGS.includes(tag.name.toLowerCase()) && typeof tag.content === "string") {
+        add(null, "meta:" + tag.name.toLowerCase(), tag.content);
+      }
+    }
+  }
+  for (const [name, property] of [["mailtoLinks", "mailto"], ["telLinks", "tel"]] as const) {
+    if (Array.isArray(raw[name])) {
+      for (const link of (raw[name] as { value?: unknown }[]).slice(0, 20)) {
+        if (typeof link.value === "string") {
+          add(null, property, link.value);
+        }
+      }
+    }
   }
   if (limited) {
     result.push({

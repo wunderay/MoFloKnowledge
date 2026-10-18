@@ -52,6 +52,7 @@ describe("identity extraction from a captured business page", () => {
   });
   it("reports only explicit channels and no navigation link as a call to action", () => {
     expect(values("/market_and_customers/channels")).toEqual([
+      { channel_type: "Email", label: "dougc@account-it.net", url: null },
       { channel_type: "Newsletter", label: "Email newsletter", url: "https://account-it.net/" },
       { channel_type: "Contact form", label: "Website contact form", url: "https://account-it.net/contact" },
     ]);
