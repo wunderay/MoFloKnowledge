@@ -1,4 +1,4 @@
-// Acceptance (Quest site-links-capacity): losing the race to create a singleton entry is a conflict (409), not an outage.
+// Acceptance: losing the race to create a singleton entry is a conflict (409), not an outage.
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("../../src/lib/supabase/server", () => ({ verifiedSession: vi.fn(async () => ({ user: null, client: {} })) }));

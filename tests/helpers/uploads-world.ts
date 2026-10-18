@@ -1,12 +1,12 @@
-// Test harness for Quest Q6 "storage-uploads": an in-memory stand-in for the Supabase client that the upload
-// routes talk to, plus byte fixtures. It is NOT production code and is shared by the locked route tests.
+// Test harness for storage uploads: an in-memory stand-in for the Supabase client that the upload
+// routes talk to, plus byte fixtures. It is NOT production code and is shared by the upload route tests.
 //
-// HARNESS CONTRACT (this is what the route handlers may use; everything else is outside the lock):
+// HARNESS CONTRACT (this is what the route handlers may use; everything else is outside the harness):
 //   client.from(table)  -> chainable query builder: select / insert / upsert / update / delete, eq / neq / in / is /
 //                          order / limit / range / single / maybeSingle, awaited as { data, error, count }.
 //   client.storage.from("knowledge-assets") -> upload / download / remove / list / exists / info /
 //                          createSignedUrl(s) / createSignedUploadUrl / getPublicUrl.
-//   client.rpc(name, args)  -> every name fails with { message: "unavailable" } (no upload RPC is defined by the lock).
+//   client.rpc(name, args)  -> every name fails with { message: "unavailable" } (no upload RPC is defined).
 //   client.auth.getUser()   -> the current test user.
 // The same client object is returned by verifiedSession(), by @supabase/ssr createServerClient and by
 // @supabase/supabase-js createClient, so a user-session client and a service-role client see one world.
@@ -506,7 +506,7 @@ export function itemRequest(method: "GET" | "DELETE", companyId: string, id: str
   return new Request(`${APP_ORIGIN}/api/companies/${companyId}/uploads/${encodeURIComponent(id)}`, { method, headers });
 }
 
-/** Route params with every plausible dynamic-segment name, because the lock does not name the folder. */
+/** Route params with every plausible dynamic-segment name, because the folder name is not fixed. */
 export function itemContext(companyId: string, id: string) {
   return { params: Promise.resolve({ companyId, uploadId: id, id }) };
 }
@@ -537,8 +537,8 @@ export function bytesOf(object: StoredObject | undefined): Buffer | undefined {
 type Handler = (request: Request, context: { params: Promise<Record<string, string>> }) => Promise<Response>;
 
 /**
- * The lock fixes only that the collection route is src/app/api/companies/[companyId]/uploads/route.ts (POST) and that
- * the item route is the single dynamic-segment folder below it (GET and DELETE); the segment name is the builder's.
+ * The collection route is src/app/api/companies/[companyId]/uploads/route.ts (POST) and
+ * the item route is the single dynamic-segment folder below it (GET and DELETE); the segment name is not fixed.
  */
 export async function needCollection(): Promise<{ POST: Handler }> {
   const base = fileURLToPath(new URL("../../src/app/api/companies/[companyId]/uploads", import.meta.url));

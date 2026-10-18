@@ -1,13 +1,13 @@
-// Acceptance: the Site Knowledge section of /knowledge/view (Quest knowledge-view-site-and-all):
-// C1 the "Sitemap / Internal Links" card, C2 its empty state, C4 no import control when the data is
-// not editable, C7 safe rendering, C8 saved snapshots. Assertions use headings, visible text,
+// Acceptance: the Site Knowledge section of /knowledge/view:
+// the "Sitemap / Internal Links" card, its empty state, no import control when the data is
+// not editable, safe rendering and saved snapshots. Assertions use headings, visible text,
 // roles, hrefs and link attributes only; none depends on class names or markup depth.
 //
-// DECISION: the card heading is matched case-insensitively ("Sitemap / Internal Links" or
+// The card heading is matched case-insensitively ("Sitemap / Internal Links" or
 //   "Sitemap / Internal links"); the muted look of the description is untestable without CSS, so the
 //   description is asserted as text outside the list items, links and buttons.
-// DECISION: "+ Add page" is shown in a saved snapshot too, like the "+ Add" links of the other sections.
-// DECISION: an external link carries target="_blank" with rel containing noopener and noreferrer.
+// "+ Add page" is shown in a saved snapshot too, like the "+ Add" links of the other sections.
+// An external link carries target="_blank" with rel containing noopener and noreferrer.
 import { describe, expect, it, vi } from "vitest";
 import { openView, type View } from "../helpers/knowledge-view-site-all-runtime";
 import { COMPANY_ID, buildBusiness, snapshotFrom } from "../helpers/knowledge-view-fixtures";
@@ -29,7 +29,6 @@ import {
   SITE_HEADING,
   emptySiteDraft,
   hostileLinks,
-  legacySnapshot,
   manyLinks,
   noSiteDraft,
   siteAddHref,
@@ -54,7 +53,7 @@ const open = {
 const ADD = siteAddHref(COMPANY_ID);
 /**
  * The "+ Add page" control of a card: a link to the editor in a saved snapshot, a button that opens the
- * add-page dialog on an editable draft (Quest add-page-modal). The link must not exist on a draft.
+ * add-page dialog on an editable draft. The link must not exist on a draft.
  */
 function expectAddPage(page: Page, card: Parameters<typeof addPageLinks>[1], source: Source) {
   const buttons = page.$(card as never).find("button").toArray().filter((b) => /^\+\s*add page$/i.test(norm(page.$(b).text())));
@@ -80,7 +79,6 @@ const itemOf = (page: Page, card: NonNullable<ReturnType<typeof siteCard>>, link
 };
 
 describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (source: Source) => {
-  // C1 behavioural
   it("opens from the selector as its own section and no longer shows the placeholder notice", async () => {
     const view = await open[source]();
     const page = view.page();
@@ -89,7 +87,6 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     expect(siteHeading(page), 'a heading "Sitemap / Internal Links"').not.toBeNull();
   });
 
-  // C1 behavioural
   it("is a card headed \"Sitemap / Internal Links\" with a description and no form controls", async () => {
     const { page, card } = cardOf(await open[source]());
     expect(norm(page.$(siteHeading(page)!).text())).toMatch(SITE_HEADING);
@@ -101,7 +98,6 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     expect(page.$(card).find("input,textarea,select").length).toBe(0);
   });
 
-  // C1 behavioural
   it("lists every stored link by title, once, in stored order", async () => {
     const { page, card } = cardOf(await open[source]());
     const text = siteCardText(page, card);
@@ -113,7 +109,6 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     }
   });
 
-  // C1 behavioural
   it("renders each URL as an external link that opens the page with rel noopener noreferrer", async () => {
     const { page, card } = cardOf(await open[source]());
     for (const link of LINKS) {
@@ -126,7 +121,6 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     }
   });
 
-  // C1 behavioural
   it("shows a note when there is one, and nothing (not \"null\") when there is not", async () => {
     const { page, card } = cardOf(await open[source]());
     for (const link of LINKS) {
@@ -140,13 +134,11 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     expect(siteCardText(page, card)).not.toMatch(BAD);
   });
 
-  // C1 behavioural
   it("ends with a \"+ Add page\" link to the editor (a button on an editable draft)", async () => {
     const { page, card } = cardOf(await open[source]());
     expectAddPage(page, card, source);
   });
 
-  // C2 behavioural
   it("Edge case: an entry with an empty links list shows the empty state and still offers \"+ Add page\"", async () => {
     const { page, card } = cardOf(await open[source](emptySiteDraft()));
     expect(siteCardText(page, card)).toMatch(/no (internal )?(links|pages)/i);
@@ -155,7 +147,6 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     expect(siteCardText(page, card)).not.toMatch(BAD);
   });
 
-  // C2 behavioural
   it("Edge case: a company with no site_links entry shows the same empty state and \"+ Add page\"", async () => {
     const { page, card } = cardOf(await open[source](noSiteDraft()));
     expect(siteCardText(page, card)).toMatch(/no (internal )?(links|pages)/i);
@@ -163,7 +154,6 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     expect(siteCardText(page, card)).not.toMatch(BAD);
   });
 
-  // C2 behavioural
   it("does not show the empty state when there are links", async () => {
     const { page, card } = cardOf(await open[source]());
     expect(siteCardText(page, card)).not.toMatch(/no (internal )?(links|pages)( yet)?/i);
@@ -171,7 +161,6 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
 });
 
 describe("Site Knowledge card, list edge cases (draft)", () => {
-  // C1 behavioural
   it("Edge case: a single link is listed with its link and note", async () => {
     const only = [LINKS[0]];
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", draft: siteDraft({ links: only }) }));
@@ -181,7 +170,6 @@ describe("Site Knowledge card, list edge cases (draft)", () => {
     expect(siteCardText(page, card)).not.toMatch(/no (internal )?(links|pages)/i);
   });
 
-  // C1 behavioural
   it("Edge case: sixty links are all listed, each with its own address, in stored order", async () => {
     const links = manyLinks(60);
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", draft: siteDraft({ links }) }));
@@ -189,7 +177,6 @@ describe("Site Knowledge card, list edge cases (draft)", () => {
     expect([...new Set(hrefs)]).toEqual(links.map((l) => normalizedUrl(l.url)));
   });
 
-  // C1 behavioural
   it("Edge case: two links with the same title keep their own addresses", async () => {
     const links: Link[] = [
       { ...LINKS[0], title: "Contact" , url: `${SITE}/contact`, note: null },
@@ -201,7 +188,6 @@ describe("Site Knowledge card, list edge cases (draft)", () => {
     expect(siteCardText(page, card).split("Contact").length - 1).toBeGreaterThanOrEqual(2);
   });
 
-  // C1 behavioural
   it("Edge case: a very long URL is linked unchanged", async () => {
     const long = `${SITE}/search?q=${"coffee-".repeat(280)}end`;
     const links: Link[] = [{ ...LINKS[0], url: long }];
@@ -209,7 +195,6 @@ describe("Site Knowledge card, list edge cases (draft)", () => {
     expect(anchorsIn(page, card).some((a) => a.href === long || normalizedUrl(a.href) === normalizedUrl(long))).toBe(true);
   });
 
-  // C1 behavioural
   it("the other sections' values are not part of the Site Knowledge section", async () => {
     const { page } = cardOf(await open.draft());
     const text = norm(page.$.root().text());
@@ -218,7 +203,7 @@ describe("Site Knowledge card, list edge cases (draft)", () => {
   });
 });
 
-describe("C4 no import control when the data cannot be edited", () => {
+describe("no import control when the data cannot be edited", () => {
   const cases: [string, () => Promise<View>][] = [
     ["a saved snapshot", () => open.snapshot()],
     ["a saved snapshot with no links", () => open.snapshot(emptySiteDraft())],
@@ -227,7 +212,6 @@ describe("C4 no import control when the data cannot be edited", () => {
     ["an archived company", () => open.draft(siteDraft({ archived: true }))],
     ["an archived company with no site_links entry", () => open.draft(noSiteDraft({ archived: true }))],
   ];
-  // C4 behavioural
   it.each(cases)("%s: there is no Import from website control", async (_name, make) => {
     const view = await make();
     const { page, card } = cardOf(view);
@@ -237,7 +221,6 @@ describe("C4 no import control when the data cannot be edited", () => {
     expect(siteCardText(page, card).length).toBeGreaterThan(20);
   });
 
-  // C4 behavioural
   it("control: the owner of an editable draft has exactly one Import from website button, with links and without", async () => {
     for (const draft of [siteDraft(), emptySiteDraft(), noSiteDraft()]) {
       const view = await open.draft(draft);
@@ -248,10 +231,9 @@ describe("C4 no import control when the data cannot be edited", () => {
   });
 });
 
-describe("C7 safe rendering of stored links", () => {
+describe("safe rendering of stored links", () => {
   const hostile = () => open.draft(siteDraft({ links: hostileLinks() }));
 
-  // C7 behavioural
   it("only http(s) URLs become hrefs; other schemes, relative and protocol-relative addresses stay text", async () => {
     const { page, card } = cardOf(await hostile());
     const links = hostileLinks();
@@ -272,7 +254,6 @@ describe("C7 safe rendering of stored links", () => {
     expect(control.map((a) => a.href)).toContain(`${SITE}/control`);
   });
 
-  // C7 behavioural
   it("titles and notes render as text: markup in them is escaped, never parsed", async () => {
     const view = await hostile();
     const { page, card } = cardOf(view);
@@ -287,7 +268,6 @@ describe("C7 safe rendering of stored links", () => {
     expect(text).toContain(HOSTILE.note);
   });
 
-  // C7 behavioural
   it("an http link in upper case and with a query string is still linked (as the browser normalizes it)", async () => {
     const links: Link[] = [{ ...LINKS[0], url: "HTTPS://WWW.HARBORANDPINE.EXAMPLE/Visit?x=1&y=2" }];
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", draft: siteDraft({ links }) }));
@@ -295,10 +275,9 @@ describe("C7 safe rendering of stored links", () => {
   });
 });
 
-describe("C8 saved snapshots", () => {
+describe("saved snapshots", () => {
   const strip = (text: string) => text.replace(/Import from website/gi, "").replace(/\s+/g, " ").trim();
 
-  // C8 behavioural
   it("a snapshot renders the same card as the draft it was made from (links, evidence and coverage alike)", async () => {
     const cases: SiteEvidenceOptions[] = [
       {},
@@ -322,17 +301,6 @@ describe("C8 saved snapshots", () => {
     expect(strip(siteCardText(b.page, b.card))).toBe(strip(siteCardText(a.page, a.card)));
   });
 
-  // C8 behavioural
-  it("Edge case: a snapshot saved before site_links existed shows the empty state, without crashing", async () => {
-    const view = await openView({ section: "Site Knowledge", snapshot: legacySnapshot() });
-    const { page, card } = cardOf(view);
-    expect(siteCardText(page, card)).toMatch(/no (internal )?(links|pages)/i);
-    expect(addPageLinks(page, card)).toEqual([ADD]);
-    expect(importControls(page)).toHaveLength(0);
-    expect(siteCardText(page, card)).not.toMatch(BAD);
-  });
-
-  // C8 behavioural
   it("Edge case: a snapshot whose site_links entry was rejected shows the empty state and keeps the other sections", async () => {
     const draft = siteDraft();
     const view = await openView({ section: "Site Knowledge", snapshot: { payload: snapshotFrom(draft, { rejected: ["site_links"] }), versionId: siteSnapshot().versionId } });
@@ -341,7 +309,6 @@ describe("C8 saved snapshots", () => {
     expect(siteCardText(page, card)).not.toContain(LINKS[0].title);
   });
 
-  // C8 behavioural
   it("the links of an evidence-carrying snapshot are listed like the draft's", async () => {
     const fx = buildSiteEvidence();
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", snapshot: fx.snapshot() }));

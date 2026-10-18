@@ -42,7 +42,6 @@ describe.each(["draft", "snapshot"] as const)("Ideal persona without a name or r
     return cardText(page, card(page, "Ideal persona", titlesOf("Sales & Marketing"))!);
   };
 
-  // behavioural
   it("shows the organization type and goal, not the empty state", async () => {
     const text = await personaCard([unnamed]);
     expect(text).toContain("Independent veterinary clinics");
@@ -50,7 +49,6 @@ describe.each(["draft", "snapshot"] as const)("Ideal persona without a name or r
     expect(text).not.toMatch(/No ideal persona yet/i);
   });
 
-  // behavioural
   it("Edge case: pain points alone are enough, under a numbered neutral heading", async () => {
     const text = await personaCard([
       { ...unnamed, organization_type: null, goals: [], pain_points: [{ id: PAIN_ID, text: "Paper intake forms" }] },
@@ -60,7 +58,6 @@ describe.each(["draft", "snapshot"] as const)("Ideal persona without a name or r
     expect(text).not.toMatch(/No ideal persona yet/i);
   });
 
-  // behavioural
   it("Edge case: a persona with nothing in it is skipped, and the shown ones are numbered from 1", async () => {
     const text = await personaCard([
       { id: "00000000-0000-4000-8000-0000000f2004", name: null, role: null, organization_type: null, goals: [], pain_points: [] },
@@ -70,7 +67,6 @@ describe.each(["draft", "snapshot"] as const)("Ideal persona without a name or r
     expect(text).not.toContain("Persona 2");
   });
 
-  // behavioural
   it("Edge case: all personas blank still shows the empty state with its + Add link", async () => {
     const text = await personaCard([
       { id: PERSONA_ID, name: null, role: null, organization_type: null, goals: [], pain_points: [] },

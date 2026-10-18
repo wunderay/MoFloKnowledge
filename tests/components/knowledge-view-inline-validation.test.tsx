@@ -1,13 +1,13 @@
-// Acceptance, Quest Q7 inline-edit-core, C4: the contracts' rules are enforced in the page, with a clear inline message.
+// The contracts' rules are enforced in the page, with a clear inline message.
 //
 // An invalid value never reaches the API (no request at all), the editor stays open with the typed text so nothing is
 // lost, and the reason is a role=alert element next to the field (never a console message, never a silent drop).
 //  - Founded: a four-digit year, not after the current year. Message names the "4-digit year".
 //  - Employees: a whole number, 0 or more; saved as the exact count. Messages say "whole number" / "negative".
 //  - every text value: at most 20,000 characters (MAX_TEXT_LENGTH).
-// DECISION: no field of the three sections holds a URL in Q7 (social links, channels, calls to action and suppliers
-// are objects and out of scope), so the URL rule is not locked here; it belongs to the Quest that edits those lists.
-// DECISION: Employees is edited as the exact count; the saved employee_count has exact = n, min = max = null,
+// No field of the three sections holds a URL (social links, channels, calls to action and suppliers
+// are objects and out of scope), so the URL rule is not tested here; it belongs with the tests that edit those lists.
+// Employees is edited as the exact count; the saved employee_count has exact = n, min = max = null,
 // as_of kept, and a non-empty raw text containing n.
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -41,7 +41,7 @@ import {
 
 vi.setConfig({ testTimeout: 60_000 });
 
-describe("C4 Founded is a four-digit year", () => {
+describe("Founded is a four-digit year", () => {
   it("shows the year as an 'Edit Founded' button and saves a valid year as a number", async () => {
     const view = await open(FOUNDED.section);
     const before = stored(view, FOUNDED.kind);
@@ -131,7 +131,7 @@ describe("C4 Founded is a four-digit year", () => {
   });
 });
 
-describe("C4 Employees is a count of 0 or more", () => {
+describe("Employees is a count of 0 or more", () => {
   it("shows the count as an 'Edit Employees' button and saves a whole number as the exact count", async () => {
     const view = await open(EMPLOYEES.section);
     const before = stored(view, EMPLOYEES.kind);
@@ -195,7 +195,7 @@ describe("C4 Employees is a count of 0 or more", () => {
   });
 });
 
-describe("C4 text length (20,000 characters)", () => {
+describe("text length (20,000 characters)", () => {
   it("a single-line value of 20,001 characters is refused inline; 20,000 is saved", async () => {
     const view = await open(LEGAL.section);
     const before = stored(view, LEGAL.kind);

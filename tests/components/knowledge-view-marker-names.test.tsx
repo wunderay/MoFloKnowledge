@@ -3,7 +3,7 @@
 // start alike do not share markers. Draft and saved snapshot, through the real page.
 import { describe, expect, it } from "vitest";
 import { card, deepestContaining, norm, type Page } from "../helpers/knowledge-view-dom";
-import { LOCKED_SECTIONS, openSection, titlesOf, type LockedSection } from "../helpers/knowledge-view-spec";
+import { CARD_SECTIONS, openSection, titlesOf, type CardSection } from "../helpers/knowledge-view-spec";
 import {
   ITEM_MARKS,
   buildEvidence,
@@ -16,9 +16,9 @@ import {
 import type { Business } from "../../src/contracts";
 
 const open = {
-  draft: (section: LockedSection, opts: EvidenceOptions) =>
+  draft: (section: CardSection, opts: EvidenceOptions) =>
     openSection(section, { draft: evidenceDraft({ business: refillLists, ...opts }) }),
-  snapshot: (section: LockedSection, opts: EvidenceOptions) =>
+  snapshot: (section: CardSection, opts: EvidenceOptions) =>
     openSection(section, { snapshot: evidenceSnapshot({ business: refillLists, ...opts }) }),
 };
 const names = (page: Page) =>
@@ -44,7 +44,6 @@ const NAME: Record<string, (b: Business) => string> = {
 };
 
 describe.each(["draft", "snapshot"] as const)("evidence control names (%s)", (source) => {
-  // behavioural
   it.each(ITEM_MARKS.map((m) => [m.card, m] as const))("%s: the item marker is named by its origin and its text", async (title, m) => {
     const opts = { marks: [markOf(m, 1)] };
     const page = await open[source](m.section, opts);
@@ -56,8 +55,7 @@ describe.each(["draft", "snapshot"] as const)("evidence control names (%s)", (so
     expect(marker[0].name).toBe(`${marker[0].visible}: evidence for ${item}`);
   });
 
-  // behavioural
-  it.each(LOCKED_SECTIONS)("%s: no evidence control is named by a raw id", async (section) => {
+  it.each(CARD_SECTIONS)("%s: no evidence control is named by a raw id", async (section) => {
     const marks = ITEM_MARKS.filter((m) => m.section === section).map((m) => markOf(m, 1));
     const page = await open[source](section, { marks });
     const all = names(page);
@@ -67,7 +65,6 @@ describe.each(["draft", "snapshot"] as const)("evidence control names (%s)", (so
     }
   });
 
-  // behavioural
   it("Edge case: social-link controls are named by platform, field controls keep their field name", async () => {
     const page = await open[source]("Sales & Marketing", {});
     const all = names(page).map((n) => n.name);
@@ -77,7 +74,7 @@ describe.each(["draft", "snapshot"] as const)("evidence control names (%s)", (so
 });
 
 describe("ids that start alike", () => {
-  // behavioural (draft only: a snapshot requires UUID ids, which cannot be prefixes of each other)
+  // (draft only: a snapshot requires UUID ids, which cannot be prefixes of each other)
   it("a claim on item id 'buyer-10' puts no marker on item 'buyer-1'", async () => {
     const buyers = (b: Business) => {
       b.market_and_customers.target_buyers = [

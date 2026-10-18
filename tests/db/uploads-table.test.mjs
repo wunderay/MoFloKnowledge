@@ -1,4 +1,4 @@
-// Write path of public.uploads (Quest Q6 storage-uploads): the app inserts and deletes metadata rows as the signed-in user,
+// Write path of public.uploads: the app inserts and deletes metadata rows as the signed-in user,
 // so row level security alone must enforce role, tenant, archived company and author. Needs TEST_DATABASE_URL (see scripts/test-db.mjs).
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';

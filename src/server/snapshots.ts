@@ -1,6 +1,5 @@
 import "server-only";
 import { KnowledgeBaseExportSchema } from "../contracts";
-import { upgradeLegacySnapshot } from "../knowledge/legacy-snapshot";
 import { authorizeCompany } from "./authorize";
 import { checked } from "./read-model";
 import { VersionSummarySchema } from "../contracts/api-responses";
@@ -25,9 +24,9 @@ export async function readSnapshot(
   if (!saved) {
     throw new HttpError(404, "unavailable", "Resource unavailable.");
   }
-  // `payload` is the validated, current-shape view for rendering; `stored` is exactly what was frozen (hash, downloads).
+  // `payload` is the validated view for rendering; `stored` is exactly what was frozen (hash, downloads).
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
-  return { ...saved, payload: KnowledgeBaseExportSchema.parse(upgradeLegacySnapshot(saved.payload)), stored: saved.payload as unknown };
+  return { ...saved, payload: KnowledgeBaseExportSchema.parse(saved.payload), stored: saved.payload as unknown };
 }
 
 export async function readVersionSummaries(

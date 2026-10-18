@@ -60,10 +60,10 @@ export function createPinnedFetcher(approve: DestinationApprover) {
                         headers[key] = Array.isArray(value) ? value.join(', ') : value;
                       }
                     }
-                    if ([301, 302, 303, 307, 308].includes(response.statusCode ?? 0)) {
+                    const status = response.statusCode ?? 0;
+                    if ([301, 302, 303, 307, 308].includes(status)) {
                         response.destroy();
-                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-                        resolve({ requestedUrl, finalUrl: current, status: response.statusCode!, headers, body: Buffer.alloc(0), redirects: [...redirects] });
+                        resolve({ requestedUrl, finalUrl: current, status, headers, body: Buffer.alloc(0), redirects: [...redirects] });
                         return;
                     }
                     let decoded: Readable = response;

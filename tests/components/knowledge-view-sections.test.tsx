@@ -1,5 +1,5 @@
 // Acceptance: the first three reference sections of /knowledge/view and their
-// empty states (Quest knowledge-view-shell, criteria C2, C3, C4, C5).
+// empty states.
 // Every assertion is on headings, labels, displayed values, link hrefs and the
 // absence of form controls; none depends on class names or markup depth.
 import { describe, expect, it } from "vitest";
@@ -36,10 +36,10 @@ import {
   CARDS_BY_SECTION,
   CUSTOMER_STATS,
   GENERAL_STATS,
-  LOCKED_SECTIONS,
+  CARD_SECTIONS,
   openSection,
   titlesOf,
-  type LockedSection,
+  type CardSection,
 } from "../helpers/knowledge-view-spec";
 
 const business = buildBusiness();
@@ -48,7 +48,7 @@ const mc = business.market_and_customers;
 const texts = (items: { text: string }[]) => items.map((i) => i.text);
 
 /** Every card of a section, asserting each exists. */
-function cardsOf(page: Page, section: LockedSection) {
+function cardsOf(page: Page, section: CardSection) {
   const titles = titlesOf(section);
   return Object.fromEntries(
     titles.map((title) => {
@@ -61,7 +61,7 @@ function cardsOf(page: Page, section: LockedSection) {
 const body = (page: Page, el: Element) => cardText(page, el);
 /** The same draft, seen by a viewer: nothing is edited in place and "+ Add" leads to the advanced editor. */
 const viewerOf = (draft: ReturnType<typeof buildDraft>) => ({ ...draft, company: { ...draft.company, role: "viewer" as const } });
-/** The cards an owner edits in place (Quest inline-edit-core), and the accessible name of the control that does it. */
+/** The cards an owner edits in place, and the accessible name of the control that does it. */
 const INLINE_CONTROL: Record<string, string> = {
   "Alternate names": "Add alternate name",
   Overview: "Edit Overview",
@@ -95,8 +95,7 @@ describe("fixtures", () => {
   });
 });
 
-describe("C2 General Info", () => {
-  // behavioural
+describe("General Info", () => {
   it("has a banner labelled Company, headed by the company name, with Founded / Employees / Legal entity", async () => {
     const page = await openSection("General Info");
     const el = banner(page, "Company", COMPANY_NAME);
@@ -106,14 +105,12 @@ describe("C2 General Info", () => {
     expect(statShows(page, el!, "Legal entity", GENERAL_STATS, "Limited Liability Company (LLC)")).toBe(true);
   });
 
-  // behavioural
   it("lists the Headquarters, Alternate names, Overview and Founding story cards in order", async () => {
     const page = await openSection("General Info");
     cardsOf(page, "General Info");
     expectInOrder(page, titlesOf("General Info"));
   });
 
-  // behavioural
   it("Headquarters shows the main address and the other locations", async () => {
     const page = await openSection("General Info");
     const text = body(page, cardsOf(page, "General Info").Headquarters);
@@ -122,14 +119,12 @@ describe("C2 General Info", () => {
     }
   });
 
-  // behavioural
   it("Alternate names shows one chip per name", async () => {
     const page = await openSection("General Info");
     const el = cardsOf(page, "General Info")["Alternate names"];
     expect(separateChips(page, el, texts(cf.alternative_company_names))).toBeNull();
   });
 
-  // behavioural
   it("Overview and Founding story show their full text", async () => {
     const page = await openSection("General Info");
     const cards = cardsOf(page, "General Info");
@@ -137,7 +132,6 @@ describe("C2 General Info", () => {
     expect(body(page, cards["Founding story"])).toContain(FOUNDING_STORY);
   });
 
-  // behavioural
   it("Edge case: a very long overview is kept whole, and the other cards still render", async () => {
     const long = business_with_overview(`${"Roasting small lots every single week. ".repeat(120)}The very last sentence of the overview.`);
     const page = await openSection("General Info", { draft: long });
@@ -148,7 +142,6 @@ describe("C2 General Info", () => {
     expect(body(page, cards["Founding story"])).toContain(FOUNDING_STORY);
   });
 
-  // behavioural
   it("Edge case: missing year, headcount and legal entity show a visible unknown state, not blanks or 'null'", async () => {
     const b = buildBusiness();
     Object.assign(b.company_foundation, { year_founded: null, employee_count: null, legal_entity_type: null });
@@ -165,7 +158,6 @@ describe("C2 General Info", () => {
     }
   });
 
-  // behavioural
   it("Edge case: a company name with HTML special characters is rendered as text, never as markup", async () => {
     const name = `Fish & Chips <b>Ltd</b> "Co" <script>alert(1)</script>`;
     const b = buildBusiness();
@@ -180,8 +172,7 @@ describe("C2 General Info", () => {
   });
 });
 
-describe("C3 Customers & Industry", () => {
-  // behavioural
+describe("Customers & Industry", () => {
   it("has a banner labelled Industry, headed by the industry, with Groupings / Locations / Buyers / Suppliers counts", async () => {
     const page = await openSection("Customers & Industry");
     const el = banner(page, "Industry", cf.industry!);
@@ -192,14 +183,12 @@ describe("C3 Customers & Industry", () => {
     expect(statShows(page, el!, "Suppliers", CUSTOMER_STATS, mc.suppliers_and_partners.length)).toBe(true);
   });
 
-  // behavioural
   it("lists the seven cards in order", async () => {
     const page = await openSection("Customers & Industry");
     cardsOf(page, "Customers & Industry");
     expectInOrder(page, titlesOf("Customers & Industry"));
   });
 
-  // behavioural
   it("Business model, Company role and Industry outlook show their values", async () => {
     const page = await openSection("Customers & Industry");
     const cards = cardsOf(page, "Customers & Industry");
@@ -214,7 +203,6 @@ describe("C3 Customers & Industry", () => {
     }
   });
 
-  // behavioural
   it("Industry groupings, Service locations, Buyers and Suppliers are chip cards with one chip per item", async () => {
     const page = await openSection("Customers & Industry");
     const cards = cardsOf(page, "Customers & Industry");
@@ -224,7 +212,6 @@ describe("C3 Customers & Industry", () => {
     expect(separateChips(page, cards.Suppliers, mc.suppliers_and_partners.map((s) => s.name!))).toBeNull();
   });
 
-  // behavioural
   it("Edge case: counts are the list lengths and follow the data (none / one / many)", async () => {
     const b = buildBusiness();
     b.market_and_customers.industry_groupings = [];
@@ -243,7 +230,6 @@ describe("C3 Customers & Industry", () => {
     expect(statShows(page, el!, "Suppliers", CUSTOMER_STATS, 0)).toBe(true);
   });
 
-  // behavioural
   it("Edge case: an industry containing HTML special characters is a text heading", async () => {
     const b = buildBusiness();
     b.company_foundation.industry = `R&D <i>labs</i> & "tools"`;
@@ -254,7 +240,7 @@ describe("C3 Customers & Industry", () => {
   });
 });
 
-describe("C4 Sales & Marketing", () => {
+describe("Sales & Marketing", () => {
   const PLATFORMS = ["Instagram", "Facebook", "LinkedIn", "TikTok"];
   const HANDLES: Record<string, string> = {
     Instagram: "harborandpinecoffee",
@@ -263,7 +249,6 @@ describe("C4 Sales & Marketing", () => {
     TikTok: "harborandpine",
   };
 
-  // behavioural
   it("has a banner labelled Sales & Marketing, headed by the company name, with one column per social link", async () => {
     const page = await openSection("Sales & Marketing");
     const el = banner(page, "Sales & Marketing", COMPANY_NAME);
@@ -273,14 +258,12 @@ describe("C4 Sales & Marketing", () => {
     }
   });
 
-  // behavioural
   it("lists the six cards in order", async () => {
     const page = await openSection("Sales & Marketing");
     cardsOf(page, "Sales & Marketing");
     expectInOrder(page, titlesOf("Sales & Marketing"));
   });
 
-  // behavioural
   it("shows the pitch, personas, needs, channels, calls to action and funnels", async () => {
     const page = await openSection("Sales & Marketing");
     const cards = cardsOf(page, "Sales & Marketing");
@@ -311,7 +294,6 @@ describe("C4 Sales & Marketing", () => {
     }
   });
 
-  // behavioural
   it("Edge case: zero social links gives a banner with no social columns and no broken text", async () => {
     const b = buildBusiness();
     b.online_presence.social_media_links = [];
@@ -326,7 +308,6 @@ describe("C4 Sales & Marketing", () => {
     cardsOf(page, "Sales & Marketing");
   });
 
-  // behavioural
   it("Edge case: a long social list shows every link, each in its own column", async () => {
     const b = buildBusiness();
     const extra = ["YouTube", "X", "Pinterest"].map((platform, i) => ({
@@ -345,9 +326,8 @@ describe("C4 Sales & Marketing", () => {
   });
 });
 
-describe("C5 values render as text; empty values render an empty state with + Add", () => {
-  // behavioural
-  it.each(LOCKED_SECTIONS)("%s: closed or read-only, no input, textarea or select holds a knowledge value", async (section) => {
+describe("values render as text; empty values render an empty state with + Add", () => {
+  it.each(CARD_SECTIONS)("%s: closed or read-only, no input, textarea or select holds a knowledge value", async (section) => {
     const page = await openSection(section);
     const cards = cardsOf(page, section);
     for (const [title, el] of Object.entries(cards)) {
@@ -359,8 +339,7 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     }
   });
 
-  // behavioural
-  it.each(LOCKED_SECTIONS)("%s: a viewer of a company with no entries sees every card with an empty state and a + Add link to the right entry kind", async (section) => {
+  it.each(CARD_SECTIONS)("%s: a viewer of a company with no entries sees every card with an empty state and a + Add link to the right entry kind", async (section) => {
     const page = await openSection(section, { draft: viewerOf(buildEmptyDraft()) });
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
@@ -374,8 +353,8 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     }
   });
 
-  // behavioural (Quest inline-edit-core: an owner's draft fills these cards in place)
-  it.each(LOCKED_SECTIONS)("%s: an owner of a company with no entries sees every card with an empty state, an inline control on the editable cards and a + Add link on the others", async (section) => {
+  // (an owner's draft fills these cards in place)
+  it.each(CARD_SECTIONS)("%s: an owner of a company with no entries sees every card with an empty state, an inline control on the editable cards and a + Add link on the others", async (section) => {
     const page = await openSection(section, { draft: buildEmptyDraft() });
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
@@ -395,8 +374,7 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     }
   });
 
-  // behavioural
-  it.each(LOCKED_SECTIONS)("%s: entries that exist but hold blank values get the same empty states (a viewer: + Add links)", async (section) => {
+  it.each(CARD_SECTIONS)("%s: entries that exist but hold blank values get the same empty states (a viewer: + Add links)", async (section) => {
     const page = await openSection(section, { draft: viewerOf(draftFrom(createEmptyBusiness())) });
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
@@ -406,8 +384,7 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     }
   });
 
-  // behavioural
-  it.each(LOCKED_SECTIONS)("%s: entries that exist but hold blank values get the same empty states (an owner: inline controls where editable)", async (section) => {
+  it.each(CARD_SECTIONS)("%s: entries that exist but hold blank values get the same empty states (an owner: inline controls where editable)", async (section) => {
     const page = await openSection(section, { draft: draftFrom(createEmptyBusiness()) });
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
@@ -423,13 +400,11 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     }
   });
 
-  // behavioural
   it("the founding story empty state reads 'No founding story yet'", async () => {
     const page = await openSection("General Info", { draft: buildEmptyDraft() });
     expect(body(page, cardsOf(page, "General Info")["Founding story"])).toMatch(/No founding story yet/i);
   });
 
-  // behavioural
   it("Edge case: only the empty card gets the empty state; filled cards keep their value and have no + Add (a viewer: a link; an owner: the inline control)", async () => {
     const b = buildBusiness();
     b.positioning.founding_story = null;
@@ -453,7 +428,6 @@ describe("C5 values render as text; empty values render an empty state with + Ad
     }
   });
 
-  // behavioural
   it("Edge case: a filled draft shows no founding story empty state and no + Add in General Info", async () => {
     const page = await openSection("General Info");
     expect(page.html).not.toMatch(/No founding story yet/i);

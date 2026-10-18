@@ -4,7 +4,7 @@ import { Scheduler } from "../../src/worker/crawl/scheduler";
 import type { fetchDocument } from "../../src/worker/network/pinned-transport";
 import { htmlPage, makeJob, makeRepository } from "../helpers/crawl-deadline-site";
 
-// Q12 crawl-deadline, criterion C5 (non-regression): ordinary robots.txt
+// Crawl-deadline non-regression: ordinary robots.txt
 // Crawl-delay values are still honoured between same-host requests, and
 // unusable values fall back to the 500 ms floor. Runs on a fake clock
 // (Date, setTimeout, node:timers/promises sleeps and AbortSignal.timeout are all
@@ -96,8 +96,8 @@ async function crawlWith(robotsLine: string) {
   return { result, seen, pageTimes, robotsAt, started };
 }
 
-describe("C5 normal Crawl-delay is honoured between same-host requests", () => {
-  it.each([1, 2])("C5 Crawl-delay: %i keeps every same-host page request at least that many seconds apart", async (seconds) => {
+describe("normal Crawl-delay is honoured between same-host requests", () => {
+  it.each([1, 2])("Crawl-delay: %i keeps every same-host page request at least that many seconds apart", async (seconds) => {
     const { result, pageTimes, robotsAt } = await crawlWith(`Crawl-delay: ${seconds}`);
     expect(result.captures).toHaveLength(3);
     expect(pageTimes).toHaveLength(3);
@@ -111,7 +111,7 @@ describe("C5 normal Crawl-delay is honoured between same-host requests", () => {
   });
 
   it.each(["0", "-5", "NaN", "abc", "Infinity", "1e999", "0.2"])(
-    "C5 unusable Crawl-delay %j falls back to the 500 ms same-host gap and the crawl completes",
+    "unusable Crawl-delay %j falls back to the 500 ms same-host gap and the crawl completes",
     async (value) => {
       const { result, pageTimes, started } = await crawlWith(`Crawl-delay: ${value}`);
       expect(result.captures).toHaveLength(3);
@@ -122,7 +122,7 @@ describe("C5 normal Crawl-delay is honoured between same-host requests", () => {
     },
   );
 
-  it("C5 Scheduler.pace spaces same-host starts by the requested gap and does not delay other hosts", async () => {
+  it("Scheduler.pace spaces same-host starts by the requested gap and does not delay other hosts", async () => {
     const scheduler = new Scheduler();
     const origin = Date.now();
     const marks: Record<string, number> = {};

@@ -3,7 +3,7 @@
 //   TEST_DATABASE_URL=postgres://.../anything_test node --test tests/db/entry-restore.test.mjs
 // Without TEST_DATABASE_URL this file reports NOT_RUN (it never passes silently).
 //
-// DECISIONs (coordinator, Q8):
+// Behaviour:
 //  - A deleted entry is only archived (0020), so Undo clears its tombstone with public.restore_entry: the entry comes back with
 //    every revision and all of its evidence. Creating it again with the same id could never work (the archived row keeps the id).
 //  - Owner and editor of a live company; a viewer is forbidden; a non-member finds nothing there; an entry that is not archived is

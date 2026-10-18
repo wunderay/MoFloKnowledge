@@ -1,4 +1,4 @@
-// Acceptance, Quest Q21 viewer-polish, item 1: the inline textarea opens tall enough for its value.
+// The inline textarea opens tall enough for its value.
 // rows = max(3, number of lines of the value), capped at 12.
 import { describe, expect, it, vi } from "vitest";
 import { OVERVIEW_F, draftWith, open, setAt, startEdit } from "../helpers/knowledge-view-inline-edit";
@@ -14,7 +14,7 @@ async function rowsFor(value: string): Promise<number> {
   return Number(area.props.rows);
 }
 
-describe("Q21 textarea rows", () => {
+describe("textarea rows", () => {
   it("a short value still opens 3 rows", async () => {
     expect(await rowsFor("One line.")).toBe(3);
   });

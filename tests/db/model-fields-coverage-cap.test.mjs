@@ -1,5 +1,5 @@
-// Acceptance tests for Quest Q5 "model-fields", criterion C6 (coverage cap), database half. The TypeScript half is
-// tests/contracts/model-fields-coverage-cap.test.ts, which also states the derivation (DECISION D8):
+// Coverage cap, database half. The TypeScript half is
+// tests/contracts/model-fields-coverage-cap.test.ts, which also states the derivation:
 //   rows = 32 singleton fields + 8 per key person + 8 per offering + 1 for an empty collection;
 //   a published snapshot carries at most 500 claims and every populated person/offering needs its own claim, so a
 //   legitimate snapshot has at most 500 people + offerings: maximum = 32 + 8 x 500 + 1 = 4,033 coverage rows.
@@ -74,7 +74,7 @@ async function publish(user,company){
 }
 const check=payload=>admin.query("SELECT private.validate_json($1::jsonb,private.contract_schema('export'))",[JSON.stringify(payload)]);
 
-test('C6: a maximal legitimate snapshot (500 key people = 4,033 coverage rows) publishes; the SQL export contract refuses one row more',async t=>{
+test('a maximal legitimate snapshot (500 key people = 4,033 coverage rows) publishes; the SQL export contract refuses one row more',async t=>{
  const user=await connect('authenticated',owner);
  const company=await newCompany(user,'Maximal people');
  await load(company,Array.from({length:500},(_,index)=>entryOf('key_person',index+1)));
@@ -98,7 +98,7 @@ test('C6: a maximal legitimate snapshot (500 key people = 4,033 coverage rows) p
  });
 });
 
-test('C6: 500 offerings (4,033 rows) and a mixed 250 + 250 snapshot (4,032 rows) publish too',async t=>{
+test('500 offerings (4,033 rows) and a mixed 250 + 250 snapshot (4,032 rows) publish too',async t=>{
  const user=await connect('authenticated',owner);
  const offerings=await newCompany(user,'Maximal offerings');
  await load(offerings,Array.from({length:500},(_,index)=>entryOf('offering',index+1)));
@@ -115,7 +115,7 @@ test('C6: 500 offerings (4,033 rows) and a mixed 250 + 250 snapshot (4,032 rows)
  });
 });
 
-test('C6: every entry mix that fitted the old cap still publishes (194 people = 1,585 rows; 190 people + 3 offerings = 1,576 rows)',async t=>{
+test('every entry mix that fitted the old cap still publishes (194 people = 1,585 rows; 190 people + 3 offerings = 1,576 rows)',async t=>{
  const user=await connect('authenticated',owner);
  const {KnowledgeBaseExportSchema}=await tsImport(resolve(root,'src/contracts/index.ts'),import.meta.url);
  await t.test('194 people',async()=>{

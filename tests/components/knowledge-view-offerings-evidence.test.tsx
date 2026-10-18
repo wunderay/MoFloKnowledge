@@ -25,7 +25,6 @@ const groupText = (page: Page, label: string) => textOf(page, group(page, label)
 const rows = (page: Page) => listRows(page, offeringsList(page)!);
 
 describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source) => {
-  // behavioural
   it("each listed offering whose own claims are non-source carries a marker named by its name", async () => {
     const page = await open[source]();
     const markers = rows(page).map((row) =>
@@ -42,7 +41,6 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     ]);
   });
 
-  // behavioural
   it("the user-corrected feature has its own marker, named by the feature text; the others have none", async () => {
     const page = await open[source]();
     const items = page.$(group(page, "Key features")).find("li").toArray();
@@ -51,7 +49,6 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     expect(marked).toEqual([[], [`User correction: evidence for ${SUB.features[1].text}`], []]);
   });
 
-  // behavioural
   it("a historical inference on the description of a selected offering is named in its card", async () => {
     const page = await open[source](OFFERING_IDS[1]);
     const names = controls(page).map((c) => c.name);
@@ -59,7 +56,6 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     expect(norm(page.$(group(page, "Description")).find("button.citation-popover__trigger").first().text())).toBe("Historical inferred ⓘ");
   });
 
-  // behavioural
   it.each([undefined, OFFERING_IDS[1], OFFERING_IDS[3]])("no evidence control is named by a raw id or path (offering=%s)", async (offering) => {
     const page = await open[source](offering);
     const all = controls(page);
@@ -71,7 +67,6 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     }
   });
 
-  // behavioural
   it("every detail card's control names its field and the offering", async () => {
     const page = await open[source]();
     const nouns = { Offering: "name", Type: "type", Description: "description", "Key features": "key features", Cost: "cost", "Pricing model": "pricing model" };
@@ -82,7 +77,6 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     }
   });
 
-  // behavioural
   it("empty or not-found fields print their coverage reason; found values print none", async () => {
     const page = await open[source](OFFERING_IDS[3]);
     expect(groupText(page, "Cost")).toContain(`Not found in checked pages — ${REASONS.noPricing}`);
@@ -94,7 +88,6 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     expect(groupText(page, "Description")).not.toMatch(/Unknown|Partial|Conflicting|Not found/);
   });
 
-  // behavioural
   it("a filled field that is only partly found prints its reason next to the value", async () => {
     const page = await open[source]();
     expect(groupText(page, "Description")).toContain(SUB.description!);
@@ -102,7 +95,6 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     expect(groupText(page, "Type")).not.toMatch(/Unknown|Partial|Conflicting|Not found/);
   });
 
-  // behavioural
   it("the list is operable from the keyboard: one button per offering, none nested in another control", async () => {
     const page = await open[source]();
     const all = rows(page);
@@ -118,7 +110,6 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
 });
 
 describe("offerings evidence, draft and snapshot agree", () => {
-  // behavioural
   it("a snapshot shows the same controls as its draft", async () => {
     for (const offering of [undefined, OFFERING_IDS[1]]) {
       const fromDraft = controls(await open.draft(offering));

@@ -1,4 +1,4 @@
-// Acceptance, Quest Q7 inline-edit-core, C3: chip lists of /knowledge/view edit in place.
+// Chip lists of /knowledge/view edit in place.
 //
 // The string lists of the contract that the three sections show: Alternate names (General Info); Company role,
 // Industry groupings, Service locations, Buyers (Customers & Industry); Customer needs (Sales & Marketing).
@@ -9,9 +9,9 @@
 //  - a duplicate (ignoring case and surrounding white space) is refused with a role=alert message; nothing is sent.
 //  - a remove shows a role=status toast with an "Undo" button; Undo saves the list as it was, same ids and order.
 //  - the banner counters of Customers & Industry follow the lists, with singular and plural ("1 Buyer", "2 Buyers").
-// DECISION: Suppliers, Channels, Calls to action, Funnels, Ideal persona, Industry outlook, Headquarters and Social
-// links are lists of objects, not of strings; they stay as they are in Q7 (only their banner counts change).
-// DECISION: pressing Enter on blank text adds nothing and sends nothing (no message is required).
+// Suppliers, Channels, Calls to action, Funnels, Ideal persona, Industry outlook, Headquarters and Social
+// links are lists of objects, not of strings; they stay as they are (only their banner counts change).
+// Pressing Enter on blank text adds nothing and sends nothing (no message is required).
 import { describe, expect, it, vi } from "vitest";
 import {
   BUYERS,
@@ -48,7 +48,7 @@ import {
 
 vi.setConfig({ testTimeout: 60_000 });
 
-describe.each(CHIP_FIELDS)("C3 chip list: $label", (field) => {
+describe.each(CHIP_FIELDS)("chip list: $label", (field) => {
   const seed = async () => {
     const view = await open(field.section);
     const before = stored(view, field.kind);
@@ -208,7 +208,7 @@ const shows = (text: string, n: number, one: string, many: string) =>
 const wrongForm = (text: string, n: number, one: string, many: string) =>
   n === 1 ? new RegExp(`(^|\\D)1 ${many}`).test(text) : new RegExp(`(^|\\D)${n} ${one}(?!s)`).test(text);
 
-describe("C3 banner counters follow the lists with singular and plural", () => {
+describe("banner counters follow the lists with singular and plural", () => {
   it("show the stored counts as '<n> <noun>'", async () => {
     const view = await open("Customers & Industry");
     const text = view.text();

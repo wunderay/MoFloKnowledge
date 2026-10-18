@@ -1,4 +1,4 @@
-// Acceptance, Quest Q7 inline-edit-core, C5: every inline save goes through the existing entries / revisions API.
+// Every inline save goes through the existing entries / revisions API.
 //
 //  - an entry that exists is revised: POST /api/companies/<id>/entries/<entryId>/revisions with expectedRevision (the
 //    revision the page holds), content = the stored content with ONLY the edited field changed, reviewStatus
@@ -8,7 +8,7 @@
 //  - the real server preparation accepts what the page sends: prepareRevision / prepareManualCreation run on each
 //    request and what they would store validates against the contracts.
 //  - after a committed save the page re-reads the draft; the next save carries the new revision.
-// DECISION: the review status after an inline edit is "unreviewed", as for an import: a changed value needs review again.
+// The review status after an inline edit is "unreviewed", as for an import: a changed value needs review again.
 import { describe, expect, it, vi } from "vitest";
 import { createEmptyBusiness } from "../../src/contracts";
 import { buildBusiness, buildEmptyDraft, draftFrom } from "../helpers/knowledge-view-fixtures";
@@ -64,7 +64,7 @@ async function setText(view: View, field: TextField, text: string) {
   }
 }
 
-describe("C5 a revision of an existing entry", () => {
+describe("a revision of an existing entry", () => {
   it.each([...SINGLE_FIELDS, ...AREA_FIELDS])("$label: the request fits the API contract and the real prepareRevision accepts it", async (field) => {
     const view = await open(field.section);
     const before = stored(view, field.kind);
@@ -165,7 +165,7 @@ describe("C5 a revision of an existing entry", () => {
   });
 });
 
-describe("C5 the same editors in 'All sections'", () => {
+describe("the same editors in 'All sections'", () => {
   it("every inline editor of the three sections is offered once, with unique ids, and saves", async () => {
     const view = await open("All sections");
     for (const field of [LEGAL, INDUSTRY, OVERVIEW_F, STORY, MODEL, PITCH_F, FOUNDED, EMPLOYEES]) {
@@ -178,7 +178,7 @@ describe("C5 the same editors in 'All sections'", () => {
   });
 });
 
-describe("C5 an entry the company does not have yet is created", () => {
+describe("an entry the company does not have yet is created", () => {
   it("editing Overview of a company with no entries creates the Company Foundation entry, then revises it", async () => {
     const view = await open("General Info", { draft: buildEmptyDraft() });
     await setText(view, OVERVIEW_F, "A brand new overview");

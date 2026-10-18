@@ -2,7 +2,7 @@
 // Already covered elsewhere: HttpOnly refresh cookies in tests/auth/session.test.ts, upload response headers
 // (nosniff, sandbox CSP) in tests/server/uploads-serve-delete.test.ts, write-origin happy path in tests/server/http.test.ts.
 // This file adds: origin-check variants, no-store on auth responses, cookie flags of the server client,
-// no framework banner, and the (missing) global security headers.
+// no framework banner, and the global security headers set in next.config.ts.
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));

@@ -1,10 +1,10 @@
-// Acceptance tests for Quest Q6 "storage-uploads": C3 (SVG safety / serving headers), C4 (serving), C5 (delete) and
-// C6 (tenant isolation, origin, role, archived company, path traversal) on the item route
+// Item route: SVG safety and serving headers, serving, delete, and tenant isolation, origin, role,
+// archived company and path traversal.
 //   GET|DELETE src/app/api/companies/[companyId]/uploads/<uploadId>/route.ts
 // Objects are seeded straight into the in-memory storage world (tests/helpers/uploads-world.ts) so that serving is
 // proven independently of what the upload route accepts.
 //
-// DECISIONs recorded in the Petitioner hand-back (short form):
+// Behaviour assumed:
 //  - Serving is id-based: GET /api/companies/<companyId>/uploads/<id> (the url the upload route returns).
 //  - Serving headers are MANDATORY for every type; SVG sanitising is optional and not asserted.
 //  - Non-members, unknown ids and ids of another company are indistinguishable: 404 { code: "unavailable" }.
@@ -70,7 +70,7 @@ async function del(company: string, id: string, origin?: string | null) {
   return { response, ...(await readBody(response)) };
 }
 
-/** C3/C4: the full response header set that makes a stored image inert in the app origin. */
+/** The full response header set that makes a stored image inert in the app origin. */
 function expectServingHeaders(response: Response, type: string) {
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe(type);
@@ -101,7 +101,7 @@ function expectInertIfServed(response: Response) {
   }
 }
 
-describe("C4 serving: members get the object, with locked headers for every type", () => {
+describe("serving: members get the object, with fixed headers for every type", () => {
   const cases: [string, Uint8Array, string, string][] = [
     ["png", FIXTURES.png.bytes, "png", "image/png"],
     ["jpg", FIXTURES.jpeg.bytes, "jpg", "image/jpeg"],
@@ -110,7 +110,7 @@ describe("C4 serving: members get the object, with locked headers for every type
     ["svg", FIXTURES.svg.bytes, "svg", "image/svg+xml"],
   ];
   for (const [label, bytes, ext, type] of cases) {
-    it(`C3/C4 ${label}: 200, exact Content-Type, nosniff, locked CSP, inline, private cache, same bytes`, async () => {
+    it(`${label}: 200, exact Content-Type, nosniff, fixed CSP, inline, private cache, same bytes`, async () => {
       const { id } = world.seedUpload({ companyId: a, ext, bytes });
       const result = await get(a, id);
       expectServingHeaders(result.response, type);
@@ -122,7 +122,7 @@ describe("C4 serving: members get the object, with locked headers for every type
     });
   }
 
-  it("C4 owner, editor and viewer can all read; the three kinds are all served", async () => {
+  it("owner, editor and viewer can all read; the three kinds are all served", async () => {
     for (const kind of ["logos", "portraits", "offering-images"]) {
       const { id } = world.seedUpload({ companyId: a, kind, bytes: png() });
       for (const user of [IDS.owner, IDS.editor, IDS.viewer]) {
@@ -133,7 +133,7 @@ describe("C4 serving: members get the object, with locked headers for every type
     }
   });
 
-  it("C4 reading does not need an Origin header, and an archived company is still readable by its members", async () => {
+  it("reading does not need an Origin header, and an archived company is still readable by its members", async () => {
     const archived = world.seedCompany({ archived: true, members: { [IDS.viewer]: "viewer" } });
     const { id } = world.seedUpload({ companyId: archived, bytes: png() });
     world.user = { id: IDS.viewer };
@@ -141,7 +141,7 @@ describe("C4 serving: members get the object, with locked headers for every type
     expectServingHeaders(result.response, "image/png");
   });
 
-  it("C4 a signed-out caller gets 401 and no object bytes", async () => {
+  it("a signed-out caller gets 401 and no object bytes", async () => {
     const { id } = world.seedUpload({ companyId: a, bytes: png() });
     world.user = null;
     const result = await get(a, id);
@@ -149,7 +149,7 @@ describe("C4 serving: members get the object, with locked headers for every type
     expect(world.storageCalls.filter((c) => c.op === "download")).toEqual([]);
   });
 
-  it("C4 never exposes the storage backend: no redirect, no signed or public bucket URL in body, headers or logs", async () => {
+  it("never exposes the storage backend: no redirect, no signed or public bucket URL in body, headers or logs", async () => {
     const lines: string[] = [];
     for (const method of ["log", "info", "warn", "error", "debug"] as const) {
       vi.spyOn(console, method).mockImplementation((...args: unknown[]) => void lines.push(args.map(String).join(" ")));
@@ -167,7 +167,7 @@ describe("C4 serving: members get the object, with locked headers for every type
     expect(lines.join("\n")).not.toMatch(LEAK);
   });
 
-  it("C4 an upload whose object has vanished from storage is 404, not a 5xx", async () => {
+  it("an upload whose object has vanished from storage is 404, not a 5xx", async () => {
     const { id, path } = world.seedUpload({ companyId: a, bytes: png() });
     world.objects.delete(path);
     const result = await get(a, id);
@@ -175,15 +175,15 @@ describe("C4 serving: members get the object, with locked headers for every type
   });
 });
 
-describe("C3 hostile content cannot run script in the app origin", () => {
+describe("hostile content cannot run script in the app origin", () => {
   for (const [label, source] of Object.entries(MALICIOUS_SVGS)) {
-    it(`C3 stored SVG with ${label} is served only as image/svg+xml with the sandbox CSP, nosniff and inline`, async () => {
+    it(`stored SVG with ${label} is served only as image/svg+xml with the sandbox CSP, nosniff and inline`, async () => {
       const { id } = world.seedUpload({ companyId: a, ext: "svg", bytes: text(source) });
       const result = await get(a, id);
       expectServingHeaders(result.response, "image/svg+xml");
     });
 
-    it(`C3 SVG with ${label} through the upload route: rejected, or accepted and then served with the same locked headers`, async () => {
+    it(`SVG with ${label} through the upload route: rejected, or accepted and then served with the same fixed headers`, async () => {
       const posted = await upload(a, { file: { bytes: text(source), name: "m.svg", mime: "image/svg+xml" }, kind: "logos" });
       if (posted.response.status !== 201) {
         expect(posted.response.status).toBeGreaterThanOrEqual(400);
@@ -197,14 +197,14 @@ describe("C3 hostile content cannot run script in the app origin", () => {
     });
   }
 
-  it("C3 a GIF/script polyglot is served as image/gif and nothing else", async () => {
+  it("a GIF/script polyglot is served as image/gif and nothing else", async () => {
     const bytes = new Uint8Array(Buffer.concat([Buffer.from(gif()), Buffer.from("<script>alert(document.domain)</script>")]));
     const { id } = world.seedUpload({ companyId: a, ext: "gif", bytes });
     const result = await get(a, id);
     expectServingHeaders(result.response, "image/gif");
   });
 
-  it("C3 an SVG object whose stored metadata claims text/html is still never served as html", async () => {
+  it("an SVG object whose stored metadata claims text/html is still never served as html", async () => {
     const { id } = world.seedUpload({ companyId: a, ext: "svg", bytes: text(MALICIOUS_SVGS.script), contentType: "text/html", metaContentType: "text/html" });
     const result = await get(a, id);
     expectInertIfServed(result.response);
@@ -213,14 +213,14 @@ describe("C3 hostile content cannot run script in the app origin", () => {
     }
   });
 
-  it("C3 an HTML document sitting under a .png name (planted straight into storage) is not served as html", async () => {
+  it("an HTML document sitting under a .png name (planted straight into storage) is not served as html", async () => {
     const { id } = world.seedUpload({ companyId: a, ext: "png", bytes: text("<html><script>alert(1)</script></html>"), contentType: "text/html", metaContentType: "text/html" });
     const result = await get(a, id);
     expectInertIfServed(result.response);
     expect(result.response.headers.get("content-type") ?? "").not.toMatch(/html|javascript|xml(?!\+)/i);
   });
 
-  it("C3 stored metadata of an unlisted type (application/octet-stream, text/plain) never leaks through as the served type", async () => {
+  it("stored metadata of an unlisted type (application/octet-stream, text/plain) never leaks through as the served type", async () => {
     for (const stored of ["application/octet-stream", "text/plain;charset=UTF-8", "application/javascript"]) {
       world.reset();
       ({ a, b } = arrange());
@@ -234,8 +234,8 @@ describe("C3 hostile content cannot run script in the app origin", () => {
   });
 });
 
-describe("C4/C6 only members of the owning company can read; everyone else gets an identical 404", () => {
-  it("C4 a non-member gets 404 { code: unavailable } with no bytes and no storage read, same as for an unknown id", async () => {
+describe("only members of the owning company can read; everyone else gets an identical 404", () => {
+  it("a non-member gets 404 { code: unavailable } with no bytes and no storage read, same as for an unknown id", async () => {
     const { id } = world.seedUpload({ companyId: a, bytes: png() });
     world.user = { id: IDS.outsider };
     const existing = await get(a, id);
@@ -248,7 +248,7 @@ describe("C4/C6 only members of the owning company can read; everyone else gets 
     expect(world.storageCalls.filter((c) => c.op === "download")).toEqual([]);
   });
 
-  it("C6 an id that belongs to another company is 404 under this company, even for a user who may read it under its own", async () => {
+  it("an id that belongs to another company is 404 under this company, even for a user who may read it under its own", async () => {
     const mine = world.seedUpload({ companyId: a, bytes: png() });
     const theirs = world.seedUpload({ companyId: b, bytes: svg('<circle r="3"/>'), ext: "svg" });
     world.user = { id: IDS.rival };
@@ -264,7 +264,7 @@ describe("C4/C6 only members of the owning company can read; everyone else gets 
     expect((await get(b, theirs.id)).response.status).toBe(200);
   });
 
-  it("C6 the url of company A's upload requested as company B's member yields 404 and no bytes", async () => {
+  it("the url of company A's upload requested as company B's member yields 404 and no bytes", async () => {
     const mine = world.seedUpload({ companyId: a, bytes: png() });
     world.user = { id: IDS.rival };
     const result = await get(b, mine.id);
@@ -272,7 +272,7 @@ describe("C4/C6 only members of the owning company can read; everyone else gets 
     expect(result.bytes.includes(Buffer.from(png()))).toBe(false);
   });
 
-  it("C6 malformed or traversing ids and company ids are 4xx and reach storage with nothing", async () => {
+  it("malformed or traversing ids and company ids are 4xx and reach storage with nothing", async () => {
     world.seedUpload({ companyId: a, bytes: png() });
     world.seedUpload({ companyId: b, bytes: png() });
     world.storageCalls = [];
@@ -298,8 +298,8 @@ describe("C4/C6 only members of the owning company can read; everyone else gets 
   });
 });
 
-describe("C5/C6 delete", () => {
-  it("C5 an owner or editor deletes exactly one object: 200/204, gone from storage, then 404 on read", async () => {
+describe("delete", () => {
+  it("an owner or editor deletes exactly one object: 200/204, gone from storage, then 404 on read", async () => {
     for (const user of [IDS.owner, IDS.editor]) {
       world.reset();
       ({ a, b } = arrange());
@@ -322,7 +322,7 @@ describe("C5/C6 delete", () => {
     }
   });
 
-  it("C5 a viewer cannot delete: 403 forbidden and the object stays readable", async () => {
+  it("a viewer cannot delete: 403 forbidden and the object stays readable", async () => {
     const target = world.seedUpload({ companyId: a, bytes: png() });
     world.user = { id: IDS.viewer };
     world.storageCalls = [];
@@ -334,7 +334,7 @@ describe("C5/C6 delete", () => {
     expect((await get(a, target.id)).response.status).toBe(200);
   });
 
-  it("C6 a non-member and a signed-out caller cannot delete: 404 and 401", async () => {
+  it("a non-member and a signed-out caller cannot delete: 404 and 401", async () => {
     const target = world.seedUpload({ companyId: a, bytes: png() });
     world.user = { id: IDS.outsider };
     expect((await del(a, target.id)).response.status).toBe(404);
@@ -344,7 +344,7 @@ describe("C5/C6 delete", () => {
     expect(world.objects.has(target.path)).toBe(true);
   });
 
-  it("C6 a cross-company id is 404 and nothing is deleted, in either direction", async () => {
+  it("a cross-company id is 404 and nothing is deleted, in either direction", async () => {
     const mine = world.seedUpload({ companyId: a, bytes: png() });
     const theirs = world.seedUpload({ companyId: b, bytes: png() });
     world.tables.company_members.push({ company_id: b, user_id: IDS.owner, role: "owner", added_by: IDS.owner, created_at: "2026-10-01T00:00:00.000Z" });
@@ -357,7 +357,7 @@ describe("C5/C6 delete", () => {
     expect(world.objects.has(theirs.path)).toBe(true);
   });
 
-  it("C6 DELETE needs the app origin: foreign, absent and look-alike origins are 403 invalid_origin and delete nothing", async () => {
+  it("DELETE needs the app origin: foreign, absent and look-alike origins are 403 invalid_origin and delete nothing", async () => {
     const target = world.seedUpload({ companyId: a, bytes: png() });
     for (const origin of ["https://evil.example", null, "https://app.example.evil.example", "http://app.example"]) {
       const result = await del(a, target.id, origin);
@@ -368,7 +368,7 @@ describe("C5/C6 delete", () => {
     expect(world.objects.has(target.path)).toBe(true);
   });
 
-  it("C6 an archived company refuses DELETE with 422 and keeps the object", async () => {
+  it("an archived company refuses DELETE with 422 and keeps the object", async () => {
     const archived = world.seedCompany({ archived: true, members: { [IDS.owner]: "owner", [IDS.editor]: "editor" } });
     const target = world.seedUpload({ companyId: archived, bytes: png() });
     for (const user of [IDS.owner, IDS.editor]) {
@@ -381,7 +381,7 @@ describe("C5/C6 delete", () => {
     expect((await get(archived, target.id)).response.status).toBe(200);
   });
 
-  it("C5 a second DELETE of the same id is 404 (nothing left), never a 5xx, and an unknown id is 404", async () => {
+  it("a second DELETE of the same id is 404 (nothing left), never a 5xx, and an unknown id is 404", async () => {
     const target = world.seedUpload({ companyId: a, bytes: png() });
     const first = await del(a, target.id);
     expect([200, 204]).toContain(first.response.status);
@@ -391,7 +391,7 @@ describe("C5/C6 delete", () => {
     expect((await del(a, "c0000000-0000-4000-8000-00000000beef")).response.status).toBe(404);
   });
 
-  it("C5 deleting an upload that knowledge entries still reference is allowed (references render as unavailable later)", async () => {
+  it("deleting an upload that knowledge entries still reference is allowed (references render as unavailable later)", async () => {
     const target = world.seedUpload({ companyId: a, bytes: png() });
     world.tables.knowledge_entries.push({ id: "e0000000-0000-4000-8000-000000000001", company_id: a, kind: "branding_and_style", current_revision: 1 });
     world.tables.knowledge_entry_versions.push({ id: "e1000000-0000-4000-8000-000000000001", company_id: a, entry_id: "e0000000-0000-4000-8000-000000000001", revision: 1, content: { logos: [{ upload_id: target.id, url: `/api/companies/${a}/uploads/${target.id}` }] } });
@@ -402,7 +402,7 @@ describe("C5/C6 delete", () => {
     expect(world.tables.knowledge_entry_versions).toHaveLength(1);
   });
 
-  it("C5 a storage failure on delete is a sanitised error and leaves the upload consistent (still readable)", async () => {
+  it("a storage failure on delete is a sanitised error and leaves the upload consistent (still readable)", async () => {
     const target = world.seedUpload({ companyId: a, bytes: png() });
     world.storageFailures.set("remove", { message: "boom https://proj.supabase.co/storage/v1/object token=SIGNED_SECRET_TOKEN_9f3a7c" });
     const result = await del(a, target.id);
@@ -413,7 +413,7 @@ describe("C5/C6 delete", () => {
     expect((await get(a, target.id)).response.status, "no half-delete: metadata must not be gone while the object remains").toBe(200);
   });
 
-  it("C5 a delete followed by a fresh upload works and yields a new id", async () => {
+  it("a delete followed by a fresh upload works and yields a new id", async () => {
     const posted = await upload(a, { file: { bytes: png(), name: "x.png", mime: "image/png" }, kind: "logos" });
     const first = payload(posted.json);
     expect(first.id).toMatch(uuidRe);
@@ -424,7 +424,7 @@ describe("C5/C6 delete", () => {
   });
 });
 
-describe("C1/C4 round trip: what the upload route returns is exactly what the serving route reads", () => {
+describe("round trip: what the upload route returns is exactly what the serving route reads", () => {
   for (const [name, fixture] of Object.entries(FIXTURES)) {
     it(`round trip ${name}: POST then GET the returned url`, async () => {
       const posted = await upload(a, { file: { bytes: fixture.bytes, name: fixture.name, mime: fixture.mime }, kind: "portraits" });

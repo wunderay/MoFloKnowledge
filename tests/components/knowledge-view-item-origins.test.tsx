@@ -8,7 +8,7 @@ import {
   norm,
   type Page,
 } from "../helpers/knowledge-view-dom";
-import { openSection, titlesOf, type LockedSection } from "../helpers/knowledge-view-spec";
+import { openSection, titlesOf, type CardSection } from "../helpers/knowledge-view-spec";
 import {
   ITEM_MARKS,
   buildEvidence,
@@ -24,9 +24,9 @@ import type { Business } from "../../src/contracts";
 
 const LABEL = { inferred: "Historical inferred ⓘ", user_provided: "User correction ⓘ", generated: "Historical generated · approved ⓘ" } as const;
 const open = {
-  draft: (section: LockedSection, opts: EvidenceOptions) =>
+  draft: (section: CardSection, opts: EvidenceOptions) =>
     openSection(section, { draft: evidenceDraft({ business: refillLists, ...opts }) }),
-  snapshot: (section: LockedSection, opts: EvidenceOptions) =>
+  snapshot: (section: CardSection, opts: EvidenceOptions) =>
     openSection(section, { snapshot: evidenceSnapshot({ business: refillLists, ...opts }) }),
 };
 /** The text each list item shows, in stored order. */
@@ -47,7 +47,7 @@ const SHOWN: Record<string, (b: Business) => string[]> = {
 };
 const business = () => buildEvidence({ business: refillLists }).business;
 
-const cardEl = (page: Page, section: LockedSection, title: string) => card(page, title, titlesOf(section))!;
+const cardEl = (page: Page, section: CardSection, title: string) => card(page, title, titlesOf(section))!;
 /** The list item (chip, row) showing `text`. */
 const itemOf = (page: Page, el: ReturnType<typeof cardEl>, text: string) =>
   page.$(deepestContaining(page, el, text)[0]).closest("li");
@@ -59,11 +59,10 @@ const markedItems = (page: Page, el: ReturnType<typeof cardEl>, texts: string[])
 // A card's field-level control sits in its header (Headquarters: beside its section labels).
 const header = (page: Page, el: ReturnType<typeof cardEl>) =>
   page.$(el).find(".knowledge-view__card-head > .citation-popover button, .knowledge-view__mini-label .citation-popover button").toArray().map((b) => norm(page.$(b).text()));
-const headerLabel = (page: Page, section: LockedSection, title: string) =>
+const headerLabel = (page: Page, section: CardSection, title: string) =>
   header(page, cardEl(page, section, title)).join(" ");
 
 describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) => {
-  // behavioural
   it.each(ITEM_MARKS.map((m) => [m.card, m] as [string, ItemMark]))(
     "%s: only the item whose own claim is non-source gets a marker",
     async (title, m) => {
@@ -78,7 +77,6 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
     },
   );
 
-  // behavioural
   it("4 buyers, inferred only on buyer 2: the marker sits on that chip alone", async () => {
     const m = ITEM_MARKS.find((x) => x.card === "Buyers")!;
     const page = await open[source]("Customers & Industry", { marks: [markOf(m, 1)] });
@@ -88,7 +86,6 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
     expect(texts.map((t) => markers(page, itemOf(page, el, t)))).toEqual([[], [LABEL.inferred], [], []]);
   });
 
-  // behavioural
   it("a user correction on buyer 1 does not hide the historical inference on buyer 2", async () => {
     const m = ITEM_MARKS.find((x) => x.card === "Buyers")!;
     const user: Mark = { target: markOf(m, 0).target, origin: "user_provided" };
@@ -101,7 +98,6 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
     expect(label).toContain("Historical inferred");
   });
 
-  // behavioural
   it("a user correction on persona 1 does not hide the historical generated persona 2", async () => {
     const m = ITEM_MARKS.find((x) => x.card === "Ideal persona")!;
     const user: Mark = { target: markOf(m, 0).target, origin: "user_provided" };
@@ -128,7 +124,6 @@ describe.each(["draft", "snapshot"] as const)("per-item origins (%s)", (source) 
     expect(label).toContain("Historical generated");
   });
 
-  // behavioural
   it("Edge case: source-backed items carry no per-item marker; the field control keeps the sources", async () => {
     const m = ITEM_MARKS.find((x) => x.card === "Buyers")!;
     const sourced: Mark = { target: markOf(m, 2).target, origin: "source_backed" };

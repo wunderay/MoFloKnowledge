@@ -1,6 +1,6 @@
-// Edge case beyond the literal criteria (DECISION D7, see the report): entry revisions saved before 0018 are immutable history
+// Entry revisions saved before 0018 are immutable history
 // and carry none of the new keys. The draft read path (and so the editor, preview and draft export of every existing company)
-// must keep loading them, reading the missing fields as their defaults, exactly as C7 does for snapshots.
+// must keep loading them, reading the missing fields as their defaults.
 import { beforeEach, expect, it, vi } from "vitest";
 import JSZip from "jszip";
 import { load } from "cheerio";

@@ -1,4 +1,4 @@
-// Quest Q8 offerings-brand-edit, review round 2: a save of one offering is not lost when another offering (or another section)
+// A save of one offering is not lost when another offering (or another section)
 // is shown while it runs. A committed save always reloads the draft, a failure is shown when its offering is shown again, and the
 // next edit of the offering is made on the revision the save wrote (no stale-revision conflict).
 import { describe, expect, it, vi } from "vitest";

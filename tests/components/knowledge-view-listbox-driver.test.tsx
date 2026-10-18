@@ -1,7 +1,7 @@
 // Self-check of the drivers in tests/helpers/knowledge-view-listbox.ts (like
 // knowledge-view-site-all-runtime.test.tsx does for its runtime): a reference listbox
 // written in this file, in the shape the acceptance tests expect, must satisfy every
-// driver. It is test code only; it is not the implementation of the Quest.
+// driver. It is test code only; it is not the implementation of the listbox.
 import { describe, expect, it } from "vitest";
 // The runtime registers its react / next mocks when it is imported, so it comes before them.
 import { mountElement, navigations } from "../helpers/knowledge-view-site-all-runtime";

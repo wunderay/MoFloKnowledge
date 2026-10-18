@@ -1,4 +1,4 @@
-// Helpers for the Business Offerings / Brand Identity inline-editing acceptance tests (Quest Q8).
+// Helpers for the Business Offerings / Brand Identity inline-editing acceptance tests.
 //
 // Public output only: roles, accessible names, text and the HTTP requests the page sends. The fake company API of
 // knowledge-view-site-all-runtime gains the two routes it lacks: DELETE /api/companies/:id/entries/:entryId and

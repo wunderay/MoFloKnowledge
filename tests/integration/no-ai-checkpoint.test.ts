@@ -43,10 +43,10 @@ function repository() {
   } as unknown as JobRepository;
 }
 
-it("reparses legacy model checkpoints and resumes deterministic checkpoints without changing results", async () => {
+it("reparses a checkpoint with non-source candidates and resumes deterministic checkpoints without changing results", async () => {
   const repo = repository();
   const old = {
-    extracted_source_ids: [page.id], model_tokens: 100, model_successes: 1,
+    extracted_source_ids: [page.id],
     validated_candidates: [{
       id: stableId("retired-model-candidate"), entryId: stableId(companyId, "positioning", "singleton"),
       kind: "positioning", fieldName: "company_pitch", field: "/positioning/company_pitch",
@@ -55,15 +55,12 @@ it("reparses legacy model checkpoints and resumes deterministic checkpoints with
       supporting_fields: [], note: "Retired model output",
     }],
   };
-  const legacy = crawl(old);
-  legacy.errors.push({ code: "model_not_configured", retryable: false, url: page.capture.finalUrl, message: "Retired model configuration error" });
-  const first = await extractAndFinish(job, repo, legacy, new AbortController().signal);
+  const first = await extractAndFinish(job, repo, crawl(old), new AbortController().signal);
   expect(first.find((p) => p.kind === "company_foundation")?.content).toMatchObject({ website: "https://example.com/" });
   expect(first.find((p) => p.kind === "positioning")?.content).toMatchObject({ company_pitch: null });
   expect(first.flatMap((p) => p.provenance.claims).every((c) => c.origin === "source_backed")).toBe(true);
   const checkpoint = vi.mocked(repo.checkpoint).mock.calls.at(-1)![1];
   expect(checkpoint.extractor_version).toBe(EXTRACTOR_VERSION);
-  expect(checkpoint).not.toHaveProperty("model_tokens");
   expect(checkpoint.errors).toEqual([]);
   expect(checkpoint.validated_candidates).not.toEqual(old.validated_candidates);
   expect(JSON.stringify(checkpoint)).not.toContain("Retired generated pitch");

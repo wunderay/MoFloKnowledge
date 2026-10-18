@@ -1,4 +1,4 @@
-// The Quest's criteria as data, plus the shared "open a section" helper.
+// The section cards as data, plus the shared "open a section" helper.
 import { expect } from "vitest";
 import { renderViewPage, type RenderOptions } from "./knowledge-view-render";
 import { buildDraft, VERSIONS } from "./knowledge-view-fixtures";
@@ -16,7 +16,7 @@ export const SECTIONS = [
   "All sections",
 ] as const;
 export type SectionLabel = (typeof SECTIONS)[number];
-/** Sections built after the selector Quest. Only their selection is checked with this list; each has its own tests for its content. */
+/** Sections built after the selector. Only their selection is checked with this list; each has its own tests for its content. */
 export const LATER_SECTIONS: SectionLabel[] = [
   "Business Offerings",
   "Brand Identity",
@@ -54,24 +54,23 @@ export const CARDS_BY_SECTION = {
   "Customers & Industry": CUSTOMER_CARDS,
   "Sales & Marketing": SALES_CARDS,
 } as const;
-export type LockedSection = keyof typeof CARDS_BY_SECTION;
-export const LOCKED_SECTIONS = Object.keys(CARDS_BY_SECTION) as LockedSection[];
-export const titlesOf = (section: LockedSection) =>
+export type CardSection = keyof typeof CARDS_BY_SECTION;
+export const CARD_SECTIONS = Object.keys(CARDS_BY_SECTION) as CardSection[];
+export const titlesOf = (section: CardSection) =>
   CARDS_BY_SECTION[section].map((c) => c.title);
 
 export const GENERAL_STATS = ["Founded", "Employees", "Legal entity"];
 export const CUSTOMER_STATS = ["Groupings", "Locations", "Buyers", "Suppliers"];
 
-export const BANNER_LABEL: Record<LockedSection, string> = {
+export const BANNER_LABEL: Record<CardSection, string> = {
   "General Info": "Company",
   "Customers & Industry": "Industry",
   "Sales & Marketing": "Sales & Marketing",
 };
 
 /**
- * The URL identifier the selector submits for a section. The Quest fixes the
- * selector's labels and order but not its identifiers, so they are read from
- * the rendered selector rather than assumed.
+ * The URL identifier the selector submits for a section. The selector's labels and order are fixed but not its
+ * identifiers, so they are read from the rendered selector rather than assumed.
  */
 export async function sectionId(label: SectionLabel): Promise<string> {
   const page = parse(await renderViewPage({ draft: buildDraft(), versions: VERSIONS }));

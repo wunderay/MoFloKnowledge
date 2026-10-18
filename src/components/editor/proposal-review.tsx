@@ -15,17 +15,6 @@ import { mergeCitationContexts } from "../shared/citation-context";
 import { ValueView } from "./entry-value";
 import { labelOf, summarizeValue } from "./business-fields";
 type ProposalItem = Proposal;
-function isHistoricalAiProposal(proposal: ProposalItem): boolean {
-  const historicalOrigin = (origin: string) =>
-    origin === "inferred" || origin === "generated";
-  return (
-    (proposal.model && proposal.model !== "deterministic-only") ||
-      proposal.provenance.claims.some((claim) => historicalOrigin(claim.origin)) ||
-      [...proposal.conflicts, ...proposal.provenance.conflicts].some((conflict) =>
-        conflict.candidates.some((candidate) => historicalOrigin(candidate.origin)),
-      )
-  );
-}
 export function ProposalReview({
   companyId,
   entries,
@@ -91,10 +80,6 @@ export function ProposalReview({
       .catch((error: unknown) => { setError((error as Error).message); });
   }, [companyId, entries]);
   async function act(proposal: ProposalItem, dismiss = false) {
-    if (!dismiss && isHistoricalAiProposal(proposal)) {
-      setError("This historical AI proposal is read-only. Start a fresh scrape to extract current source facts without AI.");
-      return;
-    }
     setBusy(true);
     setError("");
     try {
@@ -141,16 +126,9 @@ export function ProposalReview({
       {error && <Notice error>{error}</Notice>}
       {proposals.map((proposal) => {
         const current = entries.find((e) => e.id === proposal.target_entry_id);
-        const historicalAi = isHistoricalAiProposal(proposal);
         return (
           <article className="knowledge-editor__group" key={proposal.id}>
             <h3>{proposal.kind.replaceAll("_", " ")}</h3>
-            {historicalAi && (
-              <Notice>
-                This historical AI proposal is read-only. Start a fresh scrape to
-                extract current source facts without AI.
-              </Notice>
-            )}
             <div className="proposal__comparison">
               <div>
                 <p className="eyebrow">Current draft</p>
@@ -202,7 +180,7 @@ export function ProposalReview({
                         <label>
                           <input
                             type="checkbox"
-                            disabled={!canEdit || busy || historicalAi}
+                            disabled={!canEdit || busy}
                             checked={(selected[proposal.id] ?? []).includes(
                               change.id,
                             )}
@@ -251,7 +229,7 @@ export function ProposalReview({
                     <input
                       type="radio"
                       name={`candidate-${conflict.id}`}
-                      disabled={!canEdit || busy || historicalAi}
+                      disabled={!canEdit || busy}
                       checked={
                         !conflict.candidates.some((candidate) =>
                           (selected[proposal.id] ?? []).includes(candidate.id),
@@ -279,7 +257,7 @@ export function ProposalReview({
                         <input
                           type="radio"
                           name={`candidate-${conflict.id}`}
-                          disabled={!canEdit || busy || historicalAi}
+                          disabled={!canEdit || busy}
                           checked={(selected[proposal.id] ?? []).includes(
                             candidate.id,
                           )}
@@ -314,7 +292,7 @@ export function ProposalReview({
             <div className="actions">
               <button
                 className="button button--primary"
-                disabled={!canEdit || busy || historicalAi || !selected[proposal.id]?.length}
+                disabled={!canEdit || busy || !selected[proposal.id]?.length}
                 onClick={() => act(proposal)}
               >
                 Apply selected changes to draft

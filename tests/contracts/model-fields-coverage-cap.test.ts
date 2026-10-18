@@ -1,7 +1,7 @@
-// Acceptance tests for Quest Q5 "model-fields", criterion C6 (coverage cap), TypeScript half. The SQL half is
+// Coverage cap, TypeScript half. The SQL half is
 // tests/db/model-fields-coverage-cap.test.mjs.
 //
-// DECISION D8 (the new maximum): a snapshot lists one coverage row per required target.
+// The maximum: a snapshot lists one coverage row per required target.
 //   singleton fields: 13 company_foundation + 2 positioning + 9 market_and_customers + 5 branding_and_style
 //                     + 2 online_presence + 1 site_links = 32 rows (the empty singletons are always present)
 //   each key person:  8 rows (name, title, role, gender, background_or_relevance, age, nationality, portrait)
@@ -10,8 +10,8 @@
 // The collections allow 500 items each, but a published snapshot carries at most 500 claims and every populated person or
 // offering needs at least one claim of its own (a claim names exactly one entry), so a legitimate snapshot holds at most
 // 500 people + offerings. Maximum = 32 + 8 x 500 + 1 (the other collection is empty) = 4,033 rows. The cap is therefore
-// locked at exactly 4,033 in the TypeScript export schema and in the SQL export contract; one more row is rejected.
-// (Before this Quest it was 1,001 = 30 singleton rows + 5/7 rows per entry, which already was a cap, not a derived maximum.)
+// exactly 4,033 in the TypeScript export schema and in the SQL export contract; one more row is rejected.
+// (It used to be 1,001 = 30 singleton rows + 5/7 rows per entry, which already was a cap, not a derived maximum.)
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -80,7 +80,7 @@ const withExtraRow = (snapshot: Json, count = 1): Json => {
 const accepted = (snapshot: Json) => KnowledgeBaseExportSchema.safeParse(snapshot).success;
 const issues = (snapshot: Json) => validateProvenance({ company_foundation: snapshot.company_foundation, positioning: snapshot.positioning, market_and_customers: snapshot.market_and_customers, branding_and_style: snapshot.branding_and_style, online_presence: snapshot.online_presence, site_links: snapshot.site_links, key_people: snapshot.key_people, offerings: snapshot.offerings } as never, snapshot.provenance as never);
 
-describe("C6 [behavioural] the export accepts a maximal legitimate snapshot (4,033 coverage rows) and rejects one row more", () => {
+describe("the export accepts a maximal legitimate snapshot (4,033 coverage rows) and rejects one row more", () => {
   it("the derivation: 32 singleton rows + 8 per person or offering + 1 for the empty collection", () => {
     expect(SINGLETON_TARGETS).toHaveLength(32);
     expect(new Set(SINGLETON_TARGETS).size).toBe(32);

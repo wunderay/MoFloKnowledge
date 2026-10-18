@@ -1,5 +1,5 @@
-// Acceptance: draft/snapshot parity (C6) and non-regression of the existing
-// viewer chrome (C7) for /knowledge/view (Quest knowledge-view-shell).
+// Acceptance: draft/snapshot parity and non-regression of the existing
+// viewer chrome for /knowledge/view.
 import { describe, expect, it } from "vitest";
 import { KnowledgeBaseExportSchema } from "../../src/contracts";
 import { renderViewPage } from "../helpers/knowledge-view-render";
@@ -29,11 +29,11 @@ import {
 } from "../helpers/knowledge-view-dom";
 import {
   BANNER_LABEL,
-  LOCKED_SECTIONS,
+  CARD_SECTIONS,
   openSection,
   sectionId,
   titlesOf,
-  type LockedSection,
+  type CardSection,
 } from "../helpers/knowledge-view-spec";
 
 const draft = buildDraft();
@@ -41,7 +41,7 @@ const snapshot = { payload: snapshotFrom(draft), versionId: SNAPSHOT_ID };
 
 /** Draft-only chrome that a saved snapshot legitimately does not have. */
 const DRAFT_ONLY = /Edit draft|View draft|History|Remove from future versions/g;
-function signature(page: Page, section: LockedSection) {
+function signature(page: Page, section: CardSection) {
   const titles = titlesOf(section);
   const name = section === "Customers & Industry" ? buildBusiness().company_foundation.industry! : COMPANY_NAME;
   const el = banner(page, BANNER_LABEL[section], name);
@@ -63,10 +63,9 @@ describe("fixtures", () => {
   });
 });
 
-describe("C6 draft and saved snapshot", () => {
-  // behavioural
-  it.each(LOCKED_SECTIONS)("%s: a snapshot renders the same banner and cards as the (read-only) draft it was made from", async (section) => {
-    // An owner's draft edits these sections in place (Quest inline-edit-core), which a snapshot cannot; a viewer's draft reads like one.
+describe("draft and saved snapshot", () => {
+  it.each(CARD_SECTIONS)("%s: a snapshot renders the same banner and cards as the (read-only) draft it was made from", async (section) => {
+    // An owner's draft edits these sections in place, which a snapshot cannot; a viewer's draft reads like one.
     const readOnlyDraft = { ...draft, company: { ...draft.company, role: "viewer" as const } };
     const fromDraft = signature(await openSection(section, { draft: readOnlyDraft }), section);
     const fromSnapshot = signature(await openSection(section, { snapshot }), section);
@@ -76,7 +75,6 @@ describe("C6 draft and saved snapshot", () => {
     expect(fromSnapshot).toEqual(fromDraft);
   });
 
-  // behavioural
   it("a snapshot opens on General Info with its selector and values", async () => {
     const page = parse(await renderViewPage({ snapshot, versions: VERSIONS }));
     expect(selectedSection(page)).toEqual(["General Info"]);
@@ -85,7 +83,6 @@ describe("C6 draft and saved snapshot", () => {
     expect(cardText(page, card(page, "Founding story", titles)!)).toContain(FOUNDING_STORY);
   });
 
-  // behavioural
   it("Edge case: a snapshot whose positioning entry was rejected shows the founding story empty state and keeps the rest", async () => {
     const page = await openSection("General Info", {
       snapshot: { payload: snapshotFrom(draft, { rejected: ["positioning"] }), versionId: SNAPSHOT_ID },
@@ -96,7 +93,6 @@ describe("C6 draft and saved snapshot", () => {
     expect(banner(page, "Company", COMPANY_NAME)).not.toBeNull();
   });
 
-  // behavioural
   it("Edge case: a snapshot with an absent positioning entry state also shows the empty state, and Sales & Marketing still renders", async () => {
     const payload = snapshotFrom(draft, { absent: ["positioning"] });
     const general = await openSection("General Info", { snapshot: { payload, versionId: SNAPSHOT_ID } });
@@ -107,7 +103,6 @@ describe("C6 draft and saved snapshot", () => {
     expect(cardText(sales, card(sales, "Ideal persona", titles)!)).toContain("Morning-ritual Mia");
   });
 
-  // behavioural
   it("Edge case: a snapshot of a rejected market entry empties its Buyers card and keeps the foundation-held values", async () => {
     const page = await openSection("Customers & Industry", {
       snapshot: { payload: snapshotFrom(draft, { rejected: ["market_and_customers"] }), versionId: SNAPSHOT_ID },
@@ -121,7 +116,7 @@ describe("C6 draft and saved snapshot", () => {
   });
 });
 
-describe("C7 existing viewer capabilities stay reachable", () => {
+describe("existing viewer capabilities stay reachable", () => {
   const draftPage = async (opts: { role?: "owner" | "viewer"; mode?: "json" | "table" } = {}) =>
     parse(
       await renderViewPage({
@@ -135,7 +130,6 @@ describe("C7 existing viewer capabilities stay reachable", () => {
   const control = (page: Page, name: string) =>
     page.$(`[aria-label="${name}"]`).first();
 
-  // non-regression
   it("the version selector lists the draft and every saved version, with the draft selected", async () => {
     const page = await draftPage();
     const options = control(page, "Knowledge version").find("option").toArray().map((o) => ({
@@ -148,14 +142,12 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     expect(options.filter((o) => o.selected).map((o) => o.value)).toEqual(["draft"]);
   });
 
-  // non-regression
   it("the version selector marks the opened snapshot as selected", async () => {
     const page = await snapshotPage();
     const selected = control(page, "Knowledge version").find("option[selected]").toArray().map((o) => page.$(o).attr("value"));
     expect(selected).toEqual([SNAPSHOT_ID]);
   });
 
-  // non-regression
   it("document download: a GET form to the document endpoint with JSON, Word and PDF formats", async () => {
     const page = await draftPage();
     const format = control(page, "Export format");
@@ -167,7 +159,6 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     expect(norm(form.find("button[type=submit]").text())).toMatch(/^Export\b/);
   });
 
-  // non-regression
   it("a saved snapshot offers 'Download JSON' for that version and the current-draft link", async () => {
     const page = await snapshotPage();
     const download = page.$("a").toArray().filter((a) => norm(page.$(a).text()).startsWith("Download JSON"));
@@ -177,7 +168,6 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     expect(page.$("body").text() + page.html).toMatch(/read only/);
   });
 
-  // non-regression
   it("the draft view offers review actions: Edit draft links, History and Remove from future versions", async () => {
     const page = await draftPage();
     const edits = page.$("a").toArray().filter((a) => norm(page.$(a).text()) === "Edit draft").map((a) => page.$(a).attr("href")!);
@@ -190,7 +180,6 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     expect(buttons).toContain("Remove from future versions");
   });
 
-  // non-regression
   it("Edge case: a viewer role can read but not remove: 'View draft' replaces 'Edit draft' and Remove is absent", async () => {
     const page = await draftPage({ role: "viewer" });
     const links = page.$("a").toArray().map((a) => norm(page.$(a).text()));
@@ -200,7 +189,6 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     expect(buttons).not.toContain("Remove from future versions");
   });
 
-  // non-regression
   it("a saved snapshot offers no draft review actions", async () => {
     const page = await snapshotPage();
     const labels = page.$("a,button").toArray().map((a) => norm(page.$(a).text()));
@@ -209,7 +197,6 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     }
   });
 
-  // non-regression
   it("the display-mode switch still offers Table and Json", async () => {
     const page = await draftPage();
     const labels = control(page, "Display mode").find("button").toArray().map((b) => norm(page.$(b).text()));
@@ -217,7 +204,7 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     expect(labels).toContain("Json");
   });
 
-  // non-regression (depends on the viewer's existing "profile" default and "table"/"json" mode values)
+  // (depends on the viewer's existing "profile" default and "table"/"json" mode values)
   it("table mode lists the draft's entries with Entry / Category / Review / Revision columns", async () => {
     const page = await draftPage({ mode: "table" });
     expect(page.$("th").toArray().map((h) => norm(page.$(h).text())).filter(Boolean)).toEqual(["Entry", "Category", "Review", "Revision"]);
@@ -226,7 +213,7 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     expect(rows.some((r) => r.includes("Company foundation"))).toBe(true);
   });
 
-  // non-regression (same dependency as above)
+  // (same dependency as above)
   it("json mode prints the draft's data as JSON text", async () => {
     const page = await draftPage({ mode: "json" });
     const pre = norm(page.$("pre").first().text());
@@ -234,7 +221,7 @@ describe("C7 existing viewer capabilities stay reachable", () => {
     expect(pre).toContain(OVERVIEW);
   });
 
-  // non-regression (same dependency as above)
+  // (same dependency as above)
   it("json mode on a snapshot prints the saved knowledge base", async () => {
     const page = await snapshotPage("json");
     const pre = page.$("pre").first().text();
@@ -244,7 +231,7 @@ describe("C7 existing viewer capabilities stay reachable", () => {
   });
 });
 
-describe("C6/C7 parity guard", () => {
+describe("parity guard", () => {
   // behavioural: the section chosen by URL survives alongside the version chosen by URL
   it("a snapshot honours the section parameter", async () => {
     const id = await sectionId("Sales & Marketing");

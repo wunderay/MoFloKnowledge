@@ -10,7 +10,7 @@
       "command": "npm run web",
       "minimumInstances": 1,
       "scaleToZero": false,
-      "secretNames": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY", "DATABASE_URL"],
+      "secretNames": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "APP_ORIGIN"],
       "network": ["Supabase Auth", "PostgreSQL"]
     },
     {

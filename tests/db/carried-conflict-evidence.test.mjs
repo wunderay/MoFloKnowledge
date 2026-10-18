@@ -1,4 +1,4 @@
-// Quest Q20 follow-up: a conflict carried over with non-person-authored candidates keeps the evidence rows it had; the
+// A conflict carried over with non-person-authored candidates keeps the evidence rows it had; the
 // excerpt behind a candidate's evidence id cannot be swapped while the conflict is carried.
 //   TEST_DATABASE_URL=postgres://.../anything_test node --test tests/db/carried-conflict-evidence.test.mjs
 import {test,before,after} from 'node:test';

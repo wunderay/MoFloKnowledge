@@ -1,12 +1,12 @@
-// Acceptance tests for Quest Q5 "model-fields", criterion C5 (database) plus the database side of C1-C4 (every rule is
-// enforced in SQL exactly as in TypeScript), C6 (publication of the new fields) and C7 (data saved before 0018 survives
-// the migration). Needs a disposable PostgreSQL (see scripts/test-db.mjs):
+// The database side of the new fields: every rule is
+// enforced in SQL exactly as in TypeScript, the new fields are published, and data saved before 0018 survives
+// the migration. Needs a disposable PostgreSQL (see scripts/test-db.mjs):
 //   TEST_DATABASE_URL=postgres://.../anything_test node --test tests/db/model-fields.test.mjs
 // Without TEST_DATABASE_URL this file reports NOT_RUN (it never passes silently).
 //
-// DECISIONS (see also tests/contracts/model-fields.test.ts): D1 phone is stored as exactly 10 digits (punctuated input is
-// rejected or normalised, never stored punctuated; 11 digits are rejected); D3 content_type must match the path extension;
-// D4 the company segment of a storage path must be the entry's own company (checked in SQL where the company is known).
+// See also tests/contracts/model-fields.test.ts: phone is stored as exactly 10 digits (punctuated input is
+// rejected or normalised, never stored punctuated; 11 digits are rejected); content_type must match the path extension;
+// the company segment of a storage path must be the entry's own company (checked in SQL where the company is known).
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -110,14 +110,14 @@ before(async()=>{
 });
 after(async()=>{for(const c of sessions)await c.end().catch(()=>{});if(administrator){for(const name of databases)await administrator.query(`DROP DATABASE IF EXISTS "${name}"`);await administrator.end();}});
 
-test('C5: a new migration makes the SQL contract know the new fields, defaults and registry',async t=>{
- await t.test("the Q5 migration is new (0018, or 0019 when Q6's 0018_knowledge_assets_storage.sql is present), is recorded as applied; 0001-0017 are untouched",async()=>{
+test('a new migration makes the SQL contract know the new fields, defaults and registry',async t=>{
+ await t.test("the model-fields migration is new (0018, or 0019 when 0018_knowledge_assets_storage.sql is present), is recorded as applied; 0001-0017 are untouched",async()=>{
   const files=(await readdir(migrationsDirectory)).filter(x=>x.endsWith('.sql')).sort();
   const q6='0018_knowledge_assets_storage.sql';
-  // Later Quests add their own migrations (0020 archives entries); only the two numbers this Quest could take count here.
+  // Later migrations (0020 archives entries) are ignored; only the two numbers this migration could take count here.
   const added=files.filter(file=>migrationNumber(file)>=18&&migrationNumber(file)<=19&&file!==q6);
-  assert.equal(added.length,1,'exactly one Q5 migration numbered above the migrations that came before it');
-  const expected=files.includes(q6)?'0019_':'0018_';assert.ok(added[0].startsWith(expected),`Q5's migration is the first free number ${expected.slice(0,4)} (found ${added[0]})`);
+  assert.equal(added.length,1,'exactly one model-fields migration numbered above the migrations that came before it');
+  const expected=files.includes(q6)?'0019_':'0018_';assert.ok(added[0].startsWith(expected),`the model-fields migration is the first free number ${expected.slice(0,4)} (found ${added[0]})`);
   const {rows}=await admin.query("SELECT version FROM supabase_migrations.schema_migrations ORDER BY version");
   assert.ok(rows.map(r=>r.version).includes(expected.slice(0,4)),`${expected.slice(0,4)} is applied`);
   assert.equal(rows.length,files.length,'every migration file is recorded as applied');
@@ -151,7 +151,7 @@ test('C5: a new migration makes the SQL contract know the new fields, defaults a
  });
 });
 
-test('C5/C6: entries with the new fields save, approve, edit, publish and freeze through the protected functions',async t=>{
+test('entries with the new fields save, approve, edit, publish and freeze through the protected functions',async t=>{
  const company=await newCompany(user);
  const personId=randomUUID(),offeringId=randomUUID();
  const portrait=ref(company,'portraits',{size_bytes:48213},uuid(1,'d2000000'));
@@ -191,7 +191,7 @@ test('C5/C6: entries with the new fields save, approve, edit, publish and freeze
  });
 });
 
-test('C1/C3/C4: entries that leave every new field empty save, approve and publish with the defaults',async()=>{
+test('entries that leave every new field empty save, approve and publish with the defaults',async()=>{
  const company=await newCompany(user,'Empty');
  const personId=randomUUID(),offeringId=randomUUID();
  for(const [kind,content] of [['company_foundation',foundation({overview:'We build software.'})],['online_presence',onlinePresence()],['key_person',person(personId)],['offering',offering(offeringId)]]){
@@ -204,7 +204,7 @@ test('C1/C3/C4: entries that leave every new field empty save, approve and publi
  assert.deepEqual(payload,await assembled(user,company,snapshot,owner,'Empty'));
 });
 
-/** Every rule of C1-C4 as the database must apply it. Each group creates its valid control first, in a fresh company. */
+/** Every field rule as the database must apply it. Each group creates its valid control first, in a fresh company. */
 function pathVariants(folder,company,other){
  const U=uuid(9,'d3000000'),ok=(prefix=folder,co=company,name=`${U}.png`)=>`${prefix}/${co}/${name}`;
  return {
@@ -213,27 +213,27 @@ function pathVariants(folder,company,other){
   'extra or missing segments':[`${folder}/${company}/nested/${U}.png`,`${folder}/${company}//${U}.png`,`./${ok()}`,`${folder}/${U}.png`,`${company}/${U}.png`],
   'wrong prefix':[ok('avatars'),ok('uploads'),ok(`${folder}s`),ok(folder.toUpperCase()),ok('')],
   'company segment is not a uuid':[ok(folder,'acme'),ok(folder,company.slice(1)),ok(folder,company.replaceAll('-',''))],
-  'another company (DECISION D4)':[ok(folder,other)],
+  'another company':[ok(folder,other)],
   'object name or extension':[`${folder}/${company}/photo.png`,`${folder}/${company}/${U}`,`${folder}/${company}/${U}.exe`,`${folder}/${company}/${U}.html`,`${folder}/${company}/${U}.bmp`,`${folder}/${company}/${U}.PNG`,`${folder}/${company}/${U}.png `,`${folder}/${company}/${U}.png\n`,`${folder}/${company}/${U}.png?x=1`],
  };
 }
-test('C1-C4: the database rejects exactly what TypeScript rejects (create_entry), and accepts the valid controls',async t=>{
+test('the database rejects exactly what TypeScript rejects (create_entry), and accepts the valid controls',async t=>{
  const shared=await newCompany(user,'Shared'),other=await newCompany(user,'Another tenant');
  // Singleton kinds allow one entry per company, so each singleton attempt gets a fresh company (a duplicate would refuse for the wrong reason).
  const attempt=async(kind,build)=>{const company=kind==='key_person'||kind==='offering'?shared:await newCompany(user,`Case ${randomUUID().slice(0,8)}`);return createEntry(user,company,kind,build(company));};
  const accepts=async(label,kind,build,after)=>{const rev=await ok(attempt(kind,build),label);assert.equal(rev.revision,1,label);if(after)after(rev);};
  const refuses=(label,kind,build)=>refusedByContract(attempt(kind,build),label);
 
- await t.test('C1 revenue: free text and null accepted; blank and non-text refused',async()=>{
+ await t.test('revenue: free text and null accepted; blank and non-text refused',async()=>{
   for(const revenue of ['$1M ARR','€2.3M (FY2025)','  $5M  ',null])await accepts(`revenue ${revenue}`,'company_foundation',()=>foundation({revenue}),rev=>assert.equal(rev.content.revenue,revenue));
   for(const revenue of ['','   ','\t\n',5,0,true,['$1M'],{}])await refuses(`revenue ${JSON.stringify(revenue)}`,'company_foundation',()=>foundation({revenue}));
  });
- await t.test('C2 phone: exactly 10 digits stored as such; every other length, letters, non-ASCII digits refused',async()=>{
+ await t.test('phone: exactly 10 digits stored as such; every other length, letters, non-ASCII digits refused',async()=>{
   for(const phone of ['5550100199','0000000000','0123456789',null])await accepts(`phone ${phone}`,'online_presence',()=>onlinePresence({phone}),rev=>assert.equal(rev.content.phone,phone));
   for(const phone of ['555010019','55501001999','1','55501001990000','15550100199','+15550100199','+1 555 010 0199','+1 (555) 010-0199','1-555-010-0199','555010019a','abcdefghij','555-010-FLOW','1-800-FLOWERS','(555) 010-0199 ext 5','NaN','Infinity','','   ','()-',5550100199,0,true,['5550100199'],{},'٥٥٥٠١٠٠١٩٩','５５５０１００１９９','⁵⁵⁵⁰¹⁰⁰¹⁹⁹'])
    await refuses(`phone ${JSON.stringify(phone)}`,'online_presence',()=>onlinePresence({phone}));
  });
- await t.test('C2 (DECISION D1): punctuated numbers are refused or stored as the 10 digits, never stored punctuated',async()=>{
+ await t.test('punctuated numbers are refused or stored as the 10 digits, never stored punctuated',async()=>{
   await accepts('control','online_presence',()=>onlinePresence({phone:'5550100199'}));
   for(const phone of ['(555) 010-0199','555-010-0199','555.010.0199','555 010 0199',' 5550100199','5550100199 ','5550100199\n']){
    const company=await newCompany(user,'Punctuated');let stored;
@@ -241,16 +241,16 @@ test('C1-C4: the database rejects exactly what TypeScript rejects (create_entry)
    assert.equal(stored.content.phone,'5550100199',`${JSON.stringify(phone)} accepted => stored as the 10 digits`);
   }
  });
- await t.test('C3 age: integers 0-150 and null accepted; below, above, fractional, textual and non-number refused',async()=>{
+ await t.test('age: integers 0-150 and null accepted; below, above, fractional, textual and non-number refused',async()=>{
   for(const age of [0,1,42,150,null])await accepts(`age ${age}`,'key_person',()=>person(randomUUID(),{age}),rev=>assert.equal(rev.content.age,age));
   for(const age of [-1,-0.5,151,152,1000,1e9,2.5,0.5,149.999,150.5,'42','042','4e1','NaN','Infinity','forty','',' ','0',true,false,[],[42],{}])await refuses(`age ${JSON.stringify(age)}`,'key_person',()=>person(randomUUID(),{age}));
  });
- await t.test('C3 nationality: text and null accepted; blank and non-text refused',async()=>{
+ await t.test('nationality: text and null accepted; blank and non-text refused',async()=>{
   for(const nationality of ['Canadian','Côte d\'Ivoire',null])await accepts(`nationality ${nationality}`,'key_person',()=>person(randomUUID(),{nationality}),rev=>assert.equal(rev.content.nationality,nationality));
   for(const nationality of ['','   ','\t\n',5,true,['Canadian'],{}])await refuses(`nationality ${JSON.stringify(nationality)}`,'key_person',()=>person(randomUUID(),{nationality}));
  });
  for(const [label,kind,folder,put] of [['key_person.portrait','key_person','portraits',(value)=>person(randomUUID(),{portrait:value})],['offering.images[0]','offering','offering-images',(value)=>offering(randomUUID(),{images:[value]})]]){
-  await t.test(`C4 storage reference at ${label}: valid references accepted, every malformed field refused`,async()=>{
+  await t.test(`storage reference at ${label}: valid references accepted, every malformed field refused`,async()=>{
    for(const [ext,type] of [['png','image/png'],['jpg','image/jpeg'],['jpeg','image/jpeg'],['gif','image/gif'],['webp','image/webp'],['svg','image/svg+xml']])
     await accepts(`${ext}`,kind,company=>put(ref(company,folder,{path:`${folder}/${company}/${uuid(1,'d2000000')}.${ext}`,content_type:type})));
    await accepts('largest size',kind,company=>put(ref(company,folder,{size_bytes:5*1024*1024})));
@@ -259,7 +259,7 @@ test('C1-C4: the database rejects exactly what TypeScript rejects (create_entry)
     for(const bad of paths)await refuses(`${label} path ${group}: ${bad}`,kind,company=>put(ref(company,folder,{path:bad})));
    for(const contentType of ['image/bmp','image/tiff','image/jpg','image/avif','text/html','application/pdf','IMAGE/PNG','image/png; charset=binary','',null,5])await refuses(`${label} content_type ${contentType}`,kind,company=>put(ref(company,folder,{content_type:contentType})));
    for(const [ext,type] of [['png','image/jpeg'],['jpg','image/png'],['jpeg','image/webp'],['gif','image/png'],['webp','image/gif'],['svg','image/png'],['png','image/svg+xml']])
-    await refuses(`${label} mismatch ${ext} + ${type} (DECISION D3)`,kind,company=>put(ref(company,folder,{path:`${folder}/${company}/${uuid(1,'d2000000')}.${ext}`,content_type:type})));
+    await refuses(`${label} mismatch ${ext} + ${type}`,kind,company=>put(ref(company,folder,{path:`${folder}/${company}/${uuid(1,'d2000000')}.${ext}`,content_type:type})));
    for(const size of [0,-1,0.5,1.5,5*1024*1024+1,10*1024*1024,'2048','',null,true,[2048]])await refuses(`${label} size ${JSON.stringify(size)}`,kind,company=>put(ref(company,folder,{size_bytes:size})));
    for(const id of ['','not-a-uuid',7,null])await refuses(`${label} id ${JSON.stringify(id)}`,kind,company=>put(ref(company,folder,{id})));
    for(const missing of ['id','path','content_type','size_bytes'])await refuses(`${label} without ${missing}`,kind,company=>{const value=ref(company,folder);delete value[missing];return put(value);});
@@ -267,7 +267,7 @@ test('C1-C4: the database rejects exactly what TypeScript rejects (create_entry)
    for(const bad of [{},'portraits/x.png',5,true,[],[{}]])await refuses(`${label} not a reference: ${JSON.stringify(bad)}`,kind,()=>put(bad));
   });
  }
- await t.test('C4 offering.images: empty, one and exactly 20 accepted in order; 21, duplicates, one bad item and non-arrays refused',async()=>{
+ await t.test('offering.images: empty, one and exactly 20 accepted in order; 21, duplicates, one bad item and non-arrays refused',async()=>{
   const list=(company,count,start=100)=>Array.from({length:count},(_,n)=>{const id=uuid(start+n,'d4000000');return {id,path:`offering-images/${company}/${id}.png`,content_type:'image/png',size_bytes:10+n};});
   for(const count of [0,1,20])await accepts(`${count} images`,'offering',company=>offering(randomUUID(),{images:list(company,count)}),rev=>assert.deepEqual(rev.content.images,list(rev.company_id,count)));
   for(const count of [21,25,50])await refuses(`${count} images`,'offering',company=>offering(randomUUID(),{images:list(company,count)}));
@@ -307,7 +307,7 @@ test('C1-C4: the database rejects exactly what TypeScript rejects (create_entry)
  });
 });
 
-test('C1-C4: the database rejects invalid new values on update (save_entry_revision), keeps the revision, and accepts the valid control',async t=>{
+test('the database rejects invalid new values on update (save_entry_revision), keeps the revision, and accepts the valid control',async t=>{
  const company=await newCompany(user,'Updates'),otherCompany=await newCompany(user,'Elsewhere');
  const personId=randomUUID(),offeringId=randomUUID();
  const created={};
@@ -342,7 +342,7 @@ test('C1-C4: the database rejects invalid new values on update (save_entry_revis
  });
 });
 
-test('C4/C1-C3: invalid values are refused on every write path, including a direct insert of a revision (deferred check at commit)',async t=>{
+test('invalid values are refused on every write path, including a direct insert of a revision (deferred check at commit)',async t=>{
  const company=await newCompany(user,'Direct'),elsewhere=await newCompany(user,'Elsewhere');const personId=randomUUID();
  const rev=await ok(createEntry(user,company,'key_person',person(personId,{age:30})),'create person');
  const insert=async content=>{
@@ -358,7 +358,7 @@ test('C4/C1-C3: invalid values are refused on every write path, including a dire
  await t.test('the valid control is accepted',async()=>{await ok(insert(person(personId,{age:31})),'direct insert of a valid revision');assert.equal((await admin.query('SELECT current_revision FROM public.knowledge_entries WHERE id=$1',[personId])).rows[0].current_revision,2);assert.equal(rev.revision,1);});
 });
 
-test('C7: data saved before 0018 survives the migration (snapshots are byte-identical; entries without the new keys still publish)',async t=>{
+test('data saved before 0018 survives the migration (snapshots are byte-identical; entries without the new keys still publish)',async t=>{
  const oldUrl=await createDatabase();
  const oldAdmin=await connect(oldUrl);await oldAdmin.query(await readFile(new URL('./bootstrap.sql',import.meta.url),'utf8'));
  await applyMigrations(oldUrl,file=>migrationNumber(file)<=17);
@@ -386,7 +386,7 @@ test('C7: data saved before 0018 survives the migration (snapshots are byte-iden
   const rows=await snapshotRows(oldUser,company);assert.deepEqual(rows.map(r=>r.content),legacyRows.map(r=>r.content));
   for(const row of rows)assert.equal(row.revision,2);
  });
- await t.test('(beyond the literal criteria, see report) entries without the new keys still publish: defaults are filled in and the new targets are not-checked',async()=>{
+ await t.test('entries without the new keys still publish: defaults are filled in and the new targets are not-checked',async()=>{
   const generation=(await oldUser.query('SELECT draft_generation FROM public.companies WHERE id=$1',[company])).rows[0].draft_generation;
   const snapshot=await ok(call(oldUser,'public.publish_knowledge_base',[company,generation,randomUUID()]),'publish legacy entries');
   const payload=snapshot.payload;

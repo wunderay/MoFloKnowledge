@@ -1,4 +1,4 @@
-// Fixtures for the Site Knowledge / All sections acceptance tests (Quest knowledge-view-site-and-all).
+// Fixtures for the Site Knowledge / All sections acceptance tests.
 // Same fictional company as the other view tests (Harbor & Pine Coffee Roasters). Valid fixtures
 // satisfy DraftResponseSchema / KnowledgeBaseExportSchema / validateProvenance (checked in
 // knowledge-view-site-all-fixtures.test.ts). The "hostile" builders break the schema on purpose
@@ -136,16 +136,6 @@ export const noSiteDraft = (opts: Omit<SiteDraftOptions, "links"> = {}) => siteD
 export const emptySiteDraft = (opts: Omit<SiteDraftOptions, "links"> = {}) => siteDraft({ ...opts, links: [] });
 
 export const siteSnapshot = (draft: Draft = siteDraft()) => ({ payload: snapshotFrom(draft), versionId: SNAPSHOT_ID });
-
-/** A snapshot saved before the site_links kind existed: no section and no coverage row for it. */
-export function legacySnapshot(draft: Draft = siteDraft()) {
-  const payload: any = snapshotFrom(draft);
-  delete payload.site_links;
-  payload.provenance.entries = payload.provenance.entries.filter((e: { kind: string }) => e.kind !== "site_links");
-  payload.provenance.claims = payload.provenance.claims.filter((c: { targets: string[] }) => !c.targets.some((t) => t.startsWith("/site_links")));
-  payload.provenance.coverage = payload.provenance.coverage.filter((c: { targets: string[] }) => !c.targets.some((t) => t.startsWith("/site_links")));
-  return { payload, versionId: SNAPSHOT_ID };
-}
 
 // ---- hostile data (schema-invalid on purpose) ------------------------------------------------------
 export const HOSTILE = {

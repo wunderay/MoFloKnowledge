@@ -56,7 +56,6 @@ export async function readCompanySummaries(
   }
   return parseResponse(CompanyListSchema, {
     companies: result,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-    nextCursor: companies.length === 50 ? companies.at(-1)!.id : null,
+    nextCursor: companies.length === 50 ? (companies.at(-1)?.id ?? null) : null,
   });
 }

@@ -1,5 +1,5 @@
-// Q25 acceptance: sign-up polish and the MoFlo Knowledge brand rename.
-// Happy path plus the named defects only (owner ruling: no edge cases).
+// Sign-up polish and the MoFlo Knowledge brand rename.
+// Happy path plus the named defects only.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { createElement } from "react";
@@ -29,8 +29,8 @@ function visibleText(html: string): string {
   return html.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]+>/g, "");
 }
 
-// Brand (C1): the component renders the new name.
-it("C1 brand component renders MoFlo Knowledge", async () => {
+// Brand: the component renders the new name.
+it("brand component renders MoFlo Knowledge", async () => {
   const icons = await import("../../src/components/shared/icons").catch(() => null);
   expect(icons).not.toBeNull();
   const Brand = (icons as Record<string, unknown> | null)?.Brand;
@@ -42,8 +42,8 @@ it("C1 brand component renders MoFlo Knowledge", async () => {
   expect(text).not.toContain("Cloud");
 });
 
-// Brand (C1): no user-visible "MoFlo Cloud" left in src. Comments are skipped.
-it("C1 no user-visible MoFlo Cloud remains in src", () => {
+// Brand: no user-visible "MoFlo Cloud" left in src. Comments are skipped.
+it("no user-visible MoFlo Cloud remains in src", () => {
   const files = readdirSync(SRC, { recursive: true })
     .map(String)
     .filter((f) => /\.(ts|tsx)$/.test(f));
@@ -77,8 +77,8 @@ it("C1 no user-visible MoFlo Cloud remains in src", () => {
   expect(hits).toEqual([]);
 });
 
-// App title (C1): the layout metadata title is the new name.
-it("C1 layout metadata title is MoFlo Knowledge", async () => {
+// App title: the layout metadata title is the new name.
+it("layout metadata title is MoFlo Knowledge", async () => {
   const layout = await import("../../src/app/layout").catch(() => null);
   expect(layout).not.toBeNull();
   expect(layout?.metadata).toBeDefined();
@@ -87,9 +87,9 @@ it("C1 layout metadata title is MoFlo Knowledge", async () => {
   expect(text).toBe("MoFlo Knowledge");
 });
 
-// Sign-up status (C2): the check-email message carries a success modifier;
+// Sign-up status: the check-email message carries a success modifier;
 // the passwords-do-not-match error does not.
-it("C2 check-email message has a success modifier; mismatch error does not", async () => {
+it("check-email message has a success modifier; mismatch error does not", async () => {
   const mod = await import("../../src/components/auth/sign-up-form").catch(() => null);
   expect(mod).not.toBeNull();
   expect(typeof mod?.SignUpForm).toBe("function");
@@ -148,8 +148,8 @@ function mobileMaxWidth(ctx: string[]): number | null {
   return null;
 }
 
-// Status style (C3): a success status style exists in globals.css.
-it("C3 globals.css has a success style for the sign-in status line", () => {
+// Status style: a success status style exists in globals.css.
+it("globals.css has a success style for the sign-in status line", () => {
   const rules = cssRules(readFileSync(CSS, "utf8"));
   const successRule = rules.find(
     (r) =>
@@ -160,8 +160,8 @@ it("C3 globals.css has a success style for the sign-in status line", () => {
   expect(successRule).toBeDefined();
 });
 
-// Mobile (C4): at phone width the sign-in story keeps its headline visible.
-it("C4 mobile (<=640px) media rule keeps the sign-in story headline visible", () => {
+// Mobile: at phone width the sign-in story keeps its headline visible.
+it("mobile (<=640px) media rule keeps the sign-in story headline visible", () => {
   const rules = cssRules(readFileSync(CSS, "utf8"));
   const mobile = rules.filter((r) => {
     const w = mobileMaxWidth(r.ctx);

@@ -1,4 +1,4 @@
-// Owner review findings on PR #13 (Quest knowledge-view-site-and-all), added after the lock:
+// Recovery and limits of the import:
 //  1. an import that is saved but whose draft re-read fails must not look like a failed write, must not
 //     be sent again, and must block further imports until the view is refreshed;
 //  2. the provenance the importer writes must fit the API's claim cap at the promised 500 links.

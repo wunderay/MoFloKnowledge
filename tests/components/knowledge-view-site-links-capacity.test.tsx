@@ -1,4 +1,4 @@
-// Acceptance (Quest site-links-capacity): the picker's real capacity, the duplicate-URL key and the
+// Acceptance: the picker's real capacity, the duplicate-URL key and the
 // disabled boxes at the limit. The server-side 409 mapping is in tests/server/http-singleton-conflict.test.ts.
 import { describe, expect, it, vi } from "vitest";
 import { boxFor, boxes, openPicker, openSite, pickerDialog, selectPages } from "../helpers/knowledge-view-site-all-import";

@@ -1,16 +1,16 @@
-// Acceptance, Quest Q19 refresh-draft-guard, criteria C5 and C6 (owner findings on PRs #13, #19, #20, #21).
+// Refresh guard: the stale-draft banner and its Reload.
 //
 // When the draft cannot be read after a save, the view says "Saved. Reload to see the latest <links|changes>."
 // and offers Reload.
-//  - C6: the word names the LATEST failure: "links" after an import, "+ Add page" or a people action, "changes"
+//  - The word names the LATEST failure: "links" after an import, "+ Add page" or a people action, "changes"
 //    after an inline edit, whatever an earlier failure said before it was recovered.
-//  - C5: the banner's own Reload is a read the person asked for. It is not cut off at the short limit that
+//  - The banner's own Reload is a read the person asked for. It is not cut off at the short limit that
 //    applies to the read that follows a save (timing.reread, 8 s): a slow read that succeeds recovers the view.
 //
-// DECISION (C5): the tests shorten timing.reread to 100 ms and let the Reload answer 500 ms later; a Reload
+// The tests shorten timing.reread to 100 ms and let the Reload answer 500 ms later; a Reload
 //   limit that is separate from timing.reread (or none) passes, one derived from it by a factor below 5 does not.
-// DECISION (C5, the save's read): the read right after a save keeps the timing.reread limit (the existing
-//   recovery tests lock that); only the banner's Reload is exempt.
+// The save's read: the read right after a save keeps the timing.reread limit (the existing
+//   recovery tests cover that); only the banner's Reload is exempt.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { timing } from "../../src/components/knowledge-view/timing";
 import {
@@ -44,7 +44,7 @@ async function settleAll(view: View) {
 }
 const reload = (view: View) => one(reloadButtons(view), "the banner's Reload button");
 
-describe("C6 the stale notice names the latest failure", () => {
+describe("the stale notice names the latest failure", () => {
   const LINKS_DRIVERS: Driver[] = [ADD_PAGE, IMPORT, PERSON];
 
   it.each(LINKS_DRIVERS.map((d) => [d.name, d] as const))("after an inline failure was recovered, a failed %s says 'links'", async (_name, driver) => {
@@ -99,7 +99,7 @@ describe("C6 the stale notice names the latest failure", () => {
   });
 });
 
-describe("C5 the banner's Reload is not cut off at the save re-read limit", () => {
+describe("the banner's Reload is not cut off at the save re-read limit", () => {
   it.each([
     ["inline edit", INLINE],
     ["add page", ADD_PAGE],

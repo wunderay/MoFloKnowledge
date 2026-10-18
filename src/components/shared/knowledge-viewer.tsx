@@ -292,7 +292,7 @@ export function KnowledgeViewer({
     const mine = ++readEpoch.current;
     const latest = () => readEpoch.current === mine;
     setRefreshing(true);
-    // An older read is not aborted here: the locked ordering tests keep it pending until it answers.
+    // An older read is not aborted here: the ordering tests keep it pending until it answers.
     const read = new AbortController();
     activeRead.current = read;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -433,7 +433,7 @@ export function KnowledgeViewer({
         },
       ).map((entry) => ({
         ...entry,
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- every filtered entry comes from `entries`, so its id is always found
         provenance: entries.find((original) => original.id === entry.id)!
           .provenance,
       })),

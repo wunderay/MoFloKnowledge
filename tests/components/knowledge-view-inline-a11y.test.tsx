@@ -1,4 +1,4 @@
-// Acceptance, Quest Q7 inline-edit-core, C8: accessible names, roles and keyboard use of the inline editors.
+// Accessible names, roles and keyboard use of the inline editors.
 //
 //  - an editable value is a button (a <button>, or role="button" that is a tab stop and handles Enter and Space)
 //    named "Edit <Field>"; its pencil icon is hidden from assistive technology.
@@ -43,7 +43,7 @@ vi.setConfig({ testTimeout: 60_000 });
 
 const ALL_TEXT: { section: TextField["section"]; label: string }[] = [...TEXT_FIELDS, FOUNDED, EMPLOYEES];
 
-describe.each(ALL_TEXT)("C8 $label", (field) => {
+describe.each(ALL_TEXT)("$label", (field) => {
   it("is a keyboard-operable button named 'Edit <Field>' with a hidden pencil", async () => {
     const view = await open(field.section);
     const button = editButton(view, field.label);
@@ -71,7 +71,7 @@ describe.each(ALL_TEXT)("C8 $label", (field) => {
   });
 });
 
-describe.each(AREA_FIELDS)("C8 $label editor buttons", (field) => {
+describe.each(AREA_FIELDS)("$label editor buttons", (field) => {
   it("Save and Cancel are named buttons", async () => {
     const view = await open(field.section);
     await startEdit(view, field);
@@ -80,7 +80,7 @@ describe.each(AREA_FIELDS)("C8 $label editor buttons", (field) => {
   });
 });
 
-describe("C8 status and alert roles", () => {
+describe("status and alert roles", () => {
   it("'Saving…' and '✓ Saved' are role=status; a failure is role=alert and not a status", async () => {
     const view = await open("General Info");
     view.server.hold();
@@ -116,7 +116,7 @@ describe("C8 status and alert roles", () => {
   });
 });
 
-describe("C8 chip controls", () => {
+describe("chip controls", () => {
   it("Remove buttons are named by their item (the × is not part of the name) and the add field by its noun", async () => {
     const view = await open(BUYERS.section);
     const remove = view.byRole("button", /^remove /i);
@@ -129,7 +129,7 @@ describe("C8 chip controls", () => {
   });
 });
 
-describe("C8 focus is never dropped", () => {
+describe("focus is never dropped", () => {
   it.each([...SINGLE_FIELDS, ...AREA_FIELDS])("$label: Escape returns focus to the button", async (field) => {
     const view = await open(field.section);
     const control = await startEdit(view, field);
@@ -156,7 +156,7 @@ describe("C8 focus is never dropped", () => {
   });
 });
 
-describe("C8 the page stays well formed with editors open", () => {
+describe("the page stays well formed with editors open", () => {
   it("opening every kind of editor in All sections leaves ids unique and every text control named", async () => {
     const view = await open("All sections");
     for (const field of [...SINGLE_FIELDS, ...AREA_FIELDS, FOUNDED, EMPLOYEES]) {

@@ -1,5 +1,5 @@
 // Acceptance: the Business Offerings section of /knowledge/view
-// (Quest knowledge-view-offerings-brand, criteria C1, C2, C3, C6, C7, C8 for offerings).
+//.
 // Assertions use headings, labels, displayed values, accessible names, aria state and
 // link hrefs only; none depends on class names or markup depth.
 import { describe, expect, it } from "vitest";
@@ -82,8 +82,7 @@ describe("fixtures", () => {
   });
 });
 
-describe("C1 Business Offerings heading, count, add link and list", () => {
-  // behavioural
+describe("Business Offerings heading, count, add link and list", () => {
   it("shows a Business Offerings heading with a count badge equal to the number of offerings", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const badge = countBadge(page, "Business Offerings", offeringsList(page));
@@ -91,13 +90,11 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     expect(badge.count).toBe(4);
   });
 
-  // behavioural
   it("has an Add offering link to the offering editor", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     expect(addOfferingLinks(page)).toEqual([ADD]);
   });
 
-  // behavioural
   it("lists every offering in order, each with its name and its type as a subtitle", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const { rows } = list(page);
@@ -111,7 +108,6 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     }
   });
 
-  // behavioural
   it("Edge case: an offering without a name is listed as 'Untitled offering N' (its position), with no 'null' for the missing type", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const { rows } = list(page);
@@ -122,21 +118,18 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     expect(textOf(page, rows[0])).not.toContain("Untitled offering");
   });
 
-  // behavioural
   it("selects the first offering by default, and only that one", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     expect(selectedIndexes(page)).toEqual([0]);
     expect(shown(page, detail(page), "Offering")).toContain(SUB.name);
   });
 
-  // behavioural
   it.each([1, 2, 3])("the offering URL parameter selects offering %i, and only that one", async (index) => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[index] });
     expect(selectedIndexes(page)).toEqual([index]);
     expect(shown(page, detail(page), "Description")).toContain(OFFERINGS[index].description);
   });
 
-  // behavioural
   it.each(["00000000-0000-4000-8000-00000ffdead0", "not-an-id", "", "<script>alert(1)</script>"])(
     "Edge case: an unknown offering parameter (%j) falls back to the first offering",
     async (offering) => {
@@ -147,7 +140,6 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     },
   );
 
-  // behavioural
   it("Edge case: one offering is listed, selected and counted as 1", async () => {
     const page = await openOfferings({ draft: offeringsDraft([SUB]) });
     expect(list(page).rows).toHaveLength(1);
@@ -155,7 +147,6 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     expect(countBadge(page, "Business Offerings", offeringsList(page)).count).toBe(1);
   });
 
-  // behavioural
   it("Edge case: fourteen offerings are all listed, counted as 14, and the last can be selected", async () => {
     const many = Array.from({ length: 14 }, (_, i) => ({
       ...SUB,
@@ -173,7 +164,6 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     expect(shown(page, detail(page), "Description")).toContain("Description of plan N.");
   });
 
-  // behavioural
   it("Edge case: a very long offering name is kept whole in the list and in the detail", async () => {
     const name = `${"Extraordinarily long offering name ".repeat(12)}ends here`;
     const b = offeringsBusiness();
@@ -183,7 +173,6 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
     expect(shown(page, detail(page), "Offering")).toContain(name);
   });
 
-  // behavioural
   it("Edge case: special characters in an offering name are text, never markup", async () => {
     const name = `Tea & <i>Toast</i> "Box" <img src=x onerror=alert(1)>`;
     const b = offeringsBusiness();
@@ -195,8 +184,7 @@ describe("C1 Business Offerings heading, count, add link and list", () => {
   });
 });
 
-describe("C2 offering detail", () => {
-  // behavioural
+describe("offering detail", () => {
   it("the first offering fills Offering, Type, Description, Key features, Cost and Pricing model", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const d = detail(page);
@@ -210,7 +198,6 @@ describe("C2 offering detail", () => {
     expect(shown(page, d, "Pricing model")).toContain("Recurring subscription");
   });
 
-  // behavioural
   it("a filled offering has no empty state or + Add in its detail", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const d = detail(page);
@@ -220,7 +207,6 @@ describe("C2 offering detail", () => {
     }
   });
 
-  // behavioural
   it("the detail shows only the selected offering's values", async () => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[1] });
     const d = detail(page);
@@ -238,7 +224,6 @@ describe("C2 offering detail", () => {
     }
   });
 
-  // behavioural
   it("a free offering shows its pricing wording as Cost; missing features and pricing model get empty states", async () => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[2] });
     const d = detail(page);
@@ -250,7 +235,6 @@ describe("C2 offering detail", () => {
     }
   });
 
-  // behavioural
   it("Edge case: an offering with null pricing, no features, no name and no type shows empty states with + Add to the offering editor", async () => {
     const page = await openOfferings({ draft: offeringsDraft(), offering: OFFERING_IDS[3] });
     const d = detail(page);
@@ -268,7 +252,6 @@ describe("C2 offering detail", () => {
     }
   });
 
-  // behavioural
   it("shows no offering image and no Delete action", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     expect(page.$("img").length, "no images in the offerings view").toBe(0);
@@ -279,7 +262,6 @@ describe("C2 offering detail", () => {
     expect(shown(page, detail(page), "Offering")).toContain(SUB.name);
   });
 
-  // behavioural
   it("values are text: no form control sits in the detail", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     const d = detail(page);
@@ -288,7 +270,6 @@ describe("C2 offering detail", () => {
     }
   });
 
-  // behavioural
   it("Edge case: a very long description and many features are kept whole", async () => {
     const description = `${"Small-lot coffee roasted every single week. ".repeat(100)}The very last sentence.`;
     const b = offeringsBusiness();
@@ -306,7 +287,7 @@ describe("C2 offering detail", () => {
     }
   });
 
-  // behavioural (defensive: these pricing objects break PricingSchema, which requires `raw`)
+  // (defensive: these pricing objects break PricingSchema, which requires `raw`)
   it("Edge case: without pricing wording, Cost shows amount, currency and billing interval", async () => {
     const b = offeringsBusiness();
     Object.assign(b.offerings[0].pricing!, { raw: "", amount: "12.50", currency: "EUR", billing_interval: "year" });
@@ -317,7 +298,7 @@ describe("C2 offering detail", () => {
     expect(cost).toContain("year");
   });
 
-  // behavioural (defensive, as above)
+  // (defensive, as above)
   it.each([
     ["contact_for_pricing", /contact/i],
     ["free", /free/i],
@@ -328,7 +309,7 @@ describe("C2 offering detail", () => {
     expect(shown(page, detail(page), "Cost")).toMatch(expected);
   });
 
-  // behavioural (defensive, as above)
+  // (defensive, as above)
   it("Edge case: an unknown price (no wording, no amount) is an empty state", async () => {
     const b = offeringsBusiness();
     Object.assign(b.offerings[0].pricing!, { raw: "", kind: "paid", amount: null, currency: null, billing_interval: null });
@@ -339,8 +320,7 @@ describe("C2 offering detail", () => {
   });
 });
 
-describe("C3 no offerings", () => {
-  // behavioural
+describe("no offerings", () => {
   it.each([
     ["a company whose entries hold no offering", noOfferingsDraft(), COMPANY_ID],
     ["a company with no entries at all", buildEmptyDraft(), EMPTY_COMPANY_ID],
@@ -356,7 +336,6 @@ describe("C3 no offerings", () => {
     expect(norm(page.$("body").text())).not.toMatch(BAD);
   });
 
-  // behavioural
   it("Edge case: an offering parameter on a company without offerings changes nothing", async () => {
     const page = await openOfferings({ draft: noOfferingsDraft(), offering: OFFERING_IDS[1] });
     expect(norm(page.$("body").text())).toMatch(/No offerings yet/i);
@@ -364,8 +343,8 @@ describe("C3 no offerings", () => {
   });
 });
 
-describe("C6 security", () => {
-  // behavioural (defensive: a javascript: offering url breaks OfferingSchema's URL rule)
+describe("security", () => {
+  // (defensive: a javascript: offering url breaks OfferingSchema's URL rule)
   it("Edge case: no link on the page uses a javascript:, data: or vbscript: URL", async () => {
     const b = offeringsBusiness();
     b.offerings[0].url = HOSTILE.jsLogo;
@@ -379,7 +358,6 @@ describe("C6 security", () => {
     expect(shown(page, detail(page), "Offering")).toContain(SUB.name);
   });
 
-  // behavioural
   it("links the page offers are http(s) or in-app paths", async () => {
     const page = await openOfferings({ draft: offeringsDraft() });
     for (const a of page.$("a[href]").toArray()) {
@@ -390,7 +368,7 @@ describe("C6 security", () => {
   });
 });
 
-describe("C7 draft, saved snapshot and evidence", () => {
+describe("draft, saved snapshot and evidence", () => {
   const DRAFT_ONLY = /Edit draft|View draft|History|Remove from future versions/g;
   /** The section's output: the container of the heading, the list and the detail. */
   function region(page: Page): string {
@@ -401,7 +379,6 @@ describe("C7 draft, saved snapshot and evidence", () => {
     return textOf(page, el).replace(DRAFT_ONLY, "").replace(/\s+/g, " ").trim();
   }
 
-  // behavioural
   it.each([undefined, OFFERING_IDS[1], OFFERING_IDS[3]])("a saved snapshot renders the same section output as its draft (offering=%s)", async (offering) => {
     const draft = offeringsDraft();
     const fromDraft = region(await openOfferings({ draft, offering }));
@@ -411,7 +388,7 @@ describe("C7 draft, saved snapshot and evidence", () => {
   });
 
   describe.each(["draft", "snapshot"] as const)("evidence (%s)", (source) => {
-    // behavioural (presence only)
+    // (presence only)
     it("every detail card with claims keeps a Sources control", async () => {
       const fx = evidenceFixture();
       const page = await openOfferings(source === "draft" ? { draft: fx.draft } : { snapshot: fx.snapshot() });
@@ -423,8 +400,8 @@ describe("C7 draft, saved snapshot and evidence", () => {
   });
 });
 
-describe("C8 non-regression", () => {
-  // non-regression (the Q2 sections themselves are covered by tests/components/knowledge-view-*.test.tsx)
+describe("non-regression", () => {
+  // (the general sections themselves are covered by tests/components/knowledge-view-*.test.tsx)
   it("an offering parameter does not disturb General Info", async () => {
     const generalId = selectorItems(parse(await renderOB({ draft: offeringsDraft() }))).find((i) => i.label === "General Info")!.value;
     const page = parse(await renderOB({ draft: offeringsDraft(), section: generalId, offering: OFFERING_IDS[1] }));

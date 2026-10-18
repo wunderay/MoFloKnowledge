@@ -114,10 +114,10 @@ export function validateProvenance(
           "Source URL/retrieval metadata does not match stored capture",
         );
       } else {
+        const excerpt = item.excerpt;
         if (
-          item.excerpt &&
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-          !capture.segments.some((s) => s.text.includes(item.excerpt!))
+          excerpt &&
+          !capture.segments.some((s) => s.text.includes(excerpt))
         ) {
           add(
             "quote_mismatch",
@@ -125,14 +125,13 @@ export function validateProvenance(
             "Exact quote absent from captured segments",
           );
         }
+        const technical = item.technical;
         if (
-          item.technical &&
+          technical &&
           !capture.observations.some((o) =>
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-            Object.keys(item.technical!).every(
+            Object.keys(technical).every(
               (k) =>
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
-                o[k as keyof typeof o] === item.technical![k as keyof typeof o],
+                o[k as keyof typeof o] === technical[k as keyof typeof o],
             ),
           )
         ) {
@@ -397,7 +396,7 @@ export function validateProvenance(
           try {
             const changed = structuredClone(business);
             const keys = parseStablePointer(conflict.target);
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- a conflict target that resolved above has at least one pointer segment
             const key = keys.at(-1)!;
             const parent = resolveStablePointer(
               changed,

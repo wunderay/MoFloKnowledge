@@ -1,4 +1,4 @@
-// Acceptance, Quest Q8 offerings-brand-edit, A: Business Offerings edit in place (owner, draft version).
+// Business Offerings edit in place (owner, draft version).
 //
 // Public contract (roles, names, requests; no class names, no structure):
 //  - "Add offering" in the section head creates one offering named "Untitled Offering" and selects it.
@@ -7,7 +7,7 @@
 //  - "Edit Offering name / type / description / cost", chips "Add key feature" / "Remove <feature>" save one revision.
 //  - Cost: a plain decimal; anything else is refused inline; empty clears the price.
 //  - A viewer or a snapshot has none of these controls; the read-only "+ Add Offering" link stays there.
-// DECISION (coordinator, round 2): Undo restores the archived entry with POST .../entries/:entryId/restore (it keeps its evidence).
+// Round 2: Undo restores the archived entry with POST .../entries/:entryId/restore (it keeps its evidence).
 import { describe, expect, it, vi } from "vitest";
 import {
   UUID,

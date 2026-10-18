@@ -1,26 +1,26 @@
-// Acceptance: the Site Knowledge "+ Add page" dialog (Quest Q11). On an editable draft "+ Add page" is a
+// Acceptance: the Site Knowledge "+ Add page" dialog. On an editable draft "+ Add page" is a
 // button that opens an in-page modal dialog with "Page URL" (required) and "Title" (optional); Save writes
 // through the importer's entries/revisions API. The tests drive the real client components through the
 // interactive runtime and check the markup and the requests sent to the fake company API, validated against
 // the API's own request schemas and the server's provenance functions.
 //
-// DECISION (editable only): "+ Add page" is a button only where the view is an editable draft
+// Editable only: "+ Add page" is a button only where the view is an editable draft
 //   (owner role); in a saved snapshot and for a viewer it stays the existing link to the editor.
-// DECISION (company website): the company's website is the Company Foundation field `website`
+// Company website: the company's website is the Company Foundation field `website`
 //   (company_foundation.website); the company row's creation URL does not count.
-// DECISION (no website): the dialog still opens but says "Add the company website first" and nothing is sent.
-// DECISION (validation): checked when Save is pressed (or Enter), in this order: empty address, scheme,
+// No website: the dialog still opens but says "Add the company website first" and nothing is sent.
+// Validation: checked when Save is pressed (or Enter), in this order: empty address, scheme,
 //   address contract (e.g. credentials), same site, duplicate. A failed check shows ONE human message in a
 //   role="alert" inside the dialog; the dialog stays open, input is intact, nothing is sent.
-// DECISION (messages): empty "Enter the page URL."; no/other scheme must mention https:// ; other site
+// Messages: empty "Enter the page URL."; no/other scheme must mention https:// ; other site
 //   "Use a page on <company host without www.>"; duplicate names the existing link's title and says
 //   it is already in the list.
-// DECISION (stored values): the stored url is new URL(trimmed input).href; the stored title is the
+// Stored values: the stored url is new URL(trimmed input).href; the stored title is the
 //   trimmed title, or the stored url when the title is empty/blank; note is null.
-// DECISION (same site): host equals the company website host or is a subdomain of it, ignoring case and a
+// Same site: host equals the company website host or is a subdomain of it, ignoring case and a
 //   leading "www." on either side.
-// DECISION (duplicate): same address ignoring hash and trailing slash (query still distinguishes pages).
-// DECISION (failed refresh): after a committed save whose draft re-read fails the dialog closes, the page
+// Duplicate: same address ignoring hash and trailing slash (query still distinguishes pages).
+// Failed refresh: after a committed save whose draft re-read fails the dialog closes, the page
 //   says "Saved. Reload to see the latest links.", and "+ Add page" is disabled until Reload succeeds.
 import { describe, expect, it, vi } from "vitest";
 import { CreateEntrySchema, SaveEntrySchema } from "../../src/contracts/api-entries";
@@ -122,7 +122,7 @@ function failDraftReadsAfterWrite(server: FakeServer) {
 const disabled = (node: { props: Record<string, unknown> }) => node.props.disabled === true || node.props.disabled === "";
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C1 opening and closing the dialog", () => {
+describe("opening and closing the dialog", () => {
   it("on an editable draft \"+ Add page\" is a button, not a link to the editor", async () => {
     const view = await open();
     expect(addButton(view)).toBeDefined();
@@ -214,7 +214,7 @@ describe("C1 opening and closing the dialog", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C2 the address needs a scheme: http or https", () => {
+describe("the address needs a scheme: http or https", () => {
   it("an empty or blank address asks for one", async () => {
     await refused(siteDraft(), "", /enter .*url/i);
     await refused(siteDraft(), "   ", /enter .*url/i);
@@ -248,7 +248,7 @@ describe("C2 the address needs a scheme: http or https", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C3 the page must be on the company's own site", () => {
+describe("the page must be on the company's own site", () => {
   it.each([`https://harborandpine.example/about-us`, `https://shop.harborandpine.example/x`, `https://www.harborandpine.example/y`, `https://WWW.HarborAndPine.example/z`])(
     "%s is accepted for a company whose website is www.harborandpine.example",
     async (url) => {
@@ -287,7 +287,7 @@ describe("C3 the page must be on the company's own site", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C4 a page that is already listed", () => {
+describe("a page that is already listed", () => {
   const existing = LINKS[2]; // `${SITE}/visit`
   it.each([`${SITE}/visit/`, `${SITE}/visit#map`, `${SITE}/visit/#map`, `${SITE}/visit`])(
     "%s is refused and names the existing link",
@@ -322,7 +322,7 @@ describe("C4 a page that is already listed", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C5 the title", () => {
+describe("the title", () => {
   it("an empty title saves the address as the title", async () => {
     const view = await open();
     await addPage(view, NEW_URL);
@@ -345,7 +345,7 @@ describe("C5 the title", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C6 saving through the entries and revisions API", () => {
+describe("saving through the entries and revisions API", () => {
   it("a company without a site_links entry: POST /entries creates it with the new link", async () => {
     const view = await open(noSiteDraft());
     await addPage(view, NEW_URL, "New arrivals");
@@ -456,7 +456,7 @@ describe("C6 saving through the entries and revisions API", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C7 a failed write and a failed refresh", () => {
+describe("a failed write and a failed refresh", () => {
   it("a failed write shows an inline error, keeps the dialog open with the input, and a retry works", async () => {
     const view = await open(siteDraft(), (s) => (s.writeFailure = WRITE_OFFLINE));
     await openAdd(view);
@@ -527,7 +527,7 @@ describe("C7 a failed write and a failed refresh", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C8 capacity", () => {
+describe("capacity", () => {
   async function blocked(draft: ReturnType<typeof siteDraft>, message: RegExp) {
     const view = await open(draft);
     const dialog = await openAdd(view);
@@ -567,7 +567,7 @@ describe("C8 capacity", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C9 a company without a website", () => {
+describe("a company without a website", () => {
   it("says to add the company website first and sends nothing", async () => {
     const view = await open(withWebsite(null));
     const dialog = await openAdd(view);
@@ -589,7 +589,7 @@ describe("C9 a company without a website", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------
-describe("C10 nothing else changes", () => {
+describe("nothing else changes", () => {
   it("a saved snapshot keeps \"+ Add page\" as a link to the editor and has no dialog", async () => {
     const view = await openView({ section: "Site Knowledge", snapshot: siteSnapshot(siteDraft()) });
     const page = view.page();

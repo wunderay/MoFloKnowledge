@@ -6,7 +6,7 @@ import { createPinnedFetcher } from "../../src/worker/network/pinned-transport";
 import type { fetchDocument } from "../../src/worker/network/pinned-transport";
 import { CRAWL_LIMITS } from "../../src/worker/crawl/budgets";
 
-// Shared fixtures for the Q12 crawl-deadline acceptance tests. Everything is
+// Shared fixtures for the crawl-deadline tests. Everything is
 // offline: the real createPinnedFetcher talks to a loopback server through an
 // injected approver, exactly like tests/security/pinned-transport.test.ts.
 

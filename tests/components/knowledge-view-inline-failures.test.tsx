@@ -1,4 +1,4 @@
-// Acceptance, Quest Q7 inline-edit-core, C6: stale revisions, failed requests and a failed re-read after a committed save.
+// Stale revisions, failed requests and a failed re-read after a committed save.
 //
 //  - 409 (the entry changed since the page loaded): a role=alert message that asks the person to reload, the typed
 //    text (or the listed item) stays where it is; nothing is replaced silently, no "Saved".
@@ -63,7 +63,7 @@ async function submit(view: View, field: TextField, text: string) {
   return area;
 }
 
-describe("C6 a stale revision (409)", () => {
+describe("a stale revision (409)", () => {
   it.each([LEGAL, OVERVIEW_F])("$label: asks to reload, keeps the typed text, shows no 'Saved'", async (field) => {
     const view = await open(field.section);
     const before = stored(view, field.kind);
@@ -102,7 +102,7 @@ describe("C6 a stale revision (409)", () => {
   });
 });
 
-describe("C6 a failed request shows the server's message and a Retry that repeats the same request", () => {
+describe("a failed request shows the server's message and a Retry that repeats the same request", () => {
   it.each([
     { field: LEGAL, status: 503, message: "Draft store is down." },
     { field: OVERVIEW_F, status: 500, message: "Something broke on the server." },
@@ -180,7 +180,7 @@ describe("C6 a failed request shows the server's message and a Retry that repeat
   });
 });
 
-describe("C6 a committed save whose re-read of the draft fails", () => {
+describe("a committed save whose re-read of the draft fails", () => {
   const allEditors = (view: View) => view.byRole("button", /^edit /i);
 
   it.each([LEGAL, OVERVIEW_F])("$label: says it was saved, offers Reload, never resends, and switches editing off until a Reload works", async (field) => {

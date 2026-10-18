@@ -131,15 +131,15 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
   const slug = normalizeName(new URL(finalUrl).pathname.replace(/\/$/, "").split("/").at(-1) ?? "");
   const routeName = (name: string) => normalizeName(name).replace(/\band\b/g, "").replace(/\s+/g, " ").trim();
   const schemaNames = observations.filter((o) => o.property?.endsWith("/name") &&
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the filter above keeps only observations whose property ends with /name
     observations.some((kind) => kind.property === o.property!.slice(0, -5) + "/@type" && /^(?:Service|Product)$/.test(kind.value ?? "")))
     .map((o) => normalizeName(o.value ?? ""));
   const primary = servicePath(finalUrl) ? headings.map((section) => ({ section, score:
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- `headings` keeps only sections that have a heading
     selfLabels.includes(normalizeName(section.heading!)) ? 100 :
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- `headings` keeps only sections that have a heading
       routeName(section.heading!) === routeName(slug) ? 95 :
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- `headings` keeps only sections that have a heading
         schemaNames.some((name) => (" " + name + " ").includes(" " + normalizeName(section.heading!) + " ")) ? 90 :
           section.level === 1 ? 70 : 0,
   })).sort((a, b) => b.score - a.score).find((item) => item.score > 0)?.section : undefined;

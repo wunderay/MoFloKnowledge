@@ -245,7 +245,7 @@ export function reduceCandidates(
           retrieved_at: page.retrievedAt,
         });
         for (const id of c.segment_ids) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- segment ids of an accepted candidate were validated against this page
           const segment = page.capture.segments.find((s) => s.id === id)!;
           const eid = stableId(page.id, "segment", id);
           evidenceMap.set(eid, {

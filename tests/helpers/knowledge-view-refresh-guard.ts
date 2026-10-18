@@ -1,4 +1,4 @@
-// Helpers for the refresh-draft-guard acceptance tests (Quest Q19).
+// Helpers for the refresh-draft-guard acceptance tests.
 //
 // KnowledgeViewer re-reads the draft after every save a person makes in the view (an import, "+ Add page",
 // a people action, an inline edit). These helpers let a test decide WHEN each of those reads is answered, and

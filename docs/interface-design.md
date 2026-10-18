@@ -38,6 +38,12 @@ These are design audit boards. Their Inter annotation typography and decorative 
 - All sections stacks the seven sections (including Key People) in listbox order, each under a visible heading (Business Offerings and Key People keep their own headings with their counts), with the same cards as the section alone and a single "Import from website" control.
 - The version selector, company switcher, display modes (Profile, Cards, Table, Detail, Json), document export, JSON download and "Open current draft" sit in a slim toolbar above the card. Profile is the reference layout; the other modes keep their search and filter row. In a draft, a collapsed "Review draft entries" list under the tip bar offers Edit draft, History and Remove from future versions for every entry.
 
+## Document export
+
+Word and PDF produce a formatted company profile: a centered title, blue section headings, short factual bullets, grouped address and contact details, complete business information, named people and offerings, and meaningful lists. Exact narrative already present in the overview is shown once, narratives split at clear sentence boundaries, and recognized company statements use fixed neutral fact labels; modalities, conditions and qualifications stay intact. Observed colors appear in a horizontal palette with hex labels. Small superscript citation numbers link to numbered end references. All populated business fields are kept, with compact coverage and unknown notes; viewer filters and collapsed previews do not limit the document.
+
+A draft export reads saved revisions, so save editor changes first; a saved-version export uses only that immutable snapshot. JSON is the complete saved draft or the exact canonical snapshot, including claims, exact supporting quotes and technical provenance. Documents are created on the server without AI, external conversion services or full captured page bodies. PDFs embed a `knowledge.json` attachment with the exact original data; characters missing from the bundled font appear as `[U+XXXX]` in PDF text. The bundled PDF fonts, their sources and checksums are listed in [public/fonts/README.md](../public/fonts/README.md).
+
 ## Scope
 
 This is a presentation change. It does not add artificial intelligence, notification counts, external applications or placeholder content from the reference images. Company facts and counts come from the current draft. Existing membership permissions, conflict handling, citations, revisions, unsaved navigation warnings and immutable saved versions continue to apply.

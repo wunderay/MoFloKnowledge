@@ -1,11 +1,11 @@
-// Acceptance, Quest Q21 viewer-polish, item 3: Sales & Marketing hardening and removal of dead company-profile.
+// Sales & Marketing hardening and removal of dead company-profile.
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { COMPANY_NAME, buildBusiness, draftFrom } from "../helpers/knowledge-view-fixtures";
 import { banner, card, cardText } from "../helpers/knowledge-view-dom";
 import { openSection, titlesOf } from "../helpers/knowledge-view-spec";
 
-describe("Q21 sales-marketing polish", () => {
+describe("sales-marketing polish", () => {
   it("a javascript: social profile link is not linked", async () => {
     const b = buildBusiness();
     b.online_presence.social_media_links = [

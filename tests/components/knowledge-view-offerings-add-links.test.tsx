@@ -28,7 +28,6 @@ const addOffering = (page: Page) =>
     .map((a) => page.$(a).attr("href"));
 
 describe.each(["draft", "snapshot"] as const)("offering add links (%s)", (source) => {
-  // behavioural
   it("with the fourth offering selected, every detail Add link carries the fourth offering's entry id", async () => {
     const page = await open[source](OFFERING_IDS[3]);
     const adds = detailAdds(page);
@@ -40,7 +39,6 @@ describe.each(["draft", "snapshot"] as const)("offering add links (%s)", (source
     expect(JSON.stringify(adds)).not.toContain(OFFERING_IDS[0]);
   });
 
-  // behavioural
   it("each other offering's Add links carry its own entry id", async () => {
     const page = await open[source](OFFERING_IDS[2]);
     const adds = detailAdds(page);
@@ -48,7 +46,6 @@ describe.each(["draft", "snapshot"] as const)("offering add links (%s)", (source
     expect(adds["Pricing model"]).toEqual([scoped(OFFERING_IDS[2])]);
   });
 
-  // behavioural
   it("the first offering's Add links carry the first offering's id too", async () => {
     const page = await open[source](undefined);
     const filled = detailAdds(page);
@@ -57,14 +54,12 @@ describe.each(["draft", "snapshot"] as const)("offering add links (%s)", (source
     expect(Object.values(second).flat()).toEqual([]);
   });
 
-  // behavioural
   it("the section-level Add offering link stays unscoped", async () => {
     for (const offering of [undefined, OFFERING_IDS[3]]) {
       expect(addOffering(await open[source](offering))).toEqual([ADD]);
     }
   });
 
-  // behavioural
   it("every Add link on the page is an editor link on the offering category, scoped only where it belongs to a field", async () => {
     const page = await open[source](OFFERING_IDS[3]);
     const hrefs = page.$(".knowledge-view__panel a[href]").toArray().map((a) => page.$(a).attr("href")!).filter((h) => h.includes("category=offering"));

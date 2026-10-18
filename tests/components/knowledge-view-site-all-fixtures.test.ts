@@ -1,7 +1,7 @@
-// Guards for the Site Knowledge / All sections acceptance tests (Quest knowledge-view-site-and-all):
+// Guards for the Site Knowledge / All sections acceptance tests:
 // the fixtures are data the product could hold, and the interactive runtime that the behavioural
 // tests drive really renders the viewer, re-renders after a click and serves the company API.
-// These tests pass on the base commit; they fail only if the fixtures or the harness are wrong.
+// These tests fail only if the fixtures or the harness are wrong.
 import { describe, expect, it } from "vitest";
 import {
   EntryProvenanceSchema,
@@ -12,7 +12,6 @@ import {
 } from "../../src/contracts";
 import { DraftResponseSchema } from "../../src/contracts/api-responses";
 import { SourceCoverageSchema } from "../../src/contracts/source-coverage";
-import { upgradeLegacySnapshot } from "../../src/knowledge/legacy-snapshot";
 import { openView, SECTION_IDS } from "../helpers/knowledge-view-site-all-runtime";
 import { selectorItems } from "../helpers/knowledge-view-dom";
 import { COMPANY_ID } from "../helpers/knowledge-view-fixtures";
@@ -25,7 +24,6 @@ import {
   hostileLinks,
   historicalOrigins,
   inventory,
-  legacySnapshot,
   manyLinks,
   noSiteDraft,
   siteDraft,
@@ -114,15 +112,6 @@ describe("fixtures are data the product could hold", () => {
     for (const page of NOT_LISTED) {
       expect(page.state !== "captured" || urls.has(page.url)).toBe(true);
     }
-  });
-
-  // guard
-  it("the legacy snapshot has no site_links; the reader's upgrade gives it an empty section and a coverage row", () => {
-    const stored = legacySnapshot().payload;
-    expect(Object.hasOwn(stored, "site_links")).toBe(false);
-    const upgraded = KnowledgeBaseExportSchema.parse(upgradeLegacySnapshot(structuredClone(stored)));
-    expect(upgraded.site_links.links).toEqual([]);
-    expect(upgraded.provenance.coverage.some((c) => c.targets.includes("/site_links/links"))).toBe(true);
   });
 });
 

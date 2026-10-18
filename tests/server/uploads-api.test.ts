@@ -1,8 +1,7 @@
-// Acceptance tests for Quest Q6 "storage-uploads": criteria C1 (upload API), C2 (validation), C6 (write authorization
-// on POST) and C8 (no upload-count cap). Locked before any builder starts; they drive the route handler through its
+// Upload API, validation, write authorization on POST and no upload-count cap. They drive the route handler through its
 // HTTP interface with the Supabase client replaced by the in-memory world in tests/helpers/uploads-world.ts.
 //
-// DECISIONs recorded in the Petitioner hand-back (short form):
+// Behaviour assumed:
 //  - Routes: POST src/app/api/companies/[companyId]/uploads/route.ts. Success bodies may be the API envelope
 //    { data, error, requestId } (project convention) or the bare object; tests read either.
 //  - A file whose real bytes disagree with its filename/MIME is either stored under its REAL type/extension or
@@ -78,9 +77,9 @@ function expectRejected(result: { response: Response; json: any; text: string },
   expect((world.tables.uploads ?? []).length).toBe(0);
 }
 
-describe("C1 upload API: stores in the private bucket and answers with an app-served url", () => {
+describe("upload API: stores in the private bucket and answers with an app-served url", () => {
   for (const [name, fixture] of Object.entries(FIXTURES)) {
-    it(`C1 ${name}: 201 with { id, path, content_type, size_bytes, url } and one non-overwriting upload`, async () => {
+    it(`${name}: 201 with { id, path, content_type, size_bytes, url } and one non-overwriting upload`, async () => {
       const result = await upload(a, { file: { bytes: fixture.bytes, name: fixture.name, mime: fixture.mime }, kind: "logos" });
       expect(result.response.status, result.text.slice(0, 300)).toBe(201);
       const body = payload(result.json);
@@ -110,7 +109,7 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
     });
   }
 
-  it("C1 every kind lands under its own prefix: logos, portraits and offering-images", async () => {
+  it("every kind lands under its own prefix: logos, portraits and offering-images", async () => {
     for (const kind of ["logos", "portraits", "offering-images"]) {
       const result = await upload(a, { file: { bytes: png(), name: "x.png", mime: "image/png" }, kind });
       expect(result.response.status, result.text.slice(0, 300)).toBe(201);
@@ -118,7 +117,7 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
     }
   });
 
-  it("C1 the url is app-served for this company: no bucket URL, no signed token, no redirect", async () => {
+  it("the url is app-served for this company: no bucket URL, no signed token, no redirect", async () => {
     const result = await upload(a, { file: { bytes: png(), name: "logo.png", mime: "image/png" }, kind: "logos" });
     expect(result.response.status).toBe(201);
     const body = payload(result.json);
@@ -131,7 +130,7 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
     expect(result.response.headers.get("location")).toBeNull();
   });
 
-  it("C1 two uploads of identical bytes get distinct ids and distinct objects (uuid names, no overwrite)", async () => {
+  it("two uploads of identical bytes get distinct ids and distinct objects (uuid names, no overwrite)", async () => {
     const first = payload((await upload(a, { file: { bytes: png(), name: "same.png", mime: "image/png" }, kind: "logos" })).json);
     const second = payload((await upload(a, { file: { bytes: png(), name: "same.png", mime: "image/png" }, kind: "logos" })).json);
     expect(first.id).toMatch(uuidRe);
@@ -141,7 +140,7 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
     expect(world.objects.size).toBe(2);
   });
 
-  it("C1 an editor can upload too, and the response is private and uncacheable", async () => {
+  it("an editor can upload too, and the response is private and uncacheable", async () => {
     world.user = { id: IDS.editor };
     const result = await upload(a, { file: { bytes: png(), name: "e.png", mime: "image/png" }, kind: "portraits" });
     expect(result.response.status).toBe(201);
@@ -149,7 +148,7 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
     expect(result.response.headers.get("cache-control") ?? "").not.toMatch(/public/);
   });
 
-  it("C1 no storage secret or signed URL is written to the logs during uploads", async () => {
+  it("no storage secret or signed URL is written to the logs during uploads", async () => {
     const lines: string[] = [];
     for (const method of ["log", "info", "warn", "error", "debug"] as const) {
       vi.spyOn(console, method).mockImplementation((...args: unknown[]) => void lines.push(args.map(String).join(" ")));
@@ -163,8 +162,8 @@ describe("C1 upload API: stores in the private bucket and answers with an app-se
   });
 });
 
-describe("C2 validation: content sniffing, limits and clear messages", () => {
-  it("C2 anything that is not PNG, JPG, GIF, WebP or SVG is rejected with the types message, whatever its name or MIME says", async () => {
+describe("validation: content sniffing, limits and clear messages", () => {
+  it("anything that is not PNG, JPG, GIF, WebP or SVG is rejected with the types message, whatever its name or MIME says", async () => {
     const impostors: [string, Uint8Array, string, string][] = [
       ["plain text named png", text("hello, this is not an image"), "logo.png", "image/png"],
       ["HTML named svg", text("<html><body><script>alert(1)</script></body></html>"), "logo.svg", "image/svg+xml"],
@@ -185,12 +184,12 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 an empty (0-byte) file is rejected, even with a perfect PNG name and MIME", async () => {
+  it("an empty (0-byte) file is rejected, even with a perfect PNG name and MIME", async () => {
     const result = await upload(a, { file: { bytes: new Uint8Array(0), name: "logo.png", mime: "image/png" }, kind: "logos" });
     expectRejected(result);
   });
 
-  it("C2 a PNG renamed .jpg with an image/jpeg MIME is stored as its real type or rejected, never as a JPEG", async () => {
+  it("a PNG renamed .jpg with an image/jpeg MIME is stored as its real type or rejected, never as a JPEG", async () => {
     const result = await upload(a, { file: { bytes: png(), name: "renamed.jpg", mime: "image/jpeg" }, kind: "logos" });
     if (result.response.status === 201) {
       const body = payload(result.json);
@@ -202,7 +201,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 a JPEG named .png and an SVG named .gif are likewise stored by their real type or rejected", async () => {
+  it("a JPEG named .png and an SVG named .gif are likewise stored by their real type or rejected", async () => {
     for (const [bytes, name, mime, type, ext] of [
       [jpeg(), "photo.png", "image/png", "image/jpeg", /\.jpe?g$/],
       [svg(), "vector.gif", "image/gif", "image/svg+xml", /\.svg$/],
@@ -222,7 +221,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 an upper-case extension and a mixed-case MIME are fine, and the stored extension is lower-case", async () => {
+  it("an upper-case extension and a mixed-case MIME are fine, and the stored extension is lower-case", async () => {
     const result = await upload(a, { file: { bytes: png(), name: "LOGO.PNG", mime: "IMAGE/PNG" }, kind: "logos" });
     expect(result.response.status, result.text.slice(0, 300)).toBe(201);
     const body = payload(result.json);
@@ -230,7 +229,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     expect(body.content_type).toBe("image/png");
   });
 
-  it("C2 SVG exported by common tools is accepted: XML prolog, leading whitespace", async () => {
+  it("SVG exported by common tools is accepted: XML prolog, leading whitespace", async () => {
     for (const source of [
       '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><circle r="2"/></svg>',
       '\n  <svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><circle r="2"/></svg>\n',
@@ -243,7 +242,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 logos: exactly 10 MiB is accepted, one byte more is refused with 'Max 10MB'", async () => {
+  it("logos: exactly 10 MiB is accepted, one byte more is refused with 'Max 10MB'", async () => {
     const atLimit = await upload(a, { file: { bytes: png(10 * MiB), name: "big.png", mime: "image/png" }, kind: "logos" });
     expect(atLimit.response.status, atLimit.text.slice(0, 300)).toBe(201);
     expect(payload(atLimit.json).size_bytes).toBe(10 * MiB);
@@ -256,7 +255,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
   });
 
   for (const kind of ["portraits", "offering-images"]) {
-    it(`C2 ${kind}: exactly 5 MiB is accepted, one byte more is refused with 'Max 5MB'`, async () => {
+    it(`${kind}: exactly 5 MiB is accepted, one byte more is refused with 'Max 5MB'`, async () => {
       const atLimit = await upload(a, { file: { bytes: png(5 * MiB), name: "p.png", mime: "image/png" }, kind });
       expect(atLimit.response.status, atLimit.text.slice(0, 300)).toBe(201);
       expect(payload(atLimit.json).size_bytes).toBe(5 * MiB);
@@ -268,7 +267,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     });
   }
 
-  it("C2 the limit depends on the kind: 5 MiB + 1 is fine for a logo and 10 MiB is too big for a portrait", async () => {
+  it("the limit depends on the kind: 5 MiB + 1 is fine for a logo and 10 MiB is too big for a portrait", async () => {
     const logo = await upload(a, { file: { bytes: png(5 * MiB + 1), name: "l.png", mime: "image/png" }, kind: "logos" });
     expect(logo.response.status, logo.text.slice(0, 300)).toBe(201);
     world.reset();
@@ -277,7 +276,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     expectRejected(portrait, "Max 5MB");
   });
 
-  it("C2 an unknown, missing, empty or traversing kind is rejected with a message and stores nothing", async () => {
+  it("an unknown, missing, empty or traversing kind is rejected with a message and stores nothing", async () => {
     const kinds: (string | null)[] = [null, "", "avatars", "logo", "offering_images", "../logos", "logos/../portraits", "logos/", "/logos", "logos\\..\\x", "logos%2F..%2Fx", "logos\u0000", " logos", `../${b}/logos`];
     for (const kind of kinds) {
       world.reset();
@@ -288,7 +287,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 a missing file field, a text value instead of a file, and a non-multipart body are all 4xx JSON errors", async () => {
+  it("a missing file field, a text value instead of a file, and a non-multipart body are all 4xx JSON errors", async () => {
     const { POST } = await needCollection();
     const cases: [string, BodyInit, Record<string, string>][] = [
       ["no file", formFor({ kind: "logos" }), {}],
@@ -308,7 +307,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 the client filename never reaches storage: ../ traversal, separators, NUL and unicode names yield a uuid path or a rejection", async () => {
+  it("the client filename never reaches storage: ../ traversal, separators, NUL and unicode names yield a uuid path or a rejection", async () => {
     const names = ["../../etc/passwd.png", "..\\..\\windows\\win.ini.png", "a/b/c.png", "logo\u0000.png", "логотип-日本-🚀.png", "%2e%2e%2f.png", "..png", ".png", "x".repeat(300) + ".png", "con.png"];
     for (const name of names) {
       world.reset();
@@ -324,7 +323,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 a polyglot (GIF header followed by script) is stored only as a GIF or refused, and never as HTML", async () => {
+  it("a polyglot (GIF header followed by script) is stored only as a GIF or refused, and never as HTML", async () => {
     const bytes = Buffer.concat([Buffer.from(gif()), Buffer.from("<script>alert(document.domain)</script><html onload=alert(1)>")]);
     const result = await upload(a, { file: { bytes: new Uint8Array(bytes), name: "evil.gif", mime: "image/gif" }, kind: "logos" });
     if (result.response.status === 201) {
@@ -337,7 +336,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 an HTML-looking file that merely starts with an SVG-ish comment is not stored as html", async () => {
+  it("an HTML-looking file that merely starts with an SVG-ish comment is not stored as html", async () => {
     const bytes = text('<!-- hi --><html xmlns="http://www.w3.org/1999/xhtml"><body><script>alert(1)</script></body></html>');
     const result = await upload(a, { file: { bytes, name: "x.svg", mime: "image/svg+xml" }, kind: "logos" });
     if (result.response.status === 201) {
@@ -348,7 +347,7 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
     }
   });
 
-  it("C2 SVG files carrying active content are accepted-with-safe-serving or refused, and any acceptance is typed image/svg+xml", async () => {
+  it("SVG files carrying active content are accepted-with-safe-serving or refused, and any acceptance is typed image/svg+xml", async () => {
     for (const [label, source] of Object.entries(MALICIOUS_SVGS)) {
       world.reset();
       ({ a, b } = arrange());
@@ -367,8 +366,8 @@ describe("C2 validation: content sniffing, limits and clear messages", () => {
   });
 });
 
-describe("C6 authorization on POST: origin, session, role, archived company, tenant", () => {
-  it("C6 a request from another origin, or without Origin, is 403 invalid_origin and stores nothing", async () => {
+describe("authorization on POST: origin, session, role, archived company, tenant", () => {
+  it("a request from another origin, or without Origin, is 403 invalid_origin and stores nothing", async () => {
     for (const origin of ["https://evil.example", null, "https://app.example.evil.example", "http://app.example"]) {
       world.reset();
       ({ a, b } = arrange());
@@ -379,14 +378,14 @@ describe("C6 authorization on POST: origin, session, role, archived company, ten
     }
   });
 
-  it("C6 a signed-out caller gets 401 and nothing is stored", async () => {
+  it("a signed-out caller gets 401 and nothing is stored", async () => {
     world.user = null;
     const result = await upload(a, { file: { bytes: png(), name: "x.png", mime: "image/png" }, kind: "logos" });
     expect(result.response.status).toBe(401);
     expect(world.mutations()).toEqual([]);
   });
 
-  it("C6 a viewer cannot upload: 403 forbidden, nothing stored", async () => {
+  it("a viewer cannot upload: 403 forbidden, nothing stored", async () => {
     world.user = { id: IDS.viewer };
     const result = await upload(a, { file: { bytes: png(), name: "x.png", mime: "image/png" }, kind: "logos" });
     expect(result.response.status, result.text.slice(0, 200)).toBe(403);
@@ -396,14 +395,14 @@ describe("C6 authorization on POST: origin, session, role, archived company, ten
     expect((world.tables.uploads ?? []).length).toBe(0);
   });
 
-  it("C6 a non-member gets 404 (not 403) and nothing is stored", async () => {
+  it("a non-member gets 404 (not 403) and nothing is stored", async () => {
     world.user = { id: IDS.outsider };
     const result = await upload(a, { file: { bytes: png(), name: "x.png", mime: "image/png" }, kind: "logos" });
     expect(result.response.status, result.text.slice(0, 200)).toBe(404);
     expect(world.mutations()).toEqual([]);
   });
 
-  it("C6 owner of another company cannot upload into this one: 404", async () => {
+  it("owner of another company cannot upload into this one: 404", async () => {
     world.user = { id: IDS.rival };
     const result = await upload(a, { file: { bytes: png(), name: "x.png", mime: "image/png" }, kind: "logos" });
     expect(result.response.status).toBe(404);
@@ -413,7 +412,7 @@ describe("C6 authorization on POST: origin, session, role, archived company, ten
     expect(payload(own.json).path.startsWith(`logos/${b}/`)).toBe(true);
   });
 
-  it("C6 authorization comes before validation: a viewer sending junk learns 403, a stranger sending junk learns 404", async () => {
+  it("authorization comes before validation: a viewer sending junk learns 403, a stranger sending junk learns 404", async () => {
     world.user = { id: IDS.viewer };
     const viewer = await upload(a, { file: { bytes: new Uint8Array(0), name: "x.png", mime: "image/png" }, kind: "nonsense" });
     expect(viewer.response.status).toBe(403);
@@ -423,7 +422,7 @@ describe("C6 authorization on POST: origin, session, role, archived company, ten
     expect(world.mutations()).toEqual([]);
   });
 
-  it("C6 an archived company refuses uploads (422 validation, like every other archived write) and stores nothing", async () => {
+  it("an archived company refuses uploads (422 validation, like every other archived write) and stores nothing", async () => {
     const archived = world.seedCompany({ archived: true, members: { [IDS.owner]: "owner", [IDS.editor]: "editor" } });
     for (const user of [IDS.owner, IDS.editor]) {
       world.user = { id: user };
@@ -435,7 +434,7 @@ describe("C6 authorization on POST: origin, session, role, archived company, ten
     expect(world.objects.size).toBe(0);
   });
 
-  it("C6 a malformed company id is a 4xx and touches nothing", async () => {
+  it("a malformed company id is a 4xx and touches nothing", async () => {
     const { POST } = await needCollection();
     for (const id of ["not-a-uuid", "..", "../x", "%2e%2e", `${a}/../${b}`, ""]) {
       const response = await POST(postRequest(id, formFor({ file: { bytes: png(), name: "x.png", mime: "image/png" }, kind: "logos" })), collectionContext(id));
@@ -446,8 +445,8 @@ describe("C6 authorization on POST: origin, session, role, archived company, ten
   });
 });
 
-describe("C6 upload failures leave no half-written state and leak nothing", () => {
-  it("C6 a storage failure is a sanitised JSON error and no metadata row survives", async () => {
+describe("upload failures leave no half-written state and leak nothing", () => {
+  it("a storage failure is a sanitised JSON error and no metadata row survives", async () => {
     world.storageFailures.set("upload", { message: "connect ECONNREFUSED https://proj.supabase.co/storage/v1 key=SERVICE_ROLE_SECRET_VALUE_b81d" });
     const result = await upload(a, { file: { bytes: png(), name: "x.png", mime: "image/png" }, kind: "logos" });
     expect(result.response.status).toBeGreaterThanOrEqual(400);
@@ -458,7 +457,7 @@ describe("C6 upload failures leave no half-written state and leak nothing", () =
     expect((world.tables.uploads ?? []).length).toBe(0);
   });
 
-  it("C6 either both the object and its metadata are stored or neither is (metadata insert failure leaves no orphan object)", async () => {
+  it("either both the object and its metadata are stored or neither is (metadata insert failure leaves no orphan object)", async () => {
     world.tableFailures.set("uploads:insert", { message: "relation uploads exploded password=hunter2" });
     const result = await upload(a, { file: { bytes: png(), name: "x.png", mime: "image/png" }, kind: "logos" });
     const triedMetadata = world.tableCalls.some((c) => c.table === "uploads" && c.op === "insert");
@@ -474,8 +473,8 @@ describe("C6 upload failures leave no half-written state and leak nothing", () =
   });
 });
 
-describe("C8 the upload API does not enforce the per-offering image cap", () => {
-  it("C8 25 consecutive uploads to one company and kind all succeed (the 20-image cap belongs to attach time)", async () => {
+describe("the upload API does not enforce the per-offering image cap", () => {
+  it("25 consecutive uploads to one company and kind all succeed (the 20-image cap belongs to attach time)", async () => {
     const paths = new Set<string>();
     for (let i = 0; i < 25; i += 1) {
       const result = await upload(a, { file: { bytes: png(), name: `img-${i}.png`, mime: "image/png" }, kind: "offering-images" });

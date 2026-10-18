@@ -210,7 +210,7 @@ export function useDisplayName(
       return;
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the surrounding logic; a runtime check would change failure behaviour
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- this save path only runs for the editable name, which is the case where `rename` is set
       await rename!.onRenamed();
     } catch {
       // The name is saved; the view marks itself stale and offers a reload.
