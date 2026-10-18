@@ -1,4 +1,6 @@
-export const CRAWL_LIMITS = { documents: 10, depth: 2, httpConcurrency: 3, renderConcurrency: 1, hostGapMs: 500, fetchMs: 15000, renderMs: 25000, jobMs: 300000, htmlBytes: 2 * 1024 * 1024, textCharacters: 100000, designBytes: 15 * 1024 * 1024 } as const;
+export const CRAWL_LIMITS = { fetchMs: 15000, renderMs: 25000, jobMs: 300000, htmlBytes: 2 * 1024 * 1024, designBytes: 15 * 1024 * 1024 } as const;
+export const clampDocumentLimit = (value?: number): number => Math.min(25, Math.max(1, value ?? 10));
+export const clampDepthLimit = (value?: number): number => Math.min(3, Math.max(0, value ?? 2));
 export interface BudgetSnapshot {
     documents: number;
     htmlBytes: number;
@@ -25,7 +27,7 @@ export class CrawlBudgets {
     constructor(options: {
         documentLimit?: number;
         depthLimit?: number;
-    } = {}, snapshot?: BudgetSnapshot) { this.documentLimit = Math.min(25, Math.max(1, options.documentLimit ?? 10)); this.depthLimit = Math.min(3, Math.max(0, options.depthLimit ?? 2)); this.startedAt = snapshot?.startedAt ?? Date.now(); if (snapshot) {
+    } = {}, snapshot?: BudgetSnapshot) { this.documentLimit = clampDocumentLimit(options.documentLimit); this.depthLimit = clampDepthLimit(options.depthLimit); this.startedAt = snapshot?.startedAt ?? Date.now(); if (snapshot) {
         this.documents = snapshot.documents;
         this.htmlBytes = snapshot.htmlBytes;
         this.designBytes = snapshot.designBytes;

@@ -38,7 +38,7 @@ function session(member: boolean) {
     companies: query(company),
     knowledge_entries: query([{ id: entryId, kind: "company_foundation", company_id: companyId,
       current_revision: 2, created_by: userId, created_at: time }]),
-    knowledge_entry_versions: query(revision),
+    knowledge_entry_versions: query([revision]),
     source_pages: query(fixture.provenance.sources.map((source) => ({
       ...source, company_id: companyId, scrape_job_id: userId, normalized_url: source.url,
       final_url: source.url, capture_status: "captured",
@@ -135,4 +135,11 @@ it("returns a valid private PDF for the selected saved version", async () => {
   expect(response.headers.get("cache-control")).toContain("no-store");
   expect((await PDFDocument.load(await response.arrayBuffer())).getPageCount()).toBeGreaterThan(1);
   expect(client.from.mock.calls.map(([table]) => table)).toEqual(["company_members", "knowledge_base_versions"]);
+});
+
+it("reads every current revision of a draft with one versions query", async () => {
+  const { client, tables } = session(true);
+  expect((await request("draft", "json")).status).toBe(200);
+  expect(client.from.mock.calls.filter(([table]) => table === "knowledge_entry_versions")).toHaveLength(1);
+  expect(tables.knowledge_entry_versions.in).toHaveBeenCalledWith("entry_id", [entryId]);
 });

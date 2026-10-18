@@ -183,6 +183,28 @@ describe("the history of a deleted entry", () => {
   });
 });
 
+describe("the history of a live entry", () => {
+  it("returns at most the 50 newest revisions", async () => {
+    const calls: unknown[][] = [];
+    const client = {
+      from: vi.fn((table: string) => {
+        const query: any = {
+          select: () => query, eq: () => query,
+          order: (...args: unknown[]) => (calls.push(["order", ...args]), query),
+          limit: (n: number) => (calls.push(["limit", n]), query),
+          maybeSingle: async () => ({ data: table === "company_members" ? { role: "viewer" } : { kind: "company_foundation" }, error: null }),
+          then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(resolve),
+        };
+        return query;
+      }),
+    };
+    vi.mocked(verifiedSession).mockResolvedValue({ client, user: { id: user } } as never);
+    const response = await history(new Request(`${ORIGIN}/api/companies/${company}/entries/${entry}/history`), params());
+    expect(response.status).toBe(200);
+    expect(calls).toEqual([["order", "revision", { ascending: false }], ["limit", 50]]);
+  });
+});
+
 describe("the draft read", () => {
   it("names the columns it reads from knowledge_entries, so the tombstone columns never reach the browser", async () => {
     const selects: Record<string, string[]> = {};

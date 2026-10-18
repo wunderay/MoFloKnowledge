@@ -1,6 +1,7 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { publicConfig } from "../config/server";
 export async function createClient() {
   const store = await cookies();
@@ -26,7 +27,8 @@ export async function createClient() {
     },
   });
 }
-export async function verifiedSession() {
+// Cached per request so a layout and its page share one auth call.
+export const verifiedSession = cache(async () => {
   const client = await createClient();
   const { data, error } = await client.auth.getUser();
   if (
@@ -38,4 +40,4 @@ export async function verifiedSession() {
     throw new Error("Authentication service is temporarily unavailable.");
   }
   return { client, user: error ? null : data.user };
-}
+});

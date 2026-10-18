@@ -66,7 +66,7 @@ function session() {
     from: vi.fn((table: string) => table === "company_members" ? builder(table, { role: "viewer" })
       : table === "companies" ? builder(table, company)
       : table === "knowledge_entries" ? builder(table, entries)
-      : table === "knowledge_entry_versions" ? builder(table, null, revisions)
+      : table === "knowledge_entry_versions" ? builder(table, Object.values(revisions))
       : builder(table, [])),
     rpc: vi.fn(),
   };
