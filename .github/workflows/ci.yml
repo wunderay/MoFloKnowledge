@@ -38,6 +38,7 @@ jobs:
       # Known-vulnerable runtime dependencies (OWASP Top 10:2025 A03). Dev-only packages are not shipped.
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
+      - run: npx knip
       - run: npm run typecheck
       - run: node scripts/generate-sql-contract.mjs --check
       - run: npm run unit

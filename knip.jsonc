@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Entry points knip cannot infer: the container entrypoints and the scripts/tests that run them.
+  "entry": ["src/egress/main.ts", "src/renderer/main.ts", "scripts/*.mjs", "tests/**/*.{ts,tsx}"],
+  "project": ["src/**/*.{ts,tsx,css}", "tests/**/*.{ts,tsx}", "scripts/*.mjs"],
+  "ignoreDependencies": [
+    // Next.js resolves `server-only` itself; there is deliberately no package.json entry.
+    "server-only",
+    // Transitive types/tools imported directly: domhandler (cheerio's DOM types, test and parser helpers) and
+    // jszip (docx's zip reader, used by the export tests). Adding them would be a dependency change.
+    "domhandler",
+    "jszip",
+    // Referenced by id from .secretlintrc.json, which knip does not read.
+    "@secretlint/secretlint-rule-preset-recommend"
+  ],
+  // `flock` is a system tool used by scripts/test-browser.mjs.
+  "ignoreBinaries": ["flock"]
+}

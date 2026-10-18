@@ -39,12 +39,16 @@ See [worker behavior](src/worker/README.md), [runtime support](docs/runtime-supp
 ## Checks
 
 ```sh
+npm run lint
+npx knip
 npm run unit
 TEST_DATABASE_URL='postgresql://migration_user:REPLACE_ME@127.0.0.1:5432/moflo_test' npm run db:test
 npm run typecheck
 npm run build
 npm run e2e
 ```
+
+`npm run lint` runs ESLint and then `secretlint` (raw API keys and tokens; fake fixtures are marked with `secretlint-disable-next-line` comments or listed in `.secretlintignore`). `npm install` also installs a git `pre-commit` hook (simple-git-hooks) that runs secretlint on staged files; it leaves other hooks alone and skips when dependencies are not installed. Bypass it once with `SKIP_SIMPLE_GIT_HOOKS=1 git commit ...`.
 
 The database suite creates disposable databases and requires a test migration login able to create/drop them. The browser scenario needs real test Auth users, migrated disposable PostgreSQL, a controlled fixture-only worker, `MOFLO_E2E_OWNER_EMAIL`, `MOFLO_E2E_OWNER_PASSWORD`, `MOFLO_E2E_SECOND_EMAIL`, `MOFLO_E2E_SECOND_PASSWORD`, and `MOFLO_E2E_FIXTURE_URL`; `CHROMIUM_PATH` can select the installed Chromium binary. Missing E2E inputs do not prove acceptance. See [deterministic extraction checks](docs/model-qualification.md). Use [renderer host qualification](docs/renderer-host-qualification.md) before enabling arbitrary URL rendering; application hooks and local fixtures do not prove host confinement.
 
