@@ -24,7 +24,7 @@ type RankedCandidate = FieldCandidate & { priority?: number };
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const excluded = /\b(?:articles?|news|blog|testimonials?|reviews?|privacy|terms|cookies?|accessibility)\b/i;
 const companyRoute = /^\/(?:$|(?:services|products|offerings)\/?$|(?:about(?:-us)?|company|firm(?:-background)?|our-story|contact|team|people|staff)(?:\/|$))/i;
-const legalSuffix = /\b(?:L\.?L\.?C\.?|L\.?L\.?P\.?|Ltd\.?|Limited|Inc\.?|Incorporated|Corporation|Corp\.?|P\.?L\.?L\.?C\.?)\b\.?/i;
+export const legalSuffix = /\b(?:L\.?L\.?C\.?|L\.?L\.?P\.?|Ltd\.?|Limited|Inc\.?|Incorporated|Corporation|Corp\.?|P\.?L\.?L\.?C\.?)\b\.?/i;
 
 /** Extract published passages. Rules select source text; they never rewrite a firm's claims. */
 export function companyTextCandidates(

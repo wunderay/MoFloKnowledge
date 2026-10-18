@@ -2,6 +2,11 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { nameKey as normalizedName } from "./text";
 import { serviceEntityKey } from "./services-text";
+import { bareTenDigitPhone } from "./identity";
+import { legalSuffix } from "./company-text";
+
+const nameKey = (name: string) =>
+  name.replace(new RegExp(legalSuffix.source, "gi"), "").replace(/\bco\.?(?=\s*$)/i, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 type ObjectValue = Record<string, unknown>;
 interface Node { value: ObjectValue; path: string }
@@ -110,6 +115,20 @@ export function structuredCandidates(
         add("/company_foundation/alternative_company_names", [{ text: string }], [observed]);
       }
     });
+    // The declared business name and legal name are verbatim alternative names.
+    // A name that is only the site's own host label (optionally with a legal suffix) adds nothing.
+    const hostLabel = nameKey(new URL(page.capture.finalUrl).hostname.replace(/^www\./, "").split(".")[0]);
+    for (const key of ["name", "legalName"]) {
+      const string = text(value[key]), observed = leaf(path + "/" + key);
+      if (string && observed?.value === string && nameKey(string) !== hostLabel) {
+        add("/company_foundation/alternative_company_names", [{ text: string }], [observed]);
+      }
+    }
+    const telephone = text(value.telephone), phoneObserved = leaf(path + "/telephone");
+    const phone = telephone ? bareTenDigitPhone(telephone) : null;
+    if (phone && phoneObserved?.value === telephone) {
+      add("/online_presence/phone", phone, [phoneObserved]);
+    }
     const addresses = Array.isArray(value.address) ? value.address : [value.address];
     addresses.forEach((rawAddress, index) => {
     const addressPath = path + "/address" + (Array.isArray(value.address) ? "/" + index : "");

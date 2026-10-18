@@ -1,0 +1,818 @@
+{
+ "normalized_url": "https://account-it.net/",
+ "final_url": "https://account-it.net/",
+ "title": "Account-it Consulting Services, LLC Tax Experts in Florida",
+ "capture_status": "captured",
+ "cleaned_content": "Maximizing returns,\nminimizing stress: Your top-rated tax partner!\nLet Account-it Consulting Services, LLC in Florida be your ultimate tax season relief.\nGet started\nOur Services\nWelcome To Account-it Consulting Services, LLC\nTax Preparation and Planning\nPayroll\nIRS Tax Problems\nSee why our clients love us!\nRaffaella F.\n7 years ago\nCertifications & Memberships\nStart A Conversation With Account-it Consulting Services, LLC\nWe're committed to delivering timely and reliable solutions for your tax and accounting needs. Simply fill out this form to reach out to us.\nBoynton Beach, Florida 33437\n(954) 592-8630\ndougc@account-it.net\nFirst name\nLast name\nEmail\nPhone\nMessage\nI confirm this is a service inquiry and not an advertising message or solicitation. By\nclicking \u201cSubmit\u201d, I acknowledge and agree to the creation of an account and to the\n\nTerms of Service\n\nand\n\nPrivacy Policy .\nI consent to receive SMS messages and agree with the\n\nTerms of Service.\nSubmit\n\nSending...\nLatest Articles\nClient Login\nSchedule Appointment\nAccount-it Consulting Services, LLC\nHome\nFirm Background\nAbout Doug Cohen\nPrivacy Policy\nReferrals\nTax Preparation & Planning\nAccounting & Bookkeeping\nQuickBooks\nLearning Center\nContact\nNew Car-Loan-Interest Deduction: What Vehicle Buyers Need to Know\n\nYou buy a new vehicle.You finance part of the purchase.You make your monthly payments.And for (...)\nRead full story\nBuying a Business? What the Numbers Should Tell You Before You Make an Offer\n\nStarting a company from scratch is no longer the only path into entrepreneurship.For a growing (...)\nAccountable Plans: The Tax-Smart Way to Reimburse Employees\n\nAn accountable plan is one of the simplest ways for a business to reimburse employees for legi (...)\nWhy Clean Financial Statements Matter When You Sell a Business\n\nA business owner may spend years building a strong company and still discover something frustr (...)\nAbout Us\nServices\nPowered by CountingWorks PRO\nEmail address\nGet weekly articles in your inbox on the latest tax law changes and tips for your financial health.\nNotify me\n\nSending...\nOpen menu\nNext \u00bb\n2\n3\n4\n5\n6\n7\n8\n9\n10\n562\n563\nTerms of Service\nTerms of Service.\nTerms Of Service\nAccessibility Statement",
+ "observations": {
+  "ctas": [
+   {
+    "label": "Open menu",
+    "destination": null
+   },
+   {
+    "label": "Notify me\n\nSending...",
+    "destination": null
+   },
+   {
+    "label": "Next \u00bb",
+    "destination": null
+   },
+   {
+    "label": "2",
+    "destination": null
+   },
+   {
+    "label": "3",
+    "destination": null
+   },
+   {
+    "label": "4",
+    "destination": null
+   },
+   {
+    "label": "5",
+    "destination": null
+   },
+   {
+    "label": "6",
+    "destination": null
+   },
+   {
+    "label": "7",
+    "destination": null
+   },
+   {
+    "label": "8",
+    "destination": null
+   },
+   {
+    "label": "9",
+    "destination": null
+   },
+   {
+    "label": "10",
+    "destination": null
+   },
+   {
+    "label": "562",
+    "destination": null
+   },
+   {
+    "label": "563",
+    "destination": null
+   },
+   {
+    "label": "",
+    "destination": null
+   },
+   {
+    "label": "Terms of Service",
+    "destination": null
+   },
+   {
+    "label": "Privacy Policy",
+    "destination": null
+   },
+   {
+    "label": "Terms of Service.",
+    "destination": null
+   },
+   {
+    "label": "Submit\n\nSending...",
+    "destination": null
+   },
+   {
+    "label": "Terms Of Service",
+    "destination": null
+   },
+   {
+    "label": "Privacy Policy",
+    "destination": null
+   },
+   {
+    "label": "Accessibility Statement",
+    "destination": null
+   }
+  ],
+  "forms": [
+   {
+    "action": null,
+    "labels": [
+     "Email address"
+    ],
+    "method": "GET",
+    "context": "Get weekly articles in your inbox on the latest tax law changes and tips for your financial health.",
+    "heading": "Latest Articles",
+    "submitLabels": [
+     "Notify me\n\nSending..."
+    ]
+   },
+   {
+    "action": null,
+    "labels": [
+     "First name",
+     "Last name",
+     "Email",
+     "Phone",
+     "Message"
+    ],
+    "method": "GET",
+    "context": "We're committed to delivering timely and reliable solutions for your tax and accounting needs. Simply fill out this form to reach out to us.",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC",
+    "submitLabels": [
+     "Submit\n\nSending..."
+    ]
+   }
+  ],
+  "links": [
+   {
+    "url": "https://account-it.net/client-hub",
+    "label": "Client Login"
+   },
+   {
+    "url": "https://account-it.net/appointment",
+    "label": "Schedule Appointment"
+   },
+   {
+    "url": "https://www.facebook.com/account.itconsulting/?ref=settings",
+    "label": ""
+   },
+   {
+    "url": "https://www.linkedin.com/in/doug-cohen-9121a86/",
+    "label": ""
+   },
+   {
+    "url": "https://www.taxbuzz.com/find-the-best-cpa/florida/boynton-beach/account-it-consulting-services",
+    "label": ""
+   },
+   {
+    "url": "https://www.countingworks.com/professionals/florida/boynton-beach/douglas-cohen",
+    "label": ""
+   },
+   {
+    "url": "https://account-it.net/",
+    "label": "Account-it Consulting Services, LLC"
+   },
+   {
+    "url": "https://account-it.net/",
+    "label": "Home"
+   },
+   {
+    "url": "https://account-it.net/firm-background",
+    "label": "Firm Background"
+   },
+   {
+    "url": "https://account-it.net/about-us/doug-cohen",
+    "label": "About Doug Cohen"
+   },
+   {
+    "url": "https://account-it.net/firm-background/privacy-policy",
+    "label": "Privacy Policy"
+   },
+   {
+    "url": "https://account-it.net/firm-background/referrals",
+    "label": "Referrals"
+   },
+   {
+    "url": "https://account-it.net/services/tax-preparation-planning",
+    "label": "Tax Preparation & Planning"
+   },
+   {
+    "url": "https://account-it.net/services/payroll",
+    "label": "Payroll"
+   },
+   {
+    "url": "https://account-it.net/services/accounting-bookkeeping",
+    "label": "Accounting & Bookkeeping"
+   },
+   {
+    "url": "https://account-it.net/services/irs-tax-problems",
+    "label": "IRS Tax Problems"
+   },
+   {
+    "url": "https://account-it.net/services/quickbooks",
+    "label": "QuickBooks"
+   },
+   {
+    "url": "https://account-it.net/learning-center",
+    "label": "Learning Center"
+   },
+   {
+    "url": "https://account-it.net/contact",
+    "label": "Contact"
+   },
+   {
+    "url": "https://account-it.net/appointment",
+    "label": "Schedule Appointment"
+   },
+   {
+    "url": "https://account-it.net/contact",
+    "label": "Get started"
+   },
+   {
+    "url": "https://account-it.net/services",
+    "label": "Our Services"
+   },
+   {
+    "url": "https://account-it.net/services/tax-preparation-planning",
+    "label": ""
+   },
+   {
+    "url": "https://account-it.net/services/tax-preparation-planning",
+    "label": "Tax Preparation and Planning"
+   },
+   {
+    "url": "https://account-it.net/services/payroll",
+    "label": ""
+   },
+   {
+    "url": "https://account-it.net/services/payroll",
+    "label": "Payroll"
+   },
+   {
+    "url": "https://account-it.net/services/irs-tax-problems",
+    "label": ""
+   },
+   {
+    "url": "https://account-it.net/services/irs-tax-problems",
+    "label": "IRS Tax Problems"
+   },
+   {
+    "url": "https://account-it.net/blog/new-car-loan-interest-deduction-what-vehicle-buyers-need-to-know",
+    "label": "New Car-Loan-Interest Deduction: What Vehicle Buyers Need to Know\n\nYou buy a new vehicle.You finance part of the purchase.You make your monthly payments.And for (...)"
+   },
+   {
+    "url": "https://account-it.net/blog/new-car-loan-interest-deduction-what-vehicle-buyers-need-to-know",
+    "label": "Read full story"
+   },
+   {
+    "url": "https://account-it.net/blog/buying-a-business-what-the-numbers-should-tell-you-before-you-make-an-offer",
+    "label": "Buying a Business? What the Numbers Should Tell You Before You Make an Offer\n\nStarting a company from scratch is no longer the only path into entrepreneurship.For a growing (...)"
+   },
+   {
+    "url": "https://account-it.net/blog/buying-a-business-what-the-numbers-should-tell-you-before-you-make-an-offer",
+    "label": "Read full story"
+   },
+   {
+    "url": "https://account-it.net/blog/accountable-plans-the-tax-smart-way-to-reimburse-employees",
+    "label": "Accountable Plans: The Tax-Smart Way to Reimburse Employees\n\nAn accountable plan is one of the simplest ways for a business to reimburse employees for legi (...)"
+   },
+   {
+    "url": "https://account-it.net/blog/accountable-plans-the-tax-smart-way-to-reimburse-employees",
+    "label": "Read full story"
+   },
+   {
+    "url": "https://account-it.net/blog/why-clean-financial-statements-matter-when-you-sell-a-business",
+    "label": "Why Clean Financial Statements Matter When You Sell a Business\n\nA business owner may spend years building a strong company and still discover something frustr (...)"
+   },
+   {
+    "url": "https://account-it.net/blog/why-clean-financial-statements-matter-when-you-sell-a-business",
+    "label": "Read full story"
+   },
+   {
+    "url": "https://account-it.net/",
+    "label": "Home"
+   },
+   {
+    "url": "https://account-it.net/firm-background",
+    "label": "About Us"
+   },
+   {
+    "url": "https://account-it.net/services",
+    "label": "Services"
+   },
+   {
+    "url": "https://account-it.net/learning-center",
+    "label": "Learning Center"
+   },
+   {
+    "url": "https://account-it.net/contact",
+    "label": "Contact"
+   },
+   {
+    "url": "https://www.countingworkspro.com/",
+    "label": "Powered by CountingWorks PRO"
+   }
+  ],
+  "jsonLd": [
+   {
+    "@graph": [
+     {
+      "@id": "#accounting-service",
+      "url": "https://account-it.net",
+      "logo": "https://cw3prd.s3.us-west-1.amazonaws.com/2334180/account-logo.png",
+      "name": "Account-it Consulting Services, LLC",
+      "@type": [
+       "LocalBusiness",
+       "AccountingService"
+      ],
+      "email": "dougc@account-it.net",
+      "address": {
+       "@type": "PostalAddress",
+       "postalCode": "33437",
+       "addressRegion": "Florida",
+       "addressLocality": "Boynton Beach"
+      },
+      "telephone": "(954) 592-8630",
+      "description": "Account-it Consulting Services, LLC will take care of your tax preparation and planning needs so you can focus on life in beautiful Boynton Beach."
+     }
+    ],
+    "@context": "https://schema.org"
+   }
+  ],
+  "headings": [
+   {
+    "text": "Maximizing returns,",
+    "level": 1
+   },
+   {
+    "text": "minimizing stress: Your top-rated tax partner!",
+    "level": 1
+   },
+   {
+    "text": "Welcome To Account-it Consulting Services, LLC",
+    "level": 2
+   },
+   {
+    "text": "See why our clients love us!",
+    "level": 2
+   },
+   {
+    "text": "",
+    "level": 2
+   },
+   {
+    "text": "Raffaella F.",
+    "level": 4
+   },
+   {
+    "text": "Latest Articles",
+    "level": 2
+   },
+   {
+    "text": "Start A Conversation With Account-it Consulting Services, LLC",
+    "level": 2
+   }
+  ],
+  "segments": [
+   {
+    "id": "s1",
+    "text": "Maximizing returns,"
+   },
+   {
+    "id": "s2",
+    "text": "minimizing stress: Your top-rated tax partner!"
+   },
+   {
+    "id": "s3",
+    "text": "Let Account-it Consulting Services, LLC in Florida be your ultimate tax season relief.",
+    "heading": "minimizing stress: Your top-rated tax partner!"
+   },
+   {
+    "id": "s4",
+    "text": "Get started",
+    "heading": "minimizing stress: Your top-rated tax partner!"
+   },
+   {
+    "id": "s5",
+    "text": "Our Services",
+    "heading": "minimizing stress: Your top-rated tax partner!"
+   },
+   {
+    "id": "s6",
+    "text": "Welcome To Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s7",
+    "text": "Tax Preparation and Planning",
+    "heading": "Welcome To Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s8",
+    "text": "Payroll",
+    "heading": "Welcome To Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s9",
+    "text": "IRS Tax Problems",
+    "heading": "Welcome To Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s10",
+    "text": "See why our clients love us!"
+   },
+   {
+    "id": "s11",
+    "text": "Raffaella F."
+   },
+   {
+    "id": "s12",
+    "text": "7 years ago",
+    "heading": "Raffaella F."
+   },
+   {
+    "id": "s13",
+    "text": "Certifications & Memberships",
+    "heading": "Raffaella F."
+   },
+   {
+    "id": "s14",
+    "text": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s15",
+    "text": "We're committed to delivering timely and reliable solutions for your tax and accounting needs. Simply fill out this form to reach out to us.",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s16",
+    "text": "Boynton Beach, Florida 33437",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s17",
+    "text": "(954) 592-8630",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s18",
+    "text": "dougc@account-it.net",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s19",
+    "text": "First name",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s20",
+    "text": "Last name",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s21",
+    "text": "Email",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s22",
+    "text": "Phone",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s23",
+    "text": "Message",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s24",
+    "text": "I confirm this is a service inquiry and not an advertising message or solicitation. By\nclicking \u201cSubmit\u201d, I acknowledge and agree to the creation of an account and to the\n\nTerms of Service\n\nand\n\nPrivacy Policy .",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s25",
+    "text": "I consent to receive SMS messages and agree with the\n\nTerms of Service.",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s26",
+    "text": "Submit\n\nSending...",
+    "heading": "Start A Conversation With Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s27",
+    "text": "Latest Articles"
+   },
+   {
+    "id": "s28",
+    "text": "Client Login"
+   },
+   {
+    "id": "s29",
+    "text": "Schedule Appointment"
+   },
+   {
+    "id": "s30",
+    "text": "Account-it Consulting Services, LLC"
+   },
+   {
+    "id": "s31",
+    "text": "Home"
+   },
+   {
+    "id": "s32",
+    "text": "Firm Background"
+   },
+   {
+    "id": "s33",
+    "text": "About Doug Cohen"
+   },
+   {
+    "id": "s34",
+    "text": "Privacy Policy"
+   },
+   {
+    "id": "s35",
+    "text": "Referrals"
+   },
+   {
+    "id": "s36",
+    "text": "Tax Preparation & Planning"
+   },
+   {
+    "id": "s37",
+    "text": "Accounting & Bookkeeping"
+   },
+   {
+    "id": "s38",
+    "text": "QuickBooks"
+   },
+   {
+    "id": "s39",
+    "text": "Learning Center"
+   },
+   {
+    "id": "s40",
+    "text": "Contact"
+   },
+   {
+    "id": "s41",
+    "text": "New Car-Loan-Interest Deduction: What Vehicle Buyers Need to Know\n\nYou buy a new vehicle.You finance part of the purchase.You make your monthly payments.And for (...)"
+   },
+   {
+    "id": "s42",
+    "text": "Read full story"
+   },
+   {
+    "id": "s43",
+    "text": "Buying a Business? What the Numbers Should Tell You Before You Make an Offer\n\nStarting a company from scratch is no longer the only path into entrepreneurship.For a growing (...)"
+   },
+   {
+    "id": "s44",
+    "text": "Accountable Plans: The Tax-Smart Way to Reimburse Employees\n\nAn accountable plan is one of the simplest ways for a business to reimburse employees for legi (...)"
+   },
+   {
+    "id": "s45",
+    "text": "Why Clean Financial Statements Matter When You Sell a Business\n\nA business owner may spend years building a strong company and still discover something frustr (...)"
+   },
+   {
+    "id": "s46",
+    "text": "About Us"
+   },
+   {
+    "id": "s47",
+    "text": "Services"
+   },
+   {
+    "id": "s48",
+    "text": "Powered by CountingWorks PRO"
+   },
+   {
+    "id": "s49",
+    "text": "Email address"
+   },
+   {
+    "id": "s50",
+    "text": "Get weekly articles in your inbox on the latest tax law changes and tips for your financial health."
+   },
+   {
+    "id": "s51",
+    "text": "Notify me\n\nSending..."
+   },
+   {
+    "id": "s52",
+    "text": "Open menu"
+   },
+   {
+    "id": "s53",
+    "text": "Next \u00bb"
+   },
+   {
+    "id": "s54",
+    "text": "2"
+   },
+   {
+    "id": "s55",
+    "text": "3"
+   },
+   {
+    "id": "s56",
+    "text": "4"
+   },
+   {
+    "id": "s57",
+    "text": "5"
+   },
+   {
+    "id": "s58",
+    "text": "6"
+   },
+   {
+    "id": "s59",
+    "text": "7"
+   },
+   {
+    "id": "s60",
+    "text": "8"
+   },
+   {
+    "id": "s61",
+    "text": "9"
+   },
+   {
+    "id": "s62",
+    "text": "10"
+   },
+   {
+    "id": "s63",
+    "text": "562"
+   },
+   {
+    "id": "s64",
+    "text": "563"
+   },
+   {
+    "id": "s65",
+    "text": "Terms of Service"
+   },
+   {
+    "id": "s66",
+    "text": "Terms of Service."
+   },
+   {
+    "id": "s67",
+    "text": "Terms Of Service"
+   },
+   {
+    "id": "s68",
+    "text": "Accessibility Statement"
+   }
+  ],
+  "addresses": [],
+  "canonical": "https://account-it.net/",
+  "priceText": [],
+  "redirects": [],
+  "truncated": false,
+  "html_bytes": 375863,
+  "limitations": [],
+  "socialLinks": [
+   {
+    "url": "https://www.facebook.com/account.itconsulting/?ref=settings",
+    "label": ""
+   },
+   {
+    "url": "https://www.linkedin.com/in/doug-cohen-9121a86/",
+    "label": ""
+   }
+  ],
+  "declaredStyles": [
+   {
+    "colors": [
+     {
+      "value": "rgba(0, 0, 0, .6)",
+      "property": "background-color"
+     }
+    ],
+    "selector": "dialog#livewire-error::backdrop",
+    "declarations": "background-color: rgba(0, 0, 0, .6);"
+   },
+   {
+    "colors": [],
+    "selector": ".font-body",
+    "declarations": "font-family: Inter;"
+   },
+   {
+    "colors": [],
+    "selector": ".font-primary",
+    "declarations": "font-family: Lato;"
+   },
+   {
+    "colors": [],
+    "selector": ".font-secondary",
+    "declarations": "font-family: Inter;"
+   },
+   {
+    "colors": [
+     {
+      "value": "rgba(137, 137, 137, var(--tw-bg-opacity))",
+      "property": "background-color"
+     }
+    ],
+    "selector": ".bg-primary",
+    "declarations": "background-color: rgba(137, 137, 137, var(--tw-bg-opacity));"
+   },
+   {
+    "colors": [
+     {
+      "value": "rgba(137, 137, 137, var(--tw-bg-opacity))",
+      "property": "background-color"
+     }
+    ],
+    "selector": ".hover\\:bg-primary:hover",
+    "declarations": "background-color: rgba(137, 137, 137, var(--tw-bg-opacity));"
+   },
+   {
+    "colors": [
+     {
+      "value": "#898989",
+      "property": "color"
+     }
+    ],
+    "selector": ".hover\\:tx-primary:hover",
+    "declarations": "color: #898989;"
+   },
+   {
+    "colors": [
+     {
+      "value": "#898989",
+      "property": "color"
+     }
+    ],
+    "selector": ".tx-primary",
+    "declarations": "color: #898989;"
+   },
+   {
+    "colors": [
+     {
+      "value": "rgba(31, 41, 55, var(--tw-bg-opacity))",
+      "property": "background-color"
+     }
+    ],
+    "selector": ".bg-secondary",
+    "declarations": "background-color: rgba(31, 41, 55, var(--tw-bg-opacity));"
+   },
+   {
+    "colors": [
+     {
+      "value": "rgba(31, 41, 55, var(--tw-bg-opacity))",
+      "property": "background-color"
+     }
+    ],
+    "selector": ".hover\\:bg-secondary:hover",
+    "declarations": "background-color: rgba(31, 41, 55, var(--tw-bg-opacity));"
+   },
+   {
+    "colors": [
+     {
+      "value": "#1F2937",
+      "property": "color"
+     }
+    ],
+    "selector": ".hover\\:tx-secondary:hover",
+    "declarations": "color: #1F2937;"
+   },
+   {
+    "colors": [
+     {
+      "value": "#1F2937",
+      "property": "color"
+     }
+    ],
+    "selector": ".tx-secondary",
+    "declarations": "color: #1F2937;"
+   },
+   {
+    "colors": [
+     {
+      "value": "rgba(46, 46, 46, var(--tw-bg-opacity))",
+      "property": "background-color"
+     }
+    ],
+    "selector": ".bg-tertiary",
+    "declarations": "background-color: rgba(46, 46, 46, var(--tw-bg-opacity));"
+   },
+   {
+    "colors": [
+     {
+      "value": "rgba(46, 46, 46, var(--tw-bg-opacity))",
+      "property": "background-color"
+     }
+    ],
+    "selector": ".hover\\:bg-tertiary:hover",
+    "declarations": "background-color: rgba(46, 46, 46, var(--tw-bg-opacity));"
+   },
+   {
+    "colors": [
+     {
+      "value": "#2E2E2E",
+      "property": "color"
+     }
+    ],
+    "selector": ".hover\\:tx-tertiary:hover",
+    "declarations": "color: #2E2E2E;"
+   },
+   {
+    "colors": [
+     {
+      "value": "#2E2E2E",
+      "property": "color"
+     }
+    ],
+    "selector": ".tx-tertiary",
+    "declarations": "color: #2E2E2E;"
+   }
+  ],
+  "metaDescription": "Account-it Consulting Services, LLC will take care of your tax preparation and planning needs so you can focus on life in beautiful Boynton Beach."
+ }
+}
