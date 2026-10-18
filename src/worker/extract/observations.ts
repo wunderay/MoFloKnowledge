@@ -1,7 +1,7 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { TechnicalObservation } from "./types";
 import type { RenderResult } from "../../contracts/render-task";
-import { stableId } from "./identity";
+import { stableId, stripTrackingParams } from "./identity";
 import type { DeclaredLogo, DeclaredStyle } from "../capture/sections";
 /** Bounded plain observations, never executable metadata or provider instructions. */
 export function technicalObservations(
@@ -89,6 +89,12 @@ export function technicalObservations(
   for (const link of page.capture.links) {
     add(null, "href", link.url, link.url);
     add(null, "anchor-label", link.label, link.url);
+  }
+  // A person's own profile is kept as a labelled observation; it is never the company's profile.
+  for (const link of page.capture.links) {
+    if (/^(?:www\.)?linkedin\.com$/.test(new URL(link.url).hostname) && /^\/in\/[^/]+/i.test(new URL(link.url).pathname)) {
+      add(null, "personal-linkedin-profile", stripTrackingParams(link.url), link.url);
+    }
   }
   const textItems = (name: string, property: string) => {
     if (Array.isArray(raw[name])) {

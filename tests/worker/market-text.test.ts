@@ -66,8 +66,7 @@ describe("literal market and conversion extraction", () => {
     ]));
     expect(values("ctas").map((value) => (value as { label: string }).label))
       .not.toEqual(expect.arrayContaining(["Open menu", "Privacy Policy", "2"]));
-    expect(values("channels")).toContainEqual({ channel_type: null, label: "Contact", url: "https://example.com/contact" });
-    expect(values("channels").filter((item) => (item as { url: string }).url === "https://example.com/contact")).toHaveLength(1);
+    expect(values("channels")).toEqual([]);
     expect(values("funnels")).toEqual([]);
     expect(MARKET_TEXT_SUPPORTED_FIELDS).not.toContain("/market_and_customers/funnels");
     // A capture can expose its own form submit without a separate page-level CTA observation.
@@ -84,7 +83,7 @@ describe("literal market and conversion extraction", () => {
     notification.page.capture.observations.forms = [{ action: null, context, submitLabels: ["Notify me"] }];
     const notificationCandidates = marketTextCandidates(notification.page, notification.observations);
     const channel = notificationCandidates.find((candidate) => candidate.field.endsWith("/channels"));
-    expect(channel?.value).toEqual([{ channel_type: null, label: context, url: notification.page.capture.finalUrl }]);
+    expect(channel?.value).toEqual([{ channel_type: "Newsletter", label: "Email newsletter", url: notification.page.capture.finalUrl }]);
     expect(channel?.note).toMatch(/^Observed form location/);
     expect(channel?.segment_ids.length).toBeGreaterThan(0);
     validateCandidates(notificationCandidates, notification.page, notification.observations, "11111111-1111-4111-8111-111111111111");

@@ -6,7 +6,7 @@ import { deterministicCandidates } from "./deterministic";
 import { technicalObservations } from "./observations";
 import { reduceCandidates } from "./reduce";
 // Change this version when deterministic rules or checkpoint candidate formats change.
-export const EXTRACTOR_VERSION = "deterministic-v6";
+export const EXTRACTOR_VERSION = "deterministic-v7";
 export async function extractAndFinish(
   job: Job,
   repository: JobRepository,

@@ -17,7 +17,7 @@ interface Section {
 const problem = /\b(?:stress(?:ful)?|difficult|complex(?:ities)?|headaches?|burden|costly mistakes|delays|problems?|worry|overlook(?:ing)?|struggl\w*)\b/i;
 const benefit = /\b(?:save|saving|reduce|reducing|minimi[sz]e|maximi[sz]e|simplify|improve|resolve|ensur(?:e|ing)|protect|secure|focus on|comp[l]?iant|compliance|peace of mind|keep you)\b/i;
 const customer = /\b(?:you|your|clients?|customers?|business(?:es)?|companies|individuals|start-ups)\b/i;
-const actionable = /^(?:get started|schedule\b|book\b|make an appointment\b|contact\b|request\b|sign up\b|subscribe\b|notify me\b|submit\b|send\b|start (?:a|your)\b|join\b|buy\b|shop\b|order\b|try\b|download\b|refer\b|referrals\b|call\b)/i;
+const actionable = /^(?:get started|schedule\b|book\b|make an appointment\b|contact\b|request\b|sign up\b|subscribe\b|notify me\b|submit\b|send\b|start (?:a|your)\b|join\b|buy\b|shop\b|order\b|try\b|download\b|refer\b|call\b)/i;
 const buyerNoun = /\b(?:(?:(?:brand[- ]new|small and (?:mid|medium)[- ]sized|small(?:er)?|mid[- ]sized|medium[- ]sized|large|growing|established|start[- ]up|mature|local)\s+){0,3}(?:businesses|business owners|business|companies|corporations|corporation|individuals|entrepreneurs|start-ups|families|homeowners|nonprofits|retirees))(?:\s+(?:with\s+\d+\s*(?:to|[-–—])\s*\d+\s+employees|nearing retirement))?\b/gi;
 /** Identity normalization only: the displayed audience always remains an exact source phrase. */
 export const buyerIdentityKey = (text: string) => clean(text).toLowerCase()
@@ -239,14 +239,11 @@ export function marketTextCandidates(
     texts.forEach((text) => item.texts.add(text));
     channels.set(key, item);
   };
-  const conversion = (label: string, url: string | null, ids: string[], includeChannel = true) => {
+  const conversion = (label: string, url: string | null, ids: string[]) => {
     if (!actionable.test(label) || label.length > 500 || !ids.length) {
       return;
     }
     add("ctas", [{ label, url, purpose: null }], [], ids);
-    if (url && includeChannel) {
-      channel(url, label, url, ids, [], /^(?:get started|submit|send)\b/i.test(label) ? 20 : 80);
-    }
   };
   for (const link of page.capture.links) {
     conversion(link.label, link.url, labelEvidence(link.label, link.url));
@@ -269,7 +266,7 @@ export function marketTextCandidates(
         item.property === "form-submit-label" && item.value === label &&
         (!form.action || item.asset_url === form.action)).map((item) => item.id);
       for (const originalLabel of form.submitLabels ?? []) {
-        conversion(originalLabel.split(/\n/)[0].trim(), form.action ?? null, submitEvidence(originalLabel), false);
+        conversion(originalLabel.split(/\n/)[0].trim(), form.action ?? null, submitEvidence(originalLabel));
       }
       const context = form.context && segmentsFor(form.context).length ? form.context : null;
       const heading = form.heading && segmentsFor(form.heading).length ? form.heading : null;
@@ -279,22 +276,19 @@ export function marketTextCandidates(
       }
       const notification = context && /\b(?:newsletter|subscribe|weekly articles|email updates)\b/i.test(context);
       const contact = /\b(?:contact|conversation|get in touch|reach out|inquir|fill out this form)\b/i.test([heading, context].join(" "));
-      const contactLink = contact && page.capture.links.find((link) => /^contact(?: us)?$/i.test(link.label));
-      if (contactLink) {
-        channel(contactLink.url, contactLink.label, contactLink.url, ids,
-        [heading, context].filter((text): text is string => Boolean(text)));
-      } else if (notification || (heading && actionable.test(heading))) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- when `notification` is false, the branch condition guarantees `heading`
-        const label = notification ? context : heading!;
-        const url = form.action ?? page.capture.finalUrl;
-        channel(`${url}|${label}`, label, url, ids, [label], 90,
-          form.action ? "Observed form entrypoint; submission was not performed." :
+      // Only a form the page itself presents is channel evidence: a newsletter signup or a contact form.
+      const contactLink = page.capture.links.find((link) => /^contact(?: us)?$/i.test(link.label));
+      const url = contact && contactLink ? contactLink.url : form.action ?? page.capture.finalUrl;
+      const label = notification ? "Email newsletter" : contact ? "Website contact form" : null;
+      if (label) {
+        channel(`${url}|${label}`, label, url, ids, [heading, context].filter((text): text is string => Boolean(text)),
+          90, form.action ? "Observed form entrypoint; submission was not performed." :
             "Observed form location; its submission destination was unavailable. Submission was not performed.");
       }
     }
   }
   for (const item of channels.values()) {
-    add("channels", [{ channel_type: null, label: item.label, url: item.url }], [...item.texts], [...item.ids], item.note, item.priority);
+    add("channels", [{ channel_type: item.label === "Email newsletter" ? "Newsletter" : "Contact form", label: item.label, url: item.url }], [...item.texts], [...item.ids], item.note, item.priority);
   }
   return result;
 }
