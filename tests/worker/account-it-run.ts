@@ -12,9 +12,11 @@ const companyId = "11111111-1111-4111-8111-111111111111";
 
 export const pageUrls = rows.map((row) => row.final_url);
 /** Runs the stored rows of the named pages through the same candidate, validation and reduce steps as a crawl. */
-export function runAccountIt(paths: string[]) {
+export function runAccountIt(paths: string[], extraLines: Record<string, string> = {}) {
   const captures: StoredCapture[] = rows.filter((row) => paths.includes(new URL(row.final_url).pathname)).map((row, index) => {
-    const segments = row.observations.segments as PageCapture["segments"];
+    const base = row.observations.segments as PageCapture["segments"];
+    const extra = extraLines[new URL(row.final_url).pathname];
+    const segments = extra ? [...base, { id: "extra", text: extra }] : base;
     return { id: "00000000-0000-4000-8000-00000000000" + index, retrievedAt: "2026-10-18T00:00:00Z", capture: {
       normalizedUrl: row.normalized_url, finalUrl: row.final_url, title: row.title, author: null, publisher: null,
       publishedAt: null, updatedAt: null, segments, text: segments.map((s) => s.text).join("\n"), contentHash: "x",
