@@ -2,6 +2,8 @@
 
 A low-cost setup: Supabase Free provides Auth, Postgres and Storage, the website runs on Vercel Hobby (or on the same VM), and the crawler runs as an always-on `npm run worker` process on an Oracle Cloud Always Free VM.
 
+The automated route (GitHub Actions deploys the website and the worker) is described in [the deploy checklist](deploy.md); this page explains the VM side in more detail and the manual steps behind it.
+
 Check the current terms and limits of every plan before you rely on this. Always Free limits change, and Oracle can reclaim idle Always Free instances. Vercel Hobby is for non-commercial use only.
 
 ## 1. Supabase
@@ -16,25 +18,20 @@ Deploy the Next.js app on Vercel Hobby, or run `npm run web` on the same VM. It 
 
 ## 3. The VM
 
-Create an Ampere A1 instance (Ubuntu). Only outbound access is needed for the worker; open inbound ports only for SSH (and the website, if you host it here).
+Create an Ampere A1 or AMD micro instance (Ubuntu). Only outbound access is needed for the worker; open inbound ports only for SSH (and the website, if you host it here).
+
+Run [`deploy/worker/bootstrap.sh`](../deploy/worker/bootstrap.sh) as root (or paste it as cloud-init user data). It is safe to repeat. It creates the `moflo` user, installs a pinned Node 22 and git, clones the repository to `/opt/moflo` and installs and enables the systemd unit.
 
 ```sh
-sudo apt-get update && sudo apt-get install -y git curl
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
-# Only if the renderer is used:
-sudo apt-get install -y chromium-browser
-
-sudo useradd --system --create-home --home-dir /opt/moflo --shell /usr/sbin/nologin moflo
-sudo -u moflo git clone <your-repo-url> /opt/moflo/app
-cd /opt/moflo/app && sudo -u moflo npm ci
+sudo REPO_URL=https://github.com/<account>/<repo>.git bash deploy/worker/bootstrap.sh
 ```
 
-Create `/etc/moflo-worker.env`, owned by root with mode 0600:
+The worker settings live in `/etc/moflo/worker.env`, owned by root with mode 0600. The deploy workflow writes it on the first deploy; to write it by hand:
 
 ```sh
-WORKER_DATABASE_URL=postgresql://worker_user:...@<supabase-pooler-host>:5432/postgres
+WORKER_DATABASE_URL=postgresql://worker_login.<project-ref>:...@<supabase-pooler-host>:5432/postgres
 WORKER_ID=oracle-1
+NODE_EXTRA_CA_CERTS=/opt/moflo/deploy/supabase-ca.crt
 # Optional: hard limit for one job in milliseconds (default 600000 = 10 minutes, clamped to 1-30 minutes).
 # WORKER_JOB_TIMEOUT_MS=600000
 ```
@@ -43,34 +40,10 @@ A job that runs past the limit is stopped and recorded as failed with code `time
 
 ## 4. systemd
 
-`/etc/systemd/system/moflo-worker.service`:
-
-```ini
-[Unit]
-Description=MoFlo crawl worker
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-User=moflo
-WorkingDirectory=/opt/moflo/app
-EnvironmentFile=/etc/moflo-worker.env
-ExecStart=/usr/bin/npm run worker
-Restart=always
-RestartSec=5
-MemoryMax=2G
-CPUQuota=200%
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=full
-
-[Install]
-WantedBy=multi-user.target
-```
+The unit is [`deploy/worker/moflo-worker.service`](../deploy/worker/moflo-worker.service): it runs `npm run worker` as the `moflo` user from `/opt/moflo`, restarts on failure, caps memory at 2 GB and CPU at two cores, and is sandboxed (`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=full`, `ProtectHome`). Bootstrap installs and enables it; every deploy reinstalls it from the checked-out commit.
 
 ```sh
-sudo systemctl daemon-reload
-sudo systemctl enable --now moflo-worker
+sudo systemctl restart moflo-worker
 journalctl -u moflo-worker -f
 ```
 
@@ -78,4 +51,4 @@ journalctl -u moflo-worker -f
 
 `npm run worker:health` prints queue age, expired leases and recent failures; it needs `MOFLO_OPS_DATABASE_URL` (a read-only operations login).
 
-To update: `sudo -u moflo git -C /opt/moflo/app pull && sudo -u moflo npm --prefix /opt/moflo/app ci && sudo systemctl restart moflo-worker`. Apply any new migrations first.
+The deploy workflow updates the worker. To do it by hand, run `deploy/worker/remote-deploy.sh <full commit sha>` on the VM as a user with sudo. Apply any new migrations first.

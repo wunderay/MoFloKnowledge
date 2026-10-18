@@ -1,0 +1,193 @@
+name: Deploy
+
+# Inert until deploy/deploy.json contains { "enabled": true }. See docs/deploy.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      rewrite_worker_env:
+        description: Replace /etc/moflo/worker.env on the VM with the values from the secrets
+        type: boolean
+        default: false
+
+# One deployment at a time; a newer push waits instead of cancelling a deploy in progress.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Read deploy switch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.switch.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - id: switch
+        name: Read deploy/deploy.json
+        run: |
+          set -euo pipefail
+          jq -e '.enabled | type == "boolean"' deploy/deploy.json > /dev/null \
+            || { echo "::error file=deploy/deploy.json::\"enabled\" must be true or false"; exit 1; }
+          enabled="$(jq -r '.enabled' deploy/deploy.json)"
+          # Only main deploys, including manual runs.
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then enabled=false; fi
+          echo "enabled=${enabled}" >> "$GITHUB_OUTPUT"
+          if [ "$enabled" != "true" ]; then
+            echo "Deployment is off (deploy/deploy.json is not true, or this is not main); nothing will be deployed." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Check required secrets
+        if: steps.switch.outputs.enabled == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          APP_ORIGIN: ${{ secrets.APP_ORIGIN }}
+          ORACLE_SSH_HOST: ${{ secrets.ORACLE_SSH_HOST }}
+          ORACLE_SSH_USER: ${{ secrets.ORACLE_SSH_USER }}
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_SSH_KNOWN_HOSTS: ${{ secrets.ORACLE_SSH_KNOWN_HOSTS }}
+          WORKER_DATABASE_URL: ${{ secrets.WORKER_DATABASE_URL }}
+        run: |
+          missing=""
+          for name in SUPABASE_DB_URL VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID \
+            NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY APP_ORIGIN \
+            ORACLE_SSH_HOST ORACLE_SSH_USER ORACLE_SSH_KEY ORACLE_SSH_KNOWN_HOSTS WORKER_DATABASE_URL; do
+            if [ -z "${!name}" ]; then missing="${missing} ${name}"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Deployment is enabled but these repository secrets are missing:${missing}. See docs/deploy.md."
+            exit 1
+          fi
+          for name in SUPABASE_DB_URL WORKER_DATABASE_URL; do
+            case "${!name}" in
+              *sslmode=verify-full*) ;;
+              *) echo "::error::${name} must include sslmode=verify-full (append ?sslmode=verify-full). See docs/deploy.md."; exit 1 ;;
+            esac
+          done
+
+  migrate:
+    name: Apply database migrations
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Run migrations
+        run: npm run db:migrate -- --allow-production
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          # Supabase's database certificate is signed by its own root, which Node does not trust by default.
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/deploy/supabase-ca.crt
+
+  web:
+    name: Deploy website to Vercel
+    needs: [gate, migrate]
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_CLI: vercel@62.2.0
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      APP_ORIGIN: ${{ secrets.APP_ORIGIN }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Pull Vercel project settings
+        run: npx --yes "$VERCEL_CLI" pull --yes --environment=production
+      # `vercel build` runs the Next.js build here; variables already set in the environment take precedence
+      # over the pulled ones, so the NEXT_PUBLIC_* values above are the ones compiled into the site.
+      - name: Build
+        run: npx --yes "$VERCEL_CLI" build --prod
+      - name: Deploy
+        run: |
+          set -euo pipefail
+          url="$(npx --yes "$VERCEL_CLI" deploy --prebuilt --prod \
+            --env "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" \
+            --env "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            --env "APP_ORIGIN=${APP_ORIGIN}")"
+          echo "Deployed: ${url}" >> "$GITHUB_STEP_SUMMARY"
+
+  worker:
+    name: Deploy crawler worker to the Oracle VM
+    needs: [gate, migrate, web]
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ORACLE_SSH_HOST: ${{ secrets.ORACLE_SSH_HOST }}
+      ORACLE_SSH_USER: ${{ secrets.ORACLE_SSH_USER }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Prepare SSH
+        env:
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_SSH_KNOWN_HOSTS: ${{ secrets.ORACLE_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$ORACLE_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$ORACLE_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+      - name: Write worker environment
+        env:
+          WORKER_DATABASE_URL: ${{ secrets.WORKER_DATABASE_URL }}
+          WORKER_ID: ${{ secrets.WORKER_ID }}
+          WORKER_JOB_TIMEOUT_MS: ${{ secrets.WORKER_JOB_TIMEOUT_MS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          for value in "$WORKER_DATABASE_URL" "$WORKER_ID" "$WORKER_JOB_TIMEOUT_MS"; do
+            case "$value" in *$'\n'*) echo "::error::Worker settings must be single-line values"; exit 1 ;; esac
+          done
+          {
+            echo "WORKER_DATABASE_URL=${WORKER_DATABASE_URL}"
+            echo "WORKER_ID=${WORKER_ID:-oracle-1}"
+            echo "NODE_EXTRA_CA_CERTS=/opt/moflo/deploy/supabase-ca.crt"
+            if [ -n "$WORKER_JOB_TIMEOUT_MS" ]; then echo "WORKER_JOB_TIMEOUT_MS=${WORKER_JOB_TIMEOUT_MS}"; fi
+          } > "$RUNNER_TEMP/worker.env"
+      - name: Deploy over SSH
+        env:
+          REWRITE_ENV: ${{ inputs.rewrite_worker_env && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o BatchMode=yes
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
+          target="${ORACLE_SSH_USER}@${ORACLE_SSH_HOST}"
+          scp "${ssh_opts[@]}" "$RUNNER_TEMP/worker.env" "${target}:moflo-worker.env.incoming"
+          scp "${ssh_opts[@]}" deploy/worker/remote-deploy.sh "${target}:moflo-remote-deploy.sh"
+          ssh "${ssh_opts[@]}" "$target" "REWRITE_ENV=${REWRITE_ENV} bash moflo-remote-deploy.sh ${GITHUB_SHA}"
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/worker.env" ~/.ssh/deploy_key ~/.ssh/known_hosts
