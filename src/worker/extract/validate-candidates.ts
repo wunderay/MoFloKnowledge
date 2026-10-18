@@ -14,6 +14,7 @@ import { documentScope } from "../network/url-scope";
 import { canonicalStringify } from "../../knowledge/canonical-json";
 import { exactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
 import { buyerIdentityKey } from "./market-text";
+import { FOUNDER_STATEMENT_NOTE, founderStatement } from "./text";
 export type ValidatedCandidate = FieldCandidate & {
   id: string;
   kind: (typeof FIELD_REGISTRY)[number]["kind"];
@@ -173,7 +174,9 @@ export function validateCandidates(
         const explicitYear = new RegExp(`(?:founded|established)[^.!?]{0,50}\\b${year}\\b`, "i").test(quotes) ||
           segments.some((segment) => new RegExp(`^Since\\s+${year}[.!]?$`, "i").test(segment.text.trim()));
         const declaredDate = selected.some((o) => /jsonld:.*\/foundingDate$/.test(o.property ?? "") && new RegExp(`^${year}(?:-|$)`).test(o.value ?? ""));
-        if (!explicitYear && !declaredDate) {
+        const founderYear = c.note === FOUNDER_STATEMENT_NOTE &&
+          quotes.split(/(?<=[.!?])\s+/).some((sentence) => founderStatement(sentence)?.year === Number(year));
+        if (!explicitYear && !declaredDate && !founderYear) {
           throw new Error("founding_not_explicit");
         }
       }
