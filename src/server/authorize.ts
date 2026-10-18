@@ -1,14 +1,16 @@
 import "server-only";
+import { cache } from "react";
 import { HttpError, mapDatabaseError } from "./http";
 import type { verifiedSession } from "../lib/supabase/server";
 type Client = Awaited<ReturnType<typeof verifiedSession>>["client"];
-export async function authorizeCompany(
+// Cached per request so a page reading several things for one company checks membership once.
+export const authorizeCompany = cache(async (
   client: Client,
   companyId: string,
   userId: string,
   write = false,
   owner = false,
-) {
+) => {
   const { data, error } = await client
     .from("company_members")
     .select("role")
@@ -29,4 +31,4 @@ export async function authorizeCompany(
     );
   }
   return data.role as "owner" | "editor" | "viewer";
-}
+});

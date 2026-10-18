@@ -43,35 +43,38 @@ export async function readDraft(client: Client, id: string, userId: string) {
       .order("created_at")
       .order("id"),
   );
-  const current = await Promise.all(
-    (entries ?? []).map(async (entry) => {
-      const rev = await checked(
+  const revisions = entries?.length
+    ? await checked(
         client
           .from("knowledge_entry_versions")
           .select("*")
           .eq("company_id", id)
-          .eq("entry_id", entry.id)
-          .eq("revision", entry.current_revision)
-          .maybeSingle(),
-      );
-      if (!rev) {
-        throw new HttpError(
-          503,
-          "invalid_state",
-          "Draft is temporarily unavailable.",
-        );
-      }
-      return {
-        ...entry,
-        ...rev,
-        id: entry.id,
-        created_at: entry.created_at,
-        saved_at: rev.created_at,
-        content: parseStoredEntry(entry.kind, rev.content),
-        provenance: EntryProvenanceSchema.parse(rev.provenance),
-      };
-    }),
+          .in("entry_id", entries.map((entry) => entry.id))
+          .in("revision", [...new Set(entries.map((entry) => entry.current_revision))]),
+      )
+    : [];
+  const byEntry = new Map(
+    (revisions ?? []).map((rev) => [`${rev.entry_id}:${rev.revision}`, rev]),
   );
+  const current = (entries ?? []).map((entry) => {
+    const rev = byEntry.get(`${entry.id}:${entry.current_revision}`);
+    if (!rev) {
+      throw new HttpError(
+        503,
+        "invalid_state",
+        "Draft is temporarily unavailable.",
+      );
+    }
+    return {
+      ...entry,
+      ...rev,
+      id: entry.id,
+      created_at: entry.created_at,
+      saved_at: rev.created_at,
+      content: parseStoredEntry(entry.kind, rev.content),
+      provenance: EntryProvenanceSchema.parse(rev.provenance),
+    };
+  });
   const sourceIds = [
     ...new Set(
       current.flatMap((entry) =>

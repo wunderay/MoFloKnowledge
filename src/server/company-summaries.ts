@@ -59,3 +59,18 @@ export async function readCompanySummaries(
     nextCursor: companies.length === 50 ? (companies.at(-1)?.id ?? null) : null,
   });
 }
+
+/** Just id and name of the caller's active companies, for company switchers. */
+export async function readCompanyNames(
+  client: Awaited<ReturnType<typeof verifiedSession>>["client"],
+) {
+  const companies = await checked(
+    client
+      .from("companies")
+      .select("id,name")
+      .is("archived_at", null)
+      .order("id")
+      .limit(50),
+  );
+  return { companies: (companies ?? []) as { id: string; name: string }[] };
+}

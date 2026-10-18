@@ -154,7 +154,7 @@ export function KnowledgeViewer({
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    api<{ companies: { id: string; name: string }[] }>("/api/companies")
+    api<{ companies: { id: string; name: string }[] }>("/api/companies?fields=min")
       .then((data) => { setCompanies(data.companies); })
       .catch(() => undefined);
   }, []);

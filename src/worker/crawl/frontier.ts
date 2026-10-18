@@ -1,3 +1,4 @@
+import { clampDepthLimit, clampDocumentLimit } from './budgets';
 import { assertDocumentScope, documentScope, normalizeUrl } from '../network/url-scope';
 export interface FrontierItem {
     url: string;
@@ -59,8 +60,8 @@ export class Frontier {
         depthLimit?: number;
     } = {}, snapshot?: FrontierSnapshot) {
         this.scope = documentScope(root);
-        this.documentLimit = Math.max(1, Math.min(25, options.documentLimit ?? 10));
-        this.depthLimit = Math.max(0, Math.min(3, options.depthLimit ?? 2));
+        this.documentLimit = clampDocumentLimit(options.documentLimit);
+        this.depthLimit = clampDepthLimit(options.depthLimit);
         if (snapshot) {
             this.pending = [...snapshot.pending];
             this.seen = new Set(snapshot.seen);
