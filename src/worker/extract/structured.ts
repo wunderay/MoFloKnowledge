@@ -2,6 +2,7 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { nameKey as normalizedName } from "./text";
 import { serviceEntityKey } from "./services-text";
+import { bareTenDigitPhone } from "./identity";
 
 type ObjectValue = Record<string, unknown>;
 interface Node { value: ObjectValue; path: string }
@@ -110,6 +111,18 @@ export function structuredCandidates(
         add("/company_foundation/alternative_company_names", [{ text: string }], [observed]);
       }
     });
+    // The declared business name and legal name are verbatim alternative names.
+    for (const key of ["name", "legalName"]) {
+      const string = text(value[key]), observed = leaf(path + "/" + key);
+      if (string && observed?.value === string) {
+        add("/company_foundation/alternative_company_names", [{ text: string }], [observed]);
+      }
+    }
+    const telephone = text(value.telephone), phoneObserved = leaf(path + "/telephone");
+    const phone = telephone ? bareTenDigitPhone(telephone) : null;
+    if (phone && phoneObserved?.value === telephone) {
+      add("/online_presence/phone", phone, [phoneObserved]);
+    }
     const addresses = Array.isArray(value.address) ? value.address : [value.address];
     addresses.forEach((rawAddress, index) => {
     const addressPath = path + "/address" + (Array.isArray(value.address) ? "/" + index : "");

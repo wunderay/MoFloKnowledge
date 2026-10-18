@@ -1,6 +1,7 @@
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import type { StoredCapture } from "../crawl/run-crawl";
-import { normalizeColor } from "./colors";
+import { normalizeColor, nearDuplicateColor } from "./colors";
+import { stripTrackingParams } from "./identity";
 import { structuredCandidates } from "./structured";
 import { visibleCandidates } from "./visible";
 import { companyTextCandidates, COMPANY_TEXT_FIELDS } from "./company-text";
@@ -17,7 +18,7 @@ export const SUPPORTED_FIELDS: readonly string[] = [
   "/key_people/@id/name", "/key_people/@id/title", "/key_people/@id/background_or_relevance",
   "/offerings/@id/name", "/offerings/@id/description", "/offerings/@id/category",
   "/offerings/@id/url", "/offerings/@id/pricing",
-  "/online_presence/social_media_links", FONTS_FIELD,
+  "/online_presence/social_media_links", "/online_presence/phone", FONTS_FIELD,
   "/branding_and_style/brand_colors", "/branding_and_style/logos",
 ];
 export function deterministicCandidates(
@@ -62,6 +63,7 @@ export function deterministicCandidates(
   if (urlObservation) {
     add("/company_foundation/website", page.capture.finalUrl, [urlObservation.id]);
   }
+  const seenColors: { hex: string }[] = [];
   for (const o of observations) {
     if (o.property === "font-family" && o.value) {
       add(
@@ -127,7 +129,9 @@ export function deterministicCandidates(
     }
     if (["color", "background-color", "declared-color", "declared-background-color"].includes(o.property ?? "") && o.value) {
       const color = normalizeColor(o.value);
-      if (color) {
+      // Translucent colours are overlays (backdrops, shadows), not palette colours.
+      if (color?.alpha === 1 && !seenColors.some((seen) => nearDuplicateColor(seen.hex, color.hex))) {
+        seenColors.push(color);
         add(
           "/branding_and_style/brand_colors",
           [
@@ -179,7 +183,7 @@ export function deterministicCandidates(
       if (o) {
         add(
           "/online_presence/social_media_links",
-          [{ platform, profile_url: link.url }],
+          [{ platform, profile_url: stripTrackingParams(link.url) }],
           [o.id],
         );
       }
