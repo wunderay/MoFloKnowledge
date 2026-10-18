@@ -51,7 +51,7 @@ vi.doMock("next/link", () => ({
     React.createElement("a", { href, ...rest }, children),
 }));
 const { SectionView } = await import("../../src/components/knowledge-view/section-view");
-const { snapshotEntries } = await import("../../src/components/knowledge-viewer");
+const { snapshotEntries } = await import("../../src/components/shared/knowledge-viewer");
 
 const channelMark = markOf(ITEM_MARKS.find((m) => m.card === "Channels")!, 0);
 const withInference: EvidenceOptions = { marks: [channelMark] };

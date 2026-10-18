@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { EntryKind } from "@/contracts";
-import { CitationPopover } from "../citation-popover";
-import { Icon, type IconName } from "../icons";
+import { CitationPopover } from "../shared/citation-popover";
+import { Icon, type IconName } from "../shared/icons";
 import { coverageFor, coverageLabel, fieldProvenance, hasClaim, hasMarkedOrigin, type Evidence } from "./data";
 
 /** Where "+ Add" leads: the editor, opened on the entry kind that holds the value. */

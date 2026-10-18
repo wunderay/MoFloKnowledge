@@ -1,8 +1,8 @@
 "use client";
-import { ArrowUpRight } from "./icons";
+import { ArrowUpRight } from "../shared/icons";
 import { useEffect, useRef, useState } from "react";
-import { api, ApiError, companyPath, write } from "./api-client";
-import { Notice, StatusBadge } from "./ui";
+import { api, ApiError, companyPath, write } from "../shared/api-client";
+import { Notice, StatusBadge } from "../shared/ui";
 import type { Progress, SafeJobError } from "@/contracts";
 type Job = {
   id: string;

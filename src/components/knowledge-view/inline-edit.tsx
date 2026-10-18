@@ -14,8 +14,8 @@ import { ZodError } from "zod";
 import { createEntryDefault, parseBusinessEntry, type BusinessEntry, type EntryKind, type IdentifiedText } from "@/contracts";
 import { MAX_TEXT_LENGTH } from "@/contracts/primitives";
 import { canonicalStringify } from "@/knowledge/canonical-json";
-import { ApiError } from "../api-client";
-import { Icon } from "../icons";
+import { ApiError } from "../shared/api-client";
+import { Icon } from "../shared/icons";
 import { prepareEntrySave, sendEntrySave, type PreparedSave, type StoredEntry } from "./save-entry";
 import { timing } from "./timing";
 

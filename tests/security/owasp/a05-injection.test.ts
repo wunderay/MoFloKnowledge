@@ -21,7 +21,7 @@ vi.mock("../../../src/lib/supabase/server", () => ({
 
 // The component imports through the "@/" alias, which this vitest config does not resolve; only safeHref is needed.
 vi.mock("@/knowledge/apa", () => ({ formatAPACitations: () => [] }));
-vi.mock("../../../src/components/citation-context", () => ({ mergeCitationContexts: () => null }));
+vi.mock("../../../src/components/shared/citation-context", () => ({ mergeCitationContexts: () => null }));
 
 import * as companies from "../../../src/contracts/api-companies";
 import * as entries from "../../../src/contracts/api-entries";
@@ -29,7 +29,7 @@ import * as scrapes from "../../../src/contracts/api-scrapes";
 import * as versions from "../../../src/contracts/api-versions";
 import { POST as createCompany } from "../../../src/app/api/companies/route";
 import { POST as signIn } from "../../../src/app/api/auth/sign-in/route";
-import { safeHref } from "../../../src/components/citation-popover";
+import { safeHref } from "../../../src/components/shared/citation-popover";
 import { sniffImage } from "../../../src/server/uploads";
 
 const ROOT = resolve(__dirname, "../../..");

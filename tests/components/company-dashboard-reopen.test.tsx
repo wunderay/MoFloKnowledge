@@ -5,11 +5,11 @@ vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children?: React.ReactNode }) =>
     React.createElement("a", { href }, children),
 }));
-vi.mock("../../src/components/ui", () => ({
+vi.mock("../../src/components/shared/ui", () => ({
   useHydrated: () => true, EmptyState: () => null, Notice: () => null,
   StatusBadge: () => null, Dialog: () => null,
 }));
-import { CompanyDashboard } from "../../src/components/company-dashboard";
+import { CompanyDashboard } from "../../src/components/dashboard/company-dashboard";
 
 const company = (id: string, latestJob: unknown) => ({
   id, name: `Co ${id}`, website_url: "https://example.com", draft_generation: 1,

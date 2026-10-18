@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, ApiError, companyPath, write } from "./api-client";
-import { Dialog, Notice, StatusBadge } from "./ui";
-import { readCitationContext } from "./citation-context";
+import { api, ApiError, companyPath, write } from "../shared/api-client";
+import { Dialog, Notice, StatusBadge } from "../shared/ui";
+import { readCitationContext } from "../shared/citation-context";
 import { ValueView } from "./entry-value";
 import { EntryProvenanceSchema, entryRoot, type EntryKind } from "@/contracts";
 export function EntryHistory({

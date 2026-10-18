@@ -1,4 +1,4 @@
-import { APP_NAME_PRIMARY, APP_NAME_SECONDARY } from "../lib/brand";
+import { APP_NAME_PRIMARY, APP_NAME_SECONDARY } from "../../lib/brand";
 import type { ReactNode } from "react";
 
 export type IconName =

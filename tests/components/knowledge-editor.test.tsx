@@ -24,30 +24,30 @@ vi.mock("react", async (original) => ({
   useCallback: (callback: unknown) => callback,
   useEffect: () => {},
 }));
-vi.mock("../../src/components/company-draft-context", () => ({
+vi.mock("../../src/components/editor/company-draft-context", () => ({
   CompanyDraftProvider: () => null,
   useCompanyDraft: () => ({ state: harness.state, dispatch: harness.dispatch }),
 }));
-vi.mock("../../src/components/api-client", async (original) => ({
-  ...await original<typeof import("../../src/components/api-client")>(),
+vi.mock("../../src/components/shared/api-client", async (original) => ({
+  ...await original<typeof import("../../src/components/shared/api-client")>(),
   api: harness.api,
 }));
 vi.mock("@/contracts", () => import("../../src/contracts"));
 vi.mock("@/knowledge/conflict-decisions", () => import("../../src/knowledge/conflict-decisions"));
 vi.mock("next/link", () => ({ default: () => null }));
-vi.mock("../../src/components/unsaved-navigation", () => ({ useUnsavedNavigation: () => () => true }));
-vi.mock("../../src/components/ui", () => ({
+vi.mock("../../src/components/editor/unsaved-navigation", () => ({ useUnsavedNavigation: () => () => true }));
+vi.mock("../../src/components/shared/ui", () => ({
   useHydrated: () => true, EmptyState: () => null, Notice: () => null, StatusBadge: () => null,
 }));
-vi.mock("../../src/components/entry-value", () => ({ ValueView: () => null }));
-vi.mock("../../src/components/citation-popover", () => ({ CitationPopover: () => null }));
-vi.mock("../../src/components/business-form", () => ({ BusinessField: () => null }));
-vi.mock("../../src/components/scrape-progress", () => ({ ScrapeProgress: () => null }));
-vi.mock("../../src/components/entry-history", () => ({ EntryHistory: () => null }));
-vi.mock("../../src/components/publication-dialog", () => ({ PublicationDialog: () => null }));
-vi.mock("../../src/components/company-settings", () => ({ CompanySettings: () => null }));
-vi.mock("../../src/components/proposal-review", () => ({ ProposalReview: () => null }));
-import { KnowledgeEditor } from "../../src/components/knowledge-editor";
+vi.mock("../../src/components/editor/entry-value", () => ({ ValueView: () => null }));
+vi.mock("../../src/components/shared/citation-popover", () => ({ CitationPopover: () => null }));
+vi.mock("../../src/components/editor/business-form", () => ({ BusinessField: () => null }));
+vi.mock("../../src/components/editor/scrape-progress", () => ({ ScrapeProgress: () => null }));
+vi.mock("../../src/components/editor/entry-history", () => ({ EntryHistory: () => null }));
+vi.mock("../../src/components/editor/publication-dialog", () => ({ PublicationDialog: () => null }));
+vi.mock("../../src/components/editor/company-settings", () => ({ CompanySettings: () => null }));
+vi.mock("../../src/components/editor/proposal-review", () => ({ ProposalReview: () => null }));
+import { KnowledgeEditor } from "../../src/components/editor/knowledge-editor";
 
 function elements(node: React.ReactNode): ReactElement<any>[] {
   if (Array.isArray(node)) return node.flatMap(elements);

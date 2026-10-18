@@ -1,7 +1,7 @@
-import { CompanyDashboard } from "@/components/company-dashboard";
+import { CompanyDashboard } from "@/components/dashboard/company-dashboard";
 import { verifiedSession } from "@/lib/supabase/server";
 import { readCompanySummaries } from "@/server/company-summaries";
-import { Notice } from "@/components/ui";
+import { Notice } from "@/components/shared/ui";
 import { redirect } from "next/navigation";
 export default async function DashboardPage() {
   const { client, user } = await verifiedSession();

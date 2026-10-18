@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createEmptyProvenance, type Person } from "@/contracts";
-import { Icon } from "../icons";
-import { api, companyPath, write } from "../api-client";
+import { Icon } from "../shared/icons";
+import { api, companyPath, write } from "../shared/api-client";
 import { initialsOf, textOrNull, type ViewPerson } from "./data";
 import { DeletePerson, PortraitControl } from "./person-actions";
 import { addHref, CoverageNote, EmptyBox, Field, ItemSource, Source } from "./parts";

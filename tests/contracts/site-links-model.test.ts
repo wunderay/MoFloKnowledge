@@ -21,7 +21,7 @@ import {
   requiredCoverageTargets,
   type EntryKind,
 } from "../../src/contracts";
-import { CATEGORY_SPECS } from "../../src/components/business-fields";
+import { CATEGORY_SPECS } from "../../src/components/editor/business-fields";
 
 const KIND = "site_links" as string as EntryKind;
 const root = resolve(__dirname, "../..");

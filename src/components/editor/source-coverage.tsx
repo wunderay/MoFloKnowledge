@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import type { SourceCoverage as CoverageData, SourceCapture } from "@/contracts/source-coverage";
-import { api, companyPath } from "./api-client";
-import { safeHref } from "./citation-popover";
+import { api, companyPath } from "../shared/api-client";
+import { safeHref } from "../shared/citation-popover";
 import { labelOf } from "./business-fields";
 
 const STATE_LABELS: Record<string, string> = {

@@ -13,17 +13,17 @@ import {
   type Assessment,
 } from "@/contracts";
 import { api, companyPath, write } from "./api-client";
-import { timing } from "./knowledge-view/timing";
-import { CATEGORY_SPECS, labelOf } from "./business-fields";
-import { ValueView } from "./entry-value";
-import { SourceCoverage } from "./source-coverage";
+import { timing } from "../knowledge-view/timing";
+import { CATEGORY_SPECS, labelOf } from "../editor/business-fields";
+import { ValueView } from "../editor/entry-value";
+import { SourceCoverage } from "../editor/source-coverage";
 import { EmptyState, Notice, StatusBadge } from "./ui";
-import { EntryHistory } from "./entry-history";
+import { EntryHistory } from "../editor/entry-history";
 import { filterView } from "@/knowledge/filter-view";
-import { SectionView } from "./knowledge-view/section-view";
-import { SectionListbox } from "./knowledge-view/section-listbox";
-import { type KnowledgeSectionId } from "./knowledge-view/sections";
-import "./knowledge-view/knowledge-view.css";
+import { SectionView } from "../knowledge-view/section-view";
+import { SectionListbox } from "../knowledge-view/section-listbox";
+import { type KnowledgeSectionId } from "../knowledge-view/sections";
+import "../knowledge-view/knowledge-view.css";
 type ViewEntry = {
   id: string;
   company_id: string;

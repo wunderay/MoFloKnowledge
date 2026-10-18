@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createEmptyProvenance, createEntryDefault, type Offering } from "@/contracts";
-import { api, companyPath, write } from "../api-client";
-import { Icon, type IconName } from "../icons";
+import { api, companyPath, write } from "../shared/api-client";
+import { Icon, type IconName } from "../shared/icons";
 import { textOrNull, type ViewOffering } from "./data";
 import { InlineArea, InlineChips, InlineLine, entryScope, plainText, useEdit, type ListSpec, type TextSpec } from "./inline-edit";
 import { addHref, CoverageNote, EmptyBox, Field, ItemSource, Source } from "./parts";

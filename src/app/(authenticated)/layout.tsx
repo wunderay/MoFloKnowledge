@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { verifiedSession } from "../../lib/supabase/server";
-import { AppShell } from "../../components/app-shell";
+import { AppShell } from "../../components/shared/app-shell";
 export default async function AuthenticatedLayout({
   children,
 }: {
