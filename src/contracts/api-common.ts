@@ -7,11 +7,11 @@ export const ApiErrorSchema = z
   })
   .strict();
 export type ApiError = z.infer<typeof ApiErrorSchema>;
-export type ApiEnvelope<T> = {
+export interface ApiEnvelope<T> {
   data: T | null;
   error: ApiError | null;
   requestId: string;
-};
+}
 export const IdSchema = z.string().uuid();
 export const GenerationSchema = z.number().int().nonnegative().safe();
 export const RequestSchema = z.object({ requestId: IdSchema }).strict();

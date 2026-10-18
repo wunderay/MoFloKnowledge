@@ -86,8 +86,8 @@ describe("C4 banner", () => {
   it("the Logo cell shows the primary (first) logo as an image with alt text", async () => {
     const page = await openBrand({ draft: brandDraft() });
     const images = imagesIn(page, cell(page, bannerOf(page), "Logo"));
-    expect(images.map((i) => i.src)).toEqual([LOGOS[0]!.url]);
-    expect(images[0]!.alt.trim(), "alt text").not.toBe("");
+    expect(images.map((i) => i.src)).toEqual([LOGOS[0].url]);
+    expect(images[0].alt.trim(), "alt text").not.toBe("");
   });
 
   // behavioural
@@ -154,14 +154,16 @@ describe("C4 Logos card", () => {
     const page = await openBrand({ draft: brandDraft() });
     const logos = cardOf(page, "Logos");
     expect(imagesIn(page, logos).map((i) => i.src)).toEqual(LOGOS.map((l) => l.url));
-    for (const image of imagesIn(page, logos)) expect(image.alt.trim()).not.toBe("");
+    for (const image of imagesIn(page, logos)) {
+      expect(image.alt.trim()).not.toBe("");
+    }
     const labels = ["Primary", "Stacked lockup", "Logo"];
     labels.slice(0, 2).forEach((label, i) => {
       const t = tile(page, logos, label, labels.filter((l) => l !== label));
-      expect(imagesIn(page, t).map((x) => x.src), `the "${label}" tile holds its own image`).toEqual([LOGOS[i]!.url]);
+      expect(imagesIn(page, t).map((x) => x.src), `the "${label}" tile holds its own image`).toEqual([LOGOS[i].url]);
     });
     // "Logo" is also the start of the card's own title, so the third tile is found by its image.
-    const third = page.$(logos).find("img").toArray().map((img) => page.$(img)).find((img) => img.attr("src") === LOGOS[2]!.url)!;
+    const third = page.$(logos).find("img").toArray().map((img) => page.$(img)).find((img) => img.attr("src") === LOGOS[2].url)!;
     expect(norm(third.closest("li").text()), "a logo without a variant is captioned exactly Logo").toBe("Logo");
   });
 
@@ -174,7 +176,7 @@ describe("C4 Logos card", () => {
   // behavioural
   it("Edge case: a very long logo label is kept whole", async () => {
     const variant = `${"Extra wide horizontal lockup ".repeat(10)}final`;
-    const logos = [LOGOS[0]!, { ...LOGOS[1]!, variant }];
+    const logos = [LOGOS[0], { ...LOGOS[1], variant }];
     const page = await openBrand({ draft: brandDraft({ logos }) });
     expect(textOf(page, cardOf(page, "Logos"))).toContain(variant);
   });
@@ -190,11 +192,11 @@ describe("C4 Colors card", () => {
     COLORS.forEach((c, i) => {
       const t = tile(page, colors, c.hex, hexes.filter((h) => h !== lc(c.hex)));
       expect(paintedColors(page, t), `swatch for ${c.hex}`).toContain(lc(c.hex));
-      expect(spaced(page, t), `label for ${c.hex}`).toMatch(word(labels[i]!));
+      expect(spaced(page, t), `label for ${c.hex}`).toMatch(word(labels[i]));
       expect(lc(textOf(page, t))).toContain(lc(c.hex));
     });
     // a named colour is not also called Secondary
-    expect(spaced(page, tile(page, colors, COLORS[1]!.hex, hexes.filter((h) => h !== lc(COLORS[1]!.hex))))).not.toMatch(word("Secondary"));
+    expect(spaced(page, tile(page, colors, COLORS[1].hex, hexes.filter((h) => h !== lc(COLORS[1].hex))))).not.toMatch(word("Secondary"));
   });
 
   // behavioural
@@ -213,14 +215,14 @@ describe("C4 Colors card", () => {
     list.forEach((c, i) => {
       const t = tile(page, colors, c.hex, hexes.filter((h) => h !== lc(c.hex)));
       expect(paintedColors(page, t), `swatch for ${c.hex}`).toContain(lc(c.hex));
-      expect(spaced(page, t), `${c.hex} is "${labels[i]}"`).toMatch(word(labels[i]!));
+      expect(spaced(page, t), `${c.hex} is "${labels[i]}"`).toMatch(word(labels[i]));
     });
   });
 
   // behavioural
   it("Edge case: a very long colour name is kept whole", async () => {
     const role = `${"Deep harbor navy with a slight green cast ".repeat(5)}end`;
-    const colors = [{ ...COLORS[0]!, apparent_role: role }, COLORS[1]!];
+    const colors = [{ ...COLORS[0], apparent_role: role }, COLORS[1]];
     const page = await openBrand({ draft: brandDraft({ brand_colors: colors }) });
     expect(textOf(page, cardOf(page, "Colors"))).toContain(role);
   });
@@ -236,7 +238,7 @@ describe("C4 Fonts card", () => {
     FONTS.forEach((f, i) => {
       const t = tile(page, fonts, f.family, families.filter((x) => x !== f.family));
       const text = spaced(page, t);
-      expect(text, `row for ${f.family}`).toMatch(word(labels[i]!));
+      expect(text, `row for ${f.family}`).toMatch(word(labels[i]));
       expect(text).toContain(SAMPLE);
     });
     expect(textOf(page, fonts).split(SAMPLE).length - 1, "one sample line per font").toBe(3);
@@ -250,7 +252,7 @@ describe("C4 Fonts card", () => {
 
   // behavioural (defensive: FontSchema requires a family)
   it("Edge case: a font without a family does not break the others or print 'null'", async () => {
-    const fonts = [FONTS[0]!, { ...FONTS[1]!, family: null as unknown as string }, FONTS[2]!];
+    const fonts = [FONTS[0], { ...FONTS[1], family: null as unknown as string }, FONTS[2]];
     const page = await openBrand({ draft: brandDraft({ fonts }) });
     const card_ = cardOf(page, "Fonts");
     const text = textOf(page, card_);
@@ -263,7 +265,7 @@ describe("C4 Fonts card", () => {
   // behavioural
   it("Edge case: a very long family name is kept whole", async () => {
     const family = `${"Grotesque Display Condensed ".repeat(10)}Std`;
-    const page = await openBrand({ draft: brandDraft({ fonts: [{ ...FONTS[0]!, family }] }) });
+    const page = await openBrand({ draft: brandDraft({ fonts: [{ ...FONTS[0], family }] }) });
     expect(textOf(page, cardOf(page, "Fonts"))).toContain(family);
     expect(textOf(page, bannerOf(page))).toContain(family);
   });
@@ -293,8 +295,9 @@ describe("C5 empty states", () => {
     expect(textOf(page, banner)).not.toMatch(BAD);
     expect(imagesIn(page, banner)).toEqual([]);
     expect(paintedColors(page, banner)).toEqual([]);
-    for (const label of ["Logo", "Palette"])
+    for (const label of ["Logo", "Palette"]) {
       expect(groupValue(page, cell(page, banner, label), label), `"${label}" cell has a placeholder`).not.toBe("");
+    }
   });
 
   // behavioural
@@ -309,20 +312,24 @@ describe("C5 empty states", () => {
   // behavioural
   it("values are text: no form control sits in the banner or the cards", async () => {
     const page = await openBrand({ draft: brandDraft() });
-    for (const el of [bannerOf(page), ...CARDS.map((t) => cardOf(page, t))])
+    for (const el of [bannerOf(page), ...CARDS.map((t) => cardOf(page, t))]) {
       expect(page.$(el).find("input,textarea,select").length).toBe(0);
+    }
   });
 });
 
 describe("C6 security", () => {
-  const validOthers = [LOGOS[1]!.url, LOGOS[2]!.url];
+  const validOthers = [LOGOS[1].url, LOGOS[2].url];
   const schemeOf = (v: string) => /^\s*([a-z][a-z0-9+.-]*):/i.exec(v)?.[1]?.toLowerCase();
   function expectNoUnsafeUrls(page: Page) {
-    for (const el of page.$("[href],[src],[action],[formaction]").toArray())
+    for (const el of page.$("[href],[src],[action],[formaction]").toArray()) {
       for (const attr of ["href", "src", "action", "formaction"]) {
         const scheme = schemeOf(page.$(el).attr(attr) ?? "");
-        if (scheme) expect(["http", "https"], `${attr} scheme`).toContain(scheme);
+        if (scheme) {
+          expect(["http", "https"], `${attr} scheme`).toContain(scheme);
+        }
       }
+    }
   }
 
   // behavioural (defensive: LogoSchema's url rule already rejects these)
@@ -330,10 +337,12 @@ describe("C6 security", () => {
     ["javascript:", HOSTILE.jsLogo],
     ["data:", HOSTILE.dataLogo],
   ])("Edge case: a %s primary logo url renders no image and no unsafe attribute", async (_n, url) => {
-    const logos = [{ ...LOGOS[0]!, url }, LOGOS[1]!, LOGOS[2]!];
+    const logos = [{ ...LOGOS[0], url }, LOGOS[1], LOGOS[2]];
     const page = await openBrand({ draft: brandDraft({ logos }) });
     expectNoUnsafeUrls(page);
-    for (const img of page.$("img").toArray()) expect(schemeOf(page.$(img).attr("src") ?? "")).toMatch(/^https?$/);
+    for (const img of page.$("img").toArray()) {
+      expect(schemeOf(page.$(img).attr("src") ?? "")).toMatch(/^https?$/);
+    }
     // the unsafe logo is shown by its label, the safe ones still as images
     const logosCard = cardOf(page, "Logos");
     expect(imagesIn(page, logosCard).map((i) => i.src)).toEqual(validOthers);
@@ -352,14 +361,16 @@ describe("C6 security", () => {
     ["not a colour", "blue"],
     ["short hex", "#12345"],
   ])("Edge case: a %s hex value never reaches a style attribute", async (_n, hex) => {
-    const colors = [{ ...COLORS[0]!, hex }, COLORS[1]!, COLORS[2]!];
+    const colors = [{ ...COLORS[0], hex }, COLORS[1], COLORS[2]];
     const page = await openBrand({ draft: brandDraft({ brand_colors: colors }) });
-    const valid = [COLORS[1]!, COLORS[2]!].map((c) => lc(c.hex));
+    const valid = [COLORS[1], COLORS[2]].map((c) => lc(c.hex));
     // the valid colours are still painted (so the page is really rendered)
     expect(paintedColors(page, cardOf(page, "Colors"))).toEqual(expect.arrayContaining(valid));
     for (const style of allStyles(page)) {
       expect(style, "style attribute").not.toMatch(/url\(|expression|javascript|evil|[<>"]|blue/i);
-      for (const found of style.match(/#[0-9a-f]{3,8}\b/gi) ?? []) expect(valid).toContain(lc(found));
+      for (const found of style.match(/#[0-9a-f]{3,8}\b/gi) ?? []) {
+        expect(valid).toContain(lc(found));
+      }
     }
     expect(page.html).not.toContain("<script>alert");
     expect(paintedColors(page, cell(page, bannerOf(page), "Palette")).every((c) => valid.includes(c))).toBe(true);
@@ -408,8 +419,9 @@ describe("C7 draft, saved snapshot and evidence", () => {
     it("Logos, Colors and Fonts each keep a Sources control when claims exist", async () => {
       const fx = evidenceFixture();
       const page = await openBrand(source === "draft" ? { draft: fx.draft } : { snapshot: fx.snapshot() });
-      for (const title of CARDS)
+      for (const title of CARDS) {
         expect(triggers(page, cardOf(page, title)).some((t) => t.startsWith("Sources")), `card "${title}"`).toBe(true);
+      }
     });
   });
 });
@@ -421,7 +433,9 @@ describe("C8 non-regression", () => {
     const page = parse(await renderOB({ draft: brandDraft(), section: generalId }));
     const titles = headings(page).map((h) => h.text);
     expect(titles).toEqual(expect.arrayContaining(["Headquarters", "Overview", "Founding story"]));
-    for (const t of CARDS) expect(titles).not.toContain(t);
+    for (const t of CARDS) {
+      expect(titles).not.toContain(t);
+    }
     expect(norm(page.$("body").text())).not.toContain("#1F4E79");
   });
 });

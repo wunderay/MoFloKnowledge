@@ -4,7 +4,7 @@
 import * as cheerio from "cheerio";
 import type { AnyNode, Element } from "domhandler";
 
-export type Page = { $: cheerio.CheerioAPI; html: string };
+export interface Page { $: cheerio.CheerioAPI; html: string }
 export const parse = (html: string): Page => ({ $: cheerio.load(html), html });
 export const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 const same = (a: string, b: string) => norm(a).toLowerCase() === norm(b).toLowerCase();
@@ -13,13 +13,19 @@ const HEADING = "h1,h2,h3,h4,h5,h6,[role=heading]";
 
 function ancestors(node: AnyNode): Element[] {
   const out: Element[] = [];
-  for (let p = node.parent as Element | null; p; p = p.parent as Element | null)
-    if (p.type === "tag") out.push(p);
+  for (let p = node.parent as Element | null; p; p = p.parent as Element | null) {
+    if (p.type === "tag") {
+      out.push(p);
+    }
+  }
   return out;
 }
 export function contains(outer: AnyNode, inner: AnyNode): boolean {
-  for (let p: AnyNode | null = inner; p; p = p.parent as AnyNode | null)
-    if (p === outer) return true;
+  for (let p: AnyNode | null = inner; p; p = p.parent as AnyNode | null) {
+    if (p === outer) {
+      return true;
+    }
+  }
   return false;
 }
 export const textOf = ({ $ }: Page, el: AnyNode) => norm($(el).text());
@@ -31,7 +37,9 @@ export const textOf = ({ $ }: Page, el: AnyNode) => norm($(el).text());
 function triggerName(page: Page, el: Element): string {
   const { $ } = page;
   const label = $(el).attr("aria-label");
-  if (label) return norm(label);
+  if (label) {
+    return norm(label);
+  }
   const by = $(el).attr("aria-labelledby");
   return by ? norm(by.split(/\s+/).map((id) => $(`[id="${id}"]`).text()).join(" ")) : norm($(el).text());
 }
@@ -46,11 +54,13 @@ export function sectionSelector(page: Page): Element | null {
   const trigger = selectorTrigger(page);
   return trigger ? ((trigger.parent as Element | null) ?? trigger) : null;
 }
-export type SelectorItem = { label: string; value: string; selected: boolean };
+export interface SelectorItem { label: string; value: string; selected: boolean }
 /** The listbox's options in document order, with the identifier each one submits; the selected one has aria-selected=true. */
 export function selectorItems(page: Page): SelectorItem[] {
   const root = sectionSelector(page);
-  if (!root) return [];
+  if (!root) {
+    return [];
+  }
   const { $ } = page;
   return $(root)
     .find('[role="option"]')
@@ -72,15 +82,18 @@ export const inSelectorOrForm = (page: Page, node: AnyNode) => {
 };
 
 // ---- text nodes, headings, cards ---------------------------------------------
-type TextNode = { text: string; node: AnyNode; el: Element };
+interface TextNode { text: string; node: AnyNode; el: Element }
 export function textNodes(page: Page): TextNode[] {
   const out: TextNode[] = [];
   const walk = (n: AnyNode) => {
     if (n.type === "text") {
       const text = norm((n as unknown as { data: string }).data);
-      if (text && n.parent && !inSelectorOrForm(page, n))
+      if (text && n.parent && !inSelectorOrForm(page, n)) {
         out.push({ text, node: n, el: n.parent as Element });
-    } else if ("children" in n) (n.children as AnyNode[]).forEach(walk);
+      }
+    } else if ("children" in n) {
+      (n.children as AnyNode[]).forEach(walk);
+    }
   };
   walk(page.$.root()[0] as AnyNode);
   return out;
@@ -111,8 +124,12 @@ export function card(page: Page, title: string, siblingTitles: string[]): Elemen
   for (const heading of mine) {
     let best = heading.el;
     for (const parent of ancestors(heading.el)) {
-      if (["body", "html", "main"].includes(parent.name)) break;
-      if (others.some((o) => contains(parent, o.el))) break;
+      if (["body", "html", "main"].includes(parent.name)) {
+        break;
+      }
+      if (others.some((o) => contains(parent, o.el))) {
+        break;
+      }
       best = parent;
     }
     return best;
@@ -127,7 +144,7 @@ export function cardText(page: Page, el: Element): string {
   return norm(clone.text());
 }
 export function controlsIn(page: Page, el: AnyNode): string[] {
-  return page.$(el as Element).find("input,textarea,select").toArray().map((c) => (c as Element).name);
+  return page.$(el as Element).find("input,textarea,select").toArray().map((c) => (c).name);
 }
 /** The "+ Add" links inside an element, as hrefs. */
 export function addLinks(page: Page, el: AnyNode): string[] {
@@ -151,11 +168,21 @@ export function deepestContaining(page: Page, scope: Element, needle: string): E
 /** Every item sits in its own element, and no element holds two items. */
 export function separateChips(page: Page, scope: Element, items: string[]): string | null {
   const holders = items.map((item) => deepestContaining(page, scope, item)[0]);
-  for (const [i, h] of holders.entries()) if (!h) return `no element holds "${items[i]}"`;
-  if (new Set(holders).size !== items.length) return "two items share one element";
-  for (const [i, h] of holders.entries())
-    for (const [j, other] of items.entries())
-      if (i !== j && textOf(page, h!).includes(other)) return `"${items[i]}" and "${other}" share an element`;
+  for (const [i, h] of holders.entries()) {
+    if (!h) {
+      return `no element holds "${items[i]}"`;
+    }
+  }
+  if (new Set(holders).size !== items.length) {
+    return "two items share one element";
+  }
+  for (const [i, h] of holders.entries()) {
+    for (const [j, other] of items.entries()) {
+      if (i !== j && textOf(page, h).includes(other)) {
+        return `"${items[i]}" and "${other}" share an element`;
+      }
+    }
+  }
   return null;
 }
 
@@ -170,8 +197,12 @@ export function banner(page: Page, label: string, headingValue: string): Element
   for (const l of labels) {
     for (const parent of ancestors(l.node)) {
       const sel = sectionSelector(page);
-      if (sel && contains(parent, sel)) break;
-      if (heads.some((h) => contains(parent, h.el))) return parent;
+      if (sel && contains(parent, sel)) {
+        break;
+      }
+      if (heads.some((h) => contains(parent, h.el))) {
+        return parent;
+      }
     }
   }
   return null;
@@ -190,12 +221,20 @@ export function statGroup(page: Page, scope: Element, label: string, allLabels: 
   for (const mine of labelNodes(label)) {
     let found: Element | null = null;
     for (const parent of [mine.el, ...ancestors(mine.el)]) {
-      if (!contains(scope, parent) && parent !== scope) break;
-      if (others.some((o) => contains(parent, o.node))) break;
+      if (!contains(scope, parent) && parent !== scope) {
+        break;
+      }
+      if (others.some((o) => contains(parent, o.node))) {
+        break;
+      }
       found = parent;
-      if (norm(textOf(page, parent)).length > label.length) break;
+      if (norm(textOf(page, parent)).length > label.length) {
+        break;
+      }
     }
-    if (found) return found;
+    if (found) {
+      return found;
+    }
   }
   return null;
 }
@@ -204,7 +243,9 @@ export function statValue(page: Page, group: Element, label: string): string {
 }
 export function statShows(page: Page, scope: Element, label: string, allLabels: string[], expected: string | number): boolean {
   const group = statGroup(page, scope, label, allLabels);
-  if (!group) return false;
+  if (!group) {
+    return false;
+  }
   const text = statValue(page, group, label);
   return typeof expected === "number" ? numberRe(expected).test(text) : text.includes(expected);
 }
@@ -214,9 +255,15 @@ export function socialColumn(page: Page, scope: Element, platform: string, handl
   const others = platforms.filter((p) => p !== platform).flatMap(nodes);
   for (const mine of nodes(platform)) {
     for (const parent of [mine.el, ...ancestors(mine.el)]) {
-      if (!contains(scope, parent) && parent !== scope) break;
-      if (others.some((o) => contains(parent, o.node))) break;
-      if (textOf(page, parent).toLowerCase().includes(handle.toLowerCase())) return true;
+      if (!contains(scope, parent) && parent !== scope) {
+        break;
+      }
+      if (others.some((o) => contains(parent, o.node))) {
+        break;
+      }
+      if (textOf(page, parent).toLowerCase().includes(handle.toLowerCase())) {
+        return true;
+      }
     }
   }
   return false;

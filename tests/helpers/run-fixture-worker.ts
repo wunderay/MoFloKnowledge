@@ -12,16 +12,19 @@ import {
 } from "../../src/worker/network/pinned-transport";
 import type { RenderResult } from "../../src/contracts/render-task";
 async function main() {
-  if (process.env.NODE_ENV !== "test")
+  if (process.env.NODE_ENV !== "test") {
     throw new Error("This harness requires NODE_ENV=test.");
+  }
   const connectionString = process.env.WORKER_DATABASE_URL;
-  if (!connectionString)
+  if (!connectionString) {
     throw new Error(
       "Provide the dedicated disposable worker login through WORKER_DATABASE_URL.",
     );
+  }
   const port = Number(process.env.MOFLO_TEST_FIXTURE_PORT ?? 4318);
-  if (!Number.isInteger(port) || port < 1024 || port > 65535)
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) {
     throw new Error("Invalid controlled fixture port.");
+  }
   const allowedPaths = new Set([
     "/",
     "/robots.txt",
@@ -40,10 +43,11 @@ async function main() {
       url.protocol !== "http:" ||
       url.hostname !== "example.com" ||
       !allowedPaths.has(url.pathname)
-    )
+    ) {
       throw new Error(
         "This test harness accepts only its exact controlled website.",
       );
+    }
     url.port = String(port);
     return { url, addresses: [{ address: "127.0.0.1", family: 4 }] };
   });
@@ -63,10 +67,12 @@ async function main() {
   );
   const renderer = async (task: { url: string }): Promise<RenderResult> => {
     const document = fetched.get(task.url);
-    if (!document) throw new Error("No finalized fixture HTTP body.");
+    if (!document) {
+      throw new Error("No finalized fixture HTTP body.");
+    }
     const $ = load(document.body.toString("utf8"));
     $('script,style,noscript,template,[hidden],[aria-hidden="true"]').remove();
-    if (new URL(task.url).pathname === "/faq.html")
+    if (new URL(task.url).pathname === "/faq.html") {
       $("#faq").text(
         [
           ...faqScript.matchAll(
@@ -76,6 +82,7 @@ async function main() {
           .map((match) => match[1])
           .join("\n"),
       );
+    }
     $("br").replaceWith("\n");
     $("p,li,h1,h2,h3,article,section,address,header,footer").append("\n");
     return {
@@ -129,8 +136,9 @@ async function main() {
   };
   const repository = new PostgresJobRepository({ connectionString });
   const stop = new AbortController();
-  for (const signal of ["SIGINT", "SIGTERM"])
+  for (const signal of ["SIGINT", "SIGTERM"]) {
     process.once(signal, () => stop.abort("shutdown"));
+  }
   console.log(
     "Controlled recorded worker ready; production network/renderer qualification is not implied.",
   );

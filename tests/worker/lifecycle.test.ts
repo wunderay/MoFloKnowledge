@@ -29,7 +29,9 @@ it("aborts superseded attempts and never calls terminal write with stale authori
     workerId: "worker-test",
     signal: stop.signal,
     onEvent: (event) => {
-      if (event.event === "lease_lost") stop.abort();
+      if (event.event === "lease_lost") {
+        stop.abort();
+      }
     },
   });
   await vi.advanceTimersByTimeAsync(15000);

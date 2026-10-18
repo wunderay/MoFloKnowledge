@@ -20,7 +20,7 @@ const post = (body: unknown = {}, init: { origin?: string | null } = {}) =>
     body: JSON.stringify(body),
   });
 
-type Rpc = { data: unknown; error: { message: string; details?: string; code?: string } | null };
+interface Rpc { data: unknown; error: { message: string; details?: string; code?: string } | null }
 function session(role: "owner" | "editor" | "viewer" | null, rpc: Rpc = { data: restored, error: null }) {
   const client = {
     from: vi.fn((table: string) => {

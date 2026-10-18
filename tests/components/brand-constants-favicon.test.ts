@@ -17,8 +17,11 @@ async function walk(dir: string): Promise<string[]> {
   const files: string[] = [];
   for (const entry of entries) {
     const full = join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...(await walk(full)));
-    else if (/\.(ts|tsx)$/.test(entry.name)) files.push(full);
+    if (entry.isDirectory()) {
+      files.push(...(await walk(full)));
+    } else if (/\.(ts|tsx)$/.test(entry.name)) {
+      files.push(full);
+    }
   }
   return files;
 }
@@ -35,7 +38,9 @@ it('no src .ts/.tsx file other than src/lib/brand.ts contains the literal "MoFlo
   const files = await walk(SRC);
   const offenders: string[] = [];
   for (const file of files) {
-    if (file === BRAND_FILE) continue;
+    if (file === BRAND_FILE) {
+      continue;
+    }
     const text = await readFile(file, "utf8");
     if (text.includes("MoFlo Knowledge")) {
       offenders.push(relative(SRC, file));
@@ -68,7 +73,7 @@ it('src/app/manifest.ts default export returns name APP_NAME, short_name APP_NAM
   const manifest = (mod as unknown as { default: () => {
     name?: string;
     short_name?: string;
-    icons?: Array<{ src: string }>;
+    icons?: { src: string }[];
   } }).default();
   expect(manifest.name).toBe(brand.APP_NAME);
   expect(manifest.short_name).toBe(brand.APP_NAME_PRIMARY);

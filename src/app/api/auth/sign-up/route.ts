@@ -31,24 +31,27 @@ export async function POST(request: Request) {
     });
     if (error) {
       // An existing account gets the same answer as a new one awaiting confirmation (no enumeration).
-      if (error.code === "user_already_exists")
+      if (error.code === "user_already_exists") {
         return json({ signedUp: true, signedIn: false }, id);
-      if (error.status === 429)
+      }
+      if (error.status === 429) {
         throw new HttpError(
           429,
           "rate_limited",
           "Too many sign-up attempts. Please try again later.",
         );
+      }
       if (
         !error.status ||
         error.status >= 500 ||
         error.name === "AuthRetryableFetchError"
-      )
+      ) {
         throw new HttpError(
           503,
           "unavailable",
           "Sign-up is temporarily unavailable.",
         );
+      }
       throw new HttpError(
         422,
         "invalid_password",

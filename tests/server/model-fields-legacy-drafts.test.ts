@@ -46,7 +46,9 @@ function builder(table: string, rows: unknown, byEntry?: Record<string, unknown>
   const filters: Record<string, unknown> = {};
   const self: Json = {};
   const resolveOne = () => ({ data: byEntry ? byEntry[String(filters.entry_id)] ?? null : rows, error: null });
-  for (const method of ["select", "order", "in", "contains"]) self[method] = vi.fn().mockReturnValue(self);
+  for (const method of ["select", "order", "in", "contains"]) {
+    self[method] = vi.fn().mockReturnValue(self);
+  }
   self.eq = vi.fn((column: string, value: unknown) => { filters[column] = value; return self; });
   self.maybeSingle = vi.fn(async () => resolveOne());
   self.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve);
@@ -95,5 +97,7 @@ it("the draft export still renders such a company, without the new labels", asyn
   expect(text).toContain("Legacy Draft Co sells inventory software.");
   expect(text).toContain("Alex Chen");
   const body = text.split("Coverage & unknowns")[0];
-  for (const label of ["Revenue: ", "Phone: ", "Age: ", "Nationality: "]) expect(body, label).not.toContain(label);
+  for (const label of ["Revenue: ", "Phone: ", "Age: ", "Nationality: "]) {
+    expect(body, label).not.toContain(label);
+  }
 });

@@ -31,8 +31,8 @@ export function EntryHistory({
     api<Record<string, unknown>[] | { revisions: Record<string, unknown>[] }>(
       companyPath(companyId, `/entries/${entryId}/history`),
     )
-      .then((data) => setHistory(Array.isArray(data) ? data : data.revisions))
-      .catch((e) => setError(e.message));
+      .then((data) => { setHistory(Array.isArray(data) ? data : data.revisions); })
+      .catch((e) => { setError(e.message); });
   }, [companyId, entryId]);
   async function restore(fromRevision: number) {
     setBusy(true);
@@ -48,8 +48,11 @@ export function EntryHistory({
       onRestore();
       onClose();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) onStale();
-      else setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 409) {
+        onStale();
+      } else {
+        setError((e as Error).message);
+      }
     } finally {
       setBusy(false);
     }

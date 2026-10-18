@@ -95,8 +95,9 @@ describe("C2 createPinnedFetcher honours the task signal around onRequest", () =
     let calls = 0;
     const controller = new AbortController();
     const seen = await startSite((request, response) => {
-      if (request.path === "/first")
+      if (request.path === "/first") {
         return void response.writeHead(302, { location: "/second" }).end();
+      }
       sendHtml(response, "<p>second</p>");
     });
     site = seen;
@@ -105,8 +106,12 @@ describe("C2 createPinnedFetcher honours the task signal around onRequest", () =
         signal: controller.signal,
         onRequest: async () => {
           calls++;
-          if (calls === 2) controller.abort(new Error("deadline"));
-          if (calls === 2) await wait(30);
+          if (calls === 2) {
+            controller.abort(new Error("deadline"));
+          }
+          if (calls === 2) {
+            await wait(30);
+          }
         },
       }),
       1000,

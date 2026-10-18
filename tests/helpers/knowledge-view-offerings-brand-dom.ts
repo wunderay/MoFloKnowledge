@@ -16,18 +16,26 @@ import {
 const same = (a: string, b: string) => norm(a).toLowerCase() === norm(b).toLowerCase();
 export function ancestorsOf(node: AnyNode): Element[] {
   const out: Element[] = [];
-  for (let p = node.parent as Element | null; p; p = p.parent as Element | null) if (p.type === "tag") out.push(p);
+  for (let p = node.parent as Element | null; p; p = p.parent as Element | null) {
+    if (p.type === "tag") {
+      out.push(p);
+    }
+  }
   return out;
 }
-export const bodyNode = (page: Page) => page.$("body")[0] as Element;
+export const bodyNode = (page: Page) => page.$("body")[0];
 
 /** Visible text with a space between separate text nodes (so "#1F4E79" + "Primary" stay two words). */
 export function spaced(page: Page, el: AnyNode): string {
   const parts: string[] = [];
   const walk = (n: AnyNode) => {
-    if (n.type === "text") parts.push((n as unknown as { data: string }).data);
-    else if (n.type === "tag" && ["script", "style"].includes((n as Element).name)) return;
-    else if ("children" in n) (n.children as AnyNode[]).forEach(walk);
+    if (n.type === "text") {
+      parts.push((n as unknown as { data: string }).data);
+    } else if (n.type === "tag" && ["script", "style"].includes((n).name)) {
+      
+    } else if ("children" in n) {
+      (n.children as AnyNode[]).forEach(walk);
+    }
   };
   walk(el);
   void page;
@@ -48,11 +56,19 @@ export function labelGroup(page: Page, label: string, allLabels: string[], scope
   for (const mine of nodesOf(label)) {
     let found: Element = mine.el;
     for (const parent of ancestorsOf(mine.el)) {
-      if (["body", "html", "main"].includes(parent.name)) break;
-      if (scope && !contains(scope, parent)) break;
+      if (["body", "html", "main"].includes(parent.name)) {
+        break;
+      }
+      if (scope && !contains(scope, parent)) {
+        break;
+      }
       const sel = sectionSelector(page);
-      if (sel && contains(parent, sel)) break;
-      if (others.some((o) => contains(parent, o.node))) break;
+      if (sel && contains(parent, sel)) {
+        break;
+      }
+      if (others.some((o) => contains(parent, o.node))) {
+        break;
+      }
       found = parent;
     }
     return found;
@@ -82,11 +98,17 @@ export function itemScope(page: Page, scope: Element, needle: string, others: st
   const low = (s: string) => s.toLowerCase();
   const has = (n: AnyNode, s: string) => low(norm(page.$(n as Element).text())).includes(low(s));
   const first = textNodes(page).find((t) => contains(scope, t.node) && low(t.text).includes(low(needle)));
-  if (!first) return null;
+  if (!first) {
+    return null;
+  }
   let found: Element = first.el;
   for (const parent of ancestorsOf(first.el)) {
-    if (!contains(scope, parent) && parent !== scope) break;
-    if (others.some((o) => has(parent, o))) break;
+    if (!contains(scope, parent) && parent !== scope) {
+      break;
+    }
+    if (others.some((o) => has(parent, o))) {
+      break;
+    }
     found = parent;
   }
   return found;
@@ -98,9 +120,13 @@ const LISTROLES = new Set(["list", "navigation", "listbox", "tablist", "menu", "
 function accessibleName(page: Page, el: Element): string {
   const { $ } = page;
   const label = $(el).attr("aria-label");
-  if (label) return norm(label);
+  if (label) {
+    return norm(label);
+  }
   const by = $(el).attr("aria-labelledby");
-  if (by) return norm(by.split(/\s+/).map((i) => $(`[id="${i}"]`).text()).join(" "));
+  if (by) {
+    return norm(by.split(/\s+/).map((i) => $(`[id="${i}"]`).text()).join(" "));
+  }
   return "";
 }
 /** The list/navigation whose accessible name mentions offerings. */
@@ -139,13 +165,19 @@ export function isSelectedRow(page: Page, row: Element): boolean {
 /** The count shown with the heading `title`: the first bare number in the smallest container that has one and no list. */
 export function countBadge(page: Page, title: string, notIn?: Element | null): { heading: boolean; count: number | null } {
   const head = headings(page).find((h) => new RegExp(`^${title}\\b`, "i").test(h.text) && !inSelectorOrForm(page, h.el));
-  if (!head) return { heading: false, count: null };
+  if (!head) {
+    return { heading: false, count: null };
+  }
   const numbers = (scope: Element) =>
     textNodes(page).filter((t) => contains(scope, t.node) && /^\d+$/.test(t.text) && !(notIn && contains(notIn, t.node)));
   for (const scope of [head.el, ...ancestorsOf(head.el)]) {
-    if (["body", "html", "main"].includes(scope.name)) break;
+    if (["body", "html", "main"].includes(scope.name)) {
+      break;
+    }
     const found = numbers(scope);
-    if (found.length) return { heading: true, count: Number(found[0]!.text) };
+    if (found.length) {
+      return { heading: true, count: Number(found[0].text) };
+    }
   }
   return { heading: true, count: null };
 }
@@ -162,7 +194,9 @@ function expand(hex: string): string {
 export function ownColors(page: Page, el: Element): string[] {
   const style = page.$(el).attr("style") ?? "";
   const out = (style.match(HEX_RE) ?? []).map(expand);
-  for (const m of style.matchAll(RGB_RE)) out.push(`#${two(+m[1]!)}${two(+m[2]!)}${two(+m[3]!)}`);
+  for (const m of style.matchAll(RGB_RE)) {
+    out.push(`#${two(+m[1])}${two(+m[2])}${two(+m[3])}`);
+  }
   return out;
 }
 /** Every colour painted by style attributes inside `scope`, in document order (repeats kept). */
@@ -191,12 +225,22 @@ export function brandBanner(page: Page, companyName: string): Element | null {
   for (const l of labels) {
     let best: Element | null = null;
     for (const parent of ancestorsOf(l.node)) {
-      if (["body", "html", "main"].includes(parent.name)) break;
-      if (sel && contains(parent, sel)) break;
-      if (cards.some((c) => contains(parent, c.el))) break;
-      if (heads.some((h) => contains(parent, h.el))) best = parent;
+      if (["body", "html", "main"].includes(parent.name)) {
+        break;
+      }
+      if (sel && contains(parent, sel)) {
+        break;
+      }
+      if (cards.some((c) => contains(parent, c.el))) {
+        break;
+      }
+      if (heads.some((h) => contains(parent, h.el))) {
+        best = parent;
+      }
     }
-    if (best) return best;
+    if (best) {
+      return best;
+    }
   }
   return null;
 }
@@ -206,6 +250,10 @@ export const imagesIn = (page: Page, scope: Element) =>
 
 /** The smallest container holding both elements (or null). */
 export function commonAncestor(a: Element, b: Element): Element | null {
-  for (const p of [a, ...ancestorsOf(a)]) if (contains(p, b)) return p;
+  for (const p of [a, ...ancestorsOf(a)]) {
+    if (contains(p, b)) {
+      return p;
+    }
+  }
   return null;
 }

@@ -1,16 +1,16 @@
 export const CRAWL_LIMITS = { documents: 10, depth: 2, httpConcurrency: 3, renderConcurrency: 1, hostGapMs: 500, fetchMs: 15000, renderMs: 25000, jobMs: 300000, htmlBytes: 2 * 1024 * 1024, textCharacters: 100000, designBytes: 15 * 1024 * 1024 } as const;
-export type BudgetSnapshot = {
+export interface BudgetSnapshot {
     documents: number;
     htmlBytes: number;
     designBytes: number;
     startedAt: number;
     limitsReached: string[];
-};
-export type Reservation = {
+}
+export interface Reservation {
     id: number;
     htmlBytes: number;
     designBytes: number;
-};
+}
 export class CrawlBudgets {
     readonly limitsReached = new Set<string>();
     private documents = 0;
@@ -29,19 +29,24 @@ export class CrawlBudgets {
         this.documents = snapshot.documents;
         this.htmlBytes = snapshot.htmlBytes;
         this.designBytes = snapshot.designBytes;
-        for (const limit of snapshot.limitsReached)
-            this.limitsReached.add(limit);
+        for (const limit of snapshot.limitsReached) {
+          this.limitsReached.add(limit);
+        }
     } }
     reserve(depth: number, designBytes = 0): Reservation {
         const fail = (limit: string): never => { this.limitsReached.add(limit); throw new Error('Crawl budget exceeded: ' + limit); };
-        if (Date.now() - this.startedAt >= CRAWL_LIMITS.jobMs)
-            fail('time');
-        if (depth > this.depthLimit)
-            fail('depth');
-        if (this.documents >= this.documentLimit)
-            fail('documents');
-        if (designBytes < 0 || designBytes + this.designBytes + this.reservedDesign > CRAWL_LIMITS.designBytes)
-            fail('design_bytes');
+        if (Date.now() - this.startedAt >= CRAWL_LIMITS.jobMs) {
+          fail('time');
+        }
+        if (depth > this.depthLimit) {
+          fail('depth');
+        }
+        if (this.documents >= this.documentLimit) {
+          fail('documents');
+        }
+        if (designBytes < 0 || designBytes + this.designBytes + this.reservedDesign > CRAWL_LIMITS.designBytes) {
+          fail('design_bytes');
+        }
         const reservation = { id: ++this.counter, htmlBytes: CRAWL_LIMITS.htmlBytes, designBytes };
         this.documents++;
         this.reservedDesign += designBytes;
@@ -49,8 +54,9 @@ export class CrawlBudgets {
         return reservation;
     }
     finish(reservation: Reservation, htmlBytes: number, designBytes = 0) {
-        if (!this.active.delete(reservation.id))
-            throw new Error('Unknown or finished reservation');
+        if (!this.active.delete(reservation.id)) {
+          throw new Error('Unknown or finished reservation');
+        }
         this.reservedDesign -= reservation.designBytes;
         if (htmlBytes < 0 || htmlBytes > reservation.htmlBytes || designBytes < 0 || designBytes > reservation.designBytes) {
             this.limitsReached.add('bytes');

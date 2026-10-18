@@ -75,18 +75,21 @@ const PROVIDED = new Set(["@/lib/supabase/server", "@/server/read-model", "@/ser
 for (const file of sourceFiles(SRC)) {
   const id = "@/" + relative(SRC, file).replace(/\.(ts|tsx)$/, "").split(sep).join("/");
   const ids = id.endsWith("/index") ? [id, id.slice(0, -"/index".length)] : [id];
-  for (const each of ids)
-    if (!PROVIDED.has(each)) vi.doMock(each, () => import(/* @vite-ignore */ file));
+  for (const each of ids) {
+    if (!PROVIDED.has(each)) {
+      vi.doMock(each, () => import(/* @vite-ignore */ file));
+    }
+  }
 }
 
-export type RenderOptions = {
+export interface RenderOptions {
   /** Value for the `section` URL parameter; omitted when undefined. */
   section?: string;
   versions?: { id: string; version_number: number; created_at: string }[];
   draft?: Draft;
   snapshot?: { payload: KnowledgeBaseExport; versionId: string };
   mode?: "json" | "table";
-};
+}
 
 /** The full /knowledge/view page markup for the given URL state and data. */
 export async function renderViewPage(opts: RenderOptions): Promise<string> {

@@ -27,13 +27,15 @@ export function CompanySettings({
   const [busy, setBusy] = useState(false);
   const [archive, setArchive] = useState(false);
   function load() {
-    if (company.role !== "owner") return;
+    if (company.role !== "owner") {
+      return;
+    }
     api<
       | { user_id: string; role: string }[]
       | { members: { user_id: string; role: string }[] }
     >(companyPath(companyId, "/members"))
-      .then((d) => setMembers(Array.isArray(d) ? d : d.members))
-      .catch((e) => setError(e.message));
+      .then((d) => { setMembers(Array.isArray(d) ? d : d.members); })
+      .catch((e) => { setError(e.message); });
   }
   useEffect(load, [companyId]);
   async function member(userId: string, body: unknown) {
@@ -212,7 +214,7 @@ export function CompanySettings({
                 >
                   Confirm archive
                 </button>
-                <button className="button" onClick={() => setArchive(false)}>
+                <button className="button" onClick={() => { setArchive(false); }}>
                   Keep company active
                 </button>
               </div>
@@ -221,7 +223,7 @@ export function CompanySettings({
             <button
               className="button button--danger"
               disabled={!!company.archived_at}
-              onClick={() => setArchive(true)}
+              onClick={() => { setArchive(true); }}
             >
               Archive company
             </button>

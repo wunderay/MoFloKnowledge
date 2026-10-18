@@ -23,12 +23,12 @@ const unconfirmed = (f: (typeof FONTS)[number], observations: ("css_declared" | 
 
 /** Every color and font is only an observation. */
 const allObserved = {
-  brand_colors: [observed(COLORS[0]!), observed(COLORS[1]!), observed(COLORS[2]!, "Page background")],
-  fonts: [unconfirmed(FONTS[0]!, ["computed_family", "css_declared"]), unconfirmed(FONTS[1]!), unconfirmed(FONTS[2]!)],
+  brand_colors: [observed(COLORS[0]), observed(COLORS[1]), observed(COLORS[2], "Page background")],
+  fonts: [unconfirmed(FONTS[0], ["computed_family", "css_declared"]), unconfirmed(FONTS[1]), unconfirmed(FONTS[2])],
 };
 const mixed = {
-  brand_colors: [observed(COLORS[0]!), confirmed(COLORS[1]!, "Brand red"), confirmed(COLORS[2]!)],
-  fonts: [unconfirmed(FONTS[0]!), FONTS[1]!],
+  brand_colors: [observed(COLORS[0]), confirmed(COLORS[1], "Brand red"), confirmed(COLORS[2])],
+  fonts: [unconfirmed(FONTS[0]), FONTS[1]],
 };
 type Parts = Parameters<typeof brandDraft>[0];
 const open = {
@@ -37,7 +37,7 @@ const open = {
 };
 const cardOf = (page: Page, title: string) => card(page, title, CARDS)!;
 const itemOf = (page: Page, title: string, text: string) =>
-  page.$(deepestContaining(page, cardOf(page, title), text)[0]!).closest("li")[0]!;
+  page.$(deepestContaining(page, cardOf(page, title), text)[0]).closest("li")[0];
 const cell = (page: Page, label: string) => textOf(page, labelGroup(page, label, CELLS, brandBanner(page, COMPANY_NAME)!)!);
 
 describe("observed fixtures", () => {
@@ -55,14 +55,16 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
   it("every observed color is qualified and none reads as Primary, Secondary or Tertiary", async () => {
     const page = await open[source](allObserved);
     const colors = cardOf(page, "Colors");
-    for (const [i, hex] of [COLORS[0]!.hex, COLORS[1]!.hex, COLORS[2]!.hex].entries()) {
+    for (const [i, hex] of [COLORS[0].hex, COLORS[1].hex, COLORS[2].hex].entries()) {
       const text = spaced(page, itemOf(page, "Colors", hex));
       expect(text, hex).toContain(OBSERVED_COLOR);
       expect(text, hex).not.toMatch(POSITION);
-      if (i < 2) expect(text).toMatch(new RegExp(`Color ${i + 1}\\b`));
+      if (i < 2) {
+        expect(text).toMatch(new RegExp(`Color ${i + 1}\\b`));
+      }
     }
     // an observed color keeps the role the site suggests, still qualified
-    expect(spaced(page, itemOf(page, "Colors", COLORS[2]!.hex))).toContain("Page background");
+    expect(spaced(page, itemOf(page, "Colors", COLORS[2].hex))).toContain("Page background");
     expect(textOf(page, colors)).not.toMatch(POSITION);
   });
 
@@ -71,7 +73,9 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
     const page = await open[source](allObserved);
     const fonts = cardOf(page, "Fonts");
     expect(textOf(page, fonts)).not.toMatch(POSITION);
-    for (const family of FONTS.map((f) => f.family)) expect(spaced(page, itemOf(page, "Fonts", family))).toContain(OBSERVED_FONT);
+    for (const family of FONTS.map((f) => f.family)) {
+      expect(spaced(page, itemOf(page, "Fonts", family))).toContain(OBSERVED_FONT);
+    }
     expect(spaced(page, itemOf(page, "Fonts", "Fraunces"))).toContain("computed font family, declared CSS");
     expect(spaced(page, itemOf(page, "Fonts", "Fraunces"))).toMatch(/Font 1\b/);
   });
@@ -83,22 +87,22 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
     expect(textOf(page, brandBanner(page, COMPANY_NAME)!)).toContain(OBSERVED_FONT);
     const swatches = page.$(labelGroup(page, "Palette", CELLS, brandBanner(page, COMPANY_NAME)!)!).find("[role=img]").toArray().map((el) => page.$(el).attr("aria-label"));
     expect(swatches).toEqual([
-      `Color 1 ${COLORS[0]!.hex}, observed website color`,
-      `Color 2 ${COLORS[1]!.hex}, observed website color`,
-      `Page background ${COLORS[2]!.hex}, observed website color`,
+      `Color 1 ${COLORS[0].hex}, observed website color`,
+      `Color 2 ${COLORS[1].hex}, observed website color`,
+      `Page background ${COLORS[2].hex}, observed website color`,
     ]);
   });
 
   // behavioural
   it("a confirmed color shows its role without the qualifier, next to an observed one", async () => {
     const page = await open[source](mixed);
-    const red = spaced(page, itemOf(page, "Colors", COLORS[1]!.hex));
+    const red = spaced(page, itemOf(page, "Colors", COLORS[1].hex));
     expect(red).toContain("Brand red");
     expect(red).not.toContain("Observed");
-    const third = spaced(page, itemOf(page, "Colors", COLORS[2]!.hex));
+    const third = spaced(page, itemOf(page, "Colors", COLORS[2].hex));
     expect(third).toMatch(/\bTertiary\b/);
     expect(third).not.toContain("Observed");
-    expect(spaced(page, itemOf(page, "Colors", COLORS[0]!.hex))).toContain(OBSERVED_COLOR);
+    expect(spaced(page, itemOf(page, "Colors", COLORS[0].hex))).toContain(OBSERVED_COLOR);
     // the confirmed font has no qualifier, the unconfirmed one does
     expect(spaced(page, itemOf(page, "Fonts", "Inter"))).not.toContain("Observed");
     expect(spaced(page, itemOf(page, "Fonts", "Fraunces"))).toContain(OBSERVED_FONT);
@@ -115,7 +119,9 @@ describe.each(["draft", "snapshot"] as const)("observed brand values (%s)", (sou
   // behavioural
   it("the Colors and Fonts card subtitles do not claim brand use", async () => {
     const page = await open[source](allObserved);
-    for (const title of ["Colors", "Fonts"]) expect(textOf(page, cardOf(page, title))).not.toMatch(/used across|brand colors/i);
+    for (const title of ["Colors", "Fonts"]) {
+      expect(textOf(page, cardOf(page, title))).not.toMatch(/used across|brand colors/i);
+    }
   });
 });
 
@@ -127,8 +133,10 @@ describe.each(["draft", "snapshot"] as const)("observed brand values, evidence n
     const fx = buildObEvidence({ business: business as never });
     const page = await openBrand(source === "draft" ? { draft: fx.draft } : { snapshot: fx.snapshot() });
     const names = page.$(".knowledge-view__panel button.citation-popover__trigger").toArray().map((b) => page.$(b).attr("aria-label") ?? "");
-    expect(names).toContain(`User correction: evidence for Color 2 ${COLORS[1]!.hex}, observed website color`);
+    expect(names).toContain(`User correction: evidence for Color 2 ${COLORS[1].hex}, observed website color`);
     expect(names).toContain(`User correction: evidence for Inter, ${OBSERVED_FONT.toLowerCase()}`);
-    for (const name of names) expect(name).not.toContain("@");
+    for (const name of names) {
+      expect(name).not.toContain("@");
+    }
   });
 });

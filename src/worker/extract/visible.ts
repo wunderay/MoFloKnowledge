@@ -25,8 +25,9 @@ export function visibleCandidates(
     for (const line of segment.text.split("\n")) {
       for (const [pattern, field, collection] of labels) {
         const value = pattern.exec(line)?.[1]?.trim();
-        if (value && value.length <= 4000)
+        if (value && value.length <= 4000) {
           add(field, collection ? [{ text: value }] : value, [segment.id]);
+        }
       }
       const employee = /^Employee count\s*:\s*(.+)$/i.exec(line)?.[1]?.trim();
       if (employee && employee.length <= 4000) {
@@ -49,22 +50,25 @@ export function visibleCandidates(
         /^Since\s+(\d{4})\.?$/i.exec(line);
       if (founding) {
         const year = Number(founding[1]);
-        if (year >= 1000 && year <= new Date().getUTCFullYear())
+        if (year >= 1000 && year <= new Date().getUTCFullYear()) {
           add("/company_foundation/year_founded", year, [segment.id]);
+        }
       }
     }
   }
   // A homepage description is published overview metadata; inner-page descriptions often describe a single service.
   if (new URL(page.capture.finalUrl).pathname === "/") {
     const description = observations.find((o) => o.property === "meta-description");
-    if (description?.value)
+    if (description?.value) {
       add("/company_foundation/overview", description.value, [], [description.id]);
+    }
   }
-  for (const address of observations.filter((o) => o.property === "address" && o.value))
+  for (const address of observations.filter((o) => o.property === "address" && o.value)) {
     add("/company_foundation/main_address", {
       label: null, raw: address.value, line1: null, line2: null,
       city: null, region: null, postal_code: null, country: null,
     }, [], [address.id]);
+  }
   // A named profile page must independently agree in its title and visible heading.
   // Copy only a role explicitly in that title, or a separate exact role heading.
   const profileTitle = page.capture.title &&
@@ -90,8 +94,10 @@ export function visibleCandidates(
       add("/key_people/@id/name", name, [source.id], cited, entity);
       add("/key_people/@id/title", profileRole, [source.id], cited, entity);
       const description = observations.find((o) => o.property === "meta-description" && o.value?.includes(name));
-      if (description) add("/key_people/@id/background_or_relevance", description.value,
+      if (description) {
+        add("/key_people/@id/background_or_relevance", description.value,
         [source.id], [description.id], entity);
+      }
     }
   }
   return result;

@@ -3,7 +3,7 @@ import { useId } from "react";
 import type { CitationContext, EntryProvenance } from "@/contracts";
 import { CitationPopover } from "../shared/citation-popover";
 import { labelOf, newValue, type FieldSpec } from "./business-fields";
-type Props = {
+interface Props {
   spec: FieldSpec;
   value: unknown;
   onChange: (value: unknown) => void;
@@ -13,7 +13,7 @@ type Props = {
   provenance: EntryProvenance;
   citationContext?: CitationContext;
   approved?: boolean;
-};
+}
 export function BusinessField({
   spec,
   value,
@@ -77,8 +77,8 @@ export function BusinessField({
                   onClick={() => {
                     const next = [...list];
                     [next[index - 1], next[index]] = [
-                      next[index]!,
-                      next[index - 1]!,
+                      next[index],
+                      next[index - 1],
                     ];
                     onChange(next);
                   }}
@@ -93,8 +93,8 @@ export function BusinessField({
                   onClick={() => {
                     const next = [...list];
                     [next[index + 1], next[index]] = [
-                      next[index]!,
-                      next[index + 1]!,
+                      next[index],
+                      next[index + 1],
                     ];
                     onChange(next);
                   }}
@@ -105,7 +105,7 @@ export function BusinessField({
                   type="button"
                   className="button button--quiet button--danger"
                   disabled={disabled}
-                  onClick={() => onChange(list.filter((_, i) => i !== index))}
+                  onClick={() => { onChange(list.filter((_, i) => i !== index)); }}
                 >
                   Remove
                 </button>
@@ -121,7 +121,7 @@ export function BusinessField({
               citationContext={citationContext}
               approved={approved}
               onChange={(next) =>
-                onChange(list.map((v, i) => (i === index ? next : v)))
+                { onChange(list.map((v, i) => (i === index ? next : v))); }
               }
             />
           </div>
@@ -130,7 +130,7 @@ export function BusinessField({
           type="button"
           className="button"
           disabled={disabled}
-          onClick={() => onChange([...list, newValue(spec.items!, true)])}
+          onClick={() => { onChange([...list, newValue(spec.items!, true)]); }}
         >
           ＋ Add {label.toLowerCase()}
         </button>
@@ -138,7 +138,7 @@ export function BusinessField({
     );
   }
   if (spec.fields) {
-    if (value === null || value === undefined)
+    if (value === null || value === undefined) {
       return (
         <div className="field">
           <span className="field__label">
@@ -152,18 +152,19 @@ export function BusinessField({
             style={{ alignSelf: "start" }}
             disabled={disabled}
             onClick={() =>
-              onChange(
+              { onChange(
                 newValue(
                   spec,
                   ["main_address", "other_locations"].includes(name),
                 ),
-              )
+              ); }
             }
           >
             ＋ Add {label.toLowerCase()}
           </button>
         </div>
       );
+    }
     const object = value as Record<string, unknown>;
     return (
       <fieldset className="knowledge-editor__group" disabled={disabled}>
@@ -181,7 +182,7 @@ export function BusinessField({
               provenance={provenance}
               citationContext={citationContext}
               approved={approved}
-              onChange={(next) => onChange({ ...object, [key]: next })}
+              onChange={(next) => { onChange({ ...object, [key]: next }); }}
             />
           ))}
         </div>
@@ -190,7 +191,7 @@ export function BusinessField({
             type="button"
             className="button button--quiet button--danger"
             disabled={disabled}
-            onClick={() => onChange(null)}
+            onClick={() => { onChange(null); }}
           >
             Clear {label.toLowerCase()}
           </button>
@@ -219,11 +220,11 @@ export function BusinessField({
                   disabled={disabled}
                   checked={selected.includes(option)}
                   onChange={(event) =>
-                    onChange(
+                    { onChange(
                       event.target.checked
                         ? [...new Set([...selected, option])].sort()
                         : selected.filter((value) => value !== option),
-                    )
+                    ); }
                   }
                 />{" "}
                 {labelOf(option)}
@@ -255,7 +256,7 @@ export function BusinessField({
             type="checkbox"
             disabled={disabled}
             checked={value === true}
-            onChange={(e) => onChange(e.target.checked)}
+            onChange={(e) => { onChange(e.target.checked); }}
           />{" "}
           Confirmed by a brand guide
         </label>
@@ -264,7 +265,7 @@ export function BusinessField({
           id={id}
           disabled={disabled}
           value={String(value ?? "")}
-          onChange={(e) => onChange(e.target.value || null)}
+          onChange={(e) => { onChange(e.target.value || null); }}
         >
           <option value="">Unknown</option>
           {spec.options?.map((option) => (
@@ -279,7 +280,7 @@ export function BusinessField({
           disabled={disabled}
           value={String(value ?? "")}
           placeholder={missingLabel}
-          onChange={(e) => onChange(e.target.value || null)}
+          onChange={(e) => { onChange(e.target.value || null); }}
         />
       ) : (
         <input
@@ -300,13 +301,13 @@ export function BusinessField({
           min={name === "alpha" ? 0 : undefined}
           max={name === "alpha" ? 1 : undefined}
           onChange={(e) =>
-            onChange(
+            { onChange(
               e.target.value === ""
                 ? null
                 : spec.type === "number"
                   ? Number(e.target.value)
                   : e.target.value,
-            )
+            ); }
           }
         />
       )}{" "}

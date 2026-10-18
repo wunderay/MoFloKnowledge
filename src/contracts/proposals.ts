@@ -24,12 +24,13 @@ export const ProposalChangesSchema = z
     const ids = new Set<string>(),
       targets = new Set<string>();
     changes.forEach((change, index) => {
-      if (ids.has(change.id) || targets.has(change.target))
+      if (ids.has(change.id) || targets.has(change.target)) {
         ctx.addIssue({
           code: "custom",
           path: [index],
           message: "Proposal change IDs and targets must be unique",
         });
+      }
       ids.add(change.id);
       targets.add(change.target);
     });
@@ -52,8 +53,9 @@ export const ProposalSchema = z
   .superRefine((v, ctx) => {
     const result = businessEntrySchemas[v.kind].safeParse(v.content);
     if (!result.success) {
-      for (const issue of result.error.issues)
+      for (const issue of result.error.issues) {
         ctx.addIssue({ ...issue, path: ["content", ...issue.path] });
+      }
       return;
     }
     const candidateIds = new Set(
@@ -77,12 +79,13 @@ export const ProposalSchema = z
         });
         return;
       }
-      if (candidateIds.has(change.id))
+      if (candidateIds.has(change.id)) {
         ctx.addIssue({
           code: "custom",
           path: ["changes", index, "id"],
           message: "Change ID conflicts with a candidate ID",
         });
+      }
       if (
         [...v.conflicts, ...v.provenance.conflicts].some(
           (conflict) =>
@@ -90,23 +93,25 @@ export const ProposalSchema = z
             conflict.target.startsWith(change.target + "/") ||
             change.target.startsWith(conflict.target + "/"),
         )
-      )
+      ) {
         ctx.addIssue({
           code: "custom",
           path: ["changes", index, "target"],
           message: "Conflicting fields must use their candidate selections",
         });
+      }
       try {
         const value = resolveStablePointer(
           entryBusiness(v.kind, v.content),
           change.target,
         );
-        if (value === null || (Array.isArray(value) && value.length === 0))
+        if (value === null || (Array.isArray(value) && value.length === 0)) {
           ctx.addIssue({
             code: "custom",
             path: ["changes", index, "target"],
             message: "Ordinary changes must contain a populated proposed value",
           });
+        }
       } catch {
         ctx.addIssue({
           code: "custom",

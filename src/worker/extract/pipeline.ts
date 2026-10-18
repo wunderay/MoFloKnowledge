@@ -54,9 +54,11 @@ export async function extractAndFinish(
       }];
     })
     .filter((c) => !invalidatedSources.has(c.sourceId));
-  for (const sourceId of completed)
-    if (!capturesById.has(sourceId) || invalidatedSources.has(sourceId))
+  for (const sourceId of completed) {
+    if (!capturesById.has(sourceId) || invalidatedSources.has(sourceId)) {
       completed.delete(sourceId);
+    }
+  }
   // Legacy counters and model failures are never active configuration or errors.
   delete checkpoint.model_tokens;
   delete checkpoint.model_successes;
@@ -85,7 +87,9 @@ export async function extractAndFinish(
     crawl.progress,
   );
   for (const page of crawl.captures) {
-    if (completed.has(page.id)) continue;
+    if (completed.has(page.id)) {
+      continue;
+    }
     signal.throwIfAborted();
     const observations = technicalObservations(page);
     const captureLimitations =
@@ -104,10 +108,11 @@ export async function extractAndFinish(
       });
     }
     let proposed = deterministicCandidates(page, observations);
-    if (page.id !== crawl.captures[0]?.id)
+    if (page.id !== crawl.captures[0]?.id) {
       proposed = proposed.filter(
         (c) => c.field !== "/company_foundation/website",
       );
+    }
     let invalid = false;
     for (const candidate of proposed) {
       try {
@@ -136,8 +141,11 @@ export async function extractAndFinish(
         ),
       ) > 750000
     ) {
-      for (let index = candidates.length - 1; index >= 0; index--)
-        if (candidates[index].page.id === page.id) candidates.splice(index, 1);
+      for (let index = candidates.length - 1; index >= 0; index--) {
+        if (candidates[index].page.id === page.id) {
+          candidates.splice(index, 1);
+        }
+      }
       partial = true;
       errors.push({
         code: "extraction_checkpoint_limit",
@@ -180,8 +188,9 @@ export async function extractAndFinish(
     if (existing) {
       proposal.target_entry_id = existing.id;
       proposal.base_revision = existing.current_revision;
-      for (const claim of proposal.provenance.claims)
+      for (const claim of proposal.provenance.claims) {
         claim.entry_id = existing.id;
+      }
     }
   }
   const coverage = proposals.flatMap((p) => p.provenance.coverage);

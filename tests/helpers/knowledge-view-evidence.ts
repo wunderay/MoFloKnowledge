@@ -40,20 +40,20 @@ const evidence = [
 
 export type Origin = "source_backed" | "inferred" | "generated" | "user_provided";
 /** A claim about one value: `target` is built from the business so it can name an item by id. */
-export type Mark = { target: (b: Business) => string; origin: Origin };
-export type Coverage = {
+export interface Mark { target: (b: Business) => string; origin: Origin }
+export interface Coverage {
   target: string;
   status: "found" | "partial" | "conflict" | "not_checked" | "not_found";
   reason: string | null;
-};
-export type EvidenceOptions = {
+}
+export interface EvidenceOptions {
   /** Edit the business before provenance is built (e.g. empty a field). */
   business?: (b: Business) => void;
   /** Item-level claims added to the base ones. */
   marks?: Mark[];
   /** Replaces DEFAULT_COVERAGE. */
   coverage?: Coverage[];
-};
+}
 
 export const REASONS = {
   partial: "Only the homepage was checked.",
@@ -113,7 +113,7 @@ export function buildEvidence(opts: EvidenceOptions = {}) {
       note: origin === "user_provided" ? "Corrected by the owner." : null,
     };
   };
-  const kindOf = (target: string) => target.split("/")[1]!;
+  const kindOf = (target: string) => target.split("/")[1];
   const claims = [
     base("/company_foundation/overview", "company_foundation", "source_backed"),
     // Generated wording must rest on supporting fact claims (here the overview's).
@@ -126,7 +126,7 @@ export function buildEvidence(opts: EvidenceOptions = {}) {
   const coverage = (opts.coverage ?? DEFAULT_COVERAGE).map((c) => ({ targets: [c.target], status: c.status, job_id: null, reason: c.reason }));
   for (const entry of draft.entries) {
     const mine = (target: string) => kindOf(target) === entry.kind;
-    const own = claims.filter((c) => mine(c.targets[0]!));
+    const own = claims.filter((c) => mine(c.targets[0]));
     const used = new Set(own.flatMap((c) => c.evidence_ids));
     const items = evidence.filter((e) => used.has(e.id));
     entry.provenance = {
@@ -134,7 +134,7 @@ export function buildEvidence(opts: EvidenceOptions = {}) {
       sources: items.length ? [source] : [],
       evidence: items,
       claims: own,
-      coverage: coverage.filter((c) => mine(c.targets[0]!)),
+      coverage: coverage.filter((c) => mine(c.targets[0])),
     } as never;
   }
   // Like the real draft, a lookup of every cited claim, excerpt and source rides along.
@@ -150,7 +150,7 @@ export function buildEvidence(opts: EvidenceOptions = {}) {
   };
   return {
     business,
-    draft: draft as Draft,
+    draft: draft,
     get snapshot() {
       return snapshot();
     },
@@ -166,7 +166,7 @@ export const evidenceSnapshot = (opts?: EvidenceOptions) => buildEvidence(opts).
 
 // ---- item markers: one registry-allowed claim per list field -----------------
 const item = (b: Business, field: string, index: number): string =>
-  (b as unknown as Record<string, Record<string, { id: string }[]>>)[field.split("/")[0]!]![field.split("/")[1]!]![index]!.id;
+  (b as unknown as Record<string, Record<string, { id: string }[]>>)[field.split("/")[0]][field.split("/")[1]][index].id;
 const at = (field: string, index: number, leaf: string): Mark["target"] =>
   (b) => `/${field}/@${item(b, field, index)}/${leaf}`;
 

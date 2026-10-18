@@ -29,8 +29,9 @@ describe("integrity", () => {
     expect(sniffImage(bytes(0xff, 0xd8, 0xff, 0xe0))?.ext).toBe("jpg");
     expect(sniffImage(ascii("GIF89a<script>alert(1)</script>"))?.ext).toBe("gif");
     expect(sniffImage(ascii("RIFF\0\0\0\0WEBPVP8 "))?.ext).toBe("webp");
-    for (const hostile of ["<html><script>alert(1)</script>", "%PDF-1.7", "MZ\x90\0", "#!/bin/sh\nid", "<script>alert(1)</script>", ""])
+    for (const hostile of ["<html><script>alert(1)</script>", "%PDF-1.7", "MZ\x90\0", "#!/bin/sh\nid", "<script>alert(1)</script>", ""]) {
       expect(sniffImage(ascii(hostile)), JSON.stringify(hostile)).toBeNull();
+    }
   });
 
   it("records the signed-in user as author of a manual entry, ignoring provenance sent by the client", async () => {
@@ -71,7 +72,7 @@ describe("integrity", () => {
     // The mocked database refuses; what matters is the provenance the server chose to send it.
     expect(response.status).not.toBe(401);
     expect(state.rpc).toHaveBeenCalledOnce();
-    const sent = state.rpc.mock.calls[0]![1].p_provenance;
+    const sent = state.rpc.mock.calls[0][1].p_provenance;
     expect(sent.claims.length).toBeGreaterThan(0);
     for (const claim of sent.claims) {
       expect(claim.origin).toBe("user_provided");

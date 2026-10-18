@@ -88,7 +88,7 @@ describe("C1 heading, count, add control and list", () => {
     const texts = all.map((r) => textOf(page, r));
     for (const [i, p] of [MAYA, TOMAS].entries()) {
       expect(texts[i], `row ${i + 1} shows the name`).toContain(p.name);
-      const afterName = texts[i]!.slice(texts[i]!.indexOf(p.name!) + p.name!.length);
+      const afterName = texts[i].slice(texts[i].indexOf(p.name!) + p.name!.length);
       expect(afterName, "the position follows the name").toContain(p.title);
     }
     expect(texts[2]).toContain("Priya Nair");
@@ -98,10 +98,12 @@ describe("C1 heading, count, add control and list", () => {
   it("Edge case: a person without a name is listed as 'Untitled person ...', with no 'null' for a missing position", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     const all = rows(page);
-    expect(textOf(page, all[3]!)).toMatch(/Untitled person/);
-    expect(textOf(page, all[3]!)).toContain("Barista trainer");
-    for (const r of all) expect(textOf(page, r)).not.toMatch(BAD);
-    expect(textOf(page, all[0]!)).not.toContain("Untitled person");
+    expect(textOf(page, all[3])).toMatch(/Untitled person/);
+    expect(textOf(page, all[3])).toContain("Barista trainer");
+    for (const r of all) {
+      expect(textOf(page, r)).not.toMatch(BAD);
+    }
+    expect(textOf(page, all[0])).not.toContain("Untitled person");
   });
 
   // behavioural
@@ -117,7 +119,7 @@ describe("C1 heading, count, add control and list", () => {
     const page = await openPeople({ draft: peopleDraft(), person: PERSON_IDS[index] });
     rows(page);
     expect(selectedIndexes(page)).toEqual([index]);
-    expect(shown(page, "Description")).toContain(PEOPLE[index]!.background_or_relevance ?? "No description");
+    expect(shown(page, "Description")).toContain(PEOPLE[index].background_or_relevance ?? "No description");
   });
 
   // behavioural
@@ -149,8 +151,8 @@ describe("C1 heading, count, add control and list", () => {
     rows(page).forEach((row, i) => {
       const buttons = page.$(row).find("button[type=button]");
       expect(buttons.length, `row ${i + 1}`).toBe(1);
-      expect(page.$(buttons[0]!).attr("tabindex")).toBeUndefined();
-      expect(page.$(buttons[0]!).find("button,a").length).toBe(0);
+      expect(page.$(buttons[0]).attr("tabindex")).toBeUndefined();
+      expect(page.$(buttons[0]).find("button,a").length).toBe(0);
     });
   });
 });
@@ -208,7 +210,7 @@ describe("C2 detail", () => {
   // behavioural
   it("Edge case: text is escaped, never parsed as markup", async () => {
     const page = await openPeople({ draft: hostileDraft() });
-    expect(page.$("script").toArray().filter((s) => /alert/.test(page.$(s).text()))).toHaveLength(0);
+    expect(page.$("script").toArray().filter((s) => page.$(s).text().includes('alert'))).toHaveLength(0);
     expect(page.$("[onerror],[onload]").length).toBe(0);
     expect(page.$("svg[onload]").length).toBe(0);
     expect(page.$("b").toArray().filter((b) => page.$(b).text() === "bold")).toHaveLength(0);
@@ -225,9 +227,9 @@ describe("C3 portrait or initials", () => {
     const all = rows(page);
     const rowImgs = all.map((r) => page.$(r).find("img").toArray().map((i) => page.$(i).attr("src")));
     expect(rowImgs).toEqual([[PORTRAIT_URL], [], [], []]);
-    expect(showsInitials(page, all[1]!, "TL"), "Tomas Lindqvist shows TL").toBe(true);
-    expect(showsInitials(page, all[2]!, "PN"), "Priya Nair shows PN").toBe(true);
-    expect(showsInitials(page, all[0]!, "MO"), "a portrait replaces the initials").toBe(false);
+    expect(showsInitials(page, all[1], "TL"), "Tomas Lindqvist shows TL").toBe(true);
+    expect(showsInitials(page, all[2], "PN"), "Priya Nair shows PN").toBe(true);
+    expect(showsInitials(page, all[0], "MO"), "a portrait replaces the initials").toBe(false);
   });
 
   // behavioural
@@ -252,7 +254,7 @@ describe("C3 portrait or initials", () => {
   // behavioural
   it("Edge case: an unnamed person shows a placeholder avatar without 'null' or 'undefined'", async () => {
     const page = await openPeople({ draft: peopleDraft() });
-    expect(textOf(page, rows(page)[3]!)).not.toMatch(BAD);
+    expect(textOf(page, rows(page)[3])).not.toMatch(BAD);
   });
 
   // behavioural
@@ -260,7 +262,9 @@ describe("C3 portrait or initials", () => {
     const page = await openPeople({ draft: hostileDraft() });
     const srcs = imgs(page).map((i) => i.src);
     expect(srcs.length).toBeGreaterThan(0);
-    for (const src of srcs) expect(src).toBe(PORTRAIT_URL);
+    for (const src of srcs) {
+      expect(src).toBe(PORTRAIT_URL);
+    }
     for (const el of page.$("*").toArray()) {
       for (const [name, value] of Object.entries((el as { attribs: Record<string, string> }).attribs)) {
         expect(`${name}=${value}`, "no stored address in any attribute").not.toMatch(/evil\.example|javascript:/i);
@@ -299,10 +303,10 @@ describe("C7 an owner's draft", () => {
   it("offers Delete for the selected person and a portrait file input that accepts images", async () => {
     const page = await openPeople({ draft: peopleDraft() });
     expect(controls(page, DELETE_PERSON), "one Delete control for the selected person").toHaveLength(1);
-    expect(controls(page, DELETE_PERSON)[0] && norm(page.$(controls(page, DELETE_PERSON)[0]!).attr("aria-label") ?? page.$(controls(page, DELETE_PERSON)[0]!).text())).toMatch(/delete/i);
+    expect(controls(page, DELETE_PERSON)[0] && norm(page.$(controls(page, DELETE_PERSON)[0]).attr("aria-label") ?? page.$(controls(page, DELETE_PERSON)[0]).text())).toMatch(/delete/i);
     const inputs = fileInputs(page);
     expect(inputs, "one file input for the portrait").toHaveLength(1);
-    expect(page.$(inputs[0]!).attr("accept") ?? "").toMatch(/image\//);
+    expect(page.$(inputs[0]).attr("accept") ?? "").toMatch(/image\//);
   });
 });
 
@@ -310,7 +314,9 @@ describe("C8 All sections", () => {
   // behavioural
   it("shows Key People under its own heading, after Sales & Marketing and before Site Knowledge, with the same count", async () => {
     const page = await openAll({ draft: peopleDraft() });
-    for (const label of ALL_ORDER) expect(sectionHeading(page, label), `heading ${label}`).not.toBeNull();
+    for (const label of ALL_ORDER) {
+      expect(sectionHeading(page, label), `heading ${label}`).not.toBeNull();
+    }
     const order = headings(page).map((h) => h.text.replace(/\s+\d+$/, ""));
     const at = (label: string) => order.findIndex((t) => t.toLowerCase() === label.toLowerCase());
     expect(at("Sales & Marketing")).toBeLessThan(at("Key People"));

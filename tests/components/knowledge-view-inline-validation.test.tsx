@@ -217,7 +217,9 @@ describe("C4 text length (20,000 characters)", () => {
     await key(view, area, "Enter");
     expect(alertText(view)).toMatch(/20,?000/);
     const save = buttonNamed(view, /^save\b/i);
-    if (save) await click(view, save);
+    if (save) {
+      await click(view, save);
+    }
     nothingSent(view);
     expect(textboxes(view, OVERVIEW_F.label), "the text is kept").toHaveLength(1);
   });

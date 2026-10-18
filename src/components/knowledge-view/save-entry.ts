@@ -11,23 +11,24 @@ import { MAX_ENTRY_CLAIMS, MAX_ENTRY_OPERATIONS, reviseProvenance } from "@/know
 import { api, companyPath, write } from "../shared/api-client";
 
 /** The stored entry a save revises: its id, the revision the page holds, and what it holds. */
-export type StoredEntry = {
+export interface StoredEntry {
   id: string;
   revision: number;
   content: BusinessEntry;
   provenance: EntryProvenance;
-};
+}
 
 /** The records that say who changed what are capped per entry (the database adds one more operation to a save); a save that would pass a cap is refused with this reason. */
 function checkRoom(provenance: EntryProvenance) {
-  if (provenance.claims.length > MAX_ENTRY_CLAIMS || provenance.operations.length >= MAX_ENTRY_OPERATIONS)
+  if (provenance.claims.length > MAX_ENTRY_CLAIMS || provenance.operations.length >= MAX_ENTRY_OPERATIONS) {
     throw new Error(
       `This section's source records are full (the maximum of ${MAX_ENTRY_CLAIMS} source claims or ${MAX_ENTRY_OPERATIONS} recorded changes), so it cannot be changed here any more.`,
     );
+  }
 }
 
 /** A save ready to be sent. Sending it again sends the same request (same request id, revision and content). */
-export type PreparedSave = { path: string; init: RequestInit };
+export interface PreparedSave { path: string; init: RequestInit }
 
 /**
  * Prepares saving `content` as the entry of `kind`, the way the editor saves an entry: a new entry when the
@@ -71,13 +72,14 @@ export function prepareEntrySave(input: {
     return { path: companyPath(companyId, "/entries"), init: write("POST", { kind, content, provenance, requestId }) };
   }
   const stored = structuredClone(entry.provenance);
-  if (!stored.coverage.length)
+  if (!stored.coverage.length) {
     stored.coverage = requiredCoverageTargets(entryBusiness(kind, content)).map((target) => ({
       targets: [target],
       status: "not_checked" as const,
       job_id: null,
       reason: "Manually entered section. Website coverage has not been checked.",
     }));
+  }
   const provenance = reviseProvenance({
     kind,
     entryId: entry.id,

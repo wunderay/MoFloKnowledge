@@ -24,20 +24,24 @@ export default async function ViewPage({
   // The selected key person's entry id; one that matches nobody selects the first person.
   const person = typeof params.person === "string" ? params.person : undefined;
   const id = UUIDSchema.safeParse(params.companyId);
-  if (!id.success)
+  if (!id.success) {
     return (
       <Notice error>
         Select a company from the dashboard to view saved knowledge.
       </Notice>
     );
+  }
   const { client, user } = await verifiedSession();
-  if (!user) redirect("/sign-in");
+  if (!user) {
+    redirect("/sign-in");
+  }
   if (
     params.versionId &&
     params.versionId !== "draft" &&
     !UUIDSchema.safeParse(params.versionId).success
-  )
+  ) {
     return <Notice error>This saved version is unavailable.</Notice>;
+  }
   try {
     const versions = await readVersionSummaries(client, id.data, user.id);
     const versionId = params.versionId ?? versions[0]?.id ?? "draft";

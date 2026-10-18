@@ -4,7 +4,7 @@ import type {
   EntryKind,
   CitationContext,
 } from "./index";
-export type CompanySummary = {
+export interface CompanySummary {
   id: string;
   name: string;
   website_url: string;
@@ -22,8 +22,8 @@ export type CompanySummary = {
     version_number: number;
     created_at: string;
   } | null;
-};
-export type DraftEntry = {
+}
+export interface DraftEntry {
   id: string;
   company_id: string;
   kind: EntryKind;
@@ -34,12 +34,12 @@ export type DraftEntry = {
   review_status: "unreviewed" | "approved" | "rejected";
   author_id: string;
   change_reason: string | null;
-};
-export type DraftResponse = {
+}
+export interface DraftResponse {
   actorId: string;
   company: Omit<CompanySummary, "latestJob" | "latestVersion">;
   draftGeneration: number;
   entries: DraftEntry[];
   sources: Record<string, unknown>[];
   citationContext: CitationContext;
-};
+}

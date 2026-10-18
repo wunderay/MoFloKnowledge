@@ -32,7 +32,7 @@ describe("a dialog the browser closes by itself", () => {
     });
     const dialog = await openAdd(view);
     await fill(view, NEW_URL, "New arrivals");
-    await view.click(view.byRole("button", /^save/i, dialog)[0]!);
+    await view.click(view.byRole("button", /^save/i, dialog)[0]);
     const shown = view.fakeOf(dialog)!.showModalCalls;
     await browserCloses(view, dialog);
     expect(view.fakeOf(dialog)!.showModalCalls, "the dialog is shown again").toBe(shown + 1);

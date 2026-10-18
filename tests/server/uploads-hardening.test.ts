@@ -51,8 +51,9 @@ function chunked(companyId: string, chunks: () => Generator<Uint8Array>, content
   const body = new ReadableStream<Uint8Array>({
     pull(controller) {
       const next = iterator.next();
-      if (next.done) controller.close();
-      else {
+      if (next.done) {
+        controller.close();
+      } else {
         pulled.count += 1;
         controller.enqueue(next.value);
       }
@@ -72,7 +73,9 @@ describe("bounded request body", () => {
     const pulled = { count: 0 };
     function* endless() {
       const block = new Uint8Array(MiB);
-      for (let i = 0; i < 1000; i += 1) yield block;
+      for (let i = 0; i < 1000; i += 1) {
+        yield block;
+      }
     }
     const request = chunked(a, endless, "multipart/form-data; boundary=x", pulled);
     expect(request.headers.get("content-length")).toBeNull();
@@ -90,7 +93,9 @@ describe("bounded request body", () => {
     const bytes = new Uint8Array(await source.arrayBuffer());
     const pulled = { count: 0 };
     function* pieces() {
-      for (let i = 0; i < bytes.length; i += 50) yield bytes.subarray(i, i + 50);
+      for (let i = 0; i < bytes.length; i += 50) {
+        yield bytes.subarray(i, i + 50);
+      }
     }
     const response = await POST(chunked(a, pieces, source.headers.get("content-type")!, pulled), collectionContext(a));
     const body = await readBody(response);
@@ -109,7 +114,7 @@ describe("delete and archive races", () => {
       return {
         ...real,
         remove: async (...args: unknown[]) => {
-          const result = await real.remove!(...args);
+          const result = await real.remove(...args);
           world.tables.uploads = (world.tables.uploads ?? []).filter((row) => row.id !== target.id);
           return result;
         },
@@ -130,13 +135,25 @@ describe("delete and archive races", () => {
     world.storageFailures.set("upload", { message: "new row violates row-level security policy" });
     const original = world.client.from as (table: string) => unknown;
     world.client.from = (table: string) => {
-      if (table === "companies") for (const row of world.tables.companies!) if (row.id === a) row.archived_at = "2026-10-01T00:00:00.000Z";
+      if (table === "companies") {
+        for (const row of world.tables.companies) {
+          if (row.id === a) {
+            row.archived_at = "2026-10-01T00:00:00.000Z";
+          }
+        }
+      }
       return original(table);
     };
     // The first read (before the upload) must still see a live company; archive only after the upload attempt.
     let reads = 0;
     world.client.from = (table: string) => {
-      if (table === "companies" && (reads += 1) === 2) for (const row of world.tables.companies!) if (row.id === a) row.archived_at = "2026-10-01T00:00:00.000Z";
+      if (table === "companies" && (reads += 1) === 2) {
+        for (const row of world.tables.companies) {
+          if (row.id === a) {
+            row.archived_at = "2026-10-01T00:00:00.000Z";
+          }
+        }
+      }
       return original(table);
     };
     try {
@@ -152,11 +169,13 @@ describe("delete and archive races", () => {
 describe("middleware matcher", () => {
   const matches = (path: string) => config.matcher.some((pattern) => pathToRegexp(pattern).test(path));
   it("still covers the pages and every other company API route", () => {
-    for (const path of ["/dashboard", "/knowledge/view", "/api/companies", `/api/companies/${IDS.owner}`, `/api/companies/${IDS.owner}/draft`, `/api/companies/${IDS.owner}/entries/x/history`, `/api/companies/${IDS.owner}/uploads-x`])
+    for (const path of ["/dashboard", "/knowledge/view", "/api/companies", `/api/companies/${IDS.owner}`, `/api/companies/${IDS.owner}/draft`, `/api/companies/${IDS.owner}/entries/x/history`, `/api/companies/${IDS.owner}/uploads-x`]) {
       expect(matches(path), path).toBe(true);
+    }
   });
   it("leaves both upload routes out, so Next does not truncate bodies at 10 MiB", () => {
-    for (const path of [`/api/companies/${IDS.owner}/uploads`, `/api/companies/${IDS.owner}/uploads/${IDS.viewer}`])
+    for (const path of [`/api/companies/${IDS.owner}/uploads`, `/api/companies/${IDS.owner}/uploads/${IDS.viewer}`]) {
       expect(matches(path), path).toBe(false);
+    }
   });
 });

@@ -35,8 +35,8 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
       })),
     );
     expect(markers).toEqual([
-      [{ name: `User correction: evidence for ${SUB!.name}`, shown: "User correction ⓘ" }],
-      [{ name: `Historical inferred: evidence for ${WHOLESALE!.name}`, shown: "Historical inferred ⓘ" }],
+      [{ name: `User correction: evidence for ${SUB.name}`, shown: "User correction ⓘ" }],
+      [{ name: `Historical inferred: evidence for ${WHOLESALE.name}`, shown: "Historical inferred ⓘ" }],
       [],
       [],
     ]);
@@ -46,16 +46,16 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
   it("the user-corrected feature has its own marker, named by the feature text; the others have none", async () => {
     const page = await open[source]();
     const items = page.$(group(page, "Key features")).find("li").toArray();
-    expect(items).toHaveLength(SUB!.features.length);
+    expect(items).toHaveLength(SUB.features.length);
     const marked = items.map((li) => page.$(li).find("button.citation-popover__trigger").toArray().map((b) => page.$(b).attr("aria-label")));
-    expect(marked).toEqual([[], [`User correction: evidence for ${SUB!.features[1]!.text}`], []]);
+    expect(marked).toEqual([[], [`User correction: evidence for ${SUB.features[1].text}`], []]);
   });
 
   // behavioural
   it("a historical inference on the description of a selected offering is named in its card", async () => {
     const page = await open[source](OFFERING_IDS[1]);
     const names = controls(page).map((c) => c.name);
-    expect(names).toContain(`Historical inferred: evidence for description of ${WHOLESALE!.name}`);
+    expect(names).toContain(`Historical inferred: evidence for description of ${WHOLESALE.name}`);
     expect(norm(page.$(group(page, "Description")).find("button.citation-popover__trigger").first().text())).toBe("Historical inferred ⓘ");
   });
 
@@ -78,7 +78,7 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     for (const label of DETAIL) {
       const own = page.$(group(page, label)).find(".knowledge-view__mini-label button.citation-popover__trigger").toArray().map((b) => page.$(b).attr("aria-label"));
       expect(own, `card "${label}"`).toHaveLength(1);
-      expect(own[0]).toMatch(new RegExp(`: evidence for ${nouns[label as keyof typeof nouns]} of ${SUB!.name}$`));
+      expect(own[0]).toMatch(new RegExp(`: evidence for ${nouns[label as keyof typeof nouns]} of ${SUB.name}$`));
     }
   });
 
@@ -97,7 +97,7 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
   // behavioural
   it("a filled field that is only partly found prints its reason next to the value", async () => {
     const page = await open[source]();
-    expect(groupText(page, "Description")).toContain(SUB!.description!);
+    expect(groupText(page, "Description")).toContain(SUB.description!);
     expect(groupText(page, "Description")).toContain(`Partial — ${REASONS.description}`);
     expect(groupText(page, "Type")).not.toMatch(/Unknown|Partial|Conflicting|Not found/);
   });
@@ -110,9 +110,9 @@ describe.each(["draft", "snapshot"] as const)("offerings evidence (%s)", (source
     all.forEach((row, i) => {
       const buttons = page.$(row).children("button[type=button]");
       expect(buttons, `row ${i + 1}`).toHaveLength(1);
-      expect(page.$(buttons[0]!).attr("tabindex")).toBeUndefined();
-      expect(page.$(buttons[0]!).find("button,a").length).toBe(0);
-      expect(norm(page.$(buttons[0]!).text())).toContain(i === 3 ? "Untitled offering 4" : OFFERINGS[i]!.name!);
+      expect(page.$(buttons[0]).attr("tabindex")).toBeUndefined();
+      expect(page.$(buttons[0]).find("button,a").length).toBe(0);
+      expect(norm(page.$(buttons[0]).text())).toContain(i === 3 ? "Untitled offering 4" : OFFERINGS[i].name!);
     });
   });
 });

@@ -53,7 +53,9 @@ const staleServerEntry = (view: View, kind: string) => {
   entry.revision = entry.current_revision = entry.current_revision + 7;
 };
 async function submit(view: View, field: TextField, text: string) {
-  if (field.shape === "single") return editAndEnter(view, field, text);
+  if (field.shape === "single") {
+    return editAndEnter(view, field, text);
+  }
   const area = await startEdit(view, field);
   await type(view, area, text);
   await key(view, area, "Enter");
@@ -69,10 +71,10 @@ describe("C6 a stale revision (409)", () => {
     await submit(view, field, "Typed against an old revision");
     expect(alertText(view)).toMatch(/reload/i);
     expect(view.server.writes, "one attempt, not retried on its own").toHaveLength(1);
-    expect(view.server.writes[0]!.body.expectedRevision).toBe(before.current_revision);
+    expect(view.server.writes[0].body.expectedRevision).toBe(before.current_revision);
     const field$ = textboxes(view, field.label);
     expect(field$, "the editor is still open").toHaveLength(1);
-    expect(valueOf(view, field$[0]!), "the typed text is kept").toBe("Typed against an old revision");
+    expect(valueOf(view, field$[0]), "the typed text is kept").toBe("Typed against an old revision");
     expect(statusText(view)).not.toMatch(/✓\s*Saved/);
   });
 
@@ -90,7 +92,7 @@ describe("C6 a stale revision (409)", () => {
 
   it("removing an item: the item stays listed, with a message to reload and no Undo", async () => {
     const view = await open(BUYERS.section);
-    const target = itemsOf(stored(view, BUYERS.kind), BUYERS.path)[0]!;
+    const target = itemsOf(stored(view, BUYERS.kind), BUYERS.path)[0];
     staleServerEntry(view, BUYERS.kind);
     await removeChip(view, target.text);
     expect(alertText(view)).toMatch(/reload/i);
@@ -112,7 +114,7 @@ describe("C6 a failed request shows the server's message and a Retry that repeat
     await submit(view, field, "Will need a retry");
     expect(alertText(view), "the server's message, verbatim").toContain(message);
     expect(textboxes(view, field.label), "the text is kept in the open editor").toHaveLength(1);
-    expect(valueOf(view, textboxes(view, field.label)[0]!)).toBe("Will need a retry");
+    expect(valueOf(view, textboxes(view, field.label)[0])).toBe("Will need a retry");
     const retry = one(view.byRole("button", /^retry$/i), 'a "Retry" button');
     expect(statusText(view)).not.toMatch(/✓\s*Saved/);
 
@@ -125,9 +127,9 @@ describe("C6 a failed request shows the server's message and a Retry that repeat
     await click(view, one(view.byRole("button", /^retry$/i), "Retry still offered"));
     expect(view.server.writes).toHaveLength(3);
     const [first, , third] = view.server.writes;
-    expect(third!.body.requestId, "the same request id, so a committed save is not applied twice").toBe(first!.body.requestId);
-    expect(third!.body.expectedRevision).toBe(first!.body.expectedRevision);
-    expect(third!.body.content).toEqual(first!.body.content);
+    expect(third.body.requestId, "the same request id, so a committed save is not applied twice").toBe(first.body.requestId);
+    expect(third.body.expectedRevision).toBe(first.body.expectedRevision);
+    expect(third.body.content).toEqual(first.body.content);
     expect(revisionWrite(view, before, 2, before.current_revision).content).toEqual(withField(before, field.path, "Will need a retry"));
     expect(statusText(view)).toMatch(/✓\s*Saved/);
     expect(alerts(view), "the message goes after a good save").toHaveLength(0);
@@ -159,14 +161,14 @@ describe("C6 a failed request shows the server's message and a Retry that repeat
     view.server.writeFailure = null;
     await click(view, one(view.byRole("button", /^retry$/i), "Retry"));
     expect(view.server.writes).toHaveLength(2);
-    expect(view.server.writes[1]!.body.requestId).toBe(view.server.writes[0]!.body.requestId);
+    expect(view.server.writes[1].body.requestId).toBe(view.server.writes[0].body.requestId);
     expect((getAt(revisionWrite(view, before, 1, before.current_revision).content, BUYERS.path) as { text: string }[]).map((i) => i.text)).toContain("Caterers");
     expect(removeButtons(view, "Caterers")).toHaveLength(1);
   });
 
   it("a failed remove keeps the item listed with a Retry", async () => {
     const view = await open(BUYERS.section);
-    const target = itemsOf(stored(view, BUYERS.kind), BUYERS.path)[0]!;
+    const target = itemsOf(stored(view, BUYERS.kind), BUYERS.path)[0];
     view.server.writeFailure = { status: 503, message: "Draft store is down." };
     await removeChip(view, target.text);
     expect(alertText(view)).toContain("Draft store is down.");
@@ -194,8 +196,10 @@ describe("C6 a committed save whose re-read of the draft fails", () => {
     // editing is off: every edit button is disabled and does nothing
     const buttons = allEditors(view);
     expect(buttons.length).toBeGreaterThan(0);
-    for (const button of buttons) expect(disabled(view, button), `${view.nameOf(button)} is disabled`).toBe(true);
-    await click(view, buttons[0]!);
+    for (const button of buttons) {
+      expect(disabled(view, button), `${view.nameOf(button)} is disabled`).toBe(true);
+    }
+    await click(view, buttons[0]);
     expect(textboxes(view, field.label), "no editor opens on stale data").toHaveLength(0);
     expect(view.server.writes, "no second write").toHaveLength(1);
 
@@ -224,8 +228,10 @@ describe("C6 a committed save whose re-read of the draft fails", () => {
     await submit(view, OVERVIEW_F, "First overview");
     expect(view.server.writesTo("entries"), "one creation").toHaveLength(1);
     expect(view.text()).toMatch(/saved\. reload/i);
-    for (const button of allEditors(view)) expect(disabled(view, button)).toBe(true);
-    await click(view, allEditors(view)[0]!);
+    for (const button of allEditors(view)) {
+      expect(disabled(view, button)).toBe(true);
+    }
+    await click(view, allEditors(view)[0]);
     expect(view.server.writes, "nothing is created a second time").toHaveLength(1);
     control.recover();
     await click(view, one(view.byRole("button", /^reload$/i), "Reload"));
@@ -233,7 +239,7 @@ describe("C6 a committed save whose re-read of the draft fails", () => {
     await submit(view, OVERVIEW_F, "Second overview");
     expect(view.server.writesTo("entries")).toHaveLength(1);
     expect(view.server.writesTo("revisions")).toHaveLength(1);
-    expect(view.server.writes[1]!.body.expectedRevision).toBe(1);
+    expect(view.server.writes[1].body.expectedRevision).toBe(1);
   });
 
   it("an added item: one write, Add and Remove are disabled until Reload works", async () => {
@@ -244,10 +250,18 @@ describe("C6 a committed save whose re-read of the draft fails", () => {
     expect(view.server.writes).toHaveLength(1);
     expect(view.text()).toMatch(/saved\. reload/i);
     expect(view.byRole("button", /^retry$/i)).toHaveLength(0);
-    for (const pill of addPill(view, BUYERS)) expect(disabled(view, pill), "Add buyer is disabled").toBe(true);
-    for (const input of addInputs(view, BUYERS)) expect(disabled(view, input) || input.props.readOnly === true, "an add field left open is switched off").toBe(true);
-    for (const item of items) for (const remove of removeButtons(view, item.text)) expect(disabled(view, remove), `Remove ${item.text} is disabled`).toBe(true);
-    await click(view, one(removeButtons(view, items[0]!.text), "remove"));
+    for (const pill of addPill(view, BUYERS)) {
+      expect(disabled(view, pill), "Add buyer is disabled").toBe(true);
+    }
+    for (const input of addInputs(view, BUYERS)) {
+      expect(disabled(view, input) || input.props.readOnly === true, "an add field left open is switched off").toBe(true);
+    }
+    for (const item of items) {
+      for (const remove of removeButtons(view, item.text)) {
+        expect(disabled(view, remove), `Remove ${item.text} is disabled`).toBe(true);
+      }
+    }
+    await click(view, one(removeButtons(view, items[0].text), "remove"));
     expect(view.server.writes, "a disabled Remove sends nothing").toHaveLength(1);
     control.recover();
     await click(view, one(view.byRole("button", /^reload$/i), "Reload"));
@@ -255,7 +269,11 @@ describe("C6 a committed save whose re-read of the draft fails", () => {
     const pill = addPill(view, BUYERS)[0];
     const field = addInputs(view, BUYERS)[0];
     expect(pill ?? field, "the list can be added to again").toBeDefined();
-    if (pill) expect(disabled(view, pill)).toBe(false);
-    if (field) expect(disabled(view, field) || field.props.readOnly === true).toBe(false);
+    if (pill) {
+      expect(disabled(view, pill)).toBe(false);
+    }
+    if (field) {
+      expect(disabled(view, field) || field.props.readOnly === true).toBe(false);
+    }
   });
 });

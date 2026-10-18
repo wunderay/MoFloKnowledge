@@ -56,7 +56,9 @@ export function ProposalReview({
   useEffect(() => {
     const job = new URLSearchParams(window.location.search).get("jobId");
     setJobId(job);
-    if (!job) return;
+    if (!job) {
+      return;
+    }
     api<{
       proposals: {
         candidates?: ProposalItem[];
@@ -87,7 +89,7 @@ export function ProposalReview({
           ),
         );
       })
-      .catch((error) => setError(error.message));
+      .catch((error) => { setError(error.message); });
   }, [companyId, entries]);
   async function act(proposal: ProposalItem, dismiss = false) {
     if (!dismiss && isHistoricalAiProposal(proposal)) {
@@ -124,7 +126,9 @@ export function ProposalReview({
       setBusy(false);
     }
   }
-  if (!proposals.length && !error) return null;
+  if (!proposals.length && !error) {
+    return null;
+  }
   return (
     <section className="panel">
       <div className="section-heading">
@@ -154,7 +158,7 @@ export function ProposalReview({
                 {current ? (
                   <ValueView
                     value={current.content}
-                    path={entryRoot(proposal.kind as EntryKind, current.id)}
+                    path={entryRoot(proposal.kind, current.id)}
                     provenance={current.provenance}
                     citationContext={citationContext}
                     approved={false}
@@ -168,7 +172,7 @@ export function ProposalReview({
                 <ValueView
                   value={proposal.content}
                   path={entryRoot(
-                    proposal.kind as EntryKind,
+                    proposal.kind,
                     "id" in proposal.content
                       ? proposal.content.id
                       : (proposal.target_entry_id ?? ""),
@@ -204,7 +208,7 @@ export function ProposalReview({
                               change.id,
                             )}
                             onChange={(event) =>
-                              setSelected((previous) => ({
+                              { setSelected((previous) => ({
                                 ...previous,
                                 [proposal.id]: event.target.checked
                                   ? [
@@ -214,7 +218,7 @@ export function ProposalReview({
                                   : (previous[proposal.id] ?? []).filter(
                                       (id) => id !== change.id,
                                     ),
-                              }))
+                              })); }
                             }
                           />{" "}
                           Use proposed{" "}
@@ -255,7 +259,7 @@ export function ProposalReview({
                         )
                       }
                       onChange={() =>
-                        setSelected((previous) => ({
+                        { setSelected((previous) => ({
                           ...previous,
                           [proposal.id]: (previous[proposal.id] ?? []).filter(
                             (id) =>
@@ -263,7 +267,7 @@ export function ProposalReview({
                                 (candidate) => candidate.id === id,
                               ),
                           ),
-                        }))
+                        })); }
                       }
                     />{" "}
                     Keep this field unchanged
@@ -281,7 +285,7 @@ export function ProposalReview({
                             candidate.id,
                           )}
                           onChange={() =>
-                            setSelected({
+                            { setSelected({
                               ...selected,
                               [proposal.id]: [
                                 ...(selected[proposal.id] ?? []).filter(
@@ -292,7 +296,7 @@ export function ProposalReview({
                                 ),
                                 candidate.id,
                               ],
-                            })
+                            }); }
                           }
                         />{" "}
                         {summarizeValue(candidate.value)}

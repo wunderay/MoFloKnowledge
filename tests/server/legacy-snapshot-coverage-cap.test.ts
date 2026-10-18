@@ -18,11 +18,12 @@ const userId = legacy.provenance.company.snapshot_author_id;
 const versionId = legacy.knowledge_base_version_id;
 const full = structuredClone(legacy);
 const padding = 1000 - full.provenance.coverage.length;
-for (let index = 0; index < padding; index++)
+for (let index = 0; index < padding; index++) {
   full.provenance.coverage.push({
     targets: [`/key_people/@a5000000-0000-4000-8000-${String(index).padStart(12, "0")}/name`],
     status: "not_checked", job_id: null, reason: "Entered manually; website extraction has not assessed this field.",
   } as never);
+}
 const stored = canonicalStringify(full);
 function query(data: unknown) {
   return {

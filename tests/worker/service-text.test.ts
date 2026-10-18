@@ -66,7 +66,7 @@ describe("authored service content", () => {
     expect(values(candidates, "features").filter((candidate) => candidate.entity_key?.endsWith("|service:gift and estate tax return preparation"))).toEqual([]);
     expect(values(candidates, "features").filter((candidate) => candidate.entity_key === "https://example.com/services/tax-preparation-planning")
       .map((candidate) => candidate.value)).toContainEqual([{ text: "Estate and Succession Planning" }]);
-    expect(candidates.some((candidate) => /Trust/.test(String(candidate.value)))).toBe(false);
+    expect(candidates.some((candidate) => String(candidate.value).includes('Trust'))).toBe(false);
     expect(values(candidates, "pricing")).toEqual([]);
     const bio = extract(`<main><h2>Independent CFO and Controller</h2><p>I provide part-time or interim financial and accounting services. You can receive the service and support of a highly qualified CFO and Controller only as you need it, without having to pay a full-time salary or benefits.</p>
       <p>I've worked with a wide variety of businesses, including: medical practices, law firms, construction, restaurants.</p></main>`, "/about-us/alex-rowan");

@@ -34,9 +34,9 @@ const VIEW_SPECS = {
   offering: { label: "Business Offerings", description: "Products and services, with their own features, pricing, and approval." },
   positioning: { label: "Sales & Marketing", description: "Your company story, social presence, and paths to customers." },
   market_and_customers: { label: "Customers & Industry", description: "Who you serve, the industries they work in, and what they need." },
-  branding_and_style: { label: "Branding & Style", description: CATEGORY_SPECS.branding_and_style!.description },
-  key_person: { label: "Key People", description: CATEGORY_SPECS.key_person!.description },
-  site_links: { label: "Site links", description: CATEGORY_SPECS.site_links!.description },
+  branding_and_style: { label: "Branding & Style", description: CATEGORY_SPECS.branding_and_style.description },
+  key_person: { label: "Key People", description: CATEGORY_SPECS.key_person.description },
+  site_links: { label: "Site links", description: CATEGORY_SPECS.site_links.description },
 };
 const MARKETING_FIELDS = new Set(["channels", "funnels", "ctas"]);
 const SHARED_CUSTOMER_FIELDS = new Set(["target_buyers", "customer_needs", "ideal_customer_personas"]);
@@ -44,7 +44,7 @@ function viewCategory(category: EntryKind): keyof typeof VIEW_SPECS {
   return category === "online_presence" ? "positioning" : category;
 }
 function entryFields(kind: EntryKind, marketing: boolean) {
-  return Object.entries(CATEGORY_SPECS[kind]!.fields).filter(([key]) =>
+  return Object.entries(CATEGORY_SPECS[kind].fields).filter(([key]) =>
     kind !== "market_and_customers" || (marketing
       ? MARKETING_FIELDS.has(key) || SHARED_CUSTOMER_FIELDS.has(key)
       : !MARKETING_FIELDS.has(key)),
@@ -114,15 +114,20 @@ function KnowledgeEditorContent({
     const category = new URLSearchParams(window.location.search).get(
       "category",
     );
-    if (category && CATEGORY_SPECS[category])
+    if (category && CATEGORY_SPECS[category]) {
       dispatch({ type: "category", category: category as EntryKind });
+    }
     const entryId = new URLSearchParams(window.location.search).get("entryId");
-    if (entryId) setSelectedOffering(entryId);
+    if (entryId) {
+      setSelectedOffering(entryId);
+    }
   }, []);
   useEffect(() => {
-    if (!initialDraft) refresh();
+    if (!initialDraft) {
+      refresh();
+    }
     api<{ companies: { id: string; name: string }[] }>("/api/companies")
-      .then((data) => setCompanies(data.companies))
+      .then((data) => { setCompanies(data.companies); })
       .catch(() => {});
   }, [refresh]);
   useEffect(() => {
@@ -134,19 +139,21 @@ function KnowledgeEditorContent({
     }
   }, [draft, state.category, selectedOffering]);
   const canNavigate = useUnsavedNavigation(state.dirty.length > 0);
-  if (!companyId)
+  if (!companyId) {
     return (
       <Notice error>
         Select a company from the dashboard to open its workspace.{" "}
         <Link href="/dashboard">View companies</Link>
       </Notice>
     );
-  if (!draft)
+  }
+  if (!draft) {
     return error ? (
       <Notice error>{error}</Notice>
     ) : (
       <Notice>Loading company knowledge…</Notice>
     );
+  }
   const membershipCanEdit =
     draft.company.role !== "viewer" && !draft.company.archived_at;
   const canEdit =
@@ -159,8 +166,12 @@ function KnowledgeEditorContent({
     : [currentView];
   const visibleEntries = kinds.flatMap((kind): Entry[] => {
     const group = draft.entries.filter((entry) => entry.kind === kind);
-    if (group.length) return group;
-    if (kind === "key_person" || kind === "offering") return [];
+    if (group.length) {
+      return group;
+    }
+    if (kind === "key_person" || kind === "offering") {
+      return [];
+    }
     return [{
       id: `new-${kind}`, kind, current_revision: 0,
       content: createEntryDefault(kind), provenance: createEmptyProvenance(),
@@ -201,10 +212,11 @@ function KnowledgeEditorContent({
       if (
         genderChanged &&
         (genderAttestations[entry.id]?.trim().length ?? 0) < 10
-      )
+      ) {
         throw new Error(
           "Provide an explicit self-description attestation for the gender value, or leave gender unknown.",
         );
+      }
       const genderAttestation = genderChanged
         ? genderAttestations[entry.id]?.trim()
         : undefined;
@@ -219,7 +231,7 @@ function KnowledgeEditorContent({
               ? `/offerings/@${(content as { id: string }).id}`
               : `/${entry.kind}`;
         provenance.coverage = Object.keys(
-          CATEGORY_SPECS[entry.kind]!.fields,
+          CATEGORY_SPECS[entry.kind].fields,
         ).map((key) => ({
           targets: [`${root}/${key}`],
           status: "not_checked" as const,
@@ -275,10 +287,13 @@ function KnowledgeEditorContent({
       }
       // The server may normalize conflict decisions and content. Keep local edits
       // and controls locked until that authoritative revision is available.
-      if (entry.kind === "offering" && isNew)
+      if (entry.kind === "offering" && isNew) {
         setSelectedOffering(result.entry_id ?? result.id ?? entry.id);
+      }
       setSavedAwaitingRefresh(entry.id);
-      if (!(await refresh())) return;
+      if (!(await refresh())) {
+        return;
+      }
       dispatch({ type: "saved", id: entry.id });
       setSavedAwaitingRefresh(null);
       setStale(false);
@@ -300,7 +315,9 @@ function KnowledgeEditorContent({
               .join("; ")
           : (e as Error).message,
       );
-      if (e instanceof ApiError && e.status === 409) setStale(true);
+      if (e instanceof ApiError && e.status === 409) {
+        setStale(true);
+      }
     } finally {
       setBusy(null);
     }
@@ -350,9 +367,9 @@ function KnowledgeEditorContent({
       provenance.decisions.push(decision);
       const content =
         entry.kind === "key_person"
-          ? (business.key_people as BusinessEntry[])[0]!
+          ? (business.key_people as BusinessEntry[])[0]
           : entry.kind === "offering"
-            ? (business.offerings as BusinessEntry[])[0]!
+            ? (business.offerings as BusinessEntry[])[0]
             : (business[entry.kind] as BusinessEntry);
       dispatch({ type: "edit", id: entry.id, content });
       dispatch({ type: "provenance", id: entry.id, provenance });
@@ -372,7 +389,9 @@ function KnowledgeEditorContent({
     };
     setDraft({ ...draft!, entries: [...draft!.entries, entry] });
     dispatch({ type: "edit", id, content: entry.content });
-    if (entry.kind === "offering") setSelectedOffering(id);
+    if (entry.kind === "offering") {
+      setSelectedOffering(id);
+    }
   }
   return (
     <div className="knowledge-editor cloud-knowledge">
@@ -433,7 +452,7 @@ function KnowledgeEditorContent({
                 .map((entry) => (
                   <details key={entry.id}>
                     <summary>
-                      Compare {CATEGORY_SPECS[entry.kind]!.label} with the
+                      Compare {CATEGORY_SPECS[entry.kind].label} with the
                       latest saved revision
                     </summary>
                     <div className="proposal__comparison">
@@ -476,7 +495,7 @@ function KnowledgeEditorContent({
             aria-label="Knowledge category"
             value={currentView}
             disabled={!hydrated}
-            onChange={(event) => changeCategory(event.target.value as EntryKind)}
+            onChange={(event) => { changeCategory(event.target.value as EntryKind); }}
           >
             {Object.entries(VIEW_SPECS).map(([kind, category]) => (
               <option key={kind} value={kind}>{category.label}</option>
@@ -512,9 +531,9 @@ function KnowledgeEditorContent({
                 const coverage = group.flatMap((entry) => (state.provenance[entry.id] ?? entry.provenance).coverage);
                 const assessed = coverage.filter((item) => item.status !== "not_checked")
                   .reduce((total, item) => total + item.targets.length, 0);
-                const fields = group.length * Object.keys(CATEGORY_SPECS[kind]!.fields).length ||
-                  (["key_person", "offering"].includes(kind) ? 0 : Object.keys(CATEGORY_SPECS[kind]!.fields).length);
-                return <span key={kind}>{marketing && `${CATEGORY_SPECS[kind]!.label}: `}{assessed}/{fields} fields checked · {group.filter((entry) => entry.review_status === "approved").length}/{group.length || (["key_person", "offering"].includes(kind) ? 0 : 1)} reviewed</span>;
+                const fields = group.length * Object.keys(CATEGORY_SPECS[kind].fields).length ||
+                  (["key_person", "offering"].includes(kind) ? 0 : Object.keys(CATEGORY_SPECS[kind].fields).length);
+                return <span key={kind}>{marketing && `${CATEGORY_SPECS[kind].label}: `}{assessed}/{fields} fields checked · {group.filter((entry) => entry.review_status === "approved").length}/{group.length || (["key_person", "offering"].includes(kind) ? 0 : 1)} reviewed</span>;
               })}
             </div>
           </div>
@@ -532,10 +551,11 @@ function KnowledgeEditorContent({
             className="company-switcher"
             value={companyId}
             onChange={(e) => {
-              if (canNavigate())
+              if (canNavigate()) {
                 window.location.assign(
                   `/knowledge?companyId=${e.target.value}`,
                 );
+              }
             }}
           >
             {companies.map((c) => (
@@ -553,14 +573,14 @@ function KnowledgeEditorContent({
           <button
             className="button button--primary"
             disabled={!canEdit || state.dirty.length > 0}
-            onClick={() => setPublish(true)}
+            onClick={() => { setPublish(true); }}
           >
             Save knowledge version
           </button>
           {draft.company.role !== "viewer" && (
             <button
               className="button"
-              onClick={() => setSettings(true)}
+              onClick={() => { setSettings(true); }}
               aria-label="Company settings"
             >
               ⚙
@@ -587,7 +607,7 @@ function KnowledgeEditorContent({
                     key={entry.id} type="button"
                     className={`cloud-knowledge__offering${activeOffering?.id === entry.id ? " cloud-knowledge__offering--selected" : ""}`}
                     aria-current={activeOffering?.id === entry.id ? "true" : undefined}
-                    onClick={() => setSelectedOffering(entry.id)}
+                    onClick={() => { setSelectedOffering(entry.id); }}
                   >
                     <span className="cloud-knowledge__offering-icon" aria-hidden="true">▱</span>
                     <span><strong>{"name" in value && value.name ? String(value.name) : `Untitled offering ${index + 1}`}</strong><small>{state.dirty.includes(entry.id) ? "Unsaved changes" : entry.review_status.replaceAll("_", " ")}</small></span>
@@ -609,7 +629,7 @@ function KnowledgeEditorContent({
             </div>
           )}
           {renderedEntries.map((entry) => {
-            const spec = CATEGORY_SPECS[entry.kind]!;
+            const spec = CATEGORY_SPECS[entry.kind];
             const value = state.values[entry.id] ?? entry.content;
             const provenance = state.provenance[entry.id] ?? entry.provenance;
             const root =
@@ -694,7 +714,7 @@ function KnowledgeEditorContent({
                           className="button"
                           disabled={!canEdit}
                           onClick={() =>
-                            resolveConflict(entry, conflict.id, null, null)
+                            { resolveConflict(entry, conflict.id, null, null); }
                           }
                         >
                           Clear disputed value
@@ -704,13 +724,13 @@ function KnowledgeEditorContent({
                           className="button"
                           disabled={!canEdit || !state.dirty.includes(entry.id)}
                           onClick={() =>
-                            resolveConflict(
+                            { resolveConflict(
                               entry,
                               conflict.id,
                               null,
                               null,
                               "correct",
-                            )
+                            ); }
                           }
                         >
                           Use my edited value as correction
@@ -736,11 +756,11 @@ function KnowledgeEditorContent({
                       citationContext={draft.citationContext}
                       approved={entry.review_status === "approved"}
                       onChange={(next) =>
-                        dispatch({
+                        { dispatch({
                           type: "edit",
                           id: entry.id,
                           content: { ...value, [key]: next } as BusinessEntry,
-                        })
+                        }); }
                       }
                     />
                     </div>
@@ -758,10 +778,10 @@ function KnowledgeEditorContent({
                       <textarea
                         value={genderAttestations[entry.id] ?? ""}
                         onChange={(event) =>
-                          setGenderAttestations((previous) => ({
+                          { setGenderAttestations((previous) => ({
                             ...previous,
                             [entry.id]: event.target.value,
-                          }))
+                          })); }
                         }
                         disabled={!canEdit}
                         placeholder="Describe the person's explicit self-description and where you observed it."
@@ -800,7 +820,7 @@ function KnowledgeEditorContent({
                   <button
                     className="button button--quiet"
                     disabled={!hydrated || !entry.current_revision}
-                    onClick={() => setHistory(entry)}
+                    onClick={() => { setHistory(entry); }}
                   >
                     History
                   </button>
@@ -839,7 +859,7 @@ function KnowledgeEditorContent({
           entryId={history.id}
           revision={history.current_revision}
           canEdit={canEdit}
-          onClose={() => setHistory(null)}
+          onClose={() => { setHistory(null); }}
           onRestore={refresh}
           onStale={() => {
             setHistory(null);
@@ -853,7 +873,7 @@ function KnowledgeEditorContent({
       {publish && (
         <PublicationDialog
           companyId={companyId}
-          onClose={() => setPublish(false)}
+          onClose={() => { setPublish(false); }}
           onSaved={() => {
             setMessage("Knowledge version saved. The snapshot is permanent.");
             refresh();
@@ -865,7 +885,7 @@ function KnowledgeEditorContent({
           companyId={companyId}
           company={draft.company}
           generation={draft.draftGeneration}
-          onClose={() => setSettings(false)}
+          onClose={() => { setSettings(false); }}
           onChanged={refresh}
         />
       )}

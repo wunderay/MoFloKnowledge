@@ -57,22 +57,36 @@ const SVG_HEAD =
 /** The image type the bytes really are, from their magic numbers; client filename and MIME are never consulted. */
 export function sniffImage(bytes: Uint8Array): { ext: string; type: string } | null {
   let ext: string | null = null;
-  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ext = "png";
-  else if (startsWith(bytes, [0xff, 0xd8, 0xff])) ext = "jpg";
-  else if (startsWith(bytes, ascii("GIF87a")) || startsWith(bytes, ascii("GIF89a"))) ext = "gif";
-  else if (startsWith(bytes, ascii("RIFF")) && startsWith(bytes, ascii("WEBP"), 8)) ext = "webp";
-  else if (SVG_HEAD.test(new TextDecoder("utf-8").decode(bytes.subarray(0, 2048)))) ext = "svg";
-  return ext ? { ext, type: TYPE_BY_EXTENSION[ext]! } : null;
+  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
+    ext = "png";
+  } else if (startsWith(bytes, [0xff, 0xd8, 0xff])) {
+    ext = "jpg";
+  } else if (startsWith(bytes, ascii("GIF87a")) || startsWith(bytes, ascii("GIF89a"))) {
+    ext = "gif";
+  } else if (startsWith(bytes, ascii("RIFF")) && startsWith(bytes, ascii("WEBP"), 8)) {
+    ext = "webp";
+  } else if (SVG_HEAD.test(new TextDecoder("utf-8").decode(bytes.subarray(0, 2048)))) {
+    ext = "svg";
+  }
+  return ext ? { ext, type: TYPE_BY_EXTENSION[ext] } : null;
 }
 
 /** Membership first (non-members learn nothing); writes also need a non-viewer role and a live company. */
 export async function authorizeUploads(client: Client, companyId: string, userId: string, write: boolean) {
   await authorizeCompany(client, companyId, userId, write);
-  if (!write) return;
+  if (!write) {
+    return;
+  }
   const { data, error } = await client.from("companies").select("archived_at").eq("id", companyId).maybeSingle();
-  if (error) throw mapDatabaseError(error);
-  if (!data) throw unavailable();
-  if (data.archived_at) throw new HttpError(422, "validation", "This company is archived.");
+  if (error) {
+    throw mapDatabaseError(error);
+  }
+  if (!data) {
+    throw unavailable();
+  }
+  if (data.archived_at) {
+    throw new HttpError(422, "validation", "This company is archived.");
+  }
 }
 
 /** The upload row of this company, with its storage path re-checked against the canonical shape. */
@@ -83,12 +97,16 @@ export async function findUpload(client: Client, companyId: string, uploadId: st
     .eq("id", uploadId)
     .eq("company_id", companyId)
     .maybeSingle();
-  if (error) throw mapDatabaseError(error);
+  if (error) {
+    throw mapDatabaseError(error);
+  }
   const match = /^(?:logos|portraits|offering-images)\/([0-9a-f-]{36})\/[0-9a-f-]{36}\.(png|jpe?g|gif|webp|svg)$/.exec(
     String(data?.path ?? ""),
   );
-  if (!data || !match || match[1] !== companyId) throw unavailable();
-  return { path: String(data.path), type: TYPE_BY_EXTENSION[match[2]!]! };
+  if (!data || match?.[1] !== companyId) {
+    throw unavailable();
+  }
+  return { path: String(data.path), type: TYPE_BY_EXTENSION[match[2]] };
 }
 
 /**
@@ -96,14 +114,18 @@ export async function findUpload(client: Client, companyId: string, uploadId: st
  * length cannot be buffered without bound. Parsed afterwards by the platform's own multipart parser.
  */
 export async function readUploadForm(request: Request): Promise<FormData> {
-  if (Number(request.headers.get("content-length")) > MAX_REQUEST_BYTES) throw tooLarge();
+  if (Number(request.headers.get("content-length")) > MAX_REQUEST_BYTES) {
+    throw tooLarge();
+  }
   const reader = request.body?.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
-  if (reader)
+  if (reader) {
     for (;;) {
       const result = await reader.read();
-      if (result.done) break;
+      if (result.done) {
+        break;
+      }
       size += result.value.byteLength;
       if (size > MAX_REQUEST_BYTES) {
         await reader.cancel();
@@ -111,6 +133,7 @@ export async function readUploadForm(request: Request): Promise<FormData> {
       }
       chunks.push(result.value);
     }
+  }
   try {
     return await new Request(request.url, {
       method: "POST",

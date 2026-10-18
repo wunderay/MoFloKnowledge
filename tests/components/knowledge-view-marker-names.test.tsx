@@ -28,19 +28,19 @@ const names = (page: Page) =>
   }));
 /** What the item's control is named after: the text the item shows. */
 const NAME: Record<string, (b: Business) => string> = {
-  Buyers: (b) => b.market_and_customers.target_buyers[1]!.text,
-  Suppliers: (b) => b.market_and_customers.suppliers_and_partners[1]!.name!,
-  "Industry groupings": (b) => b.market_and_customers.industry_groupings[1]!.text,
-  "Service locations": (b) => b.company_foundation.service_locations[1]!.text,
-  "Company role": (b) => b.company_foundation.company_role[1]!.text,
-  "Industry outlook": (b) => b.market_and_customers.industry_outlook[1]!.text,
-  "Alternate names": (b) => b.company_foundation.alternative_company_names[1]!.text,
-  Headquarters: (b) => b.company_foundation.other_locations[1]!.label!,
-  "Customer needs": (b) => b.market_and_customers.customer_needs[1]!.text,
-  Channels: (b) => b.market_and_customers.channels[1]!.label!,
-  "Calls to action": (b) => b.market_and_customers.ctas[1]!.label,
-  Funnels: (b) => b.market_and_customers.funnels[1]!.name!,
-  "Ideal persona": (b) => b.market_and_customers.ideal_customer_personas[1]!.name!,
+  Buyers: (b) => b.market_and_customers.target_buyers[1].text,
+  Suppliers: (b) => b.market_and_customers.suppliers_and_partners[1].name!,
+  "Industry groupings": (b) => b.market_and_customers.industry_groupings[1].text,
+  "Service locations": (b) => b.company_foundation.service_locations[1].text,
+  "Company role": (b) => b.company_foundation.company_role[1].text,
+  "Industry outlook": (b) => b.market_and_customers.industry_outlook[1].text,
+  "Alternate names": (b) => b.company_foundation.alternative_company_names[1].text,
+  Headquarters: (b) => b.company_foundation.other_locations[1].label!,
+  "Customer needs": (b) => b.market_and_customers.customer_needs[1].text,
+  Channels: (b) => b.market_and_customers.channels[1].label!,
+  "Calls to action": (b) => b.market_and_customers.ctas[1].label,
+  Funnels: (b) => b.market_and_customers.funnels[1].name!,
+  "Ideal persona": (b) => b.market_and_customers.ideal_customer_personas[1].name!,
 };
 
 describe.each(["draft", "snapshot"] as const)("evidence control names (%s)", (source) => {
@@ -49,11 +49,11 @@ describe.each(["draft", "snapshot"] as const)("evidence control names (%s)", (so
     const opts = { marks: [markOf(m, 1)] };
     const page = await open[source](m.section, opts);
     const { business } = buildEvidence({ business: refillLists, ...opts });
-    const item = NAME[title]!(business);
+    const item = NAME[title](business);
     const marker = names(page).filter((n) => n.name.includes(item));
     expect(marker).toHaveLength(1);
-    expect(marker[0]!.name).toContain(m.label);
-    expect(marker[0]!.name).toBe(`${marker[0]!.visible}: evidence for ${item}`);
+    expect(marker[0].name).toContain(m.label);
+    expect(marker[0].name).toBe(`${marker[0].visible}: evidence for ${item}`);
   });
 
   // behavioural
@@ -62,14 +62,16 @@ describe.each(["draft", "snapshot"] as const)("evidence control names (%s)", (so
     const page = await open[source](section, { marks });
     const all = names(page);
     expect(all.length).toBeGreaterThan(marks.length);
-    for (const { name } of all) expect(name).not.toContain("@");
+    for (const { name } of all) {
+      expect(name).not.toContain("@");
+    }
   });
 
   // behavioural
   it("Edge case: social-link controls are named by platform, field controls keep their field name", async () => {
     const page = await open[source]("Sales & Marketing", {});
     const all = names(page).map((n) => n.name);
-    expect(all.filter((n) => /: evidence for Instagram$/.test(n))).toHaveLength(1);
+    expect(all.filter((n) => n.endsWith(": evidence for Instagram"))).toHaveLength(1);
     expect(all).toContain("Evidence for company pitch");
   });
 });
@@ -91,7 +93,7 @@ describe("ids that start alike", () => {
     });
     const el = card(page, "Buyers", titlesOf("Customers & Industry"))!;
     const markerOf = (text: string) =>
-      page.$(deepestContaining(page, el, text)[0]!).closest("li").children(".citation-popover").length;
+      page.$(deepestContaining(page, el, text)[0]).closest("li").children(".citation-popover").length;
     expect(markerOf("First buyer")).toBe(0);
     expect(markerOf("Tenth buyer")).toBe(1);
   });

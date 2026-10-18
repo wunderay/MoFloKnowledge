@@ -20,8 +20,11 @@ export function SignInForm() {
             }),
           });
           const result = await response.json();
-          if (response.ok) window.location.assign("/dashboard");
-          else setMessage(result.error?.message || "Unable to sign in.");
+          if (response.ok) {
+            window.location.assign("/dashboard");
+          } else {
+            setMessage(result.error?.message || "Unable to sign in.");
+          }
         } catch {
           setMessage("Unable to connect. Please retry.");
         } finally {

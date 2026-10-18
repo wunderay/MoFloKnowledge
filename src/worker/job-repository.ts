@@ -6,7 +6,7 @@ import {
   type Proposal,
   type SafeJobError,
 } from "../contracts";
-export type Job = {
+export interface Job {
   id: string;
   company_id: string;
   requested_by: string;
@@ -25,7 +25,7 @@ export type Job = {
     current_revision: number;
     content: Record<string, unknown>;
   }[];
-};
+}
 export interface JobRepository {
   claim(workerId: string): Promise<Job | null>;
   heartbeat(job: Job): Promise<Job>;

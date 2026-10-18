@@ -22,7 +22,7 @@ import { timing } from "./timing";
 // ---- what an editable view offers its fields ------------------------------------------------------------------------
 
 /** What the inline editors need from the view: where to save, the entries as stored, and how to reload after a save. */
-export type EditEnv = {
+export interface EditEnv {
   companyId: string;
   actorId: string;
   /** The stored entry of a kind, or null when the company has none yet (the first save creates it). */
@@ -31,7 +31,7 @@ export type EditEnv = {
   blocked: boolean;
   /** Reloads the draft after a save. It resolves once the save is committed, even if the reload failed. */
   onSaved: () => Promise<void>;
-};
+}
 
 /**
  * The kind to give an entry that is one of many (an offering): its own saves, queue and fields are kept apart from the other
@@ -59,8 +59,12 @@ const IDLE: Feedback = { kind: "idle" };
 
 /** A failed save in words. A stale revision (409) cannot be repeated; any other failure can. */
 function failure(error: unknown): Feedback {
-  if (error instanceof ApiError && error.status === 409) return { kind: "failed", message: CONFLICT, retry: false };
-  if (error instanceof ZodError) return { kind: "failed", message: error.issues.map((issue) => issue.message).join("; "), retry: false };
+  if (error instanceof ApiError && error.status === 409) {
+    return { kind: "failed", message: CONFLICT, retry: false };
+  }
+  if (error instanceof ZodError) {
+    return { kind: "failed", message: error.issues.map((issue) => issue.message).join("; "), retry: false };
+  }
   return { kind: "failed", message: (error as Error)?.message || "The change could not be saved.", retry: true };
 }
 
@@ -85,7 +89,7 @@ const messageOf = (error: unknown) =>
  * What one field shows, kept above the sections so that switching section neither drops what was typed nor loses
  * the outcome of a save that finishes (or fails) while the field is not on screen.
  */
-type Slot = {
+interface Slot {
   /** A text field's editor, or a chip list's add field, is open. */
   editing: boolean;
   draft: string;
@@ -98,11 +102,11 @@ type Slot = {
   refocus: boolean;
   /** Where a chip list puts focus next: a chip's id, or "add". `n` makes a repeated request new. */
   focus: { target: string; n: number } | null;
-};
+}
 const EMPTY: Slot = { editing: false, draft: "", problem: "", feedback: IDLE, toast: null, refocus: false, focus: null };
 
 /** A change to one entry, as a function of the entry's latest content, so that a queued change is rebuilt on the latest revision. */
-type Task = {
+interface Task {
   kind: EntryKind;
   note: string;
   transform: (content: Content) => Content;
@@ -113,9 +117,9 @@ type Task = {
   /** Runs once the change is committed (and again after a retry). */
   then?: () => void;
   prepared?: PreparedSave;
-};
+}
 
-type Host = {
+interface Host {
   env: () => EditEnv;
   slot: (key: string) => Slot;
   patch: (key: string, change: Partial<Slot>) => void;
@@ -127,8 +131,8 @@ type Host = {
   submit: (key: string, task: Task) => Promise<boolean>;
   retry: (key: string) => Promise<boolean>;
   clear: (key: string) => void;
-};
-type EditState = { env: EditEnv; host: Host; slots: Record<string, Slot> };
+}
+interface EditState { env: EditEnv; host: Host; slots: Record<string, Slot> }
 const EditContext = createContext<EditState | null>(null);
 const useSlot = (key: string): { state: EditState | null; slot: Slot } => {
   const state = useContext(EditContext);
@@ -155,14 +159,20 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
   // Resolves the saves that wait for the view to show a revision (after every render).
   useEffect(() => {
     const stop = halted.current;
-    if (stop && (latest.current.env.entry(stop.kind)?.revision ?? 0) >= stop.revision) halted.current = null;
-    for (const check of [...waiting.current]) check();
+    if (stop && (latest.current.env.entry(stop.kind)?.revision ?? 0) >= stop.revision) {
+      halted.current = null;
+    }
+    for (const check of [...waiting.current]) {
+      check();
+    }
   });
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
-      for (const check of [...waiting.current]) check();
+      for (const check of [...waiting.current]) {
+        check();
+      }
     };
   }, []);
   if (!hostRef.current) {
@@ -180,14 +190,16 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
     const fresh = (kind: EntryKind, revision: number) =>
       new Promise<boolean>((resolve) => {
         const ready = () => !alive.current || latest.current.env.blocked || (latest.current.env.entry(kind)?.revision ?? 0) >= revision;
-        if (ready()) return resolve(true);
+        if (ready()) {
+          resolve(true); return;
+        }
         const done = (shown: boolean) => {
           clearTimeout(timer);
           waiting.current = waiting.current.filter((check) => check !== poll);
           resolve(shown);
         };
         const poll = () => ready() && done(true);
-        const timer = setTimeout(() => done(false), timing.fresh);
+        const timer = setTimeout(() => { done(false); }, timing.fresh);
         waiting.current.push(poll);
       });
     const execute = async (key: string, task: Task): Promise<boolean> => {
@@ -197,9 +209,13 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
         return false;
       };
       // A save that has not started when the provider goes is dropped (the queue is not released against a view that is gone).
-      if (!alive.current) return false;
+      if (!alive.current) {
+        return false;
+      }
       const env = latest.current.env;
-      if (env.blocked || halted.current?.kind === task.kind) return settle({ kind: "failed", message: STALE, retry: false });
+      if (env.blocked || halted.current?.kind === task.kind) {
+        return settle({ kind: "failed", message: STALE, retry: false });
+      }
       if (!task.prepared) {
         try {
           const base = baseOf(env, task.kind);
@@ -225,15 +241,21 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
         return alive.current ? settle(failure(error)) : false;
       }
       tasks.delete(key);
-      if (!alive.current) return false;
+      if (!alive.current) {
+        return false;
+      }
       try {
         await latest.current.env.onSaved();
       } catch {
         // The save is committed; the view marks itself stale and offers a reload.
       }
       const shown = await fresh(task.kind, revision);
-      if (!alive.current) return false;
-      if (!shown) halted.current = { kind: task.kind, revision };
+      if (!alive.current) {
+        return false;
+      }
+      if (!shown) {
+        halted.current = { kind: task.kind, revision };
+      }
       busy.delete(key);
       task.then?.();
       patch(key, { feedback: { kind: "saved" } });
@@ -253,12 +275,16 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
         mounted.set(key, (mounted.get(key) ?? 0) + 1);
         return () => void mounted.set(key, (mounted.get(key) ?? 1) - 1);
       },
-      close: (key, back) => patch(key, { editing: false, problem: "", refocus: back && (mounted.get(key) ?? 0) > 0 }),
+      close: (key, back) => { patch(key, { editing: false, problem: "", refocus: back && (mounted.get(key) ?? 0) > 0 }); },
       requestFocus: (key, target) => {
-        if ((mounted.get(key) ?? 0) > 0) patch(key, { focus: { target, n: ++focusCount } });
+        if ((mounted.get(key) ?? 0) > 0) {
+          patch(key, { focus: { target, n: ++focusCount } });
+        }
       },
       submit: async (key, task) => {
-        if (busy.has(key) || latest.current.env.blocked) return false;
+        if (busy.has(key) || latest.current.env.blocked) {
+          return false;
+        }
         busy.add(key);
         tasks.set(key, task);
         patch(key, { feedback: { kind: "saving" } });
@@ -266,31 +292,40 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
       },
       retry: async (key) => {
         const task = tasks.get(key);
-        if (!task || busy.has(key)) return false;
+        if (!task || busy.has(key)) {
+          return false;
+        }
         busy.add(key);
         patch(key, { feedback: { kind: "saving" } });
         return enqueue(key, task);
       },
       clear: (key) => {
-        if (!busy.has(key)) patch(key, { feedback: IDLE });
+        if (!busy.has(key)) {
+          patch(key, { feedback: IDLE });
+        }
       },
     };
   }
   latest.current.slots = slots;
-  return <EditContext value={{ env, host: hostRef.current!, slots }}>{children}</EditContext>;
+  return <EditContext value={{ env, host: hostRef.current, slots }}>{children}</EditContext>;
 }
 
 /** The outcome of a save, or the reason a value was refused, as the person should read it. */
 function Outcome({ problem, feedback, onRetry }: { problem?: string; feedback: Feedback; onRetry: () => void }) {
-  if (problem) return <span className="knowledge-view__inline-alert" role="alert">{problem}</span>;
-  if (feedback.kind === "saving") return <span className="knowledge-view__inline-status" role="status">Saving…</span>;
-  if (feedback.kind === "saved")
+  if (problem) {
+    return <span className="knowledge-view__inline-alert" role="alert">{problem}</span>;
+  }
+  if (feedback.kind === "saving") {
+    return <span className="knowledge-view__inline-status" role="status">Saving…</span>;
+  }
+  if (feedback.kind === "saved") {
     return (
       <span className="knowledge-view__inline-status" role="status">
         <span aria-hidden="true">✓</span> Saved
       </span>
     );
-  if (feedback.kind === "failed")
+  }
+  if (feedback.kind === "failed") {
     return (
       <span className="knowledge-view__inline-failure">
         <span className="knowledge-view__inline-alert" role="alert">{feedback.message}</span>
@@ -301,15 +336,18 @@ function Outcome({ problem, feedback, onRetry }: { problem?: string; feedback: F
         )}
       </span>
     );
+  }
   return null;
 }
 
 /** Clears the "✓ Saved" a few seconds after it appeared. */
 function useSavedTimer(state: EditState | null, key: string, feedback: Feedback) {
   useEffect(() => {
-    if (!state || feedback.kind !== "saved") return;
-    const timer = setTimeout(() => state.host.patch(key, { feedback: IDLE }), SAVED_MS);
-    return () => clearTimeout(timer);
+    if (!state || feedback.kind !== "saved") {
+      return;
+    }
+    const timer = setTimeout(() => { state.host.patch(key, { feedback: IDLE }); }, SAVED_MS);
+    return () => { clearTimeout(timer); };
   }, [feedback]);
 }
 
@@ -321,7 +359,7 @@ const focusIsFree = () => {
 
 // ---- text fields ------------------------------------------------------------------------------------------------------
 /** One text field of an entry: how the editor shows it, and how typed text becomes the entry's content. */
-export type TextSpec = {
+export interface TextSpec {
   label: string;
   /** The verb of the button that opens the field and of the field's own name; "Edit" when absent ("Add" for a field that adds an item). */
   action?: string;
@@ -330,7 +368,7 @@ export type TextSpec = {
   read: (content: Content) => string;
   /** The content with the typed text in it, or why the text cannot be saved. */
   apply: (content: Content, text: string) => { content: Content } | { error: string };
-};
+}
 
 /** A text value: trimmed, empty means no value, and no longer than the contract allows. */
 export function plainText(label: string, kind: EntryKind, key: string): TextSpec {
@@ -340,7 +378,9 @@ export function plainText(label: string, kind: EntryKind, key: string): TextSpec
     read: (content) => (typeof content[key] === "string" ? content[key] : ""),
     apply: (content, text) => {
       const value = text.trim();
-      if (value.length > MAX_TEXT_LENGTH) return { error: TOO_LONG };
+      if (value.length > MAX_TEXT_LENGTH) {
+        return { error: TOO_LONG };
+      }
       content[key] = value === "" ? null : value;
       return { content };
     },
@@ -359,10 +399,14 @@ const founded: TextSpec = {
       content.year_founded = null;
       return { content };
     }
-    if (!/^\d{4}$/.test(value) || Number(value) < 1000) return { error: FOUNDED_HELP };
+    if (!/^\d{4}$/.test(value) || Number(value) < 1000) {
+      return { error: FOUNDED_HELP };
+    }
     const year = Number(value);
     const latest = new Date().getUTCFullYear();
-    if (year > latest) return { error: `The year cannot be after ${latest}.` };
+    if (year > latest) {
+      return { error: `The year cannot be after ${latest}.` };
+    }
     content.year_founded = year;
     return { content };
   },
@@ -372,8 +416,12 @@ const employees: TextSpec = {
   kind: "company_foundation",
   read: (content) => {
     const count = content.employee_count;
-    if (!count) return "";
-    if (count.exact !== null && count.min === null && count.max === null) return String(count.exact);
+    if (!count) {
+      return "";
+    }
+    if (count.exact !== null && count.min === null && count.max === null) {
+      return String(count.exact);
+    }
     return typeof count.raw === "string" ? count.raw : "";
   },
   apply: (content, text) => {
@@ -382,9 +430,13 @@ const employees: TextSpec = {
       content.employee_count = null;
       return { content };
     }
-    if (/^-\s*\d/.test(value)) return { error: "Employees cannot be negative. Enter a whole number, 0 or more." };
+    if (/^-\s*\d/.test(value)) {
+      return { error: "Employees cannot be negative. Enter a whole number, 0 or more." };
+    }
     const digits = /^\d{1,3}(,\d{3})+$/.test(value) ? value.replaceAll(",", "") : value;
-    if (!/^\d+$/.test(digits) || !Number.isSafeInteger(Number(digits))) return { error: EMPLOYEES_HELP };
+    if (!/^\d+$/.test(digits) || !Number.isSafeInteger(Number(digits))) {
+      return { error: EMPLOYEES_HELP };
+    }
     const count = Number(digits);
     // Typing a number replaces whatever was stored (a range, say) with the exact count; the date it was true on stays.
     content.employee_count = { raw: String(count), exact: count, min: null, max: null, as_of: content.employee_count?.as_of ?? null };
@@ -405,7 +457,7 @@ export const FIELDS = {
 } as const;
 
 /** One list of short texts (each with an id) that the sections edit in place. */
-export type ListSpec = { noun: string; kind: EntryKind; key: string };
+export interface ListSpec { noun: string; kind: EntryKind; key: string }
 export const LISTS = {
   names: { noun: "alternate name", kind: "company_foundation", key: "alternative_company_names" },
   roles: { noun: "company role", kind: "company_foundation", key: "company_role" },
@@ -415,14 +467,14 @@ export const LISTS = {
   needs: { noun: "customer need", kind: "market_and_customers", key: "customer_needs" },
 } as const satisfies Record<string, ListSpec>;
 
-type TriggerOptions = {
+interface TriggerOptions {
   shown: ReactNode;
   /** Shown, as an invitation to add a value, when there is none. */
   placeholder: string;
   /** A span with role="button": the trigger sits in a heading, where a <button> would change the heading's text. */
   heading?: boolean;
   block?: boolean;
-};
+}
 
 function Trigger({
   label,
@@ -447,7 +499,7 @@ function Trigger({
     </>
   );
   const describedBy = empty ? undefined : valueId;
-  if (heading)
+  if (heading) {
     return (
       <span
         ref={triggerRef as RefObject<HTMLSpanElement>}
@@ -463,7 +515,9 @@ function Trigger({
           blocked
             ? undefined
             : (event: KeyboardEvent) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
+                if (event.key !== "Enter" && event.key !== " ") {
+                  return;
+                }
                 event.preventDefault();
                 onOpen();
               }
@@ -472,6 +526,7 @@ function Trigger({
         {content}
       </span>
     );
+  }
   return (
     <button
       ref={triggerRef as RefObject<HTMLButtonElement>}
@@ -504,30 +559,42 @@ export function useTextField(spec: TextSpec, multiline = false) {
   useEffect(() => (host ? host.mount(key) : undefined), [host, key]);
   useSavedTimer(state, key, feedback);
   useEffect(() => {
-    if (!host) return;
+    if (!host) {
+      return;
+    }
     if (editing) {
       const element = field.current;
-      if (!element) return;
+      if (!element) {
+        return;
+      }
       element.focus();
       const end = element.value.length;
       element.setSelectionRange(end, end);
     } else if (slot.refocus) {
       host.patch(key, { refocus: false });
       // Not when the person has already moved on to something else during the save.
-      if (focusIsFree()) trigger.current?.focus();
+      if (focusIsFree()) {
+        trigger.current?.focus();
+      }
     }
   }, [editing]);
 
-  if (!state || !host) return null;
+  if (!state || !host) {
+    return null;
+  }
   const env = state.env;
   const saving = feedback.kind === "saving";
   const start = () => {
     const now = host.env();
-    if (now.blocked || host.slot(key).editing) return;
+    if (now.blocked || host.slot(key).editing) {
+      return;
+    }
     host.patch(key, { editing: true, draft: spec.read(baseOf(now, spec.kind)), problem: "", feedback: host.isBusy(key) ? host.slot(key).feedback : IDLE });
   };
   const cancel = () => {
-    if (!host.slot(key).editing || host.isBusy(key)) return;
+    if (!host.slot(key).editing || host.isBusy(key)) {
+      return;
+    }
     host.patch(key, { feedback: IDLE, draft: "" });
     host.close(key, true);
   };
@@ -535,7 +602,9 @@ export function useTextField(spec: TextSpec, multiline = false) {
   const commit = (back: boolean) => {
     const now = host.env();
     const current = host.slot(key);
-    if (now.blocked || !current.editing || host.isBusy(key)) return;
+    if (now.blocked || !current.editing || host.isBusy(key)) {
+      return;
+    }
     const base = baseOf(now, spec.kind);
     const typed = current.draft;
     if (typed.trim() === spec.read(base).trim()) {
@@ -565,14 +634,16 @@ export function useTextField(spec: TextSpec, multiline = false) {
       note: `Updated ${spec.label} from the knowledge view.`,
       transform: (content) => {
         const result = spec.apply(content, typed);
-        if ("error" in result) throw new Error(result.error);
+        if ("error" in result) {
+          throw new Error(result.error);
+        }
         return result.content;
       },
-      then: () => host.close(key, back),
+      then: () => { host.close(key, back); },
     });
   };
   const typing = (event: { target: { value: string } }) =>
-    host.patch(key, { draft: event.target.value, problem: "", ...(host.slot(key).feedback.kind === "failed" ? { feedback: IDLE } : {}) });
+    { host.patch(key, { draft: event.target.value, problem: "", ...(host.slot(key).feedback.kind === "failed" ? { feedback: IDLE } : {}) }); };
   const keys = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -587,18 +658,19 @@ export function useTextField(spec: TextSpec, multiline = false) {
     editing,
     feedback: notice,
     control(options: TriggerOptions): ReactNode {
-      if (!editing)
+      if (!editing) {
         return (
           <Trigger
             label={spec.label}
             action={spec.action}
             blocked={env.blocked}
             onOpen={start}
-            triggerRef={trigger as RefObject<HTMLElement | null>}
+            triggerRef={trigger}
             {...options}
           />
         );
-      if (!multiline)
+      }
+      if (!multiline) {
         return (
           <input
             ref={field as RefObject<HTMLInputElement>}
@@ -614,11 +686,14 @@ export function useTextField(spec: TextSpec, multiline = false) {
             onBlur={() => {
               // A field that was just closed still blurs; a failed save waits for Retry or Enter instead of starting another.
               const now = host.slot(key);
-              if (!now.editing || host.isBusy(key) || now.feedback.kind === "failed") return;
+              if (!now.editing || host.isBusy(key) || now.feedback.kind === "failed") {
+                return;
+              }
               commit(false);
             }}
           />
         );
+      }
       const changed = draft.trim() !== spec.read(baseOf(env, spec.kind)).trim();
       return (
         <div className="knowledge-view__inline-area">
@@ -634,7 +709,7 @@ export function useTextField(spec: TextSpec, multiline = false) {
             onKeyDown={keys}
           />
           <div className="knowledge-view__inline-actions">
-            <button type="button" className="knowledge-view__inline-save" disabled={saving || !changed} onClick={() => commit(true)}>
+            <button type="button" className="knowledge-view__inline-save" disabled={saving || !changed} onClick={() => { commit(true); }}>
               Save
             </button>
             <button type="button" className="knowledge-view__inline-cancel" disabled={saving} onClick={cancel}>
@@ -650,7 +725,9 @@ export function useTextField(spec: TextSpec, multiline = false) {
 /** A single-line value that is edited in place (Legal entity, Founded, Employees…). */
 export function InlineLine({ spec, shown, placeholder }: { spec: TextSpec; shown: ReactNode; placeholder: string }) {
   const text = useTextField(spec);
-  if (!text) return <>{shown ?? placeholder}</>;
+  if (!text) {
+    return <>{shown ?? placeholder}</>;
+  }
   return (
     <>
       {text.control({ shown, placeholder })}
@@ -675,8 +752,10 @@ export function InlineArea({
   note?: ReactNode;
 }) {
   const text = useTextField(spec, true);
-  if (!text) return null;
-  if (value === null && !text.editing)
+  if (!text) {
+    return null;
+  }
+  if (value === null && !text.editing) {
     return (
       <>
         <div className="knowledge-view__empty">
@@ -688,6 +767,7 @@ export function InlineArea({
         {text.feedback}
       </>
     );
+  }
   return (
     <>
       {text.control({ shown: value, placeholder: "", block: true })}
@@ -698,7 +778,7 @@ export function InlineArea({
 }
 
 // ---- lists of short texts (chips) ------------------------------------------------------------------------------------
-export type ChipItem = { id: string; label: string; mark?: ReactNode };
+export interface ChipItem { id: string; label: string; mark?: ReactNode }
 const sameText = (text: string) => text.trim().replace(/\s+/g, " ").toLowerCase();
 
 /**
@@ -717,22 +797,33 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
   useEffect(() => (host ? host.mount(key) : undefined), [host, key]);
   useSavedTimer(state, key, feedback);
   useEffect(() => {
-    if (host && adding) field.current?.focus();
+    if (host && adding) {
+      field.current?.focus();
+    }
   }, [adding]);
   useEffect(() => {
-    if (!host || !slot.focus) return;
+    if (!host || !slot.focus) {
+      return;
+    }
     const { target } = slot.focus;
     host.patch(key, { focus: null });
-    if (target === "add") (host.slot(key).editing ? field.current : pill.current)?.focus();
-    else removes.current.get(target)?.focus();
+    if (target === "add") {
+      (host.slot(key).editing ? field.current : pill.current)?.focus();
+    } else {
+      removes.current.get(target)?.focus();
+    }
   }, [slot.focus]);
   useEffect(() => {
-    if (!host || !toast) return;
-    const timer = setTimeout(() => host.patch(key, { toast: null }), UNDO_MS);
-    return () => clearTimeout(timer);
+    if (!host || !toast) {
+      return;
+    }
+    const timer = setTimeout(() => { host.patch(key, { toast: null }); }, UNDO_MS);
+    return () => { clearTimeout(timer); };
   }, [toast]);
 
-  if (!state || !host) return null;
+  if (!state || !host) {
+    return null;
+  }
   const { env } = state;
   const { noun } = list;
   const saving = feedback.kind === "saving";
@@ -740,18 +831,30 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
   const storedList = () => (baseOf(host.env(), list.kind)[list.key] ?? []) as IdentifiedText[];
   const closeField = (back: boolean) => {
     host.patch(key, { editing: false, draft: "", problem: "" });
-    if (back) host.requestFocus(key, "add");
+    if (back) {
+      host.requestFocus(key, "add");
+    }
   };
   const add = () => {
     const now = host.env();
     const current = host.slot(key);
-    if (now.blocked || host.isBusy(key)) return;
+    if (now.blocked || host.isBusy(key)) {
+      return;
+    }
     const text = current.draft.trim();
-    if (!text) return;
+    if (!text) {
+      return;
+    }
     const stored = storedList();
-    if (text.length > MAX_TEXT_LENGTH) return host.patch(key, { problem: TOO_LONG });
-    if (stored.length >= MAX_ITEMS) return host.patch(key, { problem: `This list is full: it can hold at most ${MAX_ITEMS} items.` });
-    if (stored.some((item) => sameText(item.text) === sameText(text))) return host.patch(key, { problem: `“${text}” is already in the list.` });
+    if (text.length > MAX_TEXT_LENGTH) {
+      host.patch(key, { problem: TOO_LONG }); return;
+    }
+    if (stored.length >= MAX_ITEMS) {
+      host.patch(key, { problem: `This list is full: it can hold at most ${MAX_ITEMS} items.` }); return;
+    }
+    if (stored.some((item) => sameText(item.text) === sameText(text))) {
+      host.patch(key, { problem: `“${text}” is already in the list.` }); return;
+    }
     host.patch(key, { problem: "" });
     const item = { id: crypto.randomUUID(), text };
     void host.submit(key, {
@@ -759,16 +862,22 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
       note: `Added ${noun} from the knowledge view.`,
       transform: (content) => {
         const now = (content[list.key] ?? []) as IdentifiedText[];
-        if (now.length >= MAX_ITEMS) throw new Error(`This list is full: it can hold at most ${MAX_ITEMS} items.`);
-        if (now.some((entry) => sameText(entry.text) === sameText(text))) throw new Error(`“${text}” is already in the list.`);
+        if (now.length >= MAX_ITEMS) {
+          throw new Error(`This list is full: it can hold at most ${MAX_ITEMS} items.`);
+        }
+        if (now.some((entry) => sameText(entry.text) === sameText(text))) {
+          throw new Error(`“${text}” is already in the list.`);
+        }
         content[list.key] = [...now, item];
         return content;
       },
-      then: () => host.patch(key, { draft: "", toast: null }),
+      then: () => { host.patch(key, { draft: "", toast: null }); },
     });
   };
   const remove = (item: ChipItem, index: number) => {
-    if (host.env().blocked || host.isBusy(key)) return;
+    if (host.env().blocked || host.isBusy(key)) {
+      return;
+    }
     const previous = storedList();
     // Focus goes to the next chip, or to the Add control when there is none.
     const next = items[index + 1]?.id ?? "add";
@@ -789,7 +898,9 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
   };
   const undo = () => {
     const taken = host.slot(key).toast;
-    if (!taken || host.env().blocked || host.isBusy(key)) return;
+    if (!taken || host.env().blocked || host.isBusy(key)) {
+      return;
+    }
     void host.submit(key, {
       kind: list.kind,
       note: `Restored the ${noun} list after a removal.`,
@@ -815,14 +926,17 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
             {item.mark}
             <button
               ref={(element) => {
-                if (element) removes.current.set(item.id, element);
-                else removes.current.delete(item.id);
+                if (element) {
+                  removes.current.set(item.id, element);
+                } else {
+                  removes.current.delete(item.id);
+                }
               }}
               type="button"
               className="knowledge-view__chip-remove"
               aria-label={`Remove ${item.label}`}
               disabled={locked}
-              onClick={() => remove(item, index)}
+              onClick={() => { remove(item, index); }}
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -841,7 +955,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
               disabled={env.blocked}
               readOnly={saving}
               onChange={(event) =>
-                host.patch(key, { draft: event.target.value, problem: "", ...(host.slot(key).feedback.kind === "failed" ? { feedback: IDLE } : {}) })
+                { host.patch(key, { draft: event.target.value, problem: "", ...(host.slot(key).feedback.kind === "failed" ? { feedback: IDLE } : {}) }); }
               }
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
@@ -857,8 +971,12 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
               }}
               onBlur={() => {
                 const now = host.slot(key);
-                if (!now.editing || host.isBusy(key) || now.feedback.kind === "failed") return;
-                if (!now.draft.trim()) closeField(false);
+                if (!now.editing || host.isBusy(key) || now.feedback.kind === "failed") {
+                  return;
+                }
+                if (!now.draft.trim()) {
+                  closeField(false);
+                }
               }}
             />
           ) : (
@@ -869,7 +987,9 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
               aria-label={`Add ${noun}`}
               disabled={env.blocked}
               onClick={() => {
-                if (!env.blocked) host.patch(key, { editing: true });
+                if (!env.blocked) {
+                  host.patch(key, { editing: true });
+                }
               }}
             >
               Add
@@ -900,7 +1020,9 @@ export function useEntryAction(key: string) {
   const host = state?.host;
   useEffect(() => (host ? host.mount(key) : undefined), [host, key]);
   useSavedTimer(state, key, slot.feedback);
-  if (!state || !host) return null;
+  if (!state || !host) {
+    return null;
+  }
   return {
     /** True while a save is running or the view is older than a saved change. */
     locked: state.env.blocked || slot.feedback.kind === "saving",

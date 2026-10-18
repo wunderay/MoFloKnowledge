@@ -28,18 +28,21 @@ export async function runWorker(
       continue;
     }
     const attempt = new AbortController();
-    const stop = () => attempt.abort(options.signal.reason);
+    const stop = () => { attempt.abort(options.signal.reason); };
     options.signal.addEventListener("abort", stop, { once: true });
     let heartbeating = false;
     let leaseLost = false;
     const timer = setInterval(() => {
-      if (heartbeating || attempt.signal.aborted) return;
+      if (heartbeating || attempt.signal.aborted) {
+        return;
+      }
       heartbeating = true;
       repository
-        .heartbeat(job!)
+        .heartbeat(job)
         .then((current) => {
-          if (current.cancel_requested_at || current.status === "cancelled")
+          if (current.cancel_requested_at || current.status === "cancelled") {
             attempt.abort("cancelled");
+          }
         })
         .catch(() => {
           leaseLost = true;

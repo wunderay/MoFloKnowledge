@@ -22,7 +22,9 @@ export async function readJob(
       .eq("id", id)
       .maybeSingle(),
   );
-  if (!job) throw new HttpError(404, "unavailable", "Resource unavailable.");
+  if (!job) {
+    throw new HttpError(404, "unavailable", "Resource unavailable.");
+  }
   const { options, ...safeJob } = job;
   const proposals = job.proposals ?? {};
   return parseResponse(JobResponseSchema, {

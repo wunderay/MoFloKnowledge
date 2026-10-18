@@ -15,13 +15,15 @@ export function validateConflictDecision(
   if (
     decision.conflict_id !== conflict.id ||
     decision.target !== conflict.target
-  )
+  ) {
     throw new Error("Decision does not match conflict");
+  }
   if (
     decision.action === "select" &&
     !conflict.candidates.some((c) => c.id === decision.candidate_id)
-  )
+  ) {
     throw new Error("Selected candidate is unknown");
+  }
   return decision;
 }
 export function unresolvedConflicts(
@@ -51,12 +53,17 @@ export function applyConflictDecision<T>(
   const copy = structuredClone(business);
   const segments = parseStablePointer(conflict.target);
   const last = segments.pop();
-  if (last === undefined) throw new Error("Cannot replace business root");
+  if (last === undefined) {
+    throw new Error("Cannot replace business root");
+  }
   const parentPath = conflict.target.slice(0, conflict.target.lastIndexOf("/"));
   const parent = resolveStablePointer(copy, parentPath);
-  if (!parent || typeof parent !== "object" || Array.isArray(parent))
+  if (!parent || typeof parent !== "object" || Array.isArray(parent)) {
     throw new Error("Conflict target must be a business object field");
-  if (!Object.hasOwn(parent, last)) throw new Error("Unknown target");
+  }
+  if (!Object.hasOwn(parent, last)) {
+    throw new Error("Unknown target");
+  }
   const current = (parent as Record<string, unknown>)[last];
   const value =
     decision.action === "select"
@@ -66,7 +73,9 @@ export function applyConflictDecision<T>(
           ? []
           : null
         : correction;
-  if (value === undefined) throw new Error("Correction value required");
+  if (value === undefined) {
+    throw new Error("Correction value required");
+  }
   (parent as Record<string, unknown>)[last] = structuredClone(value);
   return { business: copy, decision };
 }

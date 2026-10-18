@@ -21,8 +21,9 @@ export const RenderTaskSchema = z
   .superRefine((task, ctx) => {
     try {
       assertDocumentScope(normalizeUrl(task.url), task.scope);
-      if (task.scope.some((host) => !documentScope(task.url).includes(host)))
+      if (task.scope.some((host) => !documentScope(task.url).includes(host))) {
         throw new Error("Unrelated scope");
+      }
     } catch {
       ctx.addIssue({ code: "custom", message: "Invalid render URL/scope" });
     }

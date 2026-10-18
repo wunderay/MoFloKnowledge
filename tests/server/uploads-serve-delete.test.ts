@@ -102,7 +102,7 @@ function expectInertIfServed(response: Response) {
 }
 
 describe("C4 serving: members get the object, with locked headers for every type", () => {
-  const cases: Array<[string, Uint8Array, string, string]> = [
+  const cases: [string, Uint8Array, string, string][] = [
     ["png", FIXTURES.png.bytes, "png", "image/png"],
     ["jpg", FIXTURES.jpeg.bytes, "jpg", "image/jpeg"],
     ["gif", FIXTURES.gif.bytes, "gif", "image/gif"],
@@ -114,8 +114,11 @@ describe("C4 serving: members get the object, with locked headers for every type
       const { id } = world.seedUpload({ companyId: a, ext, bytes });
       const result = await get(a, id);
       expectServingHeaders(result.response, type);
-      if (ext === "svg") expect(result.bytes.toString()).toContain("<rect");
-      else expect(result.bytes.equals(Buffer.from(bytes))).toBe(true);
+      if (ext === "svg") {
+        expect(result.bytes.toString()).toContain("<rect");
+      } else {
+        expect(result.bytes.equals(Buffer.from(bytes))).toBe(true);
+      }
     });
   }
 
@@ -148,8 +151,9 @@ describe("C4 serving: members get the object, with locked headers for every type
 
   it("C4 never exposes the storage backend: no redirect, no signed or public bucket URL in body, headers or logs", async () => {
     const lines: string[] = [];
-    for (const method of ["log", "info", "warn", "error", "debug"] as const)
+    for (const method of ["log", "info", "warn", "error", "debug"] as const) {
       vi.spyOn(console, method).mockImplementation((...args: unknown[]) => void lines.push(args.map(String).join(" ")));
+    }
     const { id } = world.seedUpload({ companyId: a, bytes: png() });
     const ok = await get(a, id);
     world.storageFailures.set("download", { message: "fetch https://proj.supabase.co/storage/v1/object/sign/x?token=SIGNED_SECRET_TOKEN_9f3a7c failed SERVICE_ROLE_SECRET_VALUE_b81d" });
@@ -201,10 +205,12 @@ describe("C3 hostile content cannot run script in the app origin", () => {
   });
 
   it("C3 an SVG object whose stored metadata claims text/html is still never served as html", async () => {
-    const { id } = world.seedUpload({ companyId: a, ext: "svg", bytes: text(MALICIOUS_SVGS.script!), contentType: "text/html", metaContentType: "text/html" });
+    const { id } = world.seedUpload({ companyId: a, ext: "svg", bytes: text(MALICIOUS_SVGS.script), contentType: "text/html", metaContentType: "text/html" });
     const result = await get(a, id);
     expectInertIfServed(result.response);
-    if (result.response.status === 200) expect(result.response.headers.get("content-type")).toBe("image/svg+xml");
+    if (result.response.status === 200) {
+      expect(result.response.headers.get("content-type")).toBe("image/svg+xml");
+    }
   });
 
   it("C3 an HTML document sitting under a .png name (planted straight into storage) is not served as html", async () => {
@@ -221,7 +227,9 @@ describe("C3 hostile content cannot run script in the app origin", () => {
       const { id } = world.seedUpload({ companyId: a, ext: "png", bytes: png(), contentType: stored, metaContentType: stored });
       const result = await get(a, id);
       expectInertIfServed(result.response);
-      if (result.response.status === 200) expect(result.response.headers.get("content-type")).toBe("image/png");
+      if (result.response.status === 200) {
+        expect(result.response.headers.get("content-type")).toBe("image/png");
+      }
     }
   });
 });
@@ -247,7 +255,7 @@ describe("C4/C6 only members of the owning company can read; everyone else gets 
     expect((await get(b, theirs.id)).response.status).toBe(200);
     expect((await get(b, mine.id)).response.status).toBe(404);
     world.user = { id: IDS.owner };
-    world.tables.company_members!.push({ company_id: b, user_id: IDS.owner, role: "owner", added_by: IDS.owner, created_at: "2026-10-01T00:00:00.000Z" });
+    world.tables.company_members.push({ company_id: b, user_id: IDS.owner, role: "owner", added_by: IDS.owner, created_at: "2026-10-01T00:00:00.000Z" });
     world.storageCalls = [];
     const crossed = await get(a, theirs.id);
     expect(crossed.response.status, "an id of company B must not be readable through company A's url").toBe(404);
@@ -281,7 +289,11 @@ describe("C4/C6 only members of the owning company can read; everyone else gets 
       expect([400, 404, 422], `company=${company}`).toContain(result.response.status);
     }
     const touched = world.storageCalls.filter((c) => ["download", "remove", "info", "exists"].includes(c.op));
-    for (const call of touched) for (const p of [call.path, ...(call.paths ?? [])]) expect(p ?? "", JSON.stringify(call)).not.toMatch(/\.\.|\\|%2e|\u0000|\*/i);
+    for (const call of touched) {
+      for (const p of [call.path, ...(call.paths ?? [])]) {
+        expect(p ?? "", JSON.stringify(call)).not.toMatch(/\.\.|\\|%2e|\u0000|\*/i);
+      }
+    }
     expect(world.objects.size).toBe(2 + 4);
   });
 });
@@ -301,7 +313,9 @@ describe("C5/C6 delete", () => {
       expect(world.objects.has(target.path)).toBe(false);
       expect(world.objects.has(sibling.path)).toBe(true);
       expect(world.objects.has(foreign.path)).toBe(true);
-      for (const call of world.storageCalls.filter((c) => c.op === "remove")) expect(call.paths).toEqual([target.path]);
+      for (const call of world.storageCalls.filter((c) => c.op === "remove")) {
+        expect(call.paths).toEqual([target.path]);
+      }
       expect((await get(a, target.id)).response.status).toBe(404);
       expect((await get(a, sibling.id)).response.status).toBe(200);
       expect((world.tables.uploads ?? []).some((r) => r.id === target.id)).toBe(false);
@@ -333,7 +347,7 @@ describe("C5/C6 delete", () => {
   it("C6 a cross-company id is 404 and nothing is deleted, in either direction", async () => {
     const mine = world.seedUpload({ companyId: a, bytes: png() });
     const theirs = world.seedUpload({ companyId: b, bytes: png() });
-    world.tables.company_members!.push({ company_id: b, user_id: IDS.owner, role: "owner", added_by: IDS.owner, created_at: "2026-10-01T00:00:00.000Z" });
+    world.tables.company_members.push({ company_id: b, user_id: IDS.owner, role: "owner", added_by: IDS.owner, created_at: "2026-10-01T00:00:00.000Z" });
     world.storageCalls = [];
     expect((await del(a, theirs.id)).response.status).toBe(404);
     world.user = { id: IDS.rival };
@@ -379,8 +393,8 @@ describe("C5/C6 delete", () => {
 
   it("C5 deleting an upload that knowledge entries still reference is allowed (references render as unavailable later)", async () => {
     const target = world.seedUpload({ companyId: a, bytes: png() });
-    world.tables.knowledge_entries!.push({ id: "e0000000-0000-4000-8000-000000000001", company_id: a, kind: "branding_and_style", current_revision: 1 });
-    world.tables.knowledge_entry_versions!.push({ id: "e1000000-0000-4000-8000-000000000001", company_id: a, entry_id: "e0000000-0000-4000-8000-000000000001", revision: 1, content: { logos: [{ upload_id: target.id, url: `/api/companies/${a}/uploads/${target.id}` }] } });
+    world.tables.knowledge_entries.push({ id: "e0000000-0000-4000-8000-000000000001", company_id: a, kind: "branding_and_style", current_revision: 1 });
+    world.tables.knowledge_entry_versions.push({ id: "e1000000-0000-4000-8000-000000000001", company_id: a, entry_id: "e0000000-0000-4000-8000-000000000001", revision: 1, content: { logos: [{ upload_id: target.id, url: `/api/companies/${a}/uploads/${target.id}` }] } });
     const result = await del(a, target.id);
     expect([200, 204], result.text.slice(0, 200)).toContain(result.response.status);
     expect(world.objects.has(target.path)).toBe(false);
@@ -421,7 +435,9 @@ describe("C1/C4 round trip: what the upload route returns is exactly what the se
       const served = await get(a, body.id);
       expectServingHeaders(served.response, fixture.type);
       expect(served.bytes.length).toBe(body.size_bytes);
-      if (name !== "svg") expect(served.bytes.equals(Buffer.from(fixture.bytes))).toBe(true);
+      if (name !== "svg") {
+        expect(served.bytes.equals(Buffer.from(fixture.bytes))).toBe(true);
+      }
       world.user = { id: IDS.outsider };
       expect((await get(a, body.id)).response.status).toBe(404);
     });

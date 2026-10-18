@@ -111,7 +111,9 @@ describe("fixtures are data the product could hold", () => {
       expect(urls.has(page.url)).toBe(false);
     }
     expect(PAGES.untitled.title).toBeNull();
-    for (const page of NOT_LISTED) expect(page.state !== "captured" || urls.has(page.url)).toBe(true);
+    for (const page of NOT_LISTED) {
+      expect(page.state !== "captured" || urls.has(page.url)).toBe(true);
+    }
   });
 
   // guard
@@ -143,10 +145,10 @@ describe("the interactive runtime", () => {
     expect(view.page().$("table").length).toBe(0);
     const [table] = view.byRole("button", "Table");
     expect(table, "a Table display-mode button").toBeDefined();
-    await view.click(table!);
+    await view.click(table);
     await view.settle();
     expect(view.page().$("table").length).toBe(1);
-    expect(view.byRole("button", "Table")[0]!.props["aria-pressed"]).toBe(true);
+    expect(view.byRole("button", "Table")[0].props["aria-pressed"]).toBe(true);
   });
 
   // guard

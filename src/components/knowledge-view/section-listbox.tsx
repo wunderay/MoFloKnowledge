@@ -26,20 +26,30 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
   const state = open ? "open" : "closed";
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     list.current?.focus();
     const away = (event: Event) => {
-      if (!wrap.current?.contains(event.target as Node | null)) setOpen(false);
+      if (!wrap.current?.contains(event.target as Node | null)) {
+        setOpen(false);
+      }
     };
     const types = ["pointerdown", "mousedown", "touchstart", "focusin"];
-    for (const type of types) document.addEventListener(type, away);
+    for (const type of types) {
+      document.addEventListener(type, away);
+    }
     return () => {
-      for (const type of types) document.removeEventListener(type, away);
+      for (const type of types) {
+        document.removeEventListener(type, away);
+      }
     };
   }, [open]);
 
   useEffect(() => {
-    if (open) document.getElementById(optionId(KNOWLEDGE_SECTIONS[active]!.id))?.scrollIntoView?.({ block: "nearest" });
+    if (open) {
+      document.getElementById(optionId(KNOWLEDGE_SECTIONS[active].id))?.scrollIntoView?.({ block: "nearest" });
+    }
   }, [open, active]);
 
   const show = () => {
@@ -52,29 +62,39 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
     trigger.current?.focus();
   };
   const choose = (index: number) => {
-    const next = KNOWLEDGE_SECTIONS[index]!.id;
+    const next = KNOWLEDGE_SECTIONS[index].id;
     close();
     onSelect(next);
   };
   const onTriggerKeyUp = (event: KeyboardEvent) => {
-    if (event.key === " " && swallowKeyup.current) event.preventDefault();
+    if (event.key === " " && swallowKeyup.current) {
+      event.preventDefault();
+    }
     swallowKeyup.current = false;
   };
   const onTriggerKey = (event: KeyboardEvent) => {
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+      return;
+    }
     event.preventDefault();
-    if (!open) show();
+    if (!open) {
+      show();
+    }
   };
   const onListKey = (event: KeyboardEvent) => {
     const move = (to: number) => {
       event.preventDefault();
       setActive(to);
     };
-    if (event.key === "ArrowDown") move(Math.min(last, active + 1));
-    else if (event.key === "ArrowUp") move(Math.max(0, active - 1));
-    else if (event.key === "Home") move(0);
-    else if (event.key === "End") move(last);
-    else if (event.key === "Enter" || event.key === " ") {
+    if (event.key === "ArrowDown") {
+      move(Math.min(last, active + 1));
+    } else if (event.key === "ArrowUp") {
+      move(Math.max(0, active - 1));
+    } else if (event.key === "Home") {
+      move(0);
+    } else if (event.key === "End") {
+      move(last);
+    } else if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       swallowKeyup.current = event.key === " ";
       choose(active);
@@ -82,7 +102,9 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
       event.preventDefault();
       event.stopPropagation();
       close();
-    } else if (event.key === "Tab") setOpen(false);
+    } else if (event.key === "Tab") {
+      setOpen(false);
+    }
   };
 
   return (
@@ -98,7 +120,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
         aria-expanded={open}
         aria-controls={listId}
         aria-labelledby={`${labelId} ${triggerId}`}
-        onClick={() => (open ? close() : show())}
+        onClick={() => { open ? close() : show(); }}
         onKeyDown={onTriggerKey}
         onKeyUp={onTriggerKeyUp}
       >
@@ -114,7 +136,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
         data-state={state}
         hidden={!open}
         aria-labelledby={labelId}
-        aria-activedescendant={open ? optionId(KNOWLEDGE_SECTIONS[active]!.id) : undefined}
+        aria-activedescendant={open ? optionId(KNOWLEDGE_SECTIONS[active].id) : undefined}
         onKeyDown={onListKey}
       >
         {KNOWLEDGE_SECTIONS.map((item, index) => (
@@ -125,9 +147,9 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
             role="option"
             aria-selected={item.id === value}
             className={`knowledge-view__listbox-option${index === active ? " knowledge-view__listbox-option--active" : ""}`}
-            onMouseDown={(event) => event.preventDefault()}
+            onMouseDown={(event) => { event.preventDefault(); }}
             onMouseMove={() => active !== index && setActive(index)}
-            onClick={() => choose(index)}
+            onClick={() => { choose(index); }}
           >
             {item.label}
           </li>

@@ -8,7 +8,7 @@ import {
 } from "./segments";
 import type { RenderResult } from "../../contracts/render-task";
 import { captureContentSections, captureDeclaredDesign, evidencedSections, sectionParts } from "./sections";
-export type PageCapture = {
+export interface PageCapture {
   normalizedUrl: string;
   finalUrl: string;
   title: string | null;
@@ -23,7 +23,7 @@ export type PageCapture = {
   links: { url: string; label: string }[];
   requiresRender: boolean;
   truncated: boolean;
-};
+}
 export function captureHtml(
   input: {
     requestedUrl: string;
@@ -36,8 +36,9 @@ export function captureHtml(
   const html = Buffer.isBuffer(input.body)
     ? input.body.toString("utf8")
     : input.body;
-  if (Buffer.byteLength(html) > 2 * 1024 * 1024)
+  if (Buffer.byteLength(html) > 2 * 1024 * 1024) {
     throw new Error("HTML capture exceeds decoded limit");
+  }
   const $ = load(html);
   const hasExecutableScripts = $("script")
     .toArray()
@@ -50,12 +51,13 @@ export function captureHtml(
       );
     });
   const meta = (name: string): string | null => {
-    if (rendered?.metadata)
+    if (rendered?.metadata) {
       return (
         rendered.metadata.meta
           .find((item) => item.name.toLowerCase() === name)
           ?.content.trim() || null
       );
+    }
     return (
       $(`meta[name="${name}"],meta[property="${name}"]`)
         .first()
@@ -84,14 +86,16 @@ export function captureHtml(
     }
   };
   if (rendered?.metadata) {
-    if (rendered.metadata.jsonLd.length > 30)
+    if (rendered.metadata.jsonLd.length > 30) {
       metadataLimitations.add("Structured metadata exceeded the capture limit.");
+    }
     rendered.metadata.jsonLd.slice(0, 30).forEach(parseJsonLd);
   } else {
     const scripts = $('script[type="application/ld+json"]');
-    if (scripts.length > 30)
+    if (scripts.length > 30) {
       metadataLimitations.add("Structured metadata exceeded the capture limit.");
-    scripts.slice(0, 30).each((_i, node) => parseJsonLd($(node).text()));
+    }
+    scripts.slice(0, 30).each((_i, node) => { parseJsonLd($(node).text()); });
   }
   const effectiveUrl = normalizeUrl(rendered?.finalUrl ?? input.finalUrl);
   const safeLink = (raw: string | undefined | null): string | null => {
@@ -114,8 +118,9 @@ export function captureHtml(
       /(?:display\s*:\s*none|visibility\s*:\s*hidden)/i.test(
         $(node).attr("style") ?? "",
       )
-    )
+    ) {
       $(node).remove();
+    }
   });
   // Long server-rendered copy does not establish that a required client section is ready.
   // Inspect only bounded structural placeholders; ordinary scripts alone do not trigger rendering.
@@ -173,23 +178,26 @@ export function captureHtml(
       }))
       .get();
   const links: { url: string; label: string }[] = [];
-  if (rendered?.links)
+  if (rendered?.links) {
     for (const link of rendered.links) {
       const url = safeLink(link.url);
-      if (url)
+      if (url) {
         links.push({ url, label: normalizeText(link.label).slice(0, 500) });
+      }
     }
-  else
+  } else {
     $("a[href]")
       .slice(0, 500)
       .each((_i, node) => {
         const url = safeLink($(node).attr("href"));
-        if (url)
+        if (url) {
           links.push({
             url,
             label: normalizeText($(node).text()).slice(0, 500),
           });
+        }
       });
+  }
   // Keep the closest unambiguous local form context, including CMS div wrappers.
   const formContext = (node: Parameters<typeof $>[0]) => {
     let region = $(node);
@@ -198,23 +206,35 @@ export function captureHtml(
     const form = $(node);
     const local = (candidate: Parameters<typeof $>[0]) => {
       const element = $(candidate);
-      if (element.closest('nav,aside,footer,header,[role="navigation"],[role="contentinfo"],[role="complementary"]').length) return false;
+      if (element.closest('nav,aside,footer,header,[role="navigation"],[role="contentinfo"],[role="complementary"]').length) {
+        return false;
+      }
       // Sibling sections and recommendation cards cannot describe this form.
-      if (element.closest("section,article,main")[0] !== form.closest("section,article,main")[0]) return false;
+      if (element.closest("section,article,main")[0] !== form.closest("section,article,main")[0]) {
+        return false;
+      }
       return !element.parents("[class],[id]").toArray().some((ancestor) =>
         /(?:^|[\s_-])(?:related|recommended|recommendations?|cookie|consent)(?:$|[\s_-])/i.test(`${$(ancestor).attr("class") ?? ""} ${$(ancestor).attr("id") ?? ""}`) &&
         !$(ancestor).find("form").toArray().some((nestedForm) => nestedForm === form[0]));
     };
     for (let depth = 0; depth < 5 && region.length && !region.is("body,html,main,article"); depth++, region = region.parent()) {
-      if (region.find("form").length > 1) break;
+      if (region.find("form").length > 1) {
+        break;
+      }
       const headings = region.find("h1,h2,h3,h4,h5,h6").filter((_i, heading) => local(heading));
-      if (!heading && headings.length === 1) heading = normalizeText(headings.text()).slice(0, 2000) || null;
+      if (!heading && headings.length === 1) {
+        heading = normalizeText(headings.text()).slice(0, 2000) || null;
+      }
       const paragraphs = region.find("p").filter((_i, paragraph) => local(paragraph) && !$(paragraph).closest("form").length);
       if (!context && paragraphs.length === 1) {
         const text = normalizeText(paragraphs.text());
-        if (text.length <= 2000) context = text || null;
+        if (text.length <= 2000) {
+          context = text || null;
+        }
       }
-      if ((heading && context) || region.is("section")) break;
+      if ((heading && context) || region.is("section")) {
+        break;
+      }
     }
     return { heading, context };
   };
@@ -270,14 +290,18 @@ export function captureHtml(
   // Named cards beneath an explicit services/products heading are declarations, not a prose classifier.
   // Capture only direct card headings and their own paragraph; unrelated links remain ordinary links.
   const offeringBlocks: { name: string; description: string | null; url: string | null }[] = [];
-  if (!rendered)
+  if (!rendered) {
     $("h1,h2").slice(0, 100).each((_i, heading) => {
-      if (!/^(?:our\s+)?(?:services|products|offerings)(?:\s+(?:and|&)\s+(?:services|products))?$/i.test(normalizeText($(heading).text()))) return;
+      if (!/^(?:our\s+)?(?:services|products|offerings)(?:\s+(?:and|&)\s+(?:services|products))?$/i.test(normalizeText($(heading).text()))) {
+        return;
+      }
       const container = $(heading).closest("section,article");
       const region = container.length ? container : $(heading).parent();
       region.find("h3,h4").slice(0, 30).each((_j, node) => {
         const name = normalizeText($(node).text());
-        if (!name || name.length > 200) return;
+        if (!name || name.length > 200) {
+          return;
+        }
         const card = $(node).closest("article,li").length
           ? $(node).closest("article,li") : $(node).parent();
         // Several headings in one wrapper do not establish which paragraph belongs to this name.
@@ -288,11 +312,15 @@ export function captureHtml(
           ? $(node).find("a[href]").first()
           : card.find("h3,h4").length === 1 ? card.find("a[href]").first() : $(node).next("a[href]");
         const url = safeLink(anchor.attr("href"));
-        if (url && new URL(url).hostname !== new URL(effectiveUrl).hostname) return;
-        if (!offeringBlocks.some((item) => item.name === name && item.url === url))
+        if (url && new URL(url).hostname !== new URL(effectiveUrl).hostname) {
+          return;
+        }
+        if (!offeringBlocks.some((item) => item.name === name && item.url === url)) {
           offeringBlocks.push({ name, description, url });
+        }
       });
     });
+  }
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
   const root = $("main").first().length
@@ -325,13 +353,18 @@ export function captureHtml(
       .filter((part) => !seenParts.has(part.text) && !!seenParts.add(part.text)),
   );
   const limitations = [...new Set([...(rendered?.limitations ?? []), ...metadataLimitations])];
-  if (content.truncated) limitations.push("Content sections exceeded the structural capture limit.");
-  if (declaredDesign.truncated) limitations.push("HTML design declarations exceeded the capture limit.");
+  if (content.truncated) {
+    limitations.push("Content sections exceeded the structural capture limit.");
+  }
+  if (declaredDesign.truncated) {
+    limitations.push("HTML design declarations exceeded the capture limit.");
+  }
   if (
     parsed.truncated &&
     !limitations.includes("Captured text exceeded the source segment limit.")
-  )
+  ) {
     limitations.push("Captured text exceeded the source segment limit.");
+  }
   const observations: Record<string, unknown> = {
     headings,
     contentSections: evidencedSections(content.sections, parsed.segments),

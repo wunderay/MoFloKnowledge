@@ -25,7 +25,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { CreateEntrySchema, SaveEntrySchema } from "../../src/contracts/api-entries";
 import { EntryProvenanceSchema, entryBusiness, parseBusinessEntry, validateProvenance } from "../../src/contracts";
-import { FakeServer } from "../helpers/knowledge-view-site-all-runtime";
+import type { FakeServer } from "../helpers/knowledge-view-site-all-runtime";
 import { openSite, sentWrite, UUID } from "../helpers/knowledge-view-site-all-import";
 import { siteCard, siteCardText, addPageLinks, importControls } from "../helpers/knowledge-view-site-all-dom";
 import { openView, descendants } from "../helpers/knowledge-view-site-all-runtime";
@@ -91,7 +91,9 @@ async function refused(draft: ReturnType<typeof siteDraft>, url: string, message
   expect(text, `a message (role=alert) for ${url}`).toMatch(message);
   expect(text, "a human message, not a code").not.toMatch(RAW);
   expect(valueOf(view, urlField(view, dialog!)), "the address stays as typed").toBe(url);
-  if (title !== undefined) expect(valueOf(view, titleField(view, dialog!)), "the title stays as typed").toBe(title);
+  if (title !== undefined) {
+    expect(valueOf(view, titleField(view, dialog!)), "the title stays as typed").toBe(title);
+  }
   noWrites(view);
   return view;
 }
@@ -103,14 +105,16 @@ function failDraftReadsAfterWrite(server: FakeServer) {
   const original = server.fetch;
   server.fetch = (async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const method = (init?.method ?? "GET").toUpperCase();
-    const path = String(input).split("?")[0]!;
-    if (method === "GET" && /\/draft$/.test(path) && written && broken) {
+    const path = String(input).split("?")[0];
+    if (method === "GET" && path.endsWith("/draft") && written && broken) {
       server.requests.push({ method, path, body: undefined });
       const body = { data: null, error: { code: "unavailable", message: "Draft store is down." }, requestId: "00000000-0000-4000-8000-0000000000aa" };
       return { ok: false, status: 503, json: async () => body, text: async () => JSON.stringify(body) };
     }
     const reply = await original(input, init);
-    if (method !== "GET" && reply.ok) written = true;
+    if (method !== "GET" && reply.ok) {
+      written = true;
+    }
     return reply;
   }) as typeof server.fetch;
   return { recover: () => void (broken = false) };
@@ -284,7 +288,7 @@ describe("C3 the page must be on the company's own site", () => {
 
 // ---------------------------------------------------------------------------------------------------------
 describe("C4 a page that is already listed", () => {
-  const existing = LINKS[2]!; // `${SITE}/visit`
+  const existing = LINKS[2]; // `${SITE}/visit`
   it.each([`${SITE}/visit/`, `${SITE}/visit#map`, `${SITE}/visit/#map`, `${SITE}/visit`])(
     "%s is refused and names the existing link",
     async (url) => {
@@ -352,7 +356,7 @@ describe("C6 saving through the entries and revisions API", () => {
     expect(sent.content.links).toHaveLength(1);
     expect(sent.content.links[0]).toEqual({ id: expect.stringMatching(UUID), title: "New arrivals", url: NEW_URL, note: null });
     const targets = sent.provenance.claims.flatMap((c) => c.targets);
-    const id = sent.content.links[0]!.id;
+    const id = sent.content.links[0].id;
     expect(targets, "the title and address are named in provenance").toEqual(expect.arrayContaining([`/site_links/links/@${id}/title`, `/site_links/links/@${id}/url`]));
   });
 
@@ -361,7 +365,7 @@ describe("C6 saving through the entries and revisions API", () => {
     await addPage(view, NEW_URL, "New arrivals");
     expect(view.server.writes, "one write").toHaveLength(1);
     const sent = sentWrite(view.server, "revise");
-    expect(view.server.writes[0]!.path).toBe(`/api/companies/${COMPANY_ID}/entries/${SITE_ENTRY_ID}/revisions`);
+    expect(view.server.writes[0].path).toBe(`/api/companies/${COMPANY_ID}/entries/${SITE_ENTRY_ID}/revisions`);
     expect(sent.body.expectedRevision).toBe(SITE_REVISION);
     expect(sent.body.requestId).toMatch(UUID);
     expect(sent.content.links.slice(0, LINKS.length)).toEqual(LINKS);
@@ -380,7 +384,7 @@ describe("C6 saving through the entries and revisions API", () => {
   it("the request is accepted by the server's own provenance functions (first entry)", async () => {
     const view = await open(noSiteDraft());
     await addPage(view, NEW_URL, "New arrivals");
-    const body = CreateEntrySchema.parse(view.server.writes[0]!.body);
+    const body = CreateEntrySchema.parse(view.server.writes[0].body);
     const stored = prepareManualCreation(body.kind, body.content, body.requestId, ACTOR);
     expect(EntryProvenanceSchema.safeParse(stored).success).toBe(true);
     const content = parseBusinessEntry("site_links", body.content);
@@ -391,7 +395,7 @@ describe("C6 saving through the entries and revisions API", () => {
     const draft = siteDraft();
     const view = await open(draft);
     await addPage(view, NEW_URL, "New arrivals");
-    const body = SaveEntrySchema.parse(view.server.writes[0]!.body);
+    const body = SaveEntrySchema.parse(view.server.writes[0].body);
     const entry = draft.entries.find((e) => e.id === SITE_ENTRY_ID)!;
     const rows: Record<string, unknown> = {
       knowledge_entries: { kind: "site_links", current_revision: entry.current_revision },
@@ -417,7 +421,7 @@ describe("C6 saving through the entries and revisions API", () => {
     const text = cardText(view);
     expect(text).toContain("New arrivals");
     expect(text).toContain(NEW_URL);
-    expect(text).toContain(LINKS[0]!.title);
+    expect(text).toContain(LINKS[0].title);
     expect(view.text()).not.toMatch(/saved\. reload/i);
   });
 
@@ -505,7 +509,7 @@ describe("C7 a failed write and a failed refresh", () => {
       expect(openDialogs(view)).toHaveLength(0);
       expect(view.server.writes, "no second write").toHaveLength(1);
 
-      const reload = () => view.byRole("button", /^reload$/i)[0]!;
+      const reload = () => view.byRole("button", /^reload$/i)[0];
       await view.click(reload());
       await view.settle();
       expect(view.text(), "still stale while the read fails").toMatch(/saved\. reload to see the latest links\./i);
@@ -540,7 +544,7 @@ describe("C8 capacity", () => {
   it("source claims at the cap: blocked with \"source records are full\"", async () => {
     const links = manyLinks(60);
     const provenance = userProvenance(links);
-    provenance.claims = Array.from({ length: 500 }, (_, i) => ({ ...userProvenance(manyLinks(1)).claims[0]!, id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` }));
+    provenance.claims = Array.from({ length: 500 }, (_, i) => ({ ...userProvenance(manyLinks(1)).claims[0], id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` }));
     await blocked(siteDraft({ links, provenance }), /source records are full/i);
   });
   it("999 recorded changes: blocked with \"source records are full\"", async () => {
@@ -608,11 +612,11 @@ describe("C10 nothing else changes", () => {
     await view.settle();
     const imports = view.byRole("button", /^import from website$/i);
     expect(imports).toHaveLength(1);
-    await view.click(imports[0]!);
+    await view.click(imports[0]);
     await view.settle();
     const dialogs = openDialogs(view);
     expect(dialogs).toHaveLength(1);
-    expect(view.nameOf(dialogs[0]!)).toMatch(/import pages from website/i);
-    expect(siteCardText(view.page(), siteCard(view.page())!)).toContain(LINKS[0]!.title);
+    expect(view.nameOf(dialogs[0])).toMatch(/import pages from website/i);
+    expect(siteCardText(view.page(), siteCard(view.page())!)).toContain(LINKS[0].title);
   });
 });

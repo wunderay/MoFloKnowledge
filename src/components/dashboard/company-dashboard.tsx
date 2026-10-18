@@ -40,7 +40,9 @@ export function CompanyDashboard({
       { signal: abort.signal },
     )
       .then((data) => {
-        if (abort.signal.aborted) return;
+        if (abort.signal.aborted) {
+          return;
+        }
         setCompanies((previous) => [
           ...previous.filter(
             (company) => Boolean(company.archived_at) !== archived,
@@ -50,15 +52,21 @@ export function CompanyDashboard({
         setNextCursor(data.nextCursor);
       })
       .catch((error) => {
-        if (!abort.signal.aborted) setError(error.message);
+        if (!abort.signal.aborted) {
+          setError(error.message);
+        }
       })
       .finally(() => {
-        if (!abort.signal.aborted) setLoading(false);
+        if (!abort.signal.aborted) {
+          setLoading(false);
+        }
       });
-    return () => abort.abort();
+    return () => { abort.abort(); };
   }, [archived]);
   async function loadMore() {
-    if (!nextCursor) return;
+    if (!nextCursor) {
+      return;
+    }
     setLoading(true);
     try {
       const data = await api<{
@@ -81,8 +89,9 @@ export function CompanyDashboard({
     setError("");
     const form = new FormData(event.currentTarget);
     const key = JSON.stringify([form.get("name"), form.get("website")]);
-    if (!requestIds.current.has(key))
+    if (!requestIds.current.has(key)) {
       requestIds.current.set(key, crypto.randomUUID());
+    }
     try {
       const data = await api<{ companyId: string }>(
         "/api/companies",
@@ -117,7 +126,7 @@ export function CompanyDashboard({
         <button
           className="button button--primary"
           disabled={!hydrated}
-          onClick={() => setAdding(true)}
+          onClick={() => { setAdding(true); }}
         >
           <Icon name="plus" size={16} /> Add company
         </button>
@@ -162,7 +171,7 @@ export function CompanyDashboard({
           <button
             className="button button--quiet"
             disabled={!hydrated}
-            onClick={() => setArchived(!archived)}
+            onClick={() => { setArchived(!archived); }}
           >
             {archived ? "Show active" : "View archive"}
           </button>
@@ -172,7 +181,7 @@ export function CompanyDashboard({
             className="filter-input"
             placeholder="Search companies…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); }}
           />
         </div>
       </div>
@@ -190,7 +199,7 @@ export function CompanyDashboard({
             <button
               className="button button--primary"
               disabled={!hydrated}
-              onClick={() => setAdding(true)}
+              onClick={() => { setAdding(true); }}
             >
               <Icon name="plus" size={16} /> Add company
             </button>
@@ -253,7 +262,7 @@ export function CompanyDashboard({
         </button>
       )}
       {adding && (
-        <Dialog title="Add a company" onClose={() => setAdding(false)}>
+        <Dialog title="Add a company" onClose={() => { setAdding(false); }}>
           <p className="muted">
             Create a private workspace for a company and its website.
           </p>
@@ -287,7 +296,7 @@ export function CompanyDashboard({
               <button
                 type="button"
                 className="button"
-                onClick={() => setAdding(false)}
+                onClick={() => { setAdding(false); }}
               >
                 Cancel
               </button>

@@ -6,7 +6,9 @@ vi.mock("react", async (original) => ({
   ...await original<typeof import("react")>(),
   useState: (initial: unknown) => {
     const index = harness.cursor++;
-    if (!(index in harness.slots)) harness.slots[index] = initial;
+    if (!(index in harness.slots)) {
+      harness.slots[index] = initial;
+    }
     return [harness.slots[index], (value: unknown) => { harness.slots[index] = value; }];
   },
 }));
@@ -31,14 +33,24 @@ const inventory = {
   ],
 };
 function expand(node: ReactNode): ReactNode {
-  if (Array.isArray(node)) return node.map(expand);
-  if (!React.isValidElement<{ children?: ReactNode }>(node)) return node;
-  if (typeof node.type === "function") return expand((node.type as (props: unknown) => ReactNode)(node.props));
+  if (Array.isArray(node)) {
+    return node.map(expand);
+  }
+  if (!React.isValidElement<{ children?: ReactNode }>(node)) {
+    return node;
+  }
+  if (typeof node.type === "function") {
+    return expand((node.type as (props: unknown) => ReactNode)(node.props));
+  }
   return React.cloneElement(node, undefined, expand(node.props.children));
 }
 function elements(node: ReactNode): ReactElement<any>[] {
-  if (Array.isArray(node)) return node.flatMap(elements);
-  if (!React.isValidElement<{ children?: ReactNode }>(node)) return [];
+  if (Array.isArray(node)) {
+    return node.flatMap(elements);
+  }
+  if (!React.isValidElement<{ children?: ReactNode }>(node)) {
+    return [];
+  }
   return [node, ...elements(node.props.children)];
 }
 function render() {
@@ -53,7 +65,7 @@ it("loads on disclosure, identifies latest crawl separately from snapshots, and 
   expect(harness.api).not.toHaveBeenCalled();
   expect(initial.html).toContain("Latest crawl · source coverage");
   harness.api.mockResolvedValueOnce(inventory);
-  initial.nodes[0]!.props.onToggle({ currentTarget: { open: true } });
+  initial.nodes[0].props.onToggle({ currentTarget: { open: true } });
   await Promise.resolve();
   const loaded = render();
   expect(harness.api).toHaveBeenCalledWith("/api/companies/company-id/sources");
@@ -61,18 +73,19 @@ it("loads on disclosure, identifies latest crawl separately from snapshots, and 
   expect(loaded.html).toContain("not every page on the website");
   expect(loaded.html).toContain("Document limit</dt><dd>12");
   expect(loaded.html).toContain("Limits reached: Documents");
-  for (const label of ["Captured but not used in claims", "Linked · not selected", "Blocked", "Failed", "Pending", "Waiting in the recorded frontier."])
+  for (const label of ["Captured but not used in claims", "Linked · not selected", "Blocked", "Failed", "Pending", "Waiting in the recorded frontier."]) {
     expect(loaded.html).toContain(label);
+  }
   expect(harness.api).toHaveBeenCalledTimes(1);
 });
 
 it("opens full retained text through the company route, escapes page content, and reports capture truncation", async () => {
   harness.api.mockResolvedValueOnce(inventory);
-  render().nodes[0]!.props.onToggle({ currentTarget: { open: true } });
+  render().nodes[0].props.onToggle({ currentTarget: { open: true } });
   await Promise.resolve();
   const text = '<script>alert("source")</script>\n' + "Exact retained text. ".repeat(100) + "Unique retained ending.";
   harness.api.mockResolvedValueOnce({
-    id: "retained-source", jobId: "job", url: inventory.pages[0]!.url, title: "Source", capturedAt: null,
+    id: "retained-source", jobId: "job", url: inventory.pages[0].url, title: "Source", capturedAt: null,
     captureStatus: "captured", text, segments: [], truncated: true, limitations: ["Capture byte limit was reached."],
   });
   const source = render().nodes.find((node) => node.type === "details" && node.props.className === "source-coverage__source")!;
@@ -90,7 +103,7 @@ it("opens full retained text through the company route, escapes page content, an
 
 it("keeps an API failure visible and offers a coverage retry", async () => {
   harness.api.mockRejectedValueOnce(new Error("Coverage unavailable"));
-  render().nodes[0]!.props.onToggle({ currentTarget: { open: true } });
+  render().nodes[0].props.onToggle({ currentTarget: { open: true } });
   await Promise.resolve();
   const failed = render();
   expect(failed.html).toContain('role="alert"');

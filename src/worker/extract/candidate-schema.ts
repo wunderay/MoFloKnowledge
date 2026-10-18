@@ -2,9 +2,10 @@ import { z } from "zod";
 import { FIELD_REGISTRY, businessEntrySchemas } from "../../contracts";
 // Candidate values omit UUIDs. The worker assigns stable identities after local validation.
 export function candidateValueSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
-  if (schema instanceof z.ZodEffects)
+  if (schema instanceof z.ZodEffects) {
     return candidateValueSchema(schema.innerType());
-  if (schema instanceof z.ZodObject)
+  }
+  if (schema instanceof z.ZodObject) {
     return z
       .object(
         Object.fromEntries(
@@ -17,18 +18,25 @@ export function candidateValueSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
         ),
       )
       .strict();
-  if (schema instanceof z.ZodArray)
+  }
+  if (schema instanceof z.ZodArray) {
     return z.array(candidateValueSchema(schema.element)).max(100);
-  if (schema instanceof z.ZodNullable)
+  }
+  if (schema instanceof z.ZodNullable) {
     return candidateValueSchema(schema.unwrap()).nullable();
-  if (schema instanceof z.ZodOptional)
+  }
+  if (schema instanceof z.ZodOptional) {
     return candidateValueSchema(schema.unwrap()).nullable();
+  }
   return schema;
 }
 function objectSchema(schema: z.ZodTypeAny): z.AnyZodObject {
-  while (schema instanceof z.ZodEffects) schema = schema.innerType();
-  if (!(schema instanceof z.ZodObject))
+  while (schema instanceof z.ZodEffects) {
+    schema = schema.innerType();
+  }
+  if (!(schema instanceof z.ZodObject)) {
     throw new Error("Expected object contract");
+  }
   return schema;
 }
 export const fieldCandidateSchemas = FIELD_REGISTRY.map((field) =>

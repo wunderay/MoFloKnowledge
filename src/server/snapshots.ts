@@ -21,7 +21,9 @@ export async function readSnapshot(
       .eq("id", id)
       .maybeSingle(),
   );
-  if (!saved) throw new HttpError(404, "unavailable", "Resource unavailable.");
+  if (!saved) {
+    throw new HttpError(404, "unavailable", "Resource unavailable.");
+  }
   // `payload` is the validated, current-shape view for rendering; `stored` is exactly what was frozen (hash, downloads).
   return { ...saved, payload: KnowledgeBaseExportSchema.parse(upgradeLegacySnapshot(saved.payload)), stored: saved.payload as unknown };
 }
@@ -45,7 +47,9 @@ export async function readVersionSummaries(
         .range(offset, offset + 999),
     );
     pages.push(...(page ?? []));
-    if ((page ?? []).length < 1000) break;
+    if ((page ?? []).length < 1000) {
+      break;
+    }
   }
   return parseResponse(VersionSummarySchema.array(), pages);
 }

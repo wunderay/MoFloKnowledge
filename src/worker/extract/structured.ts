@@ -3,7 +3,7 @@ import type { FieldCandidate, TechnicalObservation } from "./types";
 import { serviceEntityKey } from "./services-text";
 
 type ObjectValue = Record<string, unknown>;
-type Node = { value: ObjectValue; path: string };
+interface Node { value: ObjectValue; path: string }
 const object = (value: unknown): ObjectValue | null =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as ObjectValue)
@@ -30,21 +30,26 @@ export function structuredCandidates(
   const result: FieldCandidate[] = [];
   const nodes: Node[] = [];
   const visit = (value: unknown, path: string, depth = 0) => {
-    if (depth > 8 || nodes.length >= 100) return;
-    if (Array.isArray(value))
-      value.slice(0, 30).forEach((v, i) => visit(v, path + "/" + i, depth + 1));
-    else {
+    if (depth > 8 || nodes.length >= 100) {
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.slice(0, 30).forEach((v, i) => { visit(v, path + "/" + i, depth + 1); });
+    } else {
       const record = object(value);
-      if (!record) return;
+      if (!record) {
+        return;
+      }
       nodes.push({ value: record, path });
       Object.entries(record).slice(0, 50).forEach(([key, v]) =>
-        visit(v, path + "/" + key, depth + 1),
+        { visit(v, path + "/" + key, depth + 1); },
       );
     }
   };
   const jsonLd = page.capture.observations.jsonLd;
-  if (Array.isArray(jsonLd))
-    jsonLd.forEach((value, index) => visit(value, String(index)));
+  if (Array.isArray(jsonLd)) {
+    jsonLd.forEach((value, index) => { visit(value, String(index)); });
+  }
   const leaf = (path: string) =>
     observations.find((o) => o.property === "jsonld:" + path);
   const evidence = (path: string): TechnicalObservation[] =>
@@ -56,7 +61,9 @@ export function structuredCandidates(
     field: string, value: unknown, cited: TechnicalObservation[],
     entity_key: string | null = null,
   ) => {
-    if (!cited.length || cited.length > 30) return;
+    if (!cited.length || cited.length > 30) {
+      return;
+    }
     result.push({ field, value, entity_key, origin: "source_backed",
       segment_ids: field.startsWith("/offerings/") ? page.capture.segments.filter((segment) =>
         cited.some((o) => o.property === "heading" && o.value && segment.text.includes(o.value))).map((segment) => segment.id).slice(0, 30) : [],
@@ -70,11 +77,14 @@ export function structuredCandidates(
     entity: string | null = null, context: TechnicalObservation[] = [],
   ) => {
     const string = text(value), observed = leaf(path);
-    if (string && observed?.value?.trim() === string)
+    if (string && observed?.value?.trim() === string) {
       add(field, string, [...context, observed], entity);
+    }
   };
   const sameSite = (raw: unknown) => {
-    if (typeof raw !== "string") return false;
+    if (typeof raw !== "string") {
+      return false;
+    }
     try {
       const host = new URL(raw, page.capture.finalUrl).hostname.replace(/^www\./, "");
       return host === new URL(page.capture.finalUrl).hostname.replace(/^www\./, "");
@@ -95,8 +105,9 @@ export function structuredCandidates(
     alternate.forEach((name, index) => {
       const property = path + "/alternateName" + (Array.isArray(value.alternateName) ? "/" + index : "");
       const observed = leaf(property), string = text(name);
-      if (string && observed?.value === string)
+      if (string && observed?.value === string) {
         add("/company_foundation/alternative_company_names", [{ text: string }], [observed]);
+      }
     });
     const addresses = Array.isArray(value.address) ? value.address : [value.address];
     addresses.forEach((rawAddress, index) => {
@@ -118,13 +129,17 @@ export function structuredCandidates(
           cited.push(observed);
         }
       }
-      if (cited.length) add("/company_foundation/main_address", mapped, cited);
+      if (cited.length) {
+        add("/company_foundation/main_address", mapped, cited);
+      }
     } else if (text(rawAddress)) {
       const observed = leaf(addressPath);
-      if (observed) add("/company_foundation/main_address", {
+      if (observed) {
+        add("/company_foundation/main_address", {
         label: null, raw: text(rawAddress), line1: null, line2: null,
         city: null, region: null, postal_code: null, country: null,
       }, [observed]);
+      }
     }
     });
     const areas = Array.isArray(value.areaServed) ? value.areaServed : [value.areaServed];
@@ -132,8 +147,9 @@ export function structuredCandidates(
       const prefix = path + "/areaServed" + (Array.isArray(value.areaServed) ? "/" + index : "");
       const name = text(area) ?? text(object(area)?.name);
       const observed = leaf(prefix + (typeof area === "string" ? "" : "/name"));
-      if (name && observed?.value === name)
+      if (name && observed?.value === name) {
         add("/company_foundation/service_locations", [{ text: name }], [observed]);
+      }
     });
   }
   const organizationIds = new Set(selected.map(({ value }) => value["@id"]).filter(Boolean));
@@ -147,12 +163,18 @@ export function structuredCandidates(
     const kind = types(value);
     const person = kind.includes("Person");
     const offering = kind.includes("Service") || kind.includes("Product");
-    if (!person && !offering) continue;
+    if (!person && !offering) {
+      continue;
+    }
     const name = text(value.name);
-    if (!name) continue;
+    if (!name) {
+      continue;
+    }
     const context = [leaf(path + "/name"), ...evidence(path + "/@type")]
       .filter((o): o is TechnicalObservation => Boolean(o));
-    if (context.length < 2) continue;
+    if (context.length < 2) {
+      continue;
+    }
     if (person) {
       const nested = selected.some((org) =>
         ["founder", "employee", "member"].some((relation) =>
@@ -166,9 +188,13 @@ export function structuredCandidates(
         ),
       );
       const headingMatch = observations.some((o) => o.property === "heading" && o.value === name);
-      if (!nested && !referred && !belongs(value.worksFor) && !headingMatch) continue;
+      if (!nested && !referred && !belongs(value.worksFor) && !headingMatch) {
+        continue;
+      }
     } else if ((value.provider && !belongs(value.provider)) ||
-      (value.url && !sameSite(value.url)) || (value["@id"] && !sameSite(value["@id"]))) continue;
+      (value.url && !sameSite(value.url)) || (value["@id"] && !sameSite(value["@id"]))) {
+      continue;
+    }
     // A single Service can identify the current detail page even when its metadata URL is stale.
     // Require an observed self-link whose exact label is also a heading, and that whole heading
     // appears in the declared service name. Catalog entries and products keep their own identities.
@@ -191,11 +217,17 @@ export function structuredCandidates(
         (" " + normalizedName(name) + " ").includes(" " + normalizedName(o.value) + " ") &&
         page.capture.segments.some((segment) => segment.text.includes(o.value!))) : undefined;
     const primary = (primaryLink && primaryEvidence.length === 3) || primaryHeading;
-    if (primary) context.push(...primaryEvidence);
-    if (primaryHeading) context.push(primaryHeading);
+    if (primary) {
+      context.push(...primaryEvidence);
+    }
+    if (primaryHeading) {
+      context.push(primaryHeading);
+    }
     const declaredUrl = text(value.url);
     const declaredUrlObservation = leaf(path + "/url");
-    if (offering && declaredUrl && declaredUrlObservation?.value === declaredUrl) context.push(declaredUrlObservation);
+    if (offering && declaredUrl && declaredUrlObservation?.value === declaredUrl) {
+      context.push(declaredUrlObservation);
+    }
     const entity = primary ? page.capture.finalUrl : page.capture.links.find((link) =>
       link.url !== page.capture.finalUrl &&
       (link.url === value.url || link.url === value["@id"]) &&
@@ -206,22 +238,29 @@ export function structuredCandidates(
     addText(prefix + "name", value.name, path + "/name", entity, context);
     addText(prefix + (person ? "background_or_relevance" : "description"),
       value.description, path + "/description", entity, context);
-    if (person) addText(prefix + "title", value.jobTitle, path + "/jobTitle", entity, context);
-    else {
+    if (person) {
+      addText(prefix + "title", value.jobTitle, path + "/jobTitle", entity, context);
+    } else {
       addText(prefix + "category", value.category, path + "/category", entity, context);
-      if (primary) add(prefix + "url", page.capture.finalUrl, context, entity);
-      else if (value.url === page.capture.finalUrl || page.capture.links.some((l) => l.url === value.url))
+      if (primary) {
+        add(prefix + "url", page.capture.finalUrl, context, entity);
+      } else if (value.url === page.capture.finalUrl || page.capture.links.some((l) => l.url === value.url)) {
         addText(prefix + "url", value.url, path + "/url", entity, context);
+      }
       const offers = Array.isArray(value.offers) ? value.offers : [value.offers];
       offers.forEach((rawOffer, i) => {
         const offer = object(rawOffer);
-        if (!offer) return;
+        if (!offer) {
+          return;
+        }
         const offerPath = path + "/offers" + (Array.isArray(value.offers) ? "/" + i : "");
         const price = offer.price;
         const raw = typeof price === "number" || typeof price === "string" ? String(price) : "";
         const priceObservation = leaf(offerPath + "/price");
         // A numeric zero is preserved as an explicit paid amount, never rewritten as free.
-        if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(raw) || !priceObservation) return;
+        if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(raw) || !priceObservation) {
+          return;
+        }
         const currency = text(offer.priceCurrency);
         const currencyObservation = leaf(offerPath + "/priceCurrency");
         const currencyIsExplicit = currency && /^[A-Z]{3}$/.test(currency) && currencyObservation?.value === currency;

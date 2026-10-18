@@ -28,9 +28,9 @@ describe("a read superseded by navigation is aborted at once", () => {
     const { view, reads } = await openGuarded(ADD_PAGE.sectionId);
     reads.holdNext();
     await ADD_PAGE.act(view);
-    expect(reads.drafts[0]!.state).toBe("pending");
+    expect(reads.drafts[0].state).toBe("pending");
     await selectVersion(view, SNAPSHOT_ID);
-    expect(reads.drafts[0]!.state).toBe("aborted");
+    expect(reads.drafts[0].state).toBe("aborted");
   });
 });
 
@@ -65,7 +65,9 @@ describe("a navigation load and a post-save refresh", () => {
     let open!: () => void;
     const gate = new Promise<void>((resolve) => (open = resolve));
     vi.stubGlobal("fetch", async (input: never, init?: { method?: string }) => {
-      if ((init?.method ?? "GET").toUpperCase() === "POST") await gate;
+      if ((init?.method ?? "GET").toUpperCase() === "POST") {
+        await gate;
+      }
       return (base as (i: never, n?: unknown) => Promise<unknown>)(input, init);
     });
     await PERSON.act(view);
@@ -83,7 +85,7 @@ describe("a navigation load and a post-save refresh", () => {
     await sleep(30);
     await view.settle();
     expect(PERSON.shows(view), "the refresh after the save shows the new person").toBe(true);
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await view.settle();
     await sleep(30);
     await view.settle();
@@ -100,7 +102,7 @@ describe("a navigation load and a post-save refresh", () => {
     await view.settle();
     await sleep(30);
     await view.settle();
-    reads.drafts[0]!.fail();
+    reads.drafts[0].fail();
     await view.settle();
     await sleep(30);
     await view.settle();
@@ -119,7 +121,7 @@ describe("a navigation load and a post-save refresh", () => {
     expect(reads.drafts).toHaveLength(1);
     await selectVersion(view, SNAPSHOT_ID);
     await selectVersion(view, "draft");
-    reads.drafts[0]!.fail();
+    reads.drafts[0].fail();
     await view.settle();
     await sleep(30);
     await view.settle();

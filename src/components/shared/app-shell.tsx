@@ -42,7 +42,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     headers: { "Content-Type": "application/json" },
                     body: "{}",
                   });
-                  if (!response.ok) throw new Error("Unable to sign out. Please retry.");
+                  if (!response.ok) {
+                    throw new Error("Unable to sign out. Please retry.");
+                  }
                   window.location.assign("/sign-in");
                 } catch {
                   setSignOutError("Unable to sign out. Please retry.");

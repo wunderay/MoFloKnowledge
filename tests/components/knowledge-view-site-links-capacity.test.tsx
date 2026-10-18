@@ -17,7 +17,7 @@ describe("capacity", () => {
   it("room is what the links and the source claims still allow: 20 links with 450 claims leave 480", () => {
     const links = manyLinks(20);
     const base = userProvenance(links);
-    const claim = userProvenance(manyLinks(1)).claims[0]!;
+    const claim = userProvenance(manyLinks(1)).claims[0];
     const claims = Array.from({ length: 450 }, (_, i) => ({ ...claim, id: `00000000-0000-4000-8000-${(0xc1a000 + i).toString(16).padStart(12, "0")}` }));
     const site = siteLinksFrom(siteDraft({ links, provenance: { ...base, claims } }).entries as never);
     expect(importRoom(site)).toEqual({ room: 480, limit: null });
@@ -44,7 +44,9 @@ describe("the picker at the limit", () => {
   it("with 499 links, once one page is checked every other box is disabled and the checked one stays enabled", async () => {
     const view = await openSite({ inventory: inventory([PAGES.shop, PAGES.subscribe, PAGES.workshops]), draft: siteDraft({ links: manyLinks(499) }) });
     await openPicker(view);
-    for (const page of [PAGES.shop, PAGES.subscribe, PAGES.workshops]) expect(disabled(boxFor(view, pickerDialog(view)!, page)!)).toBe(false);
+    for (const page of [PAGES.shop, PAGES.subscribe, PAGES.workshops]) {
+      expect(disabled(boxFor(view, pickerDialog(view)!, page)!)).toBe(false);
+    }
     await selectPages(view, [PAGES.shop]);
     const dialog = pickerDialog(view)!;
     expect(disabled(boxFor(view, dialog, PAGES.shop)!), "the checked box can be unchecked").toBe(false);

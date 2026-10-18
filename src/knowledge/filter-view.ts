@@ -5,30 +5,35 @@ import type {
   Assessment,
   ReviewStatus,
 } from "../contracts/provenance";
-export type ViewEntry = {
+export interface ViewEntry {
   company_id: string;
   entry_id: string;
   kind: EntryKind;
   content: BusinessEntry;
   provenance: EntryProvenance;
   review_status: ReviewStatus;
-};
-export type ViewFilters = {
+}
+export interface ViewFilters {
   companyId: string;
   query?: string;
   section?: EntryKind;
   origin?: Origin;
   reviewStatus?: ReviewStatus;
   coverage?: Assessment;
-};
+}
 function searchable(value: unknown): string {
-  if (value === null) return "";
-  if (Array.isArray(value)) return value.map(searchable).join(" ");
-  if (typeof value === "object")
+  if (value === null) {
+    return "";
+  }
+  if (Array.isArray(value)) {
+    return value.map(searchable).join(" ");
+  }
+  if (typeof value === "object") {
     return Object.entries(value)
       .filter(([key]) => key !== "id")
       .map(([, item]) => searchable(item))
       .join(" ");
+  }
   return String(value);
 }
 // An entry matches origin/coverage only through its own claims and targets, never through provenance shared with other entries.

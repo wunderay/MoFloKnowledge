@@ -81,11 +81,16 @@ function bannerOf(page: Page, label: string, headingValue: string): Element | nu
   const labels = textNodes(page).filter((t) => same(t.text, label) && !ancestorsOf(t.node).some((a) => /^h[1-6]$/.test(a.name)));
   const heads = headings(page).filter((h) => same(h.text, headingValue));
   const selector = sectionSelector(page);
-  for (const l of labels)
+  for (const l of labels) {
     for (const parent of ancestorsOf(l.node)) {
-      if (selector && contains(parent, selector)) break;
-      if (heads.some((h) => contains(parent, h.el))) return parent;
+      if (selector && contains(parent, selector)) {
+        break;
+      }
+      if (heads.some((h) => contains(parent, h.el))) {
+        return parent;
+      }
     }
+  }
   return null;
 }
 
@@ -179,16 +184,20 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
       "Site Knowledge": siteHeading(page),
     };
     ALL_ORDER.forEach((label, i) => {
-      const position = at(probe[label]!, `content of ${label}`);
+      const position = at(probe[label], `content of ${label}`);
       expect(position, `${label} content after its heading`).toBeGreaterThan(heading(label));
-      if (i + 1 < ALL_ORDER.length) expect(position, `${label} content before the next heading`).toBeLessThan(heading(ALL_ORDER[i + 1]!));
+      if (i + 1 < ALL_ORDER.length) {
+        expect(position, `${label} content before the next heading`).toBeLessThan(heading(ALL_ORDER[i + 1]));
+      }
     });
   });
 
   // C5 behavioural
   it("shows the same banners, cards and values as each section on its own", async () => {
     const all = signature((await sources[source]("All sections")).page());
-    for (const [key, value] of Object.entries(all)) expect(value, `${key} is rendered in All sections`).not.toBeNull();
+    for (const [key, value] of Object.entries(all)) {
+      expect(value, `${key} is rendered in All sections`).not.toBeNull();
+    }
     for (const label of SIX) {
       const alone = signature((await sources[source](label)).page());
       for (const key of Object.keys(all).filter((k) => sectionOfKey(k) === label)) {
@@ -203,7 +212,9 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
     const draft = buildSiteEvidence().draft;
     const page = (source === "draft" ? await openView({ section: "All sections", draft }) : await openView({ section: "All sections", snapshot: buildSiteEvidence().snapshot() })).page();
     // a page that renders only a placeholder has no duplicate ids either: require the six sections first
-    for (const label of ALL_ORDER) expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
+    for (const label of ALL_ORDER) {
+      expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
+    }
     expect(page.$("button.citation-popover__trigger").length, "evidence controls of several sections are present").toBeGreaterThan(1);
     expect(duplicateIds(page)).toEqual([]);
   });
@@ -214,7 +225,9 @@ describe.each(["draft", "snapshot"] as const)("C5 All sections (%s)", (source: S
     const siteEl = siteCard(page);
     expect(siteEl, 'the card "Sitemap / Internal Links"').not.toBeNull();
     const text = siteCardText(page, siteEl!);
-    for (const link of LINKS) expect(text).toContain(link.title);
+    for (const link of LINKS) {
+      expect(text).toContain(link.title);
+    }
     if (source === "draft") {
       expect(addPageLinks(page, siteEl!), "no link to the editor on an editable draft").toEqual([]);
       expect(addPageButtons(page, siteEl!), 'one "+ Add page" button').toHaveLength(1);
@@ -240,7 +253,9 @@ describe("C5 All sections, draft and snapshot agree", () => {
   it("Edge case: a company with no entries still shows every section heading, the Site Knowledge empty state and no crash", async () => {
     const draft = buildEmptyDraft();
     const page = (await openView({ section: "All sections", draft })).page();
-    for (const label of ALL_ORDER) expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
+    for (const label of ALL_ORDER) {
+      expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
+    }
     const siteEl = siteCard(page)!;
     expect(siteEl).not.toBeNull();
     expect(siteCardText(page, siteEl)).toMatch(/no (internal )?(links|pages)/i);
@@ -252,7 +267,9 @@ describe("C5 All sections, draft and snapshot agree", () => {
   // C5 behavioural
   it("Edge case: a snapshot saved before site_links existed shows every section and an empty Site Knowledge card", async () => {
     const page = (await openView({ section: "All sections", snapshot: legacySnapshot() })).page();
-    for (const label of ALL_ORDER) expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
+    for (const label of ALL_ORDER) {
+      expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
+    }
     expect(siteCardText(page, siteCard(page)!)).toMatch(/no (internal )?(links|pages)/i);
     expect(importControls(page)).toHaveLength(0);
   });
@@ -264,7 +281,9 @@ describe("C5 All sections, draft and snapshot agree", () => {
     business.branding_and_style.logos = [];
     const draft = draftFrom(business);
     const page = (await openView({ section: "All sections", draft })).page();
-    for (const label of ALL_ORDER) expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
+    for (const label of ALL_ORDER) {
+      expect(sectionHeading(page, label), `a heading "${label}"`).not.toBeNull();
+    }
     expect(norm(page.$.root().text())).toMatch(/no offerings yet/i);
     expect(siteCard(page)).not.toBeNull();
   });
@@ -310,14 +329,18 @@ describe("C3/C4 the import control in All sections", () => {
     expect(view.dialogs()).toHaveLength(0);
     const page = view.page();
     expect(siteCardText(page, siteCard(page)!)).toContain("Shop our coffees");
-    for (const label of ALL_ORDER) expect(sectionHeading(page, label)).not.toBeNull();
+    for (const label of ALL_ORDER) {
+      expect(sectionHeading(page, label)).not.toBeNull();
+    }
   });
 });
 
 describe("C5 the individual sections are unchanged", () => {
   // C5 non-regression
   it("each individual section is selected alone, General Info without the Site Knowledge card", async () => {
-    for (const label of SIX) expect(selectedSection((await sources.draft(label)).page())).toEqual([label]);
+    for (const label of SIX) {
+      expect(selectedSection((await sources.draft(label)).page())).toEqual([label]);
+    }
     expect(siteCard((await sources.draft("General Info")).page()), "General Info does not carry the Site Knowledge card").toBeNull();
     expect(card((await sources.draft("Site Knowledge")).page(), "Overview", GENERAL), "Site Knowledge does not carry General Info cards").toBeNull();
   });

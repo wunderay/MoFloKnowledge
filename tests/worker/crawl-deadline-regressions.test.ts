@@ -19,7 +19,9 @@ vi.mock("node:timers/promises", async (importOriginal) => {
   ) =>
     new Promise((resolve, reject) => {
       const signal = options?.signal;
-      if (signal?.aborted) return reject(signal.reason);
+      if (signal?.aborted) {
+        return reject(signal.reason);
+      }
       const onAbort = () => {
         clearTimeout(timer);
         reject(signal!.reason);
@@ -69,16 +71,18 @@ const response = (url: string, body: string, robots: boolean) => ({
 
 const hangUntilAbort = (signal?: AbortSignal) =>
   new Promise<never>((_resolve, reject) => {
-    if (signal?.aborted) return reject(signal.reason);
+    if (signal?.aborted) {
+      return reject(signal.reason);
+    }
     signal?.addEventListener("abort", () => reject(signal.reason), {
       once: true,
     });
   });
 
-type Behaviour = {
+interface Behaviour {
   robots: string;
   page?: (path: string, requestNumber: number) => Promise<string> | string;
-};
+}
 
 function fetcherFor(
   behaviour: Behaviour,
@@ -90,8 +94,9 @@ function fetcherFor(
     await options.onRequest?.(input);
     options.signal?.throwIfAborted();
     const url = new URL(input);
-    if (url.pathname === "/robots.txt")
+    if (url.pathname === "/robots.txt") {
       return response(input, behaviour.robots, true);
+    }
     pageRequests.push(url.pathname);
     const number = (counts.get(url.pathname) ?? 0) + 1;
     counts.set(url.pathname, number);
@@ -156,7 +161,9 @@ describe("a deadline expiring between batches marks the job partial", () => {
         robots: "User-agent: *",
         // The root answers late, after the 2000 ms job deadline has passed.
         page: async (path) => {
-          if (path !== "/") return htmlPage();
+          if (path !== "/") {
+            return htmlPage();
+          }
           await new Promise((resolve) => setTimeout(resolve, 3_000));
           return htmlPage(["/a", "/b"]);
         },
@@ -234,8 +241,9 @@ describe("moderate Crawl-delay is honoured across a batch of same-host siblings"
       () => (settled = true),
       () => (settled = true),
     );
-    for (let step = 0; step < 400 && !settled; step++)
+    for (let step = 0; step < 400 && !settled; step++) {
       await vi.advanceTimersByTimeAsync(1_000);
+    }
     const result = await promise;
     return { result, pageRequests, elapsed: Date.now() - started };
   };
@@ -267,7 +275,7 @@ describe("moderate Crawl-delay is honoured across a batch of same-host siblings"
 
 describe("redirect hops under a moderate Crawl-delay", () => {
   const pages = ["/p1", "/p2", "/p3", "/p4", "/p5", "/p6", "/p7", "/p8", "/p9"];
-  type Request = { path: string; at: number };
+  interface Request { path: string; at: number }
 
   /** Like the real transport: onRequest runs for every hop, and a hop never starts on an expired signal. */
   function redirectingFetcher(
@@ -283,12 +291,13 @@ describe("redirect hops under a moderate Crawl-delay", () => {
         options.signal?.throwIfAborted();
         const url = new URL(current);
         requests.push({ path: url.pathname, at: Date.now() });
-        if (url.pathname === "/robots.txt")
+        if (url.pathname === "/robots.txt") {
           return response(
             current,
             `User-agent: *\nCrawl-delay: ${seconds}`,
             true,
           );
+        }
         if (redirecting.has(url.pathname)) {
           current = new URL(url.pathname + "/", current).href;
           continue;
@@ -317,11 +326,12 @@ describe("redirect hops under a moderate Crawl-delay", () => {
       () => (settled = true),
       () => (settled = true),
     );
-    for (let step = 0; step < 400 && !settled; step++)
+    for (let step = 0; step < 400 && !settled; step++) {
       await vi.advanceTimersByTimeAsync(1_000);
+    }
     const result = await promise;
     const times = requests.map((r) => r.at).sort((a, b) => a - b);
-    const gaps = times.slice(1).map((time, index) => time - times[index]!);
+    const gaps = times.slice(1).map((time, index) => time - times[index]);
     return { result, requests, gaps, elapsed: Date.now() - started };
   }
 

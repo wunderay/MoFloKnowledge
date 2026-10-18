@@ -181,7 +181,7 @@ export function buildBusiness(): Business {
   return b;
 }
 
-export type DraftEntry = {
+export interface DraftEntry {
   id: string;
   entry_id: string;
   company_id: string;
@@ -197,15 +197,15 @@ export type DraftEntry = {
   change_reason: string;
   created_at: string;
   saved_at: string;
-};
-export type Draft = {
+}
+export interface Draft {
   actorId: string;
   company: Record<string, unknown> & { id: string; name: string };
   draftGeneration: number;
   entries: DraftEntry[];
   sources: never[];
   citationContext: { claims: never[]; evidence: never[]; sources: never[] };
-};
+}
 
 function draftEntry(
   companyId: string,
@@ -258,7 +258,7 @@ const SINGLETON_IDS: Record<string, string> = {
   branding_and_style: "00000000-0000-4000-8000-0000000e0004",
   online_presence: "00000000-0000-4000-8000-0000000e0005",
 };
-export const FOUNDATION_ENTRY_ID = SINGLETON_IDS.company_foundation!;
+export const FOUNDATION_ENTRY_ID = SINGLETON_IDS.company_foundation;
 
 /** A draft carrying the given business data, one approved entry per section. */
 export function draftFrom(
@@ -268,7 +268,7 @@ export function draftFrom(
   const companyId = opts.companyId ?? COMPANY_ID;
   const entries: DraftEntry[] = [
     ...(["company_foundation", "positioning", "market_and_customers", "branding_and_style", "online_presence"] as const).map(
-      (kind) => draftEntry(companyId, kind, business[kind], SINGLETON_IDS[kind]!, "approved"),
+      (kind) => draftEntry(companyId, kind, business[kind], SINGLETON_IDS[kind], "approved"),
     ),
     ...business.key_people.map((p) => draftEntry(companyId, "key_person", p, p.id, "approved")),
     ...business.offerings.map((o) => draftEntry(companyId, "offering", o, o.id, "approved")),
@@ -317,11 +317,15 @@ export function snapshotFrom(
     const rejected = opts.rejected?.includes(e.kind) ?? false;
     const absent = opts.absent?.includes(e.kind) ?? false;
     if (!rejected && !absent) {
-      if (e.kind === "key_person") business.key_people.push(e.content as never);
-      else if (e.kind === "offering") business.offerings.push(e.content as never);
-      else Object.assign(business, { [e.kind]: e.content });
+      if (e.kind === "key_person") {
+        business.key_people.push(e.content as never);
+      } else if (e.kind === "offering") {
+        business.offerings.push(e.content as never);
+      } else {
+        Object.assign(business, { [e.kind]: e.content });
+      }
     }
-    if (!absent)
+    if (!absent) {
       states.push({
         entry_id: e.id,
         kind: e.kind,
@@ -330,6 +334,7 @@ export function snapshotFrom(
         author_id: ACTOR,
         saved_at: e.saved_at,
       });
+    }
   }
   return KnowledgeBaseExportSchema.parse({
     ...business,

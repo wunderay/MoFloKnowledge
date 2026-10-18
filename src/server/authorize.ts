@@ -15,13 +15,18 @@ export async function authorizeCompany(
     .eq("company_id", companyId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (error) throw mapDatabaseError(error);
-  if (!data) throw new HttpError(404, "unavailable", "Resource unavailable.");
-  if ((write && data.role === "viewer") || (owner && data.role !== "owner"))
+  if (error) {
+    throw mapDatabaseError(error);
+  }
+  if (!data) {
+    throw new HttpError(404, "unavailable", "Resource unavailable.");
+  }
+  if ((write && data.role === "viewer") || (owner && data.role !== "owner")) {
     throw new HttpError(
       403,
       "forbidden",
       "Your role cannot perform this action.",
     );
+  }
   return data.role as "owner" | "editor" | "viewer";
 }

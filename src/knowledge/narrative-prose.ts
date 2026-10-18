@@ -1,5 +1,5 @@
 /** Display-only sentence bullets. Original values and evidence remain untouched. */
-export type FactualBullet = { text: string; label?: string };
+export interface FactualBullet { text: string; label?: string }
 const sentences = new Intl.Segmenter("en", { granularity: "sentence" });
 const quoted = (text: string) => /["“”«»‘’]/u.test(text)
   || /(?:^|\s)'[^'\n]+'(?:\s|[.,!?]|$)/u.test(text);
@@ -12,25 +12,35 @@ const literalToken = (token: string) => {
   const link = token.lastIndexOf("](");
   const body = link < 0 ? token : token.slice(link + 2);
   let start = 0;
-  while (start < body.length && "(<[\"'*_`~".includes(body[start])) start += 1;
+  while (start < body.length && "(<[\"'*_`~".includes(body[start])) {
+    start += 1;
+  }
   let end = body.length;
-  while (end > start && trailing.has(body[end - 1])) end -= 1;
+  while (end > start && trailing.has(body[end - 1])) {
+    end -= 1;
+  }
   const core = body.slice(start, end);
   return literalShape.some((shape) => shape.test(core));
 };
 
 export function factualBullets(text: string, company: string, verbatim = false): FactualBullet[] {
-  if (quoted(text)) return [{ text }];
+  if (quoted(text)) {
+    return [{ text }];
+  }
   const personal = /\b(?:I|my|me)\b/iu.test(text);
   return [...sentences.segment(text)].map(({ segment }) => segment.trim()).filter(Boolean).map((statement) => {
-    if (verbatim || personal) return { text: statement };
+    if (verbatim || personal) {
+      return { text: statement };
+    }
     const welcome = `Welcome to ${company}, a trusted partner for `;
     if (statement.startsWith(welcome)) {
       const detail = statement.slice(welcome.length);
       return { text: detail.charAt(0).toUpperCase() + detail.slice(1) };
     }
-    const voice = statement.match(/^We (also )?(specialize in|provide|offer|perform|use|adhere to|can|will|may|must|should) (.+)$/su);
-    if (!voice) return { text: statement };
+    const voice = /^We (also )?(specialize in|provide|offer|perform|use|adhere to|can|will|may|must|should) (.+)$/su.exec(statement);
+    if (!voice) {
+      return { text: statement };
+    }
     const [, additional, verb, predicate] = voice;
     // Do not reinterpret omitted-subject clauses, coordination or another speaker.
     const nominalAnd = [...predicate.matchAll(/\band\s+([\p{L}-]+)/gu)].every((match) => {
@@ -41,15 +51,19 @@ export function factualBullets(text: string, company: string, verbatim = false):
       return { text: statement, label: "Company statement" };
     }
     // A trailing assistance clause can be a separate factual bullet without changing its agent.
-    const assistance = predicate.match(/^([^,]+), assisting (.+)$/su);
+    const assistance = /^([^,]+), assisting (.+)$/su.exec(predicate);
     const body = assistance?.[1] ?? predicate;
     const specialtyResult = verb === "specialize in" && /^[^,]+, ensuring [^,]+$/su.test(body);
-    if ((body.includes(",") && !specialtyResult) || /^(?:no|not|never)\b/u.test(body)) return { text: statement, label: "Company statement" };
+    if ((body.includes(",") && !specialtyResult) || /^(?:no|not|never)\b/u.test(body)) {
+      return { text: statement, label: "Company statement" };
+    }
     const neutral = (value: string) => value.replace(/\S+/gu, (token) => literalToken(token) ? token : token.replace(/\bour\b/gu, "its"));
     const labels: Record<string, string> = { "specialize in": "Specialty", provide: "Services provided", offer: "Services offered",
       perform: "Activities performed", use: "Tools used", "adhere to": "Adherence" };
     const label = labels[verb];
-    if (assistance && !label) return { text: statement, label: "Company statement" };
+    if (assistance && !label) {
+      return { text: statement, label: "Company statement" };
+    }
     return { text: neutral(label ? body : `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${body}`),
       ...(label ? { label: `${additional ? "Additional " : ""}${label.charAt(0).toLowerCase()}${label.slice(1)}`.replace(/^./, (letter) => letter.toUpperCase()) } : {}),
       ...(assistance ? { assistance: neutral(assistance[2]) } : {}),

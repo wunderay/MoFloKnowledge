@@ -56,8 +56,9 @@ export const ADDED_FIELDS: Partial<Record<EntryKind, string[]>> = {
 };
 /** The content with its missing added fields at their defaults; every stored field keeps its place and value. */
 export function withAddedFields(kind: EntryKind, content: unknown): unknown {
-  if (!content || typeof content !== "object" || Array.isArray(content))
+  if (!content || typeof content !== "object" || Array.isArray(content)) {
     return content;
+  }
   const defaults = createEntryDefault(kind) as unknown as Record<string, unknown>;
   const missing = (ADDED_FIELDS[kind] ?? []).filter(
     (field) => !Object.hasOwn(content, field),

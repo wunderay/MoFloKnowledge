@@ -9,7 +9,7 @@ describe("Q21 sales-marketing polish", () => {
   it("a javascript: social profile link is not linked", async () => {
     const b = buildBusiness();
     b.online_presence.social_media_links = [
-      { ...b.online_presence.social_media_links[0]!, platform: "Instagram", profile_url: "javascript:alert(1)" },
+      { ...b.online_presence.social_media_links[0], platform: "Instagram", profile_url: "javascript:alert(1)" },
     ];
     const page = await openSection("Sales & Marketing", { draft: draftFrom(b) });
     const hrefs = page.$("a").toArray().map((a) => page.$(a).attr("href") ?? "");
@@ -19,7 +19,7 @@ describe("Q21 sales-marketing polish", () => {
 
   it("a channel with a blank url falls back to its type, and a padded url is shown trimmed", async () => {
     const b = buildBusiness();
-    const base = b.market_and_customers.channels[0]!;
+    const base = b.market_and_customers.channels[0];
     b.market_and_customers.channels = [
       { ...base, id: "00000000-0000-4000-8000-000000000001", label: null, url: "   ", channel_type: "Newsletter" },
       { ...base, id: "00000000-0000-4000-8000-000000000002", label: null, url: "  https://channel.example/x  ", channel_type: null },

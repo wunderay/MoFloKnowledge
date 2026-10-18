@@ -21,8 +21,9 @@ it('pins actual fixture socket, preserves Host, gates each redirect and bounds d
     }).port;
     let approvals = 0;
     // Explicit controlled fixture-only injection, absent from all production entry points.
-    const fixture = createPinnedFetcher(async (input) => { approvals++; if (new URL(input).hostname === 'private.example.com')
-        return approveDestination(input, async () => [{ address: '127.0.0.1', family: 4 }]); const url = new URL(input); url.port = String(port); return { url, addresses: [{ address: '127.0.0.1', family: 4 }] }; });
+    const fixture = createPinnedFetcher(async (input) => { approvals++; if (new URL(input).hostname === 'private.example.com') {
+      return approveDestination(input, async () => [{ address: '127.0.0.1', family: 4 }]);
+    } const url = new URL(input); url.port = String(port); return { url, addresses: [{ address: '127.0.0.1', family: 4 }] }; });
     try {
         const response = await fixture('http://example.com/', { scope: ['example.com'] });
         expect(response.body.length).toBe(1024);

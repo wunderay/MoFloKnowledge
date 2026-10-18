@@ -35,7 +35,7 @@ const provenance1: EntryProvenance = {
 // Revision 2: the buyer removed (as the ordinary edit does it).
 const provenance2 = reviseProvenance({ kind: "market_and_customers", entryId: entry, before: content(buyer, other), after: content(other), provenance: provenance1, actorId: actor, savedAt: "2026-10-16T01:00:00.000Z", requestId: "90000000-0000-4000-8000-0000000000aa", note: "Removed buyer" });
 
-type Row = { company_id: string; entry_id: string; revision: number; content: BusinessEntry; provenance: EntryProvenance };
+interface Row { company_id: string; entry_id: string; revision: number; content: BusinessEntry; provenance: EntryProvenance }
 const rows: Row[] = [
   { company_id: company, entry_id: entry, revision: 1, content: content(buyer, other), provenance: provenance1 },
   { company_id: company, entry_id: entry, revision: 2, content: content(other), provenance: provenance2 },
@@ -97,7 +97,7 @@ describe("Undo carries an item's original claims over", () => {
   });
 
   it("the browser's own provenance is not used: forged claims and evidence are dropped", async () => {
-    const forged: EntryProvenance = { ...provenance1, claims: [{ ...provenance1.claims[0]!, id: "70000000-0000-4000-8000-0000000000ff", note: "Forged" }], evidence: [{ ...provenance1.evidence[0]!, id: "60000000-0000-4000-8000-0000000000ff", excerpt: "Forged" }] };
+    const forged: EntryProvenance = { ...provenance1, claims: [{ ...provenance1.claims[0], id: "70000000-0000-4000-8000-0000000000ff", note: "Forged" }], evidence: [{ ...provenance1.evidence[0], id: "60000000-0000-4000-8000-0000000000ff", excerpt: "Forged" }] };
     const out = await save({ content: content(other, buyer), provenance: forged, restoreFrom: { revision: 1, itemIds: [buyerId] } });
     expect(JSON.stringify(out.provenance)).not.toContain("Forged");
   });
@@ -114,13 +114,13 @@ describe("Undo carries an item's original claims over", () => {
     expect(claimFor(out.provenance, fresh.id)).toMatchObject({ origin: "user_provided", actor_id: actor });
     expect(claimFor(out.provenance, buyerId).origin).toBe("source_backed");
     // restoring the person-typed item records the person again rather than copying an old claim
-    const typed = await save({ content: content(buyer, other), restoreFrom: { revision: 1, itemIds: [otherId] } }, clientOver([{ ...rows[0]!, content: content(buyer, other) }, { ...rows[1]!, content: content(buyer), provenance: reviseProvenance({ kind: "market_and_customers", entryId: entry, before: content(buyer, other), after: content(buyer), provenance: provenance1, actorId: actor, savedAt: "2026-10-16T01:00:00.000Z", requestId: "90000000-0000-4000-8000-0000000000ab", note: "Removed" }) }]));
+    const typed = await save({ content: content(buyer, other), restoreFrom: { revision: 1, itemIds: [otherId] } }, clientOver([{ ...rows[0], content: content(buyer, other) }, { ...rows[1], content: content(buyer), provenance: reviseProvenance({ kind: "market_and_customers", entryId: entry, before: content(buyer, other), after: content(buyer), provenance: provenance1, actorId: actor, savedAt: "2026-10-16T01:00:00.000Z", requestId: "90000000-0000-4000-8000-0000000000ab", note: "Removed" }) }]));
     expect(claimFor(typed.provenance, otherId).id).not.toBe(otherClaimId);
   });
 
   it("a revision that is not there for this company and entry is refused, even if a client answered with someone else's row", async () => {
-    const strange = [{ ...rows[0]!, entry_id: "20000000-0000-4000-8000-0000000000bb" }, { ...rows[0]!, company_id: "10000000-0000-4000-8000-0000000000bb" }];
-    for (const stored of [[...strange, rows[1]!], [rows[1]!]]) {
+    const strange = [{ ...rows[0], entry_id: "20000000-0000-4000-8000-0000000000bb" }, { ...rows[0], company_id: "10000000-0000-4000-8000-0000000000bb" }];
+    for (const stored of [[...strange, rows[1]], [rows[1]]]) {
       await expect(save({ content: content(other, buyer), restoreFrom: { revision: 1, itemIds: [buyerId] } }, clientOver(stored))).rejects.toMatchObject({ status: 422 });
     }
     await expect(save({ content: content(other, buyer), restoreFrom: { revision: 1, itemIds: [buyerId] } }, clientOver(strange, true))).rejects.toMatchObject({ status: 422 });

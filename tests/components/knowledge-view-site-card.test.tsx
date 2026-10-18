@@ -106,9 +106,11 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     const { page, card } = cardOf(await open[source]());
     const text = siteCardText(page, card);
     const positions = LINKS.map((l) => text.indexOf(l.title));
-    positions.forEach((p, i) => expect(p, `"${LINKS[i]!.title}" is listed`).toBeGreaterThanOrEqual(0));
+    positions.forEach((p, i) => expect(p, `"${LINKS[i].title}" is listed`).toBeGreaterThanOrEqual(0));
     expect(positions, "stored order, not alphabetical or by URL").toEqual([...positions].sort((a, b) => a - b));
-    for (const l of LINKS) expect(text.split(l.title).length - 1, `"${l.title}" appears once`).toBe(1);
+    for (const l of LINKS) {
+      expect(text.split(l.title).length - 1, `"${l.title}" appears once`).toBe(1);
+    }
   });
 
   // C1 behavioural
@@ -129,8 +131,11 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
     const { page, card } = cardOf(await open[source]());
     for (const link of LINKS) {
       const item = norm(page.$(itemOf(page, card, link)).text());
-      if (link.note) expect(item, link.title).toContain(link.note);
-      else expect(item, link.title).not.toMatch(BAD);
+      if (link.note) {
+        expect(item, link.title).toContain(link.note);
+      } else {
+        expect(item, link.title).not.toMatch(BAD);
+      }
     }
     expect(siteCardText(page, card)).not.toMatch(BAD);
   });
@@ -168,11 +173,11 @@ describe.each(["draft", "snapshot"] as const)("Site Knowledge card (%s)", (sourc
 describe("Site Knowledge card, list edge cases (draft)", () => {
   // C1 behavioural
   it("Edge case: a single link is listed with its link and note", async () => {
-    const only = [LINKS[0]!];
+    const only = [LINKS[0]];
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", draft: siteDraft({ links: only }) }));
-    expect(siteCardText(page, card)).toContain(only[0]!.title);
-    expect(siteCardText(page, card)).toContain(only[0]!.note!);
-    expect(anchorsIn(page, card).some((a) => normalizedUrl(a.href) === normalizedUrl(only[0]!.url))).toBe(true);
+    expect(siteCardText(page, card)).toContain(only[0].title);
+    expect(siteCardText(page, card)).toContain(only[0].note!);
+    expect(anchorsIn(page, card).some((a) => normalizedUrl(a.href) === normalizedUrl(only[0].url))).toBe(true);
     expect(siteCardText(page, card)).not.toMatch(/no (internal )?(links|pages)/i);
   });
 
@@ -187,19 +192,19 @@ describe("Site Knowledge card, list edge cases (draft)", () => {
   // C1 behavioural
   it("Edge case: two links with the same title keep their own addresses", async () => {
     const links: Link[] = [
-      { ...LINKS[0]!, title: "Contact" , url: `${SITE}/contact`, note: null },
-      { ...LINKS[1]!, title: "Contact", url: `${SITE}/contact-us`, note: null },
+      { ...LINKS[0], title: "Contact" , url: `${SITE}/contact`, note: null },
+      { ...LINKS[1], title: "Contact", url: `${SITE}/contact-us`, note: null },
     ];
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", draft: siteDraft({ links }) }));
     const hrefs = anchorsIn(page, card).map((a) => normalizedUrl(a.href));
-    expect(hrefs).toEqual(expect.arrayContaining([normalizedUrl(links[0]!.url), normalizedUrl(links[1]!.url)]));
+    expect(hrefs).toEqual(expect.arrayContaining([normalizedUrl(links[0].url), normalizedUrl(links[1].url)]));
     expect(siteCardText(page, card).split("Contact").length - 1).toBeGreaterThanOrEqual(2);
   });
 
   // C1 behavioural
   it("Edge case: a very long URL is linked unchanged", async () => {
     const long = `${SITE}/search?q=${"coffee-".repeat(280)}end`;
-    const links: Link[] = [{ ...LINKS[0]!, url: long }];
+    const links: Link[] = [{ ...LINKS[0], url: long }];
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", draft: siteDraft({ links }) }));
     expect(anchorsIn(page, card).some((a) => a.href === long || normalizedUrl(a.href) === normalizedUrl(long))).toBe(true);
   });
@@ -257,9 +262,13 @@ describe("C7 safe rendering of stored links", () => {
       expect(hrefs, link.title).toEqual([]);
       expect(norm(page.$(item).text()), `${link.title} is still listed`).toContain(link.title);
     }
-    for (const link of links) for (const a of anchorsIn(page, itemOf(page, card, link, links))) expect(a.href, link.title).toMatch(/^https?:\/\//i);
+    for (const link of links) {
+      for (const a of anchorsIn(page, itemOf(page, card, link, links))) {
+        expect(a.href, link.title).toMatch(/^https?:\/\//i);
+      }
+    }
     // control: the valid link beside them is a real link
-    const control = anchorsIn(page, itemOf(page, card, links[6]!, links));
+    const control = anchorsIn(page, itemOf(page, card, links[6], links));
     expect(control.map((a) => a.href)).toContain(`${SITE}/control`);
   });
 
@@ -280,9 +289,9 @@ describe("C7 safe rendering of stored links", () => {
 
   // C7 behavioural
   it("an http link in upper case and with a query string is still linked (as the browser normalizes it)", async () => {
-    const links: Link[] = [{ ...LINKS[0]!, url: "HTTPS://WWW.HARBORANDPINE.EXAMPLE/Visit?x=1&y=2" }];
+    const links: Link[] = [{ ...LINKS[0], url: "HTTPS://WWW.HARBORANDPINE.EXAMPLE/Visit?x=1&y=2" }];
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", draft: siteDraft({ links }) }));
-    expect(anchorsIn(page, card).some((a) => normalizedUrl(a.href) === normalizedUrl(links[0]!.url))).toBe(true);
+    expect(anchorsIn(page, card).some((a) => normalizedUrl(a.href) === normalizedUrl(links[0].url))).toBe(true);
   });
 });
 
@@ -329,7 +338,7 @@ describe("C8 saved snapshots", () => {
     const view = await openView({ section: "Site Knowledge", snapshot: { payload: snapshotFrom(draft, { rejected: ["site_links"] }), versionId: siteSnapshot().versionId } });
     const { page, card } = cardOf(view);
     expect(siteCardText(page, card)).toMatch(/no (internal )?(links|pages)/i);
-    expect(siteCardText(page, card)).not.toContain(LINKS[0]!.title);
+    expect(siteCardText(page, card)).not.toContain(LINKS[0].title);
   });
 
   // C8 behavioural
@@ -337,6 +346,8 @@ describe("C8 saved snapshots", () => {
     const fx = buildSiteEvidence();
     const { page, card } = cardOf(await openView({ section: "Site Knowledge", snapshot: fx.snapshot() }));
     const text = siteCardText(page, card);
-    for (const l of LINKS) expect(text).toContain(l.title);
+    for (const l of LINKS) {
+      expect(text).toContain(l.title);
+    }
   });
 });

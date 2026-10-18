@@ -9,7 +9,7 @@ import type { View } from "../helpers/knowledge-view-site-all-runtime";
 
 vi.setConfig({ testTimeout: 60_000 });
 
-const [A, B] = [OFFERINGS[0]!, OFFERINGS[1]!];
+const [A, B] = [OFFERINGS[0], OFFERINGS[1]];
 const NAME = { label: "Offering name" };
 
 async function switchTo(view: View, label: string) {

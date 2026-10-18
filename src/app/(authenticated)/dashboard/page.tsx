@@ -5,7 +5,9 @@ import { Notice } from "@/components/shared/ui";
 import { redirect } from "next/navigation";
 export default async function DashboardPage() {
   const { client, user } = await verifiedSession();
-  if (!user) redirect("/sign-in");
+  if (!user) {
+    redirect("/sign-in");
+  }
   try {
     const initialData = await readCompanySummaries(client, user.id);
     return <CompanyDashboard initialData={initialData} />;

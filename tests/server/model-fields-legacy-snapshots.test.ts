@@ -6,7 +6,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import JSZip from "jszip";
 import { load } from "cheerio";
-import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, decodePDFRawStream } from "pdf-lib";
+import type { PDFRawStream} from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFName, decodePDFRawStream } from "pdf-lib";
 // Private frozen copies of the pre-0017 and 0017-era exports (other suites' shared fixtures may be regenerated for the new fields).
 import legacy from "../contracts/model-fields-legacy-pre0017-export.json";
 import sitelinks from "../contracts/model-fields-legacy-0017-export.json";
@@ -75,13 +76,19 @@ function expectUpgraded(saved: { payload: any }, original: Json, label: string) 
   const payload = saved.payload as Json;
   expect(payload.company_foundation, label).toHaveProperty("revenue", null);
   expect(payload.online_presence, label).toHaveProperty("phone", null);
-  for (const [index, person] of (payload.key_people as Json[]).entries()) expect(person, `${label} person ${index}`).toMatchObject({ age: null, nationality: null, portrait: null });
-  for (const [index, offering] of (payload.offerings as Json[]).entries()) expect(offering, `${label} offering ${index}`).toHaveProperty("images", []);
+  for (const [index, person] of (payload.key_people as Json[]).entries()) {
+    expect(person, `${label} person ${index}`).toMatchObject({ age: null, nationality: null, portrait: null });
+  }
+  for (const [index, offering] of (payload.offerings as Json[]).entries()) {
+    expect(offering, `${label} offering ${index}`).toHaveProperty("images", []);
+  }
   // Everything that was stored is still there, unchanged.
   expect(payload.company_foundation.overview).toBe(original.company_foundation.overview);
   expect(payload.key_people.map((item: Json) => item.id)).toEqual(original.key_people.map((item: Json) => item.id));
   expect(payload.provenance.claims).toEqual(original.provenance.claims);
-  for (const row of original.provenance.coverage) expect(payload.provenance.coverage, `${label}: stored coverage row kept`).toContainEqual(row);
+  for (const row of original.provenance.coverage) {
+    expect(payload.provenance.coverage, `${label}: stored coverage row kept`).toContainEqual(row);
+  }
   // Each new target is covered exactly once, honestly: nothing assessed it.
   for (const target of newTargets(payload)) {
     const rows = rowsFor(payload, target);
@@ -140,7 +147,9 @@ describe("C7 [behavioural] a snapshot published before 0017 (no site_links, no n
     expect(text).toContain(legacy.company_foundation.overview);
     const body = text.split("Coverage & unknowns")[0];
     expect(body).toContain("Alex Chen");
-    for (const label of ["Revenue: ", "Phone: ", "Age: ", "Nationality: "]) expect(body, label).not.toContain(label);
+    for (const label of ["Revenue: ", "Phone: ", "Age: ", "Nationality: "]) {
+      expect(body, label).not.toContain(label);
+    }
     session(legacy as Json);
     const json = await documentRequest(legacy as Json, "json");
     expect(json.status).toBe(200);

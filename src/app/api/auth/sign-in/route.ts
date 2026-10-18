@@ -24,22 +24,24 @@ export async function POST(request: Request) {
     const client = await createClient();
     const { error } = await client.auth.signInWithPassword(body);
     if (error) {
-      if (error.status === 429)
+      if (error.status === 429) {
         throw new HttpError(
           429,
           "rate_limited",
           "Too many sign-in attempts. Please try again later.",
         );
+      }
       if (
         !error.status ||
         error.status >= 500 ||
         error.name === "AuthRetryableFetchError"
-      )
+      ) {
         throw new HttpError(
           503,
           "unavailable",
           "Sign-in is temporarily unavailable.",
         );
+      }
       throw new HttpError(
         401,
         "invalid_credentials",

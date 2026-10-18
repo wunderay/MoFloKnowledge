@@ -16,7 +16,9 @@ export async function checked<T>(
   }>,
 ): Promise<T> {
   const { data, error } = await query;
-  if (error) throw mapDatabaseError(error);
+  if (error) {
+    throw mapDatabaseError(error);
+  }
   return data;
 }
 export async function readCompany(client: Client, id: string, userId: string) {
@@ -24,8 +26,9 @@ export async function readCompany(client: Client, id: string, userId: string) {
   const company = await checked(
     client.from("companies").select("*").eq("id", id).maybeSingle(),
   );
-  if (!company)
+  if (!company) {
     throw new HttpError(404, "unavailable", "Resource unavailable.");
+  }
   return parseResponse(CompanyReadSchema, { ...company, role });
 }
 export async function readDraft(client: Client, id: string, userId: string) {
@@ -50,12 +53,13 @@ export async function readDraft(client: Client, id: string, userId: string) {
           .eq("revision", entry.current_revision)
           .maybeSingle(),
       );
-      if (!rev)
+      if (!rev) {
         throw new HttpError(
           503,
           "invalid_state",
           "Draft is temporarily unavailable.",
         );
+      }
       return {
         ...entry,
         ...rev,

@@ -48,10 +48,16 @@ function snapshotOf(people: number, offerings: number): Json {
   const coverage: Json[] = [];
   const row = (target: string) => coverage.push({ targets: [target], status: "not_checked", job_id: null, reason: "Entered manually." });
   SINGLETON_TARGETS.forEach(row);
-  if (people) business.key_people.forEach((item: Json) => PERSON_FIELDS.forEach((field) => row(`/key_people/@${item.id}/${field}`)));
-  else row("/key_people");
-  if (offerings) business.offerings.forEach((item: Json) => OFFERING_FIELDS.forEach((field) => row(`/offerings/@${item.id}/${field}`)));
-  else row("/offerings");
+  if (people) {
+    business.key_people.forEach((item: Json) => PERSON_FIELDS.forEach((field) => row(`/key_people/@${item.id}/${field}`)));
+  } else {
+    row("/key_people");
+  }
+  if (offerings) {
+    business.offerings.forEach((item: Json) => OFFERING_FIELDS.forEach((field) => row(`/offerings/@${item.id}/${field}`)));
+  } else {
+    row("/offerings");
+  }
   return {
     schema_version: "1.0.0", company_id: "10000000-0000-4000-8000-0000000000aa", knowledge_base_version_id: "10000000-0000-4000-8000-0000000000ab",
     version: 1, saved_at: "2026-10-16T05:00:00Z", ...business,
@@ -66,7 +72,9 @@ function snapshotOf(people: number, offerings: number): Json {
 }
 const withExtraRow = (snapshot: Json, count = 1): Json => {
   const copy = structuredClone(snapshot);
-  for (let n = 0; n < count; n++) copy.provenance.coverage.push({ ...copy.provenance.coverage[0] });
+  for (let n = 0; n < count; n++) {
+    copy.provenance.coverage.push({ ...copy.provenance.coverage[0] });
+  }
   return copy;
 };
 const accepted = (snapshot: Json) => KnowledgeBaseExportSchema.safeParse(snapshot).success;

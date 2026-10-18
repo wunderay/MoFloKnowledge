@@ -51,7 +51,9 @@ describe("C3/C5 parseRobots treats untrusted Crawl-delay values safely", () => {
 
 const hangUntilAbort = (signal?: AbortSignal) =>
   new Promise<never>((_resolve, reject) => {
-    if (signal?.aborted) return reject(signal.reason);
+    if (signal?.aborted) {
+      return reject(signal.reason);
+    }
     signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
   });
 

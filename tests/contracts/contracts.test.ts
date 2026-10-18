@@ -50,8 +50,9 @@ describe("canonical business contracts", () => {
       "javascript:alert(1)",
       "data:image/svg+xml,hi",
       "https://u:p@example.com",
-    ])
+    ]) {
       expect(URLSchema.safeParse(url).success).toBe(false);
+    }
   });
   it("preserves all 48 exact field defaults and rejects missing or unknown nested keys", () => {
     const empty = createEmptyBusiness();
@@ -64,7 +65,7 @@ describe("canonical business contracts", () => {
     ).overview;
     expect(KnowledgeBaseExportSchema.safeParse(missing).success).toBe(false);
     const extra = clone();
-    Object.assign(extra.offerings[0].pricing!, { discount: 3 });
+    Object.assign(extra.offerings[0].pricing, { discount: 3 });
     expect(KnowledgeBaseExportSchema.safeParse(extra).success).toBe(false);
   });
   it("accepts the full plan illustrative export and all null/default business fields", () => {
@@ -230,7 +231,7 @@ describe("stable pointer and field-level provenance", () => {
       }).some((x) => x.code === "historical_claim_missing"),
     ).toBe(true);
     p.claims.find((c) => c.origin === "generated")!.based_on_claim_ids = [
-      p.operations[0].supersedes_claim_id!,
+      p.operations[0].supersedes_claim_id,
     ];
     expect(
       validateProvenance(business(), p as never).some(
@@ -352,8 +353,9 @@ describe("worker proposal trust boundary", () => {
       note: null,
     };
     expect(ExtractionCandidateSchema.safeParse(candidate).success).toBe(true);
-    for (const origin of ["inferred", "generated", "user_provided"])
+    for (const origin of ["inferred", "generated", "user_provided"]) {
       expect(ExtractionCandidateSchema.safeParse({ ...candidate, origin }).success).toBe(false);
+    }
     expect(
       ProgressSchema.safeParse({
         stage: "crawling",
@@ -524,10 +526,11 @@ describe("ordinary proposal field selections", () => {
       [{ ...change, target: "/company_foundation/overview" }],
       [{ ...change, target: "/positioning/company_pitch/nested" }],
       [{ ...change, value: "Another authority" }],
-    ])
+    ]) {
       expect(ProposalSchema.safeParse({ ...base, changes }).success).toBe(
         false,
       );
+    }
     const conflict = {
       id: "00000000-0000-4000-8000-000000000053",
       target: change.target,

@@ -66,7 +66,7 @@ export function BrandIdentity({
   const validColors = colors.filter((color) => color.valid);
   const fonts = branding.fonts
     .map((font, index) => {
-      const confirmed = font.brand_confirmed === true;
+      const confirmed = font.brand_confirmed;
       const methods = (font.observations ?? []).map((method) => METHODS[method] ?? method).join(", ");
       return {
         id: font.id,

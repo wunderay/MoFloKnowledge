@@ -46,12 +46,13 @@ export const collection = <T extends z.ZodTypeAny>(schema: T, max = 500) =>
       const ids = new Set<string>();
       items.forEach((item, index) => {
         if (item && typeof item === "object" && "id" in item) {
-          if (ids.has(item.id))
+          if (ids.has(item.id)) {
             ctx.addIssue({
               code: "custom",
               message: "Duplicate item UUID",
               path: [index, "id"],
             });
+          }
           ids.add(item.id);
         }
       });

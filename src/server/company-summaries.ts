@@ -9,9 +9,14 @@ export async function readCompanySummaries(
   options: { archived?: boolean; cursor?: string } = {},
 ) {
   let query = client.from("companies").select("*").order("id").limit(50);
-  if (options.archived) query = query.not("archived_at", "is", null);
-  else query = query.is("archived_at", null);
-  if (options.cursor) query = query.gt("id", options.cursor);
+  if (options.archived) {
+    query = query.not("archived_at", "is", null);
+  } else {
+    query = query.is("archived_at", null);
+  }
+  if (options.cursor) {
+    query = query.gt("id", options.cursor);
+  }
   const companies = (await checked(query)) ?? [];
   const result = [];
   for (const company of companies) {

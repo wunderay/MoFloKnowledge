@@ -43,7 +43,9 @@ async function twoSaves(older: Driver, newer: Driver): Promise<Opened> {
   reads.holdNext();
   await older.act(view);
   expect(reads.drafts, "the older save's read is on its way").toHaveLength(1);
-  if (newer.sectionId !== older.sectionId) await switchTo(view, newer.sectionLabel);
+  if (newer.sectionId !== older.sectionId) {
+    await switchTo(view, newer.sectionLabel);
+  }
   reads.holdNext();
   await newer.act(view);
   expect(reads.drafts, "the newer save's read is on its way").toHaveLength(2);
@@ -78,10 +80,10 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
   // C2, C3
   it("the read started last wins: the older read finishing later is ignored", async () => {
     const { view, reads } = await twoSaves(older, newer);
-    reads.drafts[1]!.release();
+    reads.drafts[1].release();
     await settleAll(view);
     expect(newer.shows(view), "the newer read shows the newer save").toBe(true);
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await settleAll(view);
     expect(newer.shows(view), "the older answer did not take the newer save away").toBe(true);
     await switchTo(view, older.sectionLabel);
@@ -92,9 +94,9 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
   // C2 non-regression: answers in the order they were asked
   it("answers in the order they were asked: both saves are shown", async () => {
     const { view, reads } = await twoSaves(older, newer);
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await settleAll(view);
-    reads.drafts[1]!.release();
+    reads.drafts[1].release();
     await settleAll(view);
     expect(newer.shows(view)).toBe(true);
     await switchTo(view, older.sectionLabel);
@@ -105,9 +107,9 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
   // C4: a superseded read that fails does not make a freshly read page stale
   it("an older read that fails after the newer one succeeded leaves no stale notice and nothing blocked", async () => {
     const { view, reads } = await twoSaves(older, newer);
-    reads.drafts[1]!.release();
+    reads.drafts[1].release();
     await settleAll(view);
-    reads.drafts[0]!.fail();
+    reads.drafts[0].fail();
     await settleAll(view);
     expect(newer.shows(view), "the newer content stays").toBe(true);
     expect(newer.ready(view), "nothing is blocked").toBe(true);
@@ -121,7 +123,7 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
   it("an older read that runs out of time after the newer one succeeded leaves no stale notice", async () => {
     timing.reread = 200;
     const { view, reads } = await twoSaves(older, newer);
-    reads.drafts[1]!.release();
+    reads.drafts[1].release();
     await settleAll(view);
     await sleep(500);
     await settleAll(view);
@@ -135,9 +137,9 @@ describe("inline saves behind a superseded read", () => {
   // C4: the queue of saves of one entry is not left waiting for a read that was dropped
   it("a save whose read was dropped is finished, and the next save of that entry goes out on the new revision", async () => {
     const { view, reads } = await twoSaves(INLINE, INLINE_STORY);
-    reads.drafts[1]!.release();
+    reads.drafts[1].release();
     await settleAll(view);
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await settleAll(view);
     expect(statusText(view), "the saves are finished").not.toMatch(/saving/i);
     expect(INLINE.ready(view), "the entry can be edited again").toBe(true);

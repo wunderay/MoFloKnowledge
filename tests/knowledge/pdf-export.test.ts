@@ -55,15 +55,22 @@ it("wraps real styled text and links each small citation to its actual end-refer
   expect(draws.some((draw) => draw.text.includes("Literal [1]") && draw.options.size === 10.5)).toBe(true);
   const sourcePositions = new Map<number, { page: string; top: number }>();
   for (const draw of draws) {
-    const number = draw.options.size === 11.5 ? draw.text.match(/^\[(\d+)\] /)?.[1] : undefined;
-    if (number) sourcePositions.set(Number(number), { page: draw.page.ref.toString(), top: draw.options.y! + draw.options.size! });
+    const number = draw.options.size === 11.5 ? (/^\[(\d+)\] /.exec(draw.text))?.[1] : undefined;
+    if (number) {
+      sourcePositions.set(Number(number), { page: draw.page.ref.toString(), top: draw.options.y! + draw.options.size! });
+    }
     expect(draw.options.x! + draw.options.font!.widthOfTextAtSize(draw.text, draw.options.size!)).toBeLessThanOrEqual(612 - 43.2 + 0.01);
   }
   const internal: { page: number; annotation: PDFDict }[] = [];
-  for (const [pageIndex, page] of pdf.getPages().entries()) for (const reference of page.node.Annots()?.asArray() ?? []) {
+  for (const [pageIndex, page] of pdf.getPages().entries()) {
+    for (const reference of page.node.Annots()?.asArray() ?? []) {
     const annotation = pdf.context.lookup(reference, PDFDict);
-    if (annotation.has(PDFName.of("Dest"))) internal.push({ page: pageIndex, annotation });
-    else expect(annotation.lookup(PDFName.of("A"), PDFDict).lookup(PDFName.of("S"))).toBe(PDFName.of("URI"));
+    if (annotation.has(PDFName.of("Dest"))) {
+      internal.push({ page: pageIndex, annotation });
+    } else {
+      expect(annotation.lookup(PDFName.of("A"), PDFDict).lookup(PDFName.of("S"))).toBe(PDFName.of("URI"));
+    }
+  }
   }
   const expected = documentParagraphs(input).flatMap(documentRuns).reduce((count, run) => count + (run.citations?.length ?? 0), 0);
   expect(internal.length).toBe(expected);

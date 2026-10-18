@@ -34,7 +34,8 @@ export async function verifiedSession() {
     (!error.status ||
       error.status >= 500 ||
       error.name === "AuthRetryableFetchError")
-  )
+  ) {
     throw new Error("Authentication service is temporarily unavailable.");
+  }
   return { client, user: error ? null : data.user };
 }

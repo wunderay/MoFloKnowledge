@@ -18,7 +18,7 @@ export function ValueView({
   approved: boolean;
   label?: string;
 }) {
-  if (Array.isArray(value))
+  if (Array.isArray(value)) {
     return (
       <div className="entry-value">
         <div className="entry-value__label">
@@ -54,7 +54,8 @@ export function ValueView({
         )}
       </div>
     );
-  if (value && typeof value === "object")
+  }
+  if (value && typeof value === "object") {
     return (
       <div>
         {Object.entries(value)
@@ -72,6 +73,7 @@ export function ValueView({
           ))}
       </div>
     );
+  }
   return (
     <div className="entry-value">
       <span className="entry-value__label">

@@ -15,8 +15,9 @@ import {
   type EntryKind,
 } from "../../src/contracts";
 import { CreateEntrySchema, SaveEntrySchema } from "../../src/contracts/api-entries";
+import type {
+  FakeServer} from "./knowledge-view-site-all-runtime";
 import {
-  FakeServer,
   ancestorsOf,
   descendants,
   focusedPath,
@@ -35,7 +36,7 @@ export const REVISIONS = (entryId: string, companyId = COMPANY_ID) => `/api/comp
 export const ENTRIES = (companyId = COMPANY_ID) => `/api/companies/${companyId}/entries`;
 
 // ---- the fields under test -----------------------------------------------------------------------------------
-type Where = { section: SectionLabel; label: string; kind: EntryKind; path: string[] };
+interface Where { section: SectionLabel; label: string; kind: EntryKind; path: string[] }
 export type TextField = Where & { id: string; shape: "single" | "area" };
 export type ChipField = Where & { id: string; noun: string };
 
@@ -67,7 +68,7 @@ export const CHIP_FIELDS = [NAMES, ROLES, GROUPINGS, LOCATIONS, BUYERS, NEEDS];
 export const getAt = (value: any, path: string[]) => path.reduce((v, key) => v?.[key], value);
 export function setAt(value: any, path: string[], next: unknown) {
   const parent = getAt(value, path.slice(0, -1));
-  parent[path[path.length - 1]!] = next;
+  parent[path[path.length - 1]] = next;
   return value;
 }
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -91,7 +92,7 @@ export const stored = (view: View, kind: EntryKind): Entry => structuredClone(en
 // ---- finding things ------------------------------------------------------------------------------------------------
 export function one<T>(found: T[], what: string): T {
   expect(found, what).toHaveLength(1);
-  return found[0]!;
+  return found[0];
 }
 export function must<T>(value: T | undefined | null, what: string): T {
   expect(value, what).toBeTruthy();
@@ -108,7 +109,9 @@ export const statuses = (view: View) => view.byRole("status");
 export const alerts = (view: View) => view.byRole("alert");
 /** All text under a node, including text the accessibility tree hides (an icon glyph such as the check mark). */
 export function rawText(node: HNode | string): string {
-  if (typeof node === "string") return node;
+  if (typeof node === "string") {
+    return node;
+  }
   return node.children.map(rawText).join(" ").replace(/\s+/g, " ").trim();
 }
 export const statusText = (view: View) => statuses(view).map(rawText).join(" | ");
@@ -150,7 +153,9 @@ export async function type(view: View, stale: HNode, text: string): Promise<void
   const handler = n.props.onChange ?? n.props.onInput;
   expect(handler, `${n.tag} reacts to typing (onChange)`).toBeTypeOf("function");
   const fake = view.app.fakes.get(n.path)?.node;
-  if (fake) fake.value = text;
+  if (fake) {
+    fake.value = text;
+  }
   handler(baseEvent("change", n, text));
   view.app.flushSync();
 }
@@ -165,15 +170,20 @@ export async function key(view: View, stale: HNode, name: string, mods: { shift?
     if (typeof handler === "function") {
       event.currentTarget = { ...event.target, tagName: node.tag.toUpperCase() };
       handler(event);
-      if (event.propagationStopped) break;
+      if (event.propagationStopped) {
+        break;
+      }
     }
   }
   if (!event.defaultPrevented) {
     // What the browser does with the key when the page did not stop it.
-    if (n.tag === "button" && (name === "Enter" || name === " ") && !view.isDisabled(n)) await view.click(n);
-    else if (n.tag === "input" && name === "Enter") {
+    if (n.tag === "button" && (name === "Enter" || name === " ") && !view.isDisabled(n)) {
+      await view.click(n);
+    } else if (n.tag === "input" && name === "Enter") {
       const form = ancestorsOf(n).find((a) => a.tag === "form" && typeof a.props.onSubmit === "function");
-      if (form) form.props.onSubmit({ ...event, type: "submit", target: form, currentTarget: form });
+      if (form) {
+        form.props.onSubmit({ ...event, type: "submit", target: form, currentTarget: form });
+      }
     }
   }
   view.app.flushSync();
@@ -197,7 +207,9 @@ async function fireBlur(view: View, n: HNode) {
     if (typeof handler === "function") {
       event.currentTarget = { ...event.target, tagName: node.tag.toUpperCase() };
       handler(event);
-      if (event.propagationStopped) break;
+      if (event.propagationStopped) {
+        break;
+      }
     }
   }
   view.app.flushSync();
@@ -318,14 +330,16 @@ export function failDraftReadsAfterWrite(server: FakeServer) {
   const original = server.fetch;
   server.fetch = (async (input: unknown, init?: { method?: string; body?: unknown }) => {
     const method = (init?.method ?? "GET").toUpperCase();
-    const path = String(input).split("?")[0]!;
-    if (method === "GET" && /\/draft$/.test(path) && written && broken) {
+    const path = String(input).split("?")[0];
+    if (method === "GET" && path.endsWith("/draft") && written && broken) {
       server.requests.push({ method, path, body: undefined });
       const body = { data: null, error: { code: "unavailable", message: "Draft store is down." }, requestId: "00000000-0000-4000-8000-0000000000aa" };
       return { ok: false, status: 503, json: async () => body, text: async () => JSON.stringify(body) };
     }
     const reply = await original(input, init);
-    if (method !== "GET" && reply.ok) written = true;
+    if (method !== "GET" && reply.ok) {
+      written = true;
+    }
     return reply;
   }) as typeof server.fetch;
   return { recover: () => void (broken = false) };
@@ -350,7 +364,11 @@ export function isPlainText(view: View, text: string): boolean {
 export const focusedIs = (node: HNode) => focusedPath() === node.path;
 export const duplicateIds = (view: View) => {
   const seen = new Map<string, number>();
-  for (const n of view.all()) if (typeof n.props.id === "string") seen.set(n.props.id, (seen.get(n.props.id) ?? 0) + 1);
+  for (const n of view.all()) {
+    if (typeof n.props.id === "string") {
+      seen.set(n.props.id, (seen.get(n.props.id) ?? 0) + 1);
+    }
+  }
   return [...seen].filter(([, count]) => count > 1).map(([id]) => id);
 };
 export const thisYear = () => new Date().getUTCFullYear();

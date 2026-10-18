@@ -49,7 +49,7 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
     reads.holdNext();
     await driver.act(view);
     expect(reads.drafts, "the save's draft read is on its way").toHaveLength(1);
-    expect(reads.drafts[0]!.state).toBe("pending");
+    expect(reads.drafts[0].state).toBe("pending");
     const writes = ids(view);
 
     await selectVersion(view, SNAPSHOT_ID);
@@ -57,7 +57,7 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
     expect(view.text(), "the saved version is shown (read only)").toMatch(READ_ONLY);
     const before = view.text();
 
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await view.settle();
     await sleep(30);
     await view.settle();
@@ -76,7 +76,7 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
     reads.holdNext();
     await driver.act(view);
     await selectVersion(view, SNAPSHOT_ID);
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await view.settle();
     await sleep(30);
     const draftReads = reads.draftGets();
@@ -102,7 +102,7 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
     expect(reads.versions, "the saved version is being read").toHaveLength(1);
     const loading = view.text();
 
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await view.settle();
     await sleep(30);
     await view.settle();
@@ -110,7 +110,7 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
     expect(view.text(), "the loading page is untouched").toBe(loading);
     expect(view.text()).not.toMatch(STALE_NOTICE);
 
-    reads.versions[0]!.release();
+    reads.versions[0].release();
     await view.settle();
     await sleep(30);
     await view.settle();
@@ -121,7 +121,7 @@ describe.each(DRIVERS)("$name: a draft refresh that resolves after switching to 
 
   // C1, C4: a late failure and a late time-out are ignored too
   it.each([
-    ["fails", async (reads: Awaited<ReturnType<typeof openGuarded>>["reads"]) => reads.drafts[0]!.fail()],
+    ["fails", async (reads: Awaited<ReturnType<typeof openGuarded>>["reads"]) => reads.drafts[0].fail()],
     [
       "runs out of time",
       async () => {
@@ -156,7 +156,9 @@ describe("a draft refresh that resolves after the company changed", () => {
   it("changes nothing of the other company's view", async () => {
     const other = buildDraft();
     other.company = { ...other.company, id: OTHER_COMPANY_ID, name: "Quay Street Tea" };
-    for (const entry of other.entries) entry.company_id = OTHER_COMPANY_ID;
+    for (const entry of other.entries) {
+      entry.company_id = OTHER_COMPANY_ID;
+    }
     (other.entries.find((e) => e.kind === "company_foundation")!.content as { legal_entity_type: string }).legal_entity_type = "Quay Street Co-operative";
     const { view, reads } = await openGuarded(INLINE.sectionId, { draft: universalDraft(), other });
     reads.holdNext();
@@ -172,7 +174,7 @@ describe("a draft refresh that resolves after the company changed", () => {
     expect(view.text(), "the other company's draft is shown").toContain("Quay Street Co-operative");
     const before = view.text();
 
-    reads.drafts[0]!.release();
+    reads.drafts[0].release();
     await view.settle();
     await sleep(30);
     await view.settle();

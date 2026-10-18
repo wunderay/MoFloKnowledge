@@ -3,12 +3,12 @@ import { RenderTaskSchema, RenderResultSchema, type RenderTask, type RenderResul
 import { captureRenderedPage } from './capture';
 import { installResourcePolicy } from './resource-policy';
 import { requireQualifiedBoundary } from './boundary';
-export type RendererConfig = {
+export interface RendererConfig {
     executablePath: string;
     proxyUrl: string;
     proxyToken: string;
     boundaryReportPath: string;
-};
+}
 export class Renderer {
     private browser?: Browser;
     private busy = false;
@@ -16,8 +16,9 @@ export class Renderer {
     async render(input: RenderTask, signal?: AbortSignal): Promise<RenderResult> {
         const task = RenderTaskSchema.parse(input);
         await requireQualifiedBoundary(this.config.boundaryReportPath);
-        if (this.busy)
-            throw new Error('Renderer is busy');
+        if (this.busy) {
+          throw new Error('Renderer is busy');
+        }
         this.busy = true;
         let context: Awaited<ReturnType<Browser['newContext']>> | undefined;
         const combined = AbortSignal.any([AbortSignal.timeout(task.timeoutMs), ...(signal ? [signal] : [])]);

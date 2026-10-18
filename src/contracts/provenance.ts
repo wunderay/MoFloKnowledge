@@ -61,20 +61,22 @@ export const EvidenceSchema = z
   })
   .strict()
   .superRefine((v, ctx) => {
-    if (v.kind === "text" && (!v.excerpt || v.technical !== null))
+    if (v.kind === "text" && (!v.excerpt || v.technical !== null)) {
       ctx.addIssue({
         code: "custom",
         message:
           "Text evidence requires exact excerpt and no technical metadata",
       });
+    }
     if (
       v.kind === "technical" &&
       (!v.technical || !Object.values(v.technical).some((x) => x !== null))
-    )
+    ) {
       ctx.addIssue({
         code: "custom",
         message: "Technical evidence requires a labeled captured observation",
       });
+    }
   });
 export const ClaimSchema = z
   .object({

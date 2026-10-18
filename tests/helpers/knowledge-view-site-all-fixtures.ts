@@ -22,7 +22,7 @@ export { ACTOR, COMPANY_ID, SITE, SNAPSHOT_ID };
 
 const id = (prefix: string, n: number) => `00000000-0000-4000-8000-${prefix}${n.toString(16).padStart(12 - prefix.length, "0")}`;
 
-export type Link = { id: string; title: string; url: string; note: string | null };
+export interface Link { id: string; title: string; url: string; note: string | null }
 export const SITE_ENTRY_ID = id("0000000e", 6);
 export const SITE_REVISION = 4;
 export const siteAddHref = (companyId: string) => `/knowledge?companyId=${companyId}&category=site_links`;
@@ -51,7 +51,7 @@ export const COVERAGE_REASONS = {
   notFound: "No sitemap or navigation page was among the pages that were checked.",
   partial: "Only the footer navigation was captured.",
 };
-export type SiteCoverage = { status: "found" | "partial" | "conflict" | "not_checked" | "not_found"; reason: string | null };
+export interface SiteCoverage { status: "found" | "partial" | "conflict" | "not_checked" | "not_found"; reason: string | null }
 
 export function userProvenance(
   links: Link[],
@@ -76,7 +76,7 @@ export function userProvenance(
     ...(link.note === null ? [] : [`/site_links/links/@${link.id}/note`]),
   ]);
   // A provenance holds at most 500 claims, but one claim may name up to 1000 targets: a long list is one claim.
-  const claims = links.length > 100 ? (leaves.length ? [{ ...claim(leaves[0]!), targets: leaves }] : []) : leaves.map(claim);
+  const claims = links.length > 100 ? (leaves.length ? [{ ...claim(leaves[0]), targets: leaves }] : []) : leaves.map(claim);
   return {
     ...createEmptyProvenance(),
     claims,
@@ -91,7 +91,7 @@ export function siteBusiness(links: Link[]): Business {
   return business;
 }
 
-export type SiteDraftOptions = {
+export interface SiteDraftOptions {
   /** `null`: the company has no site_links entry at all (current revision 0). */
   links?: Link[] | null;
   revision?: number;
@@ -100,14 +100,16 @@ export type SiteDraftOptions = {
   role?: "owner" | "viewer";
   archived?: boolean;
   status?: DraftEntry["review_status"];
-};
+}
 
 /** The standard draft plus a site_links entry (or none). */
 export function siteDraft(opts: SiteDraftOptions = {}): Draft {
   const links = opts.links === undefined ? LINKS : opts.links;
   const business = siteBusiness(links ?? []);
   const draft = draftFrom(business, { role: opts.role });
-  if (opts.archived) draft.company = { ...draft.company, archived_at: "2026-10-14T08:00:00.000Z" };
+  if (opts.archived) {
+    draft.company = { ...draft.company, archived_at: "2026-10-14T08:00:00.000Z" };
+  }
   if (links !== null) {
     const revision = opts.revision ?? SITE_REVISION;
     draft.entries.push({
@@ -168,7 +170,7 @@ export function hostileLinks(): Link[] {
 }
 
 // ---- captured source pages (GET /api/companies/<id>/sources) -----------------------------------------
-export type Page = {
+export interface Page {
   sourceId: string | null;
   url: string;
   title: string | null;
@@ -178,7 +180,7 @@ export type Page = {
   reason: string | null;
   score: number | null;
   depth: number | null;
-};
+}
 const page = (n: number, state: Page["state"], url: string, title: string | null, reason: string | null = null): Page => ({
   sourceId: state === "captured" ? id("0000b5", n) : null,
   url,
@@ -196,7 +198,7 @@ export const PAGES = {
   untitled: page(3, "captured", `${SITE}/gift-cards`, null),
   workshops: page(4, "captured", `${SITE}/workshops`, "Roasting workshops"),
   /** Captured, but its URL is already a stored link (LINKS[1]); the picker must leave it out. */
-  careersCopy: page(5, "captured", LINKS[1]!.url, "Careers page (captured copy)"),
+  careersCopy: page(5, "captured", LINKS[1].url, "Careers page (captured copy)"),
   failed: page(6, "failed", `${SITE}/press-archive`, "Failed press archive", "Source refused the request."),
   blocked: page(7, "blocked", `${SITE}/members`, "Blocked members area", "Destination blocked by policy."),
   unsupported: page(8, "unsupported", `${SITE}/menu.pdf`, "Unsupported menu download"),
@@ -252,12 +254,12 @@ const source = {
 };
 const evidence = [{ id: EVIDENCE_ID, source_page_id: SOURCE_ID, kind: "text" as const, excerpt: "Order wholesale beans. Visit the Wharf Street roastery.", technical: null }];
 
-export type SiteEvidenceOptions = {
+export interface SiteEvidenceOptions {
   links?: Link[];
   coverage?: SiteCoverage | null;
   /** Which links carry which origin on their title and url. Links not named are source-backed. */
   origins?: Record<number, "source_backed" | "user_provided" | "inferred" | "generated">;
-};
+}
 /** Link 1 and 3 are source-backed, 2 and 4 are user-provided, unless `origins` says otherwise. */
 export function buildSiteEvidence(opts: SiteEvidenceOptions = {}) {
   const links = opts.links ?? LINKS;
@@ -279,8 +281,9 @@ export function buildSiteEvidence(opts: SiteEvidenceOptions = {}) {
   const firstSupport = () => claims.find((c) => c.origin === "source_backed")?.id;
   links.forEach((link, index) => {
     const origin = origins[index] ?? "source_backed";
-    for (const leaf of ["title", "url", ...(link.note === null ? [] : ["note"])])
+    for (const leaf of ["title", "url", ...(link.note === null ? [] : ["note"])]) {
       claims.push(base(link, leaf, origin, origin === "generated" && firstSupport() ? [firstSupport()] : []));
+    }
   });
   const coverage = opts.coverage === undefined ? { status: "found" as const, reason: null } : opts.coverage;
   const draft = siteDraft({ links });

@@ -25,7 +25,7 @@ export const LATER_SECTIONS: SectionLabel[] = [
   "All sections",
 ];
 
-type Card = { title: string; kind: EntryKind };
+interface Card { title: string; kind: EntryKind }
 export const GENERAL_CARDS: Card[] = [
   { title: "Headquarters", kind: "company_foundation" },
   { title: "Alternate names", kind: "company_foundation" },

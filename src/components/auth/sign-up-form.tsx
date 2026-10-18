@@ -25,10 +25,13 @@ export function SignUpForm() {
             }),
           });
           const result = await response.json();
-          if (!response.ok)
+          if (!response.ok) {
             setMessage(result.error?.message || "Unable to sign up.");
-          else if (result.data?.signedIn) window.location.assign("/dashboard");
-          else setMessage("Check your email to confirm your account.");
+          } else if (result.data?.signedIn) {
+            window.location.assign("/dashboard");
+          } else {
+            setMessage("Check your email to confirm your account.");
+          }
         } catch {
           setMessage("Unable to connect. Please retry.");
         } finally {

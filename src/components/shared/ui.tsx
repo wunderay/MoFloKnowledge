@@ -62,7 +62,9 @@ export function Dialog({
     <div
       className="dialog-backdrop"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
       }}
     >
       <section
@@ -72,7 +74,9 @@ export function Dialog({
         aria-label={title}
         className="dialog"
         onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
+          if (e.key === "Escape") {
+            onClose();
+          }
           if (e.key === "Tab") {
             const nodes = Array.from(
               dialog.current?.querySelectorAll<HTMLElement>(
@@ -110,6 +114,6 @@ export function Dialog({
 /** Keep server-rendered mutation controls inert until their handlers are attached. */
 export function useHydrated() {
   const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  useEffect(() => { setHydrated(true); }, []);
   return hydrated;
 }

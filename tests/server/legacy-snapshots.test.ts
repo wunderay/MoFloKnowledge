@@ -3,7 +3,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import JSZip from "jszip";
 import { load } from "cheerio";
-import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, decodePDFRawStream } from "pdf-lib";
+import type { PDFRawStream} from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFName, decodePDFRawStream } from "pdf-lib";
 import legacy from "../contracts/legacy-illustrative-export.json";
 import { canonicalHash, canonicalStringify } from "../../src/knowledge/canonical-json";
 vi.mock("server-only", () => ({}));

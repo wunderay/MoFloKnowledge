@@ -30,7 +30,9 @@ export function UnsavedNavigationProvider({
 
   const confirmNavigation = useCallback(() => {
     const allowed = !dirty.current || window.confirm(warning);
-    if (allowed) confirmed.current = true;
+    if (allowed) {
+      confirmed.current = true;
+    }
     return allowed;
   }, []);
   const context = useMemo(
@@ -83,19 +85,23 @@ export function UnsavedNavigationProvider({
         event.ctrlKey ||
         event.shiftKey ||
         event.altKey
-      )
+      ) {
         return;
+      }
       const target = event.target instanceof Element ? event.target : null;
       const navigation = target?.closest<HTMLAnchorElement | HTMLButtonElement>(
         "a[href], [data-leave-workspace]",
       );
-      if (!navigation) return;
+      if (!navigation) {
+        return;
+      }
       if (navigation instanceof HTMLAnchorElement) {
         if (
           navigation.download ||
           (navigation.target && navigation.target !== "_self")
-        )
+        ) {
           return;
+        }
         const destination = new URL(navigation.href, window.location.href);
         // The browser's beforeunload guard handles external document navigation.
         if (
@@ -103,13 +109,16 @@ export function UnsavedNavigationProvider({
           destination.href === window.location.href ||
           (destination.pathname === window.location.pathname &&
             destination.search === window.location.search)
-        )
+        ) {
           return;
+        }
       }
       if (!window.confirm(warning)) {
         event.preventDefault();
         event.stopImmediatePropagation();
-      } else confirmed.current = true;
+      } else {
+        confirmed.current = true;
+      }
     }
     function pop(event: PopStateEvent) {
       const destinationIndex = Number(
@@ -142,10 +151,12 @@ export function UnsavedNavigationProvider({
       document.removeEventListener("click", click, true);
       window.removeEventListener("popstate", pop, true);
       window.removeEventListener("beforeunload", unload);
-      if (window.history.pushState === push)
+      if (window.history.pushState === push) {
         window.history.pushState = originalPush;
-      if (window.history.replaceState === replace)
+      }
+      if (window.history.replaceState === replace) {
         window.history.replaceState = originalReplace;
+      }
     };
   }, []);
   return (

@@ -27,7 +27,9 @@ function Avatar({ companyId, person, label, large = false }: { companyId: string
   const src = portraitSrc(companyId, person);
   const size = large ? " knowledge-view__avatar--large" : "";
   // In the list the name sits next to the avatar, so the image is decorative there.
-  if (src) return <img className={`knowledge-view__avatar${size}`} src={src} alt={large ? `Portrait of ${label}` : ""} />;
+  if (src) {
+    return <img className={`knowledge-view__avatar${size}`} src={src} alt={large ? `Portrait of ${label}` : ""} />;
+  }
   const initials = initialsOf(person.name);
   return (
     <span className={`knowledge-view__avatar knowledge-view__avatar--initials${size}`} aria-hidden="true">
@@ -157,15 +159,21 @@ export function KeyPeople({
   const selectedPerson = people[selected]?.person.id ?? "";
 
   useEffect(() => {
-    if (!focusTo) return;
+    if (!focusTo) {
+      return;
+    }
     const target = focusTo === "selected" ? (rows.current.get(selectedPerson) ?? add.current) : rows.current.get(focusTo);
-    if (!target) return; // the list has not caught up yet
+    if (!target) {
+      return;
+    } // the list has not caught up yet
     target.focus();
     setFocusTo(null);
   }, [focusTo, people.length, selectedPerson]);
 
   async function addPerson() {
-    if (creating.current) return;
+    if (creating.current) {
+      return;
+    }
     creating.current = true;
     setAdding(true);
     setError("");
@@ -232,30 +240,33 @@ export function KeyPeople({
                 >
                   <button
                     ref={(element) => {
-                      if (element) rows.current.set(person.id, element);
-                      else rows.current.delete(person.id);
+                      if (element) {
+                        rows.current.set(person.id, element);
+                      } else {
+                        rows.current.delete(person.id);
+                      }
                     }}
                     type="button"
                     className="knowledge-view__person-button"
                     aria-current={index === selected ? "true" : undefined}
-                    onClick={() => onSelect(person.id)}
+                    onClick={() => { onSelect(person.id); }}
                   >
-                    <Avatar companyId={companyId} person={person} label={titles[index]!} />
+                    <Avatar companyId={companyId} person={person} label={titles[index]} />
                     <span className="knowledge-view__person-text">
                       <strong>{titles[index]}</strong>
                       {position && <small>{position}</small>}
                     </span>
                   </button>
-                  <ItemSource evidence={evidence} path={`/key_people/@${person.id}`} name={titles[index]!} />
+                  <ItemSource evidence={evidence} path={`/key_people/@${person.id}`} name={titles[index]} />
                 </li>
               );
             })}
           </ul>
           <PersonDetail
-            key={people[selected]!.person.id}
+            key={people[selected].person.id}
             companyId={companyId}
-            item={people[selected]!}
-            title={titles[selected]!}
+            item={people[selected]}
+            title={titles[selected]}
             editable={canEdit}
             blocked={blocked}
             onSaved={onSaved}

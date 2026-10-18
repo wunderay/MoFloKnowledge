@@ -16,8 +16,9 @@ async function signIn(
   screenshotPath?: string,
 ) {
   await page.goto("/sign-in");
-  if (screenshotPath)
+  if (screenshotPath) {
     await page.screenshot({ path: screenshotPath, fullPage: true });
+  }
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -113,8 +114,9 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
     ).toBeVisible();
     if (category.value === "positioning") {
       // Three canonical entries share this presentation, retaining separate reviews.
-      for (const section of ["Online presence", "Positioning", "Market & customers"])
+      for (const section of ["Online presence", "Positioning", "Market & customers"]) {
         await expect(page.getByRole("heading", { name: section, exact: true })).toBeVisible();
+      }
     }
   }
   await categorySelect.selectOption("company_foundation");
@@ -306,9 +308,11 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
       (operation) => operation.supersedes_claim_id !== null,
     ),
   ).toBe(true);
-  for (const claim of snapshot.provenance.claims)
-    for (const target of claim.targets)
+  for (const claim of snapshot.provenance.claims) {
+    for (const target of claim.targets) {
       expect(() => resolveStablePointer(snapshot, target)).not.toThrow();
+    }
+  }
   expect(frozen).not.toContain("cleaned_content");
   await saved.getByRole("button", { name: "Close dialog" }).click();
   await categorySelect.selectOption("company_foundation");

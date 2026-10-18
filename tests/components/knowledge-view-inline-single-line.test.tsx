@@ -169,7 +169,7 @@ describe.each(SINGLE_FIELDS)("C1 single-line field: $label", (field) => {
 
   it("an empty field still has an 'Edit <Field>' button, and typing a value saves it", async () => {
     const draft = draftWith((b) => {
-      (b.company_foundation as any)[field.path[0]!] = null;
+      (b.company_foundation as any)[field.path[0]] = null;
     });
     const view = await open(field.section, { draft });
     const before = stored(view, field.kind);
@@ -181,7 +181,7 @@ describe.each(SINGLE_FIELDS)("C1 single-line field: $label", (field) => {
 
   it("an empty field that stays empty sends nothing", async () => {
     const draft = draftWith((b) => {
-      (b.company_foundation as any)[field.path[0]!] = null;
+      (b.company_foundation as any)[field.path[0]] = null;
     });
     const view = await open(field.section, { draft });
     const input = await startEdit(view, field);
@@ -201,8 +201,8 @@ describe("C1 single-line fields are independent", () => {
     await editAndEnter(view, LEGAL, "Public Benefit Corporation");
     const { content } = revisionWrite(view, before);
     expect(content.overview).toBe(before.content.overview);
-    expect(content.main_address).toEqual((before.content as any).main_address);
-    expect(content.alternative_company_names).toEqual((before.content as any).alternative_company_names);
+    expect(content.main_address).toEqual((before.content).main_address);
+    expect(content.alternative_company_names).toEqual((before.content).alternative_company_names);
     expect(buttonNamed(view, "Edit Overview"), "other fields remain editable").toBeDefined();
   });
 

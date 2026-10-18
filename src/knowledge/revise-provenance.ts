@@ -31,14 +31,15 @@ export const claimsForLeaves = (leaves: number) => Math.ceil(leaves / MAX_CLAIM_
 export function groupClaims(created: Claim[]): Claim[] {
   const out: Claim[] = [];
   const targets = created.flatMap((claim) => claim.targets);
-  for (let at = 0; at < targets.length; at += MAX_CLAIM_TARGETS)
+  for (let at = 0; at < targets.length; at += MAX_CLAIM_TARGETS) {
     out.push({
-      ...created[Math.min(at, created.length - 1)]!,
+      ...created[Math.min(at, created.length - 1)],
       targets: targets.slice(at, at + MAX_CLAIM_TARGETS),
     });
+  }
   return out;
 }
-export type ReviseInput = {
+export interface ReviseInput {
   kind: EntryKind;
   entryId: string;
   before: BusinessEntry;
@@ -49,9 +50,11 @@ export type ReviseInput = {
   requestId: string;
   note: string;
   newId?: () => string;
-};
+}
 export function reviseProvenance(input: ReviseInput): EntryProvenance {
-  if (!input.note.trim()) throw new Error("Correction note is required");
+  if (!input.note.trim()) {
+    throw new Error("Correction note is required");
+  }
   const result = structuredClone(input.provenance);
   result.conflicts ??= [];
   result.decisions ??= [];
@@ -68,7 +71,9 @@ export function reviseProvenance(input: ReviseInput): EntryProvenance {
       (path) => previous.get(path) !== next.get(path),
     ),
   );
-  if (changed.size === 0) return result;
+  if (changed.size === 0) {
+    return result;
+  }
   const makeId = input.newId ?? (() => crypto.randomUUID());
   const superseded = new Set<string>();
   const claims: Claim[] = [];
@@ -86,7 +91,9 @@ export function reviseProvenance(input: ReviseInput): EntryProvenance {
       }
       return true;
     });
-    if (targets.length) claims.push({ ...claim, targets });
+    if (targets.length) {
+      claims.push({ ...claim, targets });
+    }
   }
   const created: Claim[] = [];
   for (const target of changed) {
@@ -96,7 +103,9 @@ export function reviseProvenance(input: ReviseInput): EntryProvenance {
     } catch {
       continue;
     }
-    if (value !== null && typeof value === "object") continue;
+    if (value !== null && typeof value === "object") {
+      continue;
+    }
     created.push({
       id: makeId(),
       entry_id: input.entryId,

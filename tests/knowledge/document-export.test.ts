@@ -27,7 +27,9 @@ it("creates a real OOXML document formatting a complete profile with full nested
   const text = load(xml, { xmlMode: true }).text();
   expect(text.split("Exact complete passage.")).toHaveLength(501);
   expect(text).toContain("UNIQUE END OF FULL PASSAGE");
-  for (let index = 0; index < 30; index++) expect(text).toContain(`Full feature ${index}`);
+  for (let index = 0; index < 30; index++) {
+    expect(text).toContain(`Full feature ${index}`);
+  }
   for (const value of ["Overview", "Company details", "Pitch", "Market & customers", "Founding story", "Branding & style", "Online presence", "Key people", "Offerings", "Deep nested step", "29.00", "Unknown", "Not checked", "Unassessed field requires manual review.", snapshot.provenance.sources[0].url, snapshot.company_foundation.overview]) {
     expect(text).toContain(value);
   }
@@ -38,18 +40,24 @@ it("creates a real OOXML document formatting a complete profile with full nested
   expect(text).not.toContain(snapshot.provenance.claims[0].targets[0]);
   const compactText = documentParagraphs({ kind: "snapshot", snapshot }).map((paragraph) => paragraph.text).join("").replace(/\s+/g, "");
   const checkValues = (value: unknown): void => {
-    if (Array.isArray(value)) value.forEach(checkValues);
-    else if (value && typeof value === "object") Object.entries(value).forEach(([key, child]) => {
-      if (key !== "id") checkValues(child);
+    if (Array.isArray(value)) {
+      value.forEach(checkValues);
+    } else if (value && typeof value === "object") {
+      Object.entries(value).forEach(([key, child]) => {
+      if (key !== "id") {
+        checkValues(child);
+      }
     });
-    else if (value !== null && value !== "") {
+    } else if (value !== null && value !== "") {
       const meanings: Record<string, string> = { css_declared: "declared CSS", resource_loaded: "loaded resources", computed_family: "computed font family",
         observed_website_color: "observed website color", brand_guide_confirmed: "brand-guide-confirmed color", company_logo: "company logo" };
       const expected = typeof value === "boolean" ? value ? "confirmed as brand guidance" : "not confirmed as brand guidance" : meanings[String(value)] ?? String(value);
       expect(compactText).toContain(expected.replace(/\s+/g, ""));
     }
   };
-  for (const key of ["company_foundation", "positioning", "market_and_customers", "branding_and_style", "online_presence", "key_people", "offerings"] as const) checkValues(snapshot[key]);
+  for (const key of ["company_foundation", "positioning", "market_and_customers", "branding_and_style", "online_presence", "key_people", "offerings"] as const) {
+    checkValues(snapshot[key]);
+  }
   expect(xml).toContain('w:val="Heading1"');
   expect(xml).toContain("<w:b/>");
   expect(xml).toContain("<w:numPr>");

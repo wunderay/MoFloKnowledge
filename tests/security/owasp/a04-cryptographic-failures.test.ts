@@ -30,11 +30,14 @@ describe("secrets and transport", () => {
     const names = new Set<string>();
     for (const path of sources) {
       const text = readFileSync(path, "utf8");
-      for (const match of text.matchAll(/NEXT_PUBLIC_[A-Z0-9_]+/g)) names.add(match[0]);
+      for (const match of text.matchAll(/NEXT_PUBLIC_[A-Z0-9_]+/g)) {
+        names.add(match[0]);
+      }
       expect(text, path).not.toMatch(/sb_secret_|-----BEGIN [A-Z ]*PRIVATE KEY-----|service_role|eyJ[A-Za-z0-9_-]{20,}\.eyJ/);
       // Client components can only see NEXT_PUBLIC_* values; any other process.env read there is a leak or a bug.
-      if (/^["']use client["']/.test(text))
+      if (/^["']use client["']/.test(text)) {
         expect(text, path).not.toMatch(/process\.env\.(?!NEXT_PUBLIC_|NODE_ENV)/);
+      }
     }
     expect([...names].sort()).toEqual(["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_SUPABASE_URL"]);
   });
@@ -49,7 +52,7 @@ describe("secrets and transport", () => {
     } finally {
       vi.unstubAllEnvs();
     }
-    expect(state.create.mock.calls[0]![2].cookieOptions).toMatchObject({ secure: true, httpOnly: true });
+    expect(state.create.mock.calls[0][2].cookieOptions).toMatchObject({ secure: true, httpOnly: true });
   });
 
   it("refuses to start the internal renderer and proxy with a short shared token", () => {

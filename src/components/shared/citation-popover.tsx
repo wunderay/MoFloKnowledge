@@ -46,13 +46,15 @@ export function CitationPopover({
   );
   const visited = new Set<string>();
   function addSupportingEvidence(claimId: string) {
-    if (visited.has(claimId)) return;
+    if (visited.has(claimId)) {
+      return;
+    }
     visited.add(claimId);
     const claim = supportingClaims.get(claimId);
     claim?.evidence_ids.forEach((evidenceId) => evidenceIds.add(evidenceId));
     claim?.based_on_claim_ids.forEach(addSupportingEvidence);
   }
-  claims.forEach((claim) => addSupportingEvidence(claim.id));
+  claims.forEach((claim) => { addSupportingEvidence(claim.id); });
   candidate?.based_on_claim_ids.forEach(addSupportingEvidence);
   const evidence = lookup.evidence.filter((e) => evidenceIds.has(e.id));
   const origins = candidate
@@ -71,12 +73,18 @@ export function CitationPopover({
       ? "Sources"
       : (coverage?.status.replaceAll("_", " ") ?? "Not checked");
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     function outside(e: PointerEvent) {
-      if (!container.current?.contains(e.target as Node)) setOpen(false);
+      if (!container.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
     }
     function key(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
     }
     document.addEventListener("pointerdown", outside);
     document.addEventListener("keydown", key);
@@ -86,17 +94,22 @@ export function CitationPopover({
     };
   }, [open]);
   function stay() {
-    if (timer.current) clearTimeout(timer.current);
+    if (timer.current) {
+      clearTimeout(timer.current);
+    }
     setOpen(true);
   }
   function leave() {
-    if (timer.current) clearTimeout(timer.current);
+    if (timer.current) {
+      clearTimeout(timer.current);
+    }
     timer.current = setTimeout(() => {
       if (
         !container.current?.matches(":hover") &&
         !container.current?.contains(document.activeElement)
-      )
+      ) {
         setOpen(false);
+      }
     }, 160);
   }
   return (
@@ -119,7 +132,7 @@ export function CitationPopover({
             ? `${label}: evidence for ${name}`
             : `Evidence for ${path.split("/").at(-1)?.replaceAll("_", " ")}`
         }
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); }}
       >
         {label} ⓘ
       </button>
@@ -135,7 +148,7 @@ export function CitationPopover({
             <button
               type="button"
               className="button button--quiet"
-              onClick={() => setOpen(false)}
+              onClick={() => { setOpen(false); }}
               aria-label="Close evidence"
             >
               ✕

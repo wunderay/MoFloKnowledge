@@ -14,12 +14,14 @@ async function linkActions(snapshot: unknown) {
     const annotations = page.node.lookupMaybe(PDFName.of("Annots"), PDFArray);
     for (let index = 0; annotations && index < annotations.size(); index++) {
       const action = annotations.lookup(index, PDFDict).lookupMaybe(PDFName.of("A"), PDFDict);
-      if (action) actions.push(action);
+      if (action) {
+        actions.push(action);
+      }
     }
   }
   return actions;
 }
-const uri = (action: PDFDict) => (action.lookup(PDFName.of("URI"), PDFString) as PDFString).asString();
+const uri = (action: PDFDict) => (action.lookup(PDFName.of("URI"), PDFString)).asString();
 
 it("a site link URL with PDF string delimiters stays one URI action with no JavaScript", async () => {
   const snapshot = structuredClone(fixture);

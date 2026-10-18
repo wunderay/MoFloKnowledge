@@ -103,7 +103,7 @@ export const HOSTILE = {
 };
 export function hostileDraft(): Draft {
   const people = structuredClone(PEOPLE);
-  Object.assign(people[0]!, {
+  Object.assign(people[0], {
     name: HOSTILE.name,
     title: HOSTILE.title,
     background_or_relevance: `<b>bold</b> ${HOSTILE.jsUrl}`,
@@ -174,7 +174,7 @@ export function evidenceFixture() {
       sources: own.some((c) => c.evidence_ids.length) ? [source] : [],
       evidence: own.some((c) => c.evidence_ids.length) ? evidence : [],
       claims: own,
-      coverage: coverage.filter((c) => c.targets[0]!.startsWith(root)),
+      coverage: coverage.filter((c) => c.targets[0].startsWith(root)),
     } as never;
   }
   draft.citationContext = { claims, evidence, sources: [source] } as never;

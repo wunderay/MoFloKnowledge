@@ -33,12 +33,12 @@ import {
 const ROOT = "http://example.com/";
 const REASON = /deadline|crawl[-_ ]?delay|time[-_ ]?(?:out|limit)|timed out/i;
 
-type HookRecord = {
+interface HookRecord {
   url: string;
   startedAt: number;
   endedAt?: number;
   abortedAt?: number;
-};
+}
 
 /** Wraps a fetcher and times every onRequest hook against the signal it was given. */
 function instrument(
@@ -58,8 +58,11 @@ function instrument(
               const mark = () => {
                 record.abortedAt ??= Date.now();
               };
-              if (signal?.aborted) mark();
-              else signal?.addEventListener("abort", mark, { once: true });
+              if (signal?.aborted) {
+                mark();
+              } else {
+                signal?.addEventListener("abort", mark, { once: true });
+              }
               try {
                 await hook(target);
               } finally {
@@ -77,18 +80,20 @@ function expectHooksReleasedPromptly(records: HookRecord[]) {
   const now = Date.now();
   for (const record of records) {
     const label = `onRequest hook for ${record.url}`;
-    if (record.endedAt === undefined)
+    if (record.endedAt === undefined) {
       expect.fail(
         `${label} is still pending ${now - record.startedAt} ms after it started` +
           (record.abortedAt === undefined
             ? " and its signal never aborted"
             : ` and ${now - record.abortedAt} ms after its signal aborted`),
       );
-    if (record.abortedAt !== undefined)
+    }
+    if (record.abortedAt !== undefined) {
       expect(
         record.endedAt - record.abortedAt,
         `${label} outlived its aborted signal`,
       ).toBeLessThanOrEqual(SLACK_MS);
+    }
   }
 }
 
@@ -102,8 +107,9 @@ function describeOutcome(outcome: Settled<CrawlResult>, deadlineMs: number) {
 const hostileRobots =
   (delay: string, site: (path: string) => string = () => htmlPage(["/a", "/b"])): SiteHandler =>
   (request, response) => {
-    if (request.path === "/robots.txt")
+    if (request.path === "/robots.txt") {
       return sendRobots(response, `User-agent: *\nCrawl-delay: ${delay}`);
+    }
     sendHtml(response, site(request.path));
   };
 
@@ -132,7 +138,9 @@ async function run(
   restore = accelerateLimits({ jobMs: options.jobMs, fetchMs: options.fetchMs });
   site = await startSite(handler);
   outer = new AbortController();
-  if (options.preAbort) outer.abort("cancelled");
+  if (options.preAbort) {
+    outer.abort("cancelled");
+  }
   const records: HookRecord[] = [];
   const rows: Record<string, unknown>[] = [];
   const started = Date.now();
@@ -143,11 +151,12 @@ async function run(
     undefined,
     instrument(site.fetcher, records),
   );
-  if (options.cancelAfterMs !== undefined)
+  if (options.cancelAfterMs !== undefined) {
     setTimeout(() => outer.abort("cancelled"), options.cancelAfterMs);
+  }
   const outcome = await settle(promise, options.limitMs);
   await wait(SLACK_MS); // let any stray hook finish or prove it is stuck
-  return { outcome, records, rows, started, site: site! };
+  return { outcome, records, rows, started, site: site };
 }
 
 function resolved(outcome: Settled<CrawlResult>, deadlineMs: number) {
@@ -229,7 +238,9 @@ describe("C1 deadline expiring during the robots.txt fetch", () => {
     const jobMs = 400;
     const { outcome, records, site } = await run(
       (request, response) => {
-        if (request.path === "/robots.txt") return; // never answers
+        if (request.path === "/robots.txt") {
+          return;
+        } // never answers
         sendHtml(response, htmlPage());
       },
       { jobMs, fetchMs: 5000, limitMs: jobMs + SLACK_MS },
@@ -248,11 +259,14 @@ describe("C1/C3 multiple hosts", () => {
     (wwwRobots: (response: Parameters<SiteHandler>[1]) => void): SiteHandler =>
     (request, response) => {
       if (request.host === "www.example.com") {
-        if (request.path === "/robots.txt") return wwwRobots(response);
+        if (request.path === "/robots.txt") {
+          return wwwRobots(response);
+        }
         return sendHtml(response, htmlPage());
       }
-      if (request.path === "/robots.txt")
+      if (request.path === "/robots.txt") {
         return sendRobots(response, "User-agent: *\nDisallow: /private");
+      }
       sendHtml(
         response,
         request.path === "/"
@@ -320,7 +334,9 @@ describe("C4 outer cancellation still aborts everything", () => {
   it("C4 cancelling during a robots.txt fetch rejects with the cancellation reason", async () => {
     const { outcome, records, site } = await run(
       (request, response) => {
-        if (request.path === "/robots.txt") return;
+        if (request.path === "/robots.txt") {
+          return;
+        }
         sendHtml(response, htmlPage());
       },
       { jobMs: 5000, fetchMs: 5000, cancelAfterMs: 100, limitMs: 100 + SLACK_MS },

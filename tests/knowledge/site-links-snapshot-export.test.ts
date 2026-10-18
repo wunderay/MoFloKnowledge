@@ -110,7 +110,9 @@ describe("C1 [behavioural] export snapshots carry site_links", () => {
     script.site_links.links[0].url = "javascript:alert(1)";
     const duplicate = clone();
     duplicate.site_links.links[1].id = duplicate.site_links.links[0].id;
-    for (const bad of [relative, script, duplicate]) expect(KnowledgeBaseExportSchema.safeParse(bad).success).toBe(false);
+    for (const bad of [relative, script, duplicate]) {
+      expect(KnowledgeBaseExportSchema.safeParse(bad).success).toBe(false);
+    }
   });
 
   it("Edge case: a link id may not collide with any other business id in the export", () => {
@@ -241,7 +243,9 @@ describe("C5 [behavioural] document export renders a 'Site links' section", () =
   const sectionOf = (snapshot: unknown, title: string) => {
     const paragraphs = paragraphsOf(snapshot);
     const start = paragraphs.findIndex((item) => item.heading === "section" && item.text === title);
-    if (start < 0) return null;
+    if (start < 0) {
+      return null;
+    }
     const rest = paragraphs.slice(start + 1);
     const end = rest.findIndex((item) => item.heading === "section");
     return { start, body: (end < 0 ? rest : rest.slice(0, end)).map((item) => item.text).join("\n") };
@@ -250,7 +254,9 @@ describe("C5 [behavioural] document export renders a 'Site links' section", () =
   it("lists every approved link's title and URL under a 'Site links' heading, in order", () => {
     const section = sectionOf(fixture, "Site links");
     expect(section, "a section heading named exactly 'Site links'").not.toBeNull();
-    for (const text of [...TITLES, ...URLS]) expect(section!.body).toContain(text);
+    for (const text of [...TITLES, ...URLS]) {
+      expect(section!.body).toContain(text);
+    }
     expect(section!.body.indexOf(TITLES[0])).toBeLessThan(section!.body.indexOf(TITLES[1]));
     expect(section!.body.indexOf(URLS[0])).toBeLessThan(section!.body.indexOf(URLS[1]));
   });
@@ -308,7 +314,9 @@ describe("C5 [behavioural] document export renders a 'Site links' section", () =
     expect(text).toContain("Site links");
     expect(text).toContain(snapshot.site_links.links[0].title);
     expect(text).toContain(snapshot.site_links.links[1].title);
-    for (const url of URLS) expect(text).toContain(url);
+    for (const url of URLS) {
+      expect(text).toContain(url);
+    }
     expect(xml).not.toContain("<script>");
     expect(xml).toContain("&lt;script&gt;");
     const relationships = load(await zip.file("word/_rels/document.xml.rels")!.async("string"), { xmlMode: true });

@@ -29,6 +29,8 @@ describe("C7 migration (static)", () => {
   });
 
   it("C7 earlier migrations are untouched: 0001 through 0017 still exist", () => {
-    for (let n = 1; n <= 17; n += 1) expect(files.some((f) => f.startsWith(String(n).padStart(4, "0") + "_")), `migration ${n}`).toBe(true);
+    for (let n = 1; n <= 17; n += 1) {
+      expect(files.some((f) => f.startsWith(String(n).padStart(4, "0") + "_")), `migration ${n}`).toBe(true);
+    }
   });
 });

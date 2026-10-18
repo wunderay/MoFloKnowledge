@@ -42,7 +42,9 @@ export function deterministicCandidates(
         return !family || /^(?:inherit|initial|unset|revert|revert-layer)$/i.test(family) || /^var\(/i.test(family)
           ? [] : [{ ...font, family }];
       });
-      if (!(value as unknown[]).length) return;
+      if (!(value as unknown[]).length) {
+        return;
+      }
     }
     result.push({
       field,
@@ -56,9 +58,11 @@ export function deterministicCandidates(
     });
   };
   const urlObservation = observations.find((o) => o.property === "url" && o.value === page.capture.finalUrl);
-  if (urlObservation) add("/company_foundation/website", page.capture.finalUrl, [urlObservation.id]);
+  if (urlObservation) {
+    add("/company_foundation/website", page.capture.finalUrl, [urlObservation.id]);
+  }
   for (const o of observations) {
-    if (o.property === "font-family" && o.value)
+    if (o.property === "font-family" && o.value) {
       add(
         "/branding_and_style/fonts",
         [
@@ -71,8 +75,9 @@ export function deterministicCandidates(
         ],
         [o.id],
       );
-    if (o.property === "stylesheet" && o.value)
-      for (const match of o.value.matchAll(/font-family\s*:\s*([^;}]+)/gi))
+    }
+    if (o.property === "stylesheet" && o.value) {
+      for (const match of o.value.matchAll(/font-family\s*:\s*([^;}]+)/gi)) {
         add(
           "/branding_and_style/fonts",
           [
@@ -85,7 +90,9 @@ export function deterministicCandidates(
           ],
           [o.id],
         );
-    if (o.property === "stylesheet" && o.value)
+      }
+    }
+    if (o.property === "stylesheet" && o.value) {
       for (const face of o.value.matchAll(/@font-face\s*\{([^}]+)\}/gi)) {
         const family = /font-family\s*:\s*([^;}]+)/i.exec(face[1])?.[1]?.trim();
         const resource = /url\(\s*['"]?([^)'"\s]+)/i.exec(face[1])?.[1];
@@ -100,7 +107,7 @@ export function deterministicCandidates(
             (item) =>
               item.property === "font-resource" && item.asset_url === url,
           );
-          if (loaded)
+          if (loaded) {
             add(
               "/branding_and_style/fonts",
               [
@@ -113,11 +120,13 @@ export function deterministicCandidates(
               ],
               [o.id, loaded.id],
             );
+          }
         }
       }
+    }
     if (["color", "background-color", "declared-color", "declared-background-color"].includes(o.property ?? "") && o.value) {
       const color = normalizeColor(o.value);
-      if (color)
+      if (color) {
         add(
           "/branding_and_style/brand_colors",
           [
@@ -129,42 +138,50 @@ export function deterministicCandidates(
           ],
           [o.id],
         );
+      }
     }
     if (
       o.property === "logo" &&
       o.asset_url &&
       /header|footer|^jsonld:(?:Organization|LocalBusiness)\/logo$/i.test(o.selector ?? "") &&
       !/partner|favicon/i.test(o.value ?? "")
-    )
+    ) {
       add(
         "/branding_and_style/logos",
         [{ url: o.asset_url, variant: null, kind: "company_logo" }],
         [o.id],
       );
+    }
   }
   for (const link of page.capture.links) {
     const url = new URL(link.url);
-    if (/\/(?:share|intent|sharer|dialog)(?:\/|$)/i.test(url.pathname))
+    if (/\/(?:share|intent|sharer|dialog)(?:\/|$)/i.test(url.pathname)) {
       continue;
+    }
     const platform =
       /^(?:www\.)?(linkedin|facebook|instagram|youtube|twitter|x|tiktok)\.com$/.exec(
         url.hostname,
       )?.[1];
-    if (platform === "linkedin" && !/^\/(?:company|school|showcase)\/[^/]+/i.test(url.pathname)) continue;
+    if (platform === "linkedin" && !/^\/(?:company|school|showcase)\/[^/]+/i.test(url.pathname)) {
+      continue;
+    }
     // Links to other companies' profiles (partners, sponsors, clients) are not the company's own.
     // Judged by the heading of the section the link sits in, not by words in its label or handle.
     if (platform && link.label && page.capture.segments.some((segment) => segment.text === link.label &&
-      /\b(?:partners?|sponsors?|clients?|suppliers?|vendors?|affiliates?)\b/i.test(segment.heading ?? ""))) continue;
+      /\b(?:partners?|sponsors?|clients?|suppliers?|vendors?|affiliates?)\b/i.test(segment.heading ?? ""))) {
+      continue;
+    }
     if (platform && url.pathname !== "/") {
       const o = observations.find(
         (o) => o.property === "href" && o.value === link.url,
       );
-      if (o)
+      if (o) {
         add(
           "/online_presence/social_media_links",
           [{ platform, profile_url: link.url }],
           [o.id],
         );
+      }
     }
   }
   return result;

@@ -58,7 +58,9 @@ const nullNewFields = (snapshot: Json): Json => {
   snapshot.offerings[0].images = [];
   const newTarget = (target: string) =>
     /\/(?:revenue|phone)$/.test(target) || /\/(?:age|nationality)$/.test(target) || /\/(?:portrait|images)(?:\/|$)/.test(target);
-  for (const claim of snapshot.provenance.claims) claim.targets = claim.targets.filter((target: string) => !newTarget(target));
+  for (const claim of snapshot.provenance.claims) {
+    claim.targets = claim.targets.filter((target: string) => !newTarget(target));
+  }
   snapshot.provenance.claims = snapshot.provenance.claims.filter((claim: Json) => claim.targets.length > 0);
   return snapshot;
 };
@@ -103,7 +105,9 @@ describe("C6 [behavioural] snapshots carry the new fields and validate", () => {
     ];
     for (const leaf of leaves) {
       const snapshot = clone();
-      for (const claim of snapshot.provenance.claims) claim.targets = claim.targets.filter((target: string) => target !== leaf);
+      for (const claim of snapshot.provenance.claims) {
+        claim.targets = claim.targets.filter((target: string) => target !== leaf);
+      }
       snapshot.provenance.claims = snapshot.provenance.claims.filter((claim: Json) => claim.targets.length > 0);
       const issues = issuesOf(snapshot);
       expect(issues.some((issue) => issue.code === "leaf_unclaimed" && issue.path === leaf), `${leaf} unclaimed`).toBe(true);
@@ -118,8 +122,9 @@ describe("C6 [behavioural] snapshots carry the new fields and validate", () => {
     const missing = clone();
     nullNewFields(missing);
     missing.provenance.coverage = missing.provenance.coverage.map((row: Json) => ({ ...row, targets: row.targets.filter((target: string) => !NEW_TARGETS.includes(target)) })).filter((row: Json) => row.targets.length);
-    for (const target of NEW_TARGETS)
+    for (const target of NEW_TARGETS) {
       expect(issuesOf(missing).some((issue) => issue.code === "coverage_count" && issue.path === target), `${target} needs coverage even when empty`).toBe(true);
+    }
   });
 
   it("Edge case: each new target needs exactly one coverage assessment (missing and duplicated are reported)", () => {
@@ -156,10 +161,18 @@ describe("C6 [behavioural] snapshots carry the new fields and validate", () => {
 describe("C3/C4/C2/C1 [behavioural] the export schema enforces the new rules", () => {
   it("Edge case: invalid age, nationality, revenue and phone make the export invalid", () => {
     const mutate = (change: (snapshot: Json) => void) => { const snapshot = clone(); change(snapshot); return snapshot; };
-    for (const age of [-1, 151, 2.5, "42", Number.NaN]) exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].age = age; }), `age ${age}`);
-    for (const nationality of ["", "  "]) exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].nationality = nationality; }), `nationality ${JSON.stringify(nationality)}`);
-    for (const revenue of ["", "   ", 5]) exportRejectsOnlyBecauseOf(mutate((s) => { s.company_foundation.revenue = revenue; }), `revenue ${JSON.stringify(revenue)}`);
-    for (const phone of ["555010019", "55501001999", "+15550100199", "555-010-FLOW", "", 5550100199]) exportRejectsOnlyBecauseOf(mutate((s) => { s.online_presence.phone = phone; }), `phone ${JSON.stringify(phone)}`);
+    for (const age of [-1, 151, 2.5, "42", Number.NaN]) {
+      exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].age = age; }), `age ${age}`);
+    }
+    for (const nationality of ["", "  "]) {
+      exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].nationality = nationality; }), `nationality ${JSON.stringify(nationality)}`);
+    }
+    for (const revenue of ["", "   ", 5]) {
+      exportRejectsOnlyBecauseOf(mutate((s) => { s.company_foundation.revenue = revenue; }), `revenue ${JSON.stringify(revenue)}`);
+    }
+    for (const phone of ["555010019", "55501001999", "+15550100199", "555-010-FLOW", "", 5550100199]) {
+      exportRejectsOnlyBecauseOf(mutate((s) => { s.online_presence.phone = phone; }), `phone ${JSON.stringify(phone)}`);
+    }
     expect(exportOk(mutate((s) => { s.key_people[0].age = 0; })), "age 0 is valid").toBe(true);
     expect(exportOk(mutate((s) => { s.key_people[0].age = 150; })), "age 150 is valid").toBe(true);
   });
@@ -167,11 +180,14 @@ describe("C3/C4/C2/C1 [behavioural] the export schema enforces the new rules", (
   it("Edge case: invalid storage references make the export invalid (traversal, extension, content type, size, 21 images)", () => {
     const mutate = (change: (snapshot: Json) => void) => { const snapshot = clone(); change(snapshot); return snapshot; };
     const segment = `${COMPANY}/${PORTRAIT.id}`;
-    for (const bad of [`portraits/${COMPANY}/../${PORTRAIT.id}.png`, `/portraits/${segment}.png`, `avatars/${segment}.png`, `portraits/${segment}.exe`, `portraits/${segment}.PNG`, `portraits/acme/${PORTRAIT.id}.png`])
+    for (const bad of [`portraits/${COMPANY}/../${PORTRAIT.id}.png`, `/portraits/${segment}.png`, `avatars/${segment}.png`, `portraits/${segment}.exe`, `portraits/${segment}.PNG`, `portraits/acme/${PORTRAIT.id}.png`]) {
       exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].portrait.path = bad; }), bad);
+    }
     exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].portrait.content_type = "image/jpeg"; }), "png path with jpeg content type");
     exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].portrait.content_type = "image/bmp"; }), "bmp");
-    for (const size of [0, -1, 1.5, 5242881]) exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].portrait.size_bytes = size; }), `size ${size}`);
+    for (const size of [0, -1, 1.5, 5242881]) {
+      exportRejectsOnlyBecauseOf(mutate((s) => { s.key_people[0].portrait.size_bytes = size; }), `size ${size}`);
+    }
     exportRejectsOnlyBecauseOf(mutate((s) => { s.offerings[0].images[0].path = `offering-images/${COMPANY}/../x.jpg`; }), "image traversal");
     exportRejectsOnlyBecauseOf(mutate((s) => { s.offerings[0].images[0].alt = "x"; }), "unknown key on image");
     exportRejectsOnlyBecauseOf(mutate((s) => {
@@ -272,8 +288,9 @@ describe("C6 [behavioural] snapshot assembly treats the new fields like any othe
       expect(rows[0].status).toBe("found");
     }
     const claimed = snapshot.provenance.claims.flatMap((claim: Json) => claim.targets);
-    for (const leaf of [`/key_people/@${PERSON}/age`, `/key_people/@${PERSON}/portrait/path`, `/offerings/@${OFFERING}/images/@${IMAGES[0].id}/content_type`, "/company_foundation/revenue", "/online_presence/phone"])
+    for (const leaf of [`/key_people/@${PERSON}/age`, `/key_people/@${PERSON}/portrait/path`, `/offerings/@${OFFERING}/images/@${IMAGES[0].id}/content_type`, "/company_foundation/revenue", "/online_presence/phone"]) {
       expect(claimed, leaf).toContain(leaf);
+    }
     expect(KnowledgeBaseExportSchema.safeParse(snapshot).success).toBe(true);
     expect(issuesOf(snapshot)).toEqual([]);
   });
@@ -282,10 +299,18 @@ describe("C6 [behavioural] snapshot assembly treats the new fields like any othe
     const rows = entries();
     for (const row of rows) {
       const content = row.content as unknown as Json;
-      if (row.kind === "company_foundation") content.revenue = null;
-      if (row.kind === "online_presence") content.phone = null;
-      if (row.kind === "key_person") Object.assign(content, { age: null, nationality: null, portrait: null });
-      if (row.kind === "offering") content.images = [];
+      if (row.kind === "company_foundation") {
+        content.revenue = null;
+      }
+      if (row.kind === "online_presence") {
+        content.phone = null;
+      }
+      if (row.kind === "key_person") {
+        Object.assign(content, { age: null, nationality: null, portrait: null });
+      }
+      if (row.kind === "offering") {
+        content.images = [];
+      }
       row.provenance.claims = row.provenance.claims
         .map((claim) => ({ ...claim, targets: claim.targets.filter((target) => !NEW_TARGETS.some((n) => target === n || target.startsWith(`${n}/`))) }))
         .filter((claim) => claim.targets.length > 0);
@@ -297,8 +322,9 @@ describe("C6 [behavioural] snapshot assembly treats the new fields like any othe
     expect(snapshot.company_foundation.revenue).toBeNull();
     expect(snapshot.key_people[0]).toMatchObject({ age: null, nationality: null, portrait: null });
     expect(snapshot.offerings[0].images).toEqual([]);
-    for (const target of NEW_TARGETS)
+    for (const target of NEW_TARGETS) {
       expect(coverageFor(snapshot, target), target).toEqual([{ targets: [target], status: "not_checked", job_id: null, reason: "No approved entry assessed this field." }]);
+    }
   });
 
   it("Edge case: an approved entry holding an invalid new value is refused when assembling", () => {
@@ -344,7 +370,9 @@ describe("C6 [behavioural] snapshot assembly treats the new fields like any othe
     expect(snapshot.online_presence.phone).toBeNull();
     expect(snapshot.key_people[0]).toMatchObject({ age: null, nationality: null, portrait: null });
     expect(snapshot.offerings[0].images).toEqual([]);
-    for (const target of NEW_TARGETS) expect(coverageFor(snapshot, target), target).toHaveLength(1);
+    for (const target of NEW_TARGETS) {
+      expect(coverageFor(snapshot, target), target).toHaveLength(1);
+    }
     expect(KnowledgeBaseExportSchema.safeParse(snapshot).success).toBe(true);
   });
 
@@ -373,7 +401,9 @@ function body(snapshot: unknown) {
 function section(snapshot: unknown, title: string): string[] | null {
   const paragraphs = body(snapshot);
   const start = paragraphs.findIndex((item) => item.heading === "section" && item.text === title);
-  if (start < 0) return null;
+  if (start < 0) {
+    return null;
+  }
   const rest = paragraphs.slice(start + 1);
   const end = rest.findIndex((item) => item.heading === "section");
   return (end < 0 ? rest : rest.slice(0, end)).map(lineOf);
@@ -452,9 +482,13 @@ describe("C8 [behavioural] document export omits empty new fields", () => {
 
   it("a snapshot whose new fields are all null shows none of the four labels in the business body", () => {
     const populated = businessLines(fixture);
-    for (const pattern of Object.values(labelPattern)) expect(populated.some((line) => pattern.test(line)), `control shows ${pattern}`).toBe(true);
+    for (const pattern of Object.values(labelPattern)) {
+      expect(populated.some((line) => pattern.test(line)), `control shows ${pattern}`).toBe(true);
+    }
     const empty = businessLines(nullNewFields(clone()));
-    for (const [field, pattern] of Object.entries(labelPattern)) expect(empty.some((line) => pattern.test(line)), `${field} omitted when null`).toBe(false);
+    for (const [field, pattern] of Object.entries(labelPattern)) {
+      expect(empty.some((line) => pattern.test(line)), `${field} omitted when null`).toBe(false);
+    }
   });
 
   it("each field is omitted on its own while the others stay", () => {
@@ -466,7 +500,9 @@ describe("C8 [behavioural] document export omits empty new fields", () => {
     };
     for (const [field, change] of Object.entries(changes)) {
       const lines = businessLines(withValues(change));
-      for (const [other, pattern] of Object.entries(labelPattern)) expect(lines.some((line) => pattern.test(line)), `${field} null -> ${other}`).toBe(other !== field);
+      for (const [other, pattern] of Object.entries(labelPattern)) {
+        expect(lines.some((line) => pattern.test(line)), `${field} null -> ${other}`).toBe(other !== field);
+      }
     }
   });
 
@@ -474,7 +510,9 @@ describe("C8 [behavioural] document export omits empty new fields", () => {
     const { xml } = await docxXml(nullNewFields(clone()));
     const text = load(xml, { xmlMode: true }).text().split("Coverage & unknowns")[0];
     expect(text).toContain("Alex Chen");
-    for (const label of ["Revenue: ", "Phone: ", "Age: ", "Nationality: "]) expect(text, label).not.toContain(label);
+    for (const label of ["Revenue: ", "Phone: ", "Age: ", "Nationality: "]) {
+      expect(text, label).not.toContain(label);
+    }
   });
 });
 
@@ -485,7 +523,9 @@ describe("C8 [behavioural] document export does not embed image binaries or list
     expect(documentParagraphs({ kind: "snapshot", snapshot: fixture as never }).length).toBeGreaterThan(10);
     const text = documentParagraphs({ kind: "snapshot", snapshot: fixture as never }).map(lineOf).join("\n");
     expect(text, "the same document still shows the person").toContain("Age: 42");
-    for (const needle of imageStrings) expect(text, needle).not.toContain(needle);
+    for (const needle of imageStrings) {
+      expect(text, needle).not.toContain(needle);
+    }
   });
 
   it("the OOXML package has no media parts, drawings or image relationships and no storage path in its text", async () => {
@@ -498,7 +538,9 @@ describe("C8 [behavioural] document export does not embed image binaries or list
     const relationships = await zip.file("word/_rels/document.xml.rels")!.async("string");
     expect(relationships).not.toMatch(/relationships\/image/);
     const text = load(xml, { xmlMode: true }).text();
-    for (const needle of imageStrings) expect(text, needle).not.toContain(needle);
+    for (const needle of imageStrings) {
+      expect(text, needle).not.toContain(needle);
+    }
   });
 
   it("the PDF has no image XObjects (its only attachment is the original JSON)", async () => {

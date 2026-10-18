@@ -39,7 +39,7 @@ describe("accounts", () => {
       state.signIn.mockResolvedValue({ error });
       seen.push(await stable(await signIn(post("sign-in", { email, password: "correct-horse" }))));
     }
-    expect(seen[0]!.status).toBe(401);
+    expect(seen[0].status).toBe(401);
     expect(seen[1]).toEqual(seen[0]);
     expect(seen[2]).toEqual(seen[0]);
   });
@@ -56,8 +56,9 @@ describe("accounts", () => {
   it("enforces password length before any call to the provider", async () => {
     process.env.APP_ORIGIN = APP;
     state.signUp.mockResolvedValue({ data: { session: null, user: null }, error: null });
-    for (const password of ["", "short7!", "x".repeat(73)])
+    for (const password of ["", "short7!", "x".repeat(73)]) {
       expect((await signUp(post("sign-up", { email: "person@example.com", password }))).status, password.length + " chars").toBe(400);
+    }
     expect(state.signUp).not.toHaveBeenCalled();
     expect((await signUp(post("sign-up", { email: "person@example.com", password: "12345678" }))).status).toBe(200);
     expect((await signIn(post("sign-in", { email: "person@example.com", password: "" }))).status).toBe(400);

@@ -40,7 +40,7 @@ vi.setConfig({ testTimeout: 60_000 });
 /** The standard brand with its third color observed (so that an edit proves the owner's value is confirmed). */
 const observedThird = () => {
   const business = brandBusiness();
-  business.branding_and_style.brand_colors[2]!.classification = "observed_website_color";
+  business.branding_and_style.brand_colors[2].classification = "observed_website_color";
   return draftFrom(business);
 };
 const open = (draft = brandDraftAs()) => openOB("Brand Identity", { draft });
@@ -77,13 +77,16 @@ describe("B1 Display name", () => {
     const { view, api, server } = await open();
     const input = await startEdit(view, { label: "Display name" });
     await type(view, input, "  Harbor & Pine Roasters  ");
-    if (how === "Enter") await key(view, input, "Enter");
-    else await blur(view, input);
+    if (how === "Enter") {
+      await key(view, input, "Enter");
+    } else {
+      await blur(view, input);
+    }
     await view.settle(8);
     expect(api.patches).toHaveLength(1);
-    expect(api.patches[0]!.path).toBe(`/api/companies/${COMPANY_ID}`);
-    expect(api.patches[0]!.body).toEqual({ name: "Harbor & Pine Roasters", expectedGeneration: 7 });
-    expect(server.gets.filter((r) => /\/draft$/.test(r.path)).length, "the draft is read again").toBeGreaterThanOrEqual(1);
+    expect(api.patches[0].path).toBe(`/api/companies/${COMPANY_ID}`);
+    expect(api.patches[0].body).toEqual({ name: "Harbor & Pine Roasters", expectedGeneration: 7 });
+    expect(server.gets.filter((r) => r.path.endsWith("/draft")).length, "the draft is read again").toBeGreaterThanOrEqual(1);
     expect(view.byRole("heading").some((h) => view.text(h).includes("Harbor & Pine Roasters")), "the heading shows the new name").toBe(true);
   });
 

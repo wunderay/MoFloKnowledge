@@ -19,7 +19,9 @@ vi.mock("node:timers/promises", async (importOriginal) => {
   ) =>
     new Promise((resolve, reject) => {
       const signal = options?.signal;
-      if (signal?.aborted) return reject(signal.reason);
+      if (signal?.aborted) {
+        return reject(signal.reason);
+      }
       const onAbort = () => {
         clearTimeout(timer);
         reject(signal!.reason);
@@ -46,7 +48,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
-type Seen = { host: string; path: string; at: number };
+interface Seen { host: string; path: string; at: number }
 
 /** In-memory stand-in for createPinnedFetcher: same hook/signal order as the real transport. */
 function memoryFetcher(
@@ -99,12 +101,13 @@ describe("C5 normal Crawl-delay is honoured between same-host requests", () => {
     const { result, pageTimes, robotsAt } = await crawlWith(`Crawl-delay: ${seconds}`);
     expect(result.captures).toHaveLength(3);
     expect(pageTimes).toHaveLength(3);
-    for (let index = 1; index < pageTimes.length; index++)
+    for (let index = 1; index < pageTimes.length; index++) {
       expect(
-        pageTimes[index]! - pageTimes[index - 1]!,
+        pageTimes[index] - pageTimes[index - 1],
         `gap before page request #${index + 1} with Crawl-delay: ${seconds}`,
       ).toBeGreaterThanOrEqual(seconds * 1000);
-    expect(pageTimes[0]! - robotsAt).toBeGreaterThanOrEqual(500);
+    }
+    expect(pageTimes[0] - robotsAt).toBeGreaterThanOrEqual(500);
   });
 
   it.each(["0", "-5", "NaN", "abc", "Infinity", "1e999", "0.2"])(
@@ -112,8 +115,9 @@ describe("C5 normal Crawl-delay is honoured between same-host requests", () => {
     async (value) => {
       const { result, pageTimes, started } = await crawlWith(`Crawl-delay: ${value}`);
       expect(result.captures).toHaveLength(3);
-      for (let index = 1; index < pageTimes.length; index++)
-        expect(pageTimes[index]! - pageTimes[index - 1]!).toBeGreaterThanOrEqual(500);
+      for (let index = 1; index < pageTimes.length; index++) {
+        expect(pageTimes[index] - pageTimes[index - 1]).toBeGreaterThanOrEqual(500);
+      }
       expect(pageTimes.at(-1)! - started, "a harmless Crawl-delay stretched the crawl").toBeLessThan(5_000);
     },
   );
@@ -135,7 +139,7 @@ describe("C5 normal Crawl-delay is honoured between same-host requests", () => {
     await all;
     expect(marks.a1).toBe(0);
     expect(marks.b1, "another host waited on a.example.com's gap").toBe(0);
-    expect(marks.a2!).toBeGreaterThanOrEqual(2000);
-    expect(marks.a2!).toBeLessThan(2000 + 100);
+    expect(marks.a2).toBeGreaterThanOrEqual(2000);
+    expect(marks.a2).toBeLessThan(2000 + 100);
   });
 });

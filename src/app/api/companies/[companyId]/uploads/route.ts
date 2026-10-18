@@ -20,16 +20,24 @@ export const POST = route(async (request, context, { client, user }) => {
   await authorizeUploads(client, companyId, user!.id, true);
   const form = await readUploadForm(request);
   const kind = form.get("kind");
-  if (typeof kind !== "string" || !UPLOAD_KINDS.includes(kind as UploadKind))
+  if (typeof kind !== "string" || !UPLOAD_KINDS.includes(kind as UploadKind)) {
     throw new HttpError(400, "invalid_input", "Choose logos, portraits, or offering-images.");
+  }
   const file = form.get("file");
-  if (!(file instanceof Blob)) throw new HttpError(400, "invalid_input", "Choose an image file.");
-  if (file.size === 0) throw new HttpError(400, "invalid_input", "That file is empty.");
-  if (file.size > limitFor(kind as UploadKind))
+  if (!(file instanceof Blob)) {
+    throw new HttpError(400, "invalid_input", "Choose an image file.");
+  }
+  if (file.size === 0) {
+    throw new HttpError(400, "invalid_input", "That file is empty.");
+  }
+  if (file.size > limitFor(kind as UploadKind)) {
     throw new HttpError(413, "payload_too_large", limitMessage(kind as UploadKind));
+  }
   const bytes = new Uint8Array(await file.arrayBuffer());
   const image = sniffImage(bytes);
-  if (!image) throw new HttpError(415, "unsupported_type", TYPES_MESSAGE);
+  if (!image) {
+    throw new HttpError(415, "unsupported_type", TYPES_MESSAGE);
+  }
 
   // The object name is built only from the validated kind, company, a fresh uuid and the sniffed extension.
   const id = randomUUID();

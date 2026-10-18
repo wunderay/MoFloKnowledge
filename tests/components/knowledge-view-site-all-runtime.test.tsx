@@ -24,7 +24,9 @@ function Modal({ via }: { via: "portal" | "inline" | "native" }) {
   const nativeRef = useRef<HTMLDialogElement>(null);
   const [log, setLog] = useState<string[]>([]);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     ref.current?.focus();
     nativeRef.current?.showModal();
     document.getElementById("first-field")?.focus();
@@ -73,9 +75,9 @@ describe("the interactive runtime behaves like a browser", () => {
   it("keeps state, re-renders, and a handle taken before the click still reaches the current handler", async () => {
     const view = await mountElement(<Counter />);
     const [button] = view.byRole("button", "Add one");
-    await view.click(button!);
-    await view.click(button!);
-    await view.click(button!);
+    await view.click(button);
+    await view.click(button);
+    await view.click(button);
     expect(view.text()).toContain("count 3");
     expect(view.html()).toMatch(/aria-describedby="(:t\d+:)"[^>]*>Add one<\/button><span id="\1">/);
   });
@@ -84,18 +86,18 @@ describe("the interactive runtime behaves like a browser", () => {
   it.each(["portal", "inline", "native"] as const)("opens a %s dialog, moves focus into it and closes it with Escape and Cancel", async (via) => {
     const view = await mountElement(<Modal via={via} />);
     expect(view.dialogs()).toHaveLength(0);
-    await view.click(view.byRole("button", "Open")[0]!);
+    await view.click(view.byRole("button", "Open")[0]);
     await view.settle();
     const dialogs = view.dialogs();
     expect(dialogs.length).toBeGreaterThanOrEqual(1);
-    expect(view.focusMovedInto(dialogs[0]!)).toBe(true);
+    expect(view.focusMovedInto(dialogs[0])).toBe(true);
     expect(view.text()).toContain("opened");
-    await view.press(dialogs[0]!, "Escape");
+    await view.press(dialogs[0], "Escape");
     await view.settle();
     expect(view.dialogs()).toHaveLength(0);
     expect(view.text()).toContain("opened,closed");
-    await view.click(view.byRole("button", "Open")[0]!);
-    await view.click(view.byRole("button", "Cancel")[0]!);
+    await view.click(view.byRole("button", "Open")[0]);
+    await view.click(view.byRole("button", "Cancel")[0]);
     await view.settle();
     expect(view.dialogs()).toHaveLength(0);
   });
@@ -103,18 +105,18 @@ describe("the interactive runtime behaves like a browser", () => {
   // guard
   it("names a checkbox by its wrapping label and checks it", async () => {
     const view = await mountElement(<Modal via="inline" />);
-    await view.click(view.byRole("button", "Open")[0]!);
+    await view.click(view.byRole("button", "Open")[0]);
     const [box] = view.byRole("checkbox", /shop/i);
     expect(box).toBeDefined();
-    expect(view.nameOf(box!)).toBe("Shop");
-    expect(await view.check(box!, true)).toBe(true);
+    expect(view.nameOf(box)).toBe("Shop");
+    expect(await view.check(box, true)).toBe(true);
   });
 
   // guard
   it("serves an async fetch, then submits a form from its submit button", async () => {
     const view = await mountElement(<Loader />);
     expect(view.text()).toContain("none");
-    await view.click(view.byRole("button", "Save")[0]!);
+    await view.click(view.byRole("button", "Save")[0]);
     expect(view.text()).toContain("saved 1");
     expect(view.server.gets.map((r) => r.path)).toEqual(["/api/companies/x/sources"]);
   });

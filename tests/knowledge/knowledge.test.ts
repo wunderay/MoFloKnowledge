@@ -394,7 +394,7 @@ describe("APA references and company view", () => {
     expect(
       filterView([...rows, foreign], {
         companyId: fixture.company_id,
-        query: fixture.positioning.company_pitch!,
+        query: fixture.positioning.company_pitch,
         origin: "generated",
         section: "positioning",
       }),

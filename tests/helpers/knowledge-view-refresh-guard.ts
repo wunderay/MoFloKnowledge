@@ -31,7 +31,7 @@ export const OTHER_COMPANY_ID = "00000000-0000-4000-8000-0000000c0009";
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ---- controlled reads -------------------------------------------------------------------------------------------
-export type Read = {
+export interface Read {
   /** Which request this is, counting from 1 among the reads of its kind that were held. */
   n: number;
   path: string;
@@ -40,8 +40,8 @@ export type Read = {
   release(): void;
   /** The answer is an error (503 "Draft store is down." unless told otherwise). */
   fail(message?: string): void;
-};
-export type Reads = {
+}
+export interface Reads {
   /** Draft reads that were held, in the order they were sent. */
   drafts: Read[];
   /** Saved-version reads that were held. */
@@ -53,7 +53,7 @@ export type Reads = {
   /** Number of GET .../draft requests the server has seen so far. */
   draftGets(): number;
   versionGets(): number;
-};
+}
 
 const reply = (status: number, data: unknown, error?: { code: string; message: string }) => {
   const body = { data: error ? null : data, error: error ?? null, requestId: "00000000-0000-4000-8000-0000000000aa" };
@@ -70,7 +70,7 @@ export function controlReads(server: FakeServer, other?: { draft: Draft }): Read
     failing: false,
     holdNext: (count = 1) => void (state.hold += count),
     holdVersionNext: (count = 1) => void (state.holdVersion += count),
-    draftGets: () => server.requests.filter((r) => r.method === "GET" && /\/draft$/.test(r.path)).length,
+    draftGets: () => server.requests.filter((r) => r.method === "GET" && r.path.endsWith("/draft")).length,
     versionGets: () => server.requests.filter((r) => r.method === "GET" && /\/versions\/[^/]+$/.test(r.path)).length,
   };
   const hold = (list: Read[], path: string, answer: Promise<any>, signal?: AbortSignal) =>
@@ -80,27 +80,35 @@ export function controlReads(server: FakeServer, other?: { draft: Draft }): Read
         path,
         state: "pending",
         release: () => {
-          if (read.state !== "pending") return;
+          if (read.state !== "pending") {
+            return;
+          }
           read.state = "released";
           void answer.then(resolve, reject);
         },
         fail: (message = "Draft store is down.") => {
-          if (read.state !== "pending") return;
+          if (read.state !== "pending") {
+            return;
+          }
           read.state = "failed";
           resolve(reply(503, null, { code: "unavailable", message }));
         },
       };
       list.push(read);
       signal?.addEventListener("abort", () => {
-        if (read.state !== "pending") return;
+        if (read.state !== "pending") {
+          return;
+        }
         read.state = "aborted";
         reject(abortError());
       });
     });
   server.fetch = (async (input: unknown, init?: { method?: string; body?: unknown; signal?: AbortSignal }) => {
-    const path = String(input).split("?")[0]!;
+    const path = String(input).split("?")[0];
     const method = (init?.method ?? "GET").toUpperCase();
-    if (init?.signal?.aborted && method === "GET") throw abortError();
+    if (init?.signal?.aborted && method === "GET") {
+      throw abortError();
+    }
     if (method === "GET" && other && path === `/api/companies/${OTHER_COMPANY_ID}/draft`) {
       server.requests.push({ method, path, body: undefined });
       return reply(200, structuredClone(other.draft));
@@ -118,7 +126,7 @@ export function controlReads(server: FakeServer, other?: { draft: Draft }): Read
       }
       return answer;
     }
-    if (method === "GET" && /\/draft$/.test(path)) {
+    if (method === "GET" && path.endsWith("/draft")) {
       if (state.hold > 0) {
         state.hold--;
         // The base answer is computed now, as a server does when the request arrives.
@@ -168,7 +176,7 @@ export function universalDraft(): Draft {
   return draft;
 }
 
-export type Opened = { view: View; reads: Reads; snapshot: ReturnType<typeof snapshotFrom> };
+export interface Opened { view: View; reads: Reads; snapshot: ReturnType<typeof snapshotFrom> }
 export async function openGuarded(sectionId: "general" | "site" | "key-people", opts: { draft?: Draft; other?: Draft } = {}): Promise<Opened> {
   const draft = opts.draft ?? universalDraft();
   const snapshot = snapshotFrom(draft);
@@ -188,7 +196,7 @@ export async function openGuarded(sectionId: "general" | "site" | "key-people", 
 }
 
 // ---- the four ways to save ---------------------------------------------------------------------------------------------
-export type Driver = {
+export interface Driver {
   name: string;
   /** What the stale notice says the person is missing after this kind of save. */
   wording: "links" | "changes";
@@ -200,7 +208,7 @@ export type Driver = {
   shows(view: View): boolean;
   /** True when the person can make the same kind of save again (nothing is blocked). */
   ready(view: View): boolean;
-};
+}
 const NEW_PAGE = "https://www.harborandpine.example/new-arrivals";
 const buttonNamed = (view: View, name: RegExp) => view.byRole("button", name)[0];
 
@@ -268,7 +276,7 @@ export const PERSON: Driver = {
   act: async (view) => {
     const add = addPersonButton(view);
     expect(add, 'an "Add person" button').toBeTruthy();
-    await view.click(add!);
+    await view.click(add);
     await view.settle(8);
   },
   shows: (view) => rowNodes(view).length === PEOPLE_BEFORE + 1,
