@@ -5,8 +5,21 @@
 # outside Docker for testing. The defaults are the layout of deploy/local/Dockerfile.
 set -euo pipefail
 
+# Two addresses, kept apart on purpose. PUBLIC_PORT is where the gateway listens inside the container and never changes;
+# GATEWAY_URL is how the services in the container reach it. MOFLO_PORT is the port the host publishes it on (docker-compose.yml
+# maps it to PUBLIC_PORT), and PUBLIC_URL is the origin a person's browser uses, so every URL the browser sees is built from it.
+# Both are read when the container starts, so changing MOFLO_PORT needs no image rebuild.
 PUBLIC_PORT=${PUBLIC_PORT:-8080}
-PUBLIC_URL=${PUBLIC_URL:-http://localhost:$PUBLIC_PORT}
+MOFLO_PORT=${MOFLO_PORT:-8080}
+case $MOFLO_PORT in
+  '' | *[!0-9]* | 0*) echo "[local] MOFLO_PORT must be a port number between 1 and 65535 (got '$MOFLO_PORT')" >&2; exit 1 ;;
+esac
+if [ "$MOFLO_PORT" -gt 65535 ]; then
+  echo "[local] MOFLO_PORT must be a port number between 1 and 65535 (got '$MOFLO_PORT')" >&2
+  exit 1
+fi
+GATEWAY_URL=${GATEWAY_URL:-http://localhost:$PUBLIC_PORT}
+PUBLIC_URL=${PUBLIC_URL:-http://localhost:$MOFLO_PORT}
 WEB_PORT=${WEB_PORT:-3001}
 GOTRUE_PORT=${GOTRUE_PORT:-9999}
 POSTGREST_PORT=${POSTGREST_PORT:-3000}
@@ -154,14 +167,14 @@ launch postgrest "${AS_SVC[@]}" "$(command -v env)" -i "PATH=$PATH" "HOME=$RUN_D
 wait_http gotrue "http://127.0.0.1:$GOTRUE_PORT/health"
 wait_http postgrest "http://127.0.0.1:$POSTGREST_PORT/"
 
-# 5. gateway: the one origin (PUBLIC_URL) for the browser and for the web app's own Supabase calls
+# 5. gateway: the one origin for the browser (PUBLIC_URL, on the host port) and for the web app's own Supabase calls (GATEWAY_URL, inside the container)
 launch gateway "${AS_SVC[@]}" "$(command -v env)" -i "PATH=$PATH" "HOME=$RUN_DIR/home" "GATEWAY_PORT=$PUBLIC_PORT" "GATEWAY_HOST=$GATEWAY_HOST" \
   "WEB_PORT=$WEB_PORT" "GOTRUE_PORT=$GOTRUE_PORT" "POSTGREST_PORT=$POSTGREST_PORT" node "$LIB_DIR/gateway.mjs"
 wait_http gateway "http://127.0.0.1:$PUBLIC_PORT/__gateway/health"
 
 # 6. the web app
 launch web "${AS_SVC[@]}" "$(command -v env)" -i "PATH=$PATH" "HOME=$RUN_DIR/home" "TMPDIR=$RUN_DIR/tmp" NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
-  "NEXT_PUBLIC_SUPABASE_URL=$PUBLIC_URL" "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" "APP_ORIGIN=$PUBLIC_URL" \
+  "NEXT_PUBLIC_SUPABASE_URL=$GATEWAY_URL" "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" "APP_ORIGIN=$PUBLIC_URL" \
   node node_modules/next/dist/bin/next start -p "$WEB_PORT" -H 127.0.0.1
 wait_http web "http://127.0.0.1:$WEB_PORT/sign-in"
 
@@ -171,7 +184,7 @@ launch worker "${AS_SVC[@]}" "$(command -v env)" -i "PATH=$PATH" "HOME=$RUN_DIR/
   node node_modules/tsx/dist/cli.mjs src/worker/main.ts
 
 # 8. the demo login, through the gateway like a real sign-up
-PUBLIC_URL=$PUBLIC_URL ANON_KEY=$ANON_KEY DEMO_EMAIL=$DEMO_EMAIL DEMO_PASSWORD=$DEMO_PASSWORD node "$LIB_DIR/demo-user.mjs"
+GATEWAY_URL=$GATEWAY_URL ANON_KEY=$ANON_KEY DEMO_EMAIL=$DEMO_EMAIL DEMO_PASSWORD=$DEMO_PASSWORD node "$LIB_DIR/demo-user.mjs"
 touch "$RUN_DIR/ready"
 log "Open $PUBLIC_URL - log in as $DEMO_EMAIL / $DEMO_PASSWORD"
 wait -n "${PIDS[@]}" || true

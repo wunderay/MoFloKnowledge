@@ -20,9 +20,11 @@ The application is a Next.js 15 web app, a persistent Node.js worker, PostgreSQL
 2. Run `docker compose up --build` (or `./start.sh` on macOS/Linux, `start.cmd` on Windows, `npm run local` if you have Node). The scripts start Docker Desktop for you if it is installed but not running.
 3. Open http://localhost:8080 and log in with the demo login printed in the log: `Open http://localhost:8080 - log in as demo@local.test / <password>`. The wrappers print it for you and open the browser.
 
+If port 8080 is in use, `./start.sh`, `start.cmd` and `npm run local` use the next free port up to 8099, say which, and remember it for the next run. To choose the port yourself, set `MOFLO_PORT` (for example `MOFLO_PORT=9090 docker compose up --build`, then open http://localhost:9090); changing it needs no rebuild.
+
 The first start builds the image, which takes a few minutes; later starts take seconds. Your data and the generated secrets live in the `moflo-data` Docker volume and are reused on every start. To stop, run `docker compose down` (or `./start.sh --stop`, `start.cmd --stop`, `npm run local -- --stop`). To start fresh, delete the data with `docker compose down --volumes` (or the same wrappers with `--reset`).
 
-One container runs PostgreSQL, Supabase Auth (GoTrue), PostgREST, the web app and the worker behind one address, `localhost:8080`; see [`deploy/local`](deploy/local). A crawl needs outbound internet access from Docker. This is for trying the app on your own machine, not a production deployment. CI runs `deploy/local/smoke.mjs` against it (`.github/workflows/local-run.yml`).
+One container runs PostgreSQL, Supabase Auth (GoTrue), PostgREST, the web app and the worker behind one address, `localhost:8080` by default; see [`deploy/local`](deploy/local). A crawl needs outbound internet access from Docker. This is for trying the app on your own machine, not a production deployment. CI runs `deploy/local/smoke.mjs` against it (`.github/workflows/local-run.yml`).
 
 ## Manual setup
 
