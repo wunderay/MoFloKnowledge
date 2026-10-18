@@ -28,9 +28,12 @@ import {
   type Driver,
   type Opened,
 } from "../helpers/knowledge-view-refresh-guard";
+import { holdTimeouts } from "../helpers/manual-timers";
 import { LEGAL, alertText, editAndEnter, statusText, stored } from "../helpers/knowledge-view-inline-edit";
 
 vi.setConfig({ testTimeout: 60_000 });
+/** A delay no other timer uses: it marks the draft read's time limit so that the test can fire it by hand. */
+const REREAD_LIMIT = 7_001;
 afterEach(() => {
   timing.reread = 8000;
   timing.fresh = 12000;
@@ -120,12 +123,20 @@ describe.each(PAIRS.map((pair) => [title(pair), ...pair] as const))("%s", (_name
 
   // ... and neither does one that runs out of time
   it("an older read that runs out of time after the newer one succeeded leaves no stale notice", async () => {
-    timing.reread = 200;
+    // Both reads' time limits are held, so the older one runs out exactly when the test says, not when the machine does.
+    const { held } = holdTimeouts([REREAD_LIMIT]);
+    timing.reread = REREAD_LIMIT;
     const { view, reads } = await twoSaves(older, newer);
+    expect(held.filter((t) => !t.cleared), "each read is waiting on its own time limit").toHaveLength(2);
     reads.drafts[1].release();
     await settleAll(view);
-    await sleep(500);
+    expect(newer.shows(view), "the newer read has shown its save").toBe(true);
+    const [olderLimit, newerLimit] = held;
+    expect(newerLimit.cleared, "the newer read answered in time").toBe(true);
+    expect(olderLimit.cleared, "the older read is still waiting").toBe(false);
+    olderLimit.fire();
     await settleAll(view);
+    expect(reads.drafts[0].state, "the older read ran out of time and was given up").toBe("aborted");
     expect(newer.shows(view)).toBe(true);
     expectFinished(view);
     expect(newer.ready(view)).toBe(true);

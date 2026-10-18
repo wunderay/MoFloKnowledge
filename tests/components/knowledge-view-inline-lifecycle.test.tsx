@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SNAPSHOT_ID, VERSIONS, buildEmptyDraft } from "../helpers/knowledge-view-fixtures";
 import { focusPath, focusedPath, type FakeServer, type View } from "../helpers/knowledge-view-site-all-runtime";
 import { timing } from "../../src/components/knowledge-view/timing";
+import { holdTimeouts } from "../helpers/manual-timers";
 import {
   BUYERS,
   INDUSTRY,
@@ -47,6 +48,9 @@ afterEach(() => {
   timing.reread = 8000;
   timing.fresh = 12000;
 });
+/** Delays no other timer uses: they mark the view's time limits so that a test can run them out by hand. */
+const READ_LIMIT = 7_001;
+const FRESH_LIMIT = 7_002;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /** After the first successful write, GET /draft never answers. */
 function hangDraftReadsAfterWrite(server: FakeServer) {
@@ -246,14 +250,19 @@ describe("saves stop when the sections are gone", () => {
 
 describe("a re-read that does not settle", () => {
   it("leaves the view stale: 'Saved. Reload…', editing blocked, the save not sent again, the queued save not sent", async () => {
-    timing.reread = 150;
-    timing.fresh = 600;
+    // The read's time limit is held and run out by hand (a real few-hundred-ms timer races the test's own steps).
+    // The queued save's wait for a fresh view is held too and never run: the stale view alone must release it.
+    const { held } = holdTimeouts([READ_LIMIT, FRESH_LIMIT]);
+    timing.reread = READ_LIMIT;
+    timing.fresh = FRESH_LIMIT;
     const view = await open("All sections", { server: hangDraftReadsAfterWrite });
     await editAndEnter(view, LEGAL, "Cooperative");
     await editAndEnter(view, INDUSTRY, "Tea trading");
     expect(view.text(), "still waiting for the read").not.toMatch(/saved\. reload/i);
     expect(view.server.writes).toHaveLength(1);
-    await sleep(400);
+    const readLimit = held.find((t) => t.delay === READ_LIMIT && !t.cleared);
+    expect(readLimit, "the read is waiting on its time limit").toBeDefined();
+    readLimit!.fire();
     await view.settle();
     expect(view.text()).toMatch(/saved\. reload to see the latest changes\./i);
     for (const button of view.byRole("button", /^edit /i)) {
