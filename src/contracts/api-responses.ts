@@ -110,7 +110,9 @@ const SourceSummarySchema = z
 export const DraftResponseSchema = z
   .object({
     actorId: IdSchema,
-    company: CompanyReadSchema,
+    company: CompanyReadSchema.extend({
+      latestJob: z.object({ status: JobStatusSchema }).strict().nullable().optional(),
+    }).strict(),
     draftGeneration: GenerationSchema,
     entries: z.array(DraftEntryResponseSchema),
     sources: z.array(SourceSummarySchema),

@@ -12,8 +12,9 @@ import {
   type ReviewStatus,
   type Assessment,
 } from "@/contracts";
-import { api, companyPath, write } from "./api-client";
+import { api, ApiError, companyPath, write } from "./api-client";
 import { timing } from "../knowledge-view/timing";
+import { CRAWL_RUNNING } from "../knowledge-view/section-skeleton";
 import { CATEGORY_SPECS, labelOf } from "../editor/business-fields";
 import { ValueView } from "../editor/entry-value";
 import { SourceCoverage } from "../editor/source-coverage";
@@ -87,7 +88,7 @@ export function KnowledgeViewer({
     draft?: {
       actorId?: string;
       draftGeneration?: number;
-      company: { role: string; archived_at: string | null };
+      company: { role: string; archived_at: string | null; latestJob?: { status: string } | null };
       entries: ViewEntry[];
       citationContext?: CitationContext;
     };
@@ -154,6 +155,8 @@ export function KnowledgeViewer({
   const [actorId, setActorId] = useState(initialData?.draft?.actorId ?? "");
   /** The draft's generation, which renaming the company must quote; null until a draft has been read. */
   const [generation, setGeneration] = useState<number | null>(initialData?.draft?.draftGeneration ?? null);
+  /** The status of the company's latest crawl; the view fills in and re-reads the draft while it is queued or running. */
+  const [crawlStatus, setCrawlStatus] = useState(initialData?.draft?.company.latestJob?.status ?? "");
   const [history, setHistory] = useState<ViewEntry | null>(null);
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -229,7 +232,7 @@ export function KnowledgeViewer({
         ? api<{
             actorId?: string;
             draftGeneration?: number;
-            company: { name: string; role: string; archived_at: string | null };
+            company: { name: string; role: string; archived_at: string | null; latestJob?: { status: string } | null };
             entries: ViewEntry[];
             citationContext?: CitationContext;
           }>(companyPath(companyId, "/draft"), { signal: abort.signal }).then(
@@ -240,6 +243,7 @@ export function KnowledgeViewer({
               setActorId(data.actorId ?? "");
               setGeneration(data.draftGeneration ?? null);
               setName(data.company.name);
+              setCrawlStatus(data.company.latestJob?.status ?? "");
               setCanEdit(
                 data.company.role !== "viewer" && !data.company.archived_at,
               );
@@ -303,7 +307,7 @@ export function KnowledgeViewer({
     try {
       const request = api<{
         draftGeneration?: number;
-        company: { name?: string; role: string; archived_at: string | null };
+        company: { name?: string; role: string; archived_at: string | null; latestJob?: { status: string } | null };
         entries: ViewEntry[];
         citationContext?: CitationContext;
       }>(companyPath(forCompany, "/draft"), { signal: read.signal });
@@ -326,6 +330,7 @@ export function KnowledgeViewer({
         return;
       }
       setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
+      setCrawlStatus(data.company.latestJob?.status ?? "");
       setGeneration(data.draftGeneration ?? null);
       if (data.company.name) {
         setName(data.company.name);
@@ -352,6 +357,52 @@ export function KnowledgeViewer({
       }
     }
   }
+  const crawling = versionId === "draft" && CRAWL_RUNNING.includes(crawlStatus);
+  // While the crawl runs, read the draft again every few seconds so the sections fill in. A failed read is
+  // ignored (the next one tries again) and a read overtaken by a load or a save is dropped.
+  useEffect(() => {
+    if (!crawling) {
+      return;
+    }
+    let inFlight = false;
+    const read = new AbortController();
+    const timer = setInterval(() => {
+      if (inFlight) {
+        return;
+      }
+      inFlight = true;
+      const epoch = readEpoch.current;
+      api<{
+        draftGeneration?: number;
+        company: { role: string; archived_at: string | null; latestJob?: { status: string } | null };
+        entries: ViewEntry[];
+        citationContext?: CitationContext;
+      }>(companyPath(companyId, "/draft"), { signal: read.signal })
+        .then((data) => {
+          if (readEpoch.current !== epoch) {
+            return;
+          }
+          setCrawlStatus(data.company.latestJob?.status ?? "");
+          // Finishing the crawl bumps the generation, which a rename or import must quote.
+          setGeneration(data.draftGeneration ?? null);
+          setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
+          setEntries((prev) => (JSON.stringify(prev) === JSON.stringify(data.entries) ? prev : data.entries));
+          setCitationContext(data.citationContext);
+        })
+        .catch((error: unknown) => {
+          if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+            clearInterval(timer);
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    }, timing.poll);
+    return () => {
+      clearInterval(timer);
+      read.abort();
+    };
+  }, [crawling, companyId]);
   async function reject(entry: ViewEntry) {
     setBusy(true);
     setError("");
@@ -614,6 +665,7 @@ export function KnowledgeViewer({
                 actorId={actorId}
                 generation={generation}
                 importBlocked={staleDraft !== null}
+                crawling={crawling}
                 onSaved={(what) => refreshDraft(what)}
                 offeringId={offeringId}
                 onSelectOffering={(id) => {

@@ -119,6 +119,7 @@ export function technicalObservations(
     }
   };
   textItems("headings", "heading");
+  textItems("footerText", "footer-text");
   textItems("addresses", "address");
   textItems("priceText", "price-text");
   if (Array.isArray(raw.ctas)) {

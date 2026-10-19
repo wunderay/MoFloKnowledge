@@ -45,7 +45,7 @@ function builder(table: string, rows: unknown, byEntry?: Record<string, unknown>
   const filters: Record<string, unknown> = {};
   const self: Json = {};
   const resolveOne = () => ({ data: byEntry ? byEntry[String(filters.entry_id)] ?? null : rows, error: null });
-  for (const method of ["select", "order", "in", "contains"]) {
+  for (const method of ["select", "order", "in", "contains", "limit"]) {
     self[method] = vi.fn().mockReturnValue(self);
   }
   self.eq = vi.fn((column: string, value: unknown) => { filters[column] = value; return self; });

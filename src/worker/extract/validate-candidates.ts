@@ -195,7 +195,7 @@ export function validateCandidates(
       if (field.field === "legal_entity_type") {
         const identity = [quotes, ...selected.filter((o) => o.property === "page-title" || /jsonld:.*\/(?:name|legalName)$/.test(o.property ?? "")).map((o) => o.value ?? "")].join(" ");
         const escaped = String(c.value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        if (!new RegExp(`\\b${escaped}\\b`, "i").test(identity)) {
+        if (!new RegExp(`\\b${escaped}(?![\\p{L}\\p{N}_])`, "iu").test(identity)) {
           throw new Error("legal_not_explicit");
         }
       }
@@ -338,10 +338,16 @@ export function validateCandidates(
         );
       };
       const structuredPrefix = page.capture.finalUrl + "|jsonld:";
+      // A detail page's own H1, or any heading on a page under a services/products parent, names the entity the page is about, whatever words it uses.
+      const pageHeadings = page.capture.observations.headings;
+      const pageH1s = Array.isArray(pageHeadings)
+        ? (pageHeadings as { level?: number; text?: unknown }[]).filter((h) => h.level === 1 && typeof h.text === "string").map((h) => normalizeText(h.text as string))
+        : [];
+      const detailPath = /\/(?:services|products|offerings|solutions)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname);
       const serviceHeading = field.kind === "offering" && segments.some((segment) =>
         selected.some((o) => o.property === "heading" && o.value &&
-          normalizeText(segment.text).includes(normalizeText(o.value))) &&
-        /\b(?:service|product|offering|tax|payroll|accounting|bookkeeping|quickbooks|repair|consulting|controller|cfo)\b/i.test(segment.text),
+          (detailPath || pageH1s.includes(normalizeText(o.value))) &&
+          normalizeText(segment.text).includes(normalizeText(o.value))),
       );
       const structuredServiceKey = field.kind === "offering" && c.entity_key?.startsWith(page.capture.finalUrl + "|service:") &&
         selected.some((o) => o.property?.startsWith("jsonld:") && o.property.endsWith("/name") && o.value &&

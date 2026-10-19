@@ -37,7 +37,7 @@ export interface DraftEntry {
 }
 export interface DraftResponse {
   actorId: string;
-  company: Omit<CompanySummary, "latestJob" | "latestVersion">;
+  company: Omit<CompanySummary, "latestJob" | "latestVersion"> & { latestJob?: { status: string } | null };
   draftGeneration: number;
   entries: DraftEntry[];
   sources: Record<string, unknown>[];
