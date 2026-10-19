@@ -7,6 +7,7 @@ import {
   type BudgetSnapshot,
   type Reservation,
   CRAWL_LIMITS,
+  effectiveTimeBudgetMs,
 } from "./budgets";
 import { DeadlineError, Scheduler, type Deadline } from "./scheduler";
 import { RobotsCache } from "./robots";
@@ -23,6 +24,7 @@ import {
 import type { RenderResult, RenderTask } from "../../contracts/render-task";
 import type { Job, JobRepository } from "../job-repository";
 import type { Progress, SafeJobError } from "../../contracts";
+const MAX_TIMER_MS = 2 ** 31 - 1;
 // Linked stylesheets are read for fonts and colours only; they never count against the document limit.
 const MAX_PAGE_SHEETS = 3;
 const MAX_CRAWL_SHEETS = 6;
@@ -77,7 +79,8 @@ export async function runCrawl(
   const scheduler = new Scheduler(signal);
   // Undefined unless the optional crawl agent is enabled; it only orders or narrows the next links.
   const pickLinks = createLinkPicker();
-  const jobDeadlineAt = Date.now() + CRAWL_LIMITS.jobMs;
+  const crawlStartedAt = Date.now();
+  let jobDeadlineAt = crawlStartedAt + CRAWL_LIMITS.jobMs;
   let timedOut = false;
   // Time kept free for the request itself once pacing is done.
   const fetchMargin = () =>
@@ -197,17 +200,18 @@ export async function runCrawl(
   const fetchPaced = (url: string, delayMs: number, options: FetchOptions) =>
     scheduler.runHttp(
       url,
-      (taskSignal) => {
+      (taskSignal, untimed) => {
         // The first hop was paced by runHttp under the job deadline; only redirect hops pace here.
+        // A pacing gap never counts against the fetch timeout, so the transport's own timer is left out.
         let paced = false;
-        const taskAt = Date.now() + CRAWL_LIMITS.fetchMs;
-        const hopDeadline: Deadline =
-          jobDeadlineAt <= taskAt
-            ? { at: jobDeadlineAt - fetchMargin(), scope: "job" }
-            : { at: taskAt - fetchMargin(), scope: "task" };
+        const hopDeadline: Deadline = {
+          at: jobDeadlineAt - fetchMargin(),
+          scope: "job",
+        };
         return fetcher(url, {
           ...options,
           signal: taskSignal,
+          timeoutMs: MAX_TIMER_MS,
           onRequest: async (hop) => {
             const rule = await robots.check(hop, taskSignal);
             if (!rule.allowed) {
@@ -217,11 +221,13 @@ export async function runCrawl(
               paced = true;
               return;
             }
-            await scheduler.pace(
-              hop,
-              Math.max(crawlLimits().hostGapMs, rule.delayMs),
-              taskSignal,
-              hopDeadline,
+            await untimed(() =>
+              scheduler.pace(
+                hop,
+                Math.max(crawlLimits().hostGapMs, rule.delayMs),
+                taskSignal,
+                hopDeadline,
+              ),
             );
           },
         });
@@ -250,8 +256,7 @@ export async function runCrawl(
     for (const url of wanted) {
       try {
         const policy = await robots.check(url, scheduler.signal);
-        // A Crawl-delay that cannot leave room for a fetch is never waited out.
-        if (!policy.allowed || policy.delayMs + fetchMargin() > CRAWL_LIMITS.fetchMs) {
+        if (!policy.allowed) {
           continue;
         }
         const response = await fetchPaced(url, policy.delayMs, {
@@ -270,10 +275,34 @@ export async function runCrawl(
     }
     return texts;
   }
+  // A long Crawl-delay stretches the time budget (once, from the first robots policy read) so the document limit stays reachable.
+  let budgetChecked = false;
+  function growTimeBudget(crawlDelayMs: number) {
+    if (budgetChecked) {
+      return;
+    }
+    budgetChecked = true;
+    // Only a declared Crawl-delay counts, not the plain gap between requests.
+    if (crawlDelayMs <= crawlLimits().hostGapMs) {
+      return;
+    }
+    const grown = effectiveTimeBudgetMs(
+      CRAWL_LIMITS.jobMs,
+      crawlDelayMs,
+      frontier.documentLimit,
+      crawlLimits().jobTimeoutMs,
+    );
+    if (grown > CRAWL_LIMITS.jobMs) {
+      jobDeadlineAt = crawlStartedAt + grown;
+      budgets.timeBudgetMs = grown;
+      scheduler.extendDeadline(grown);
+    }
+  }
   async function processItem(item: FrontierItem, reservation: Reservation) {
     let finished = false;
     try {
       const policy = await robots.check(item.url, scheduler.signal);
+      growTimeBudget(policy.delayMs);
       if (!policy.allowed) {
         // A refused page is not a captured page: give its slot back.
         budgets.release(reservation);
@@ -287,12 +316,6 @@ export async function runCrawl(
           message: policy.limitation ?? "Page is blocked by robots policy.",
         });
         return;
-      }
-      // A Crawl-delay that cannot leave room for a fetch is never waited out.
-      if (policy.delayMs + fetchMargin() > CRAWL_LIMITS.fetchMs) {
-        throw new DeadlineError(
-          "Crawl-delay is longer than the time allowed for one fetch",
-        );
       }
       let document: Awaited<ReturnType<typeof fetchDocument>> | undefined;
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -446,10 +469,10 @@ export async function runCrawl(
       if (pickLinks) {
         const candidates = capture.links.filter((link) => frontier.isNew(link.url));
         const ordered = await pickLinks(item.url, candidates, frontier.remaining, scheduler.signal);
-        ordered.forEach((link, rank) => frontier.add(link.url, link.label, item.depth + 1, rank));
+        ordered.forEach((link, rank) => frontier.add(link.url, link.label, item.depth + 1, rank, link.nav));
       } else {
         for (const link of capture.links) {
-          frontier.add(link.url, link.label, item.depth + 1);
+          frontier.add(link.url, link.label, item.depth + 1, undefined, link.nav);
         }
       }
       if (capture.truncated) {
@@ -521,7 +544,7 @@ export async function runCrawl(
             c.capture.finalUrl === item.url,
         );
         for (const link of done?.capture.links ?? []) {
-          frontier.add(link.url, link.label, item.depth + 1);
+          frontier.add(link.url, link.label, item.depth + 1, undefined, link.nav);
         }
         continue;
       }

@@ -1,5 +1,6 @@
 # One command, no host tools but Docker:  docker compose up --build   then open http://localhost:8080
-# The login is printed in the log ("Open http://localhost:8080 - log in as ..."). Data and secrets live in the named volume.
+# Port 8080 busy? MOFLO_PORT=9090 docker compose up --build   then open http://localhost:9090 (no rebuild needed to change it).
+# The login is printed in the log ("Open http://localhost:<port> - log in as ..."). Data and secrets live in the named volume.
 name: moflo-local
 services:
   app:
@@ -8,8 +9,10 @@ services:
       dockerfile: deploy/local/Dockerfile
     image: moflo-local:latest
     init: true
+    environment:
+      MOFLO_PORT: ${MOFLO_PORT:-8080} # the host port above, so the app builds its public URLs from it
     ports:
-      - "127.0.0.1:8080:8080" # this machine only
+      - "127.0.0.1:${MOFLO_PORT:-8080}:8080" # this machine only; the container always listens on 8080
     volumes:
       - moflo-data:/var/lib/postgresql/data
     restart: unless-stopped
