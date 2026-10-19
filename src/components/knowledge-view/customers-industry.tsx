@@ -1,12 +1,15 @@
 import { textOrNull, type ViewProfile } from "./data";
 import type { Evidence } from "./data";
 import { FIELDS, InlineArea, InlineChips, LISTS, useEdit, useTextField } from "./inline-edit";
-import { addHref, Banner, Chips, Count, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, Stats } from "./parts";
+import { addHref, Banner, Chips, Count, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, useEvidenceShown, Stats } from "./parts";
 
 export function CustomersIndustry({ companyId, profile }: { companyId: string; profile: ViewProfile }) {
   const { foundation, market } = profile;
   // An editable draft edits these values in place; a saved version and a viewer see text and "+ Add" links.
   const edit = useEdit() !== null;
+  // Lists are edited in place in the hub; the saved-version view keeps its evidence markers and links there.
+  const evidenceShown = useEvidenceShown();
+  const inPlace = edit && !evidenceShown;
   const industryField = useTextField(FIELDS.industry);
   const fev = profile.evidence.foundation;
   const mev = profile.evidence.market;
@@ -130,7 +133,16 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
           subtitle="Where the market is heading."
           source={<Source evidence={mev} path={p.outlook} filled={outlook.length > 0} />}
         >
-          {outlook.length > 0 ? (
+          {inPlace ? (
+            <InlineChips
+              list={LISTS.outlook}
+              items={outlook.map((item) => ({
+                id: item.id,
+                label: item.text.trim(),
+                detail: [item.publisher, item.published_on].filter(Boolean).join(" · ") || null,
+              }))}
+            />
+          ) : outlook.length > 0 ? (
             <>
               <ul className="knowledge-view__list">
                 {outlook.map((item) => (
@@ -185,7 +197,7 @@ export function CustomersIndustry({ companyId, profile }: { companyId: string; p
           subtitle="Who you depend on."
           source={<Source evidence={mev} path={p.suppliers} filled={suppliers.length > 0} />}
         >
-          <Chips items={suppliers} href={marketHref} noun="supplier" />
+          {inPlace ? <InlineChips list={LISTS.suppliers} items={suppliers} /> : <Chips items={suppliers} href={marketHref} noun="supplier" />}
           <CoverageNote evidence={mev} path={p.suppliers} empty={suppliers.length === 0} />
         </KnowledgeCard>
       </div>

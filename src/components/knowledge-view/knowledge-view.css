@@ -503,3 +503,6 @@ button.knowledge-view__chip--add:disabled { opacity: .55; cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .knowledge-view__skeleton-bar { animation: none; }
 }
+
+/* An editable draft edits the social links in the banner in place of their counts. */
+.knowledge-view__socials { display: grid; gap: 8px; min-width: 0; }

@@ -5,11 +5,18 @@ import { Icon } from "../shared/icons";
 import { api, companyPath, write } from "../shared/api-client";
 import { initialsOf, textOrNull, type ViewPerson } from "./data";
 import { DeletePerson, PortraitControl } from "./person-actions";
-import { addHref, CoverageNote, EmptyBox, Field, ItemSource, Source } from "./parts";
+import { InlineArea, InlineLine, personFields, type TextSpec } from "./inline-edit";
+import { addHref, CoverageNote, EmptyBox, Field, ItemSource, Source, useEvidenceShown } from "./parts";
 
 /** How each field is named in its evidence control: "Sources: evidence for position of <name>". */
 const NOUNS = { name: "name", title: "position", role: "role", age: "age", gender: "gender", nationality: "nationality", background_or_relevance: "description" };
 type Key = keyof typeof NOUNS;
+
+/** A field of the person as the inline editor shows it ("" when empty). */
+const textOf = (person: Person, key: Key): string => {
+  const value = person[key];
+  return value === null || value === undefined ? "" : String(value);
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -61,12 +68,34 @@ function PersonDetail({
   // "+ Add" opens the editor on this person; without entryId it would open the first one.
   const href = `${addHref(companyId, "key_person")}&entryId=${encodeURIComponent(person.id)}`;
   const base = `/key_people/@${person.id}`;
+  // The hub edits each value in place, on this person's own entry; the saved-version view links to the hub.
+  const evidenceShown = useEvidenceShown();
+  const inPlace = editable && !evidenceShown;
+  const editors = personFields(item.entryId);
+  const spec: Record<Key, TextSpec> = {
+    name: editors.name,
+    title: editors.title,
+    role: editors.role,
+    age: editors.age,
+    gender: editors.gender,
+    nationality: editors.nationality,
+    background_or_relevance: editors.description,
+  };
   const field = (label: string, key: Key, value: ReactNode | null, empty: { title: string; hint: string }) => (
     <Field
       label={label}
       source={<Source evidence={evidence} path={`${base}/${key}`} filled={value !== null} name={`${NOUNS[key]} of ${title}`} />}
     >
-      {value !== null ? (
+      {inPlace ? (
+        <>
+          {key === "background_or_relevance" ? (
+            <InlineArea spec={spec[key]} value={textOrNull(person.background_or_relevance)} empty={empty} />
+          ) : (
+            <InlineLine spec={spec[key]} shown={value === null ? null : textOf(person, key)} placeholder={`+ Add ${label.toLowerCase()}`} />
+          )}
+          <CoverageNote evidence={evidence} path={`${base}/${key}`} empty={value === null} />
+        </>
+      ) : value !== null ? (
         <>
           {value}
           <CoverageNote evidence={evidence} path={`${base}/${key}`} empty={false} />
@@ -93,7 +122,7 @@ function PersonDetail({
         {field("Name", "name", text(textOrNull(person.name)), { title: "No name yet", hint: "Name this person." })}
         {field("Position", "title", text(textOrNull(person.title)), { title: "No position yet", hint: "For example, Co-founder and CEO." })}
       </div>
-      {field("Role", "role", text(textOrNull(person.role)), { title: "No role yet", hint: "Their role is set in the full editor." })}
+      {field("Role", "role", text(textOrNull(person.role)), { title: "No role yet", hint: "What they do for the company." })}
       <div className="knowledge-view__field-pair">
         {field("Age", "age", age, { title: "No age yet", hint: "Add their age if you want it shown." })}
         {field("Gender", "gender", text(textOrNull(person.gender)), { title: "No gender yet", hint: "Only what they have said about themselves." })}

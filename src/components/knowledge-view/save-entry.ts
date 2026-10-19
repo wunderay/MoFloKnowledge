@@ -44,8 +44,11 @@ export function prepareEntrySave(input: {
   note: string;
   /** Put these list items back as the earlier revision had them (an Undo); the server checks and carries their claims over. */
   restoreFrom?: { revision: number; itemIds: string[] };
+  /** The person's own self-description of a new gender value; the server records it with the value. */
+  genderAttestation?: string;
 }): PreparedSave {
-  const { companyId, actorId, kind, entry, content, note, restoreFrom } = input;
+  const { companyId, actorId, kind, entry, content, note, restoreFrom, genderAttestation } = input;
+  const attested = genderAttestation ? { genderAttestation } : {};
   const requestId = crypto.randomUUID();
   const savedAt = new Date().toISOString();
   if (!entry || entry.revision === 0) {
@@ -69,7 +72,7 @@ export function prepareEntrySave(input: {
       note,
     });
     checkRoom(provenance);
-    return { path: companyPath(companyId, "/entries"), init: write("POST", { kind, content, provenance, requestId }) };
+    return { path: companyPath(companyId, "/entries"), init: write("POST", { kind, content, provenance, requestId, ...attested }) };
   }
   const stored = structuredClone(entry.provenance);
   if (!stored.coverage.length) {
@@ -101,6 +104,7 @@ export function prepareEntrySave(input: {
       reviewStatus: "unreviewed",
       reason: note,
       ...(restoreFrom ? { restoreFrom } : {}),
+      ...attested,
       requestId,
     }),
   };

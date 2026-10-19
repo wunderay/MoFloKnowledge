@@ -1,12 +1,15 @@
 import { safeHref } from "../shared/citation-popover";
 import { socialHandle, textOrNull, type ViewProfile } from "./data";
 import { FIELDS, InlineArea, InlineChips, LISTS, useEdit } from "./inline-edit";
-import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, StatAdd, Stats } from "./parts";
+import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, useEvidenceShown, StatAdd, Stats } from "./parts";
 
 export function SalesMarketing({ companyId, name, profile }: { companyId: string; name: string; profile: ViewProfile }) {
   const { positioning, market, presence } = profile;
   // An editable draft edits these values in place; a saved version and a viewer see text and "+ Add" links.
   const edit = useEdit() !== null;
+  // Lists are edited in place in the hub; the saved-version view keeps its evidence markers and links there.
+  const evidenceShown = useEvidenceShown();
+  const inPlace = edit && !evidenceShown;
   const mev = profile.evidence.market;
   const pev = profile.evidence.positioning;
   const oev = profile.evidence.presence;
@@ -83,6 +86,15 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
         title={name}
         note={<CoverageNote evidence={oev} path={p.socials} empty={presence.social_media_links.length === 0} label="Social links" />}
       >
+        {inPlace ? (
+          <div className="knowledge-view__socials">
+            <p className="knowledge-view__mini-label">Social links</p>
+            <InlineChips
+              list={LISTS.socials}
+              items={presence.social_media_links.map((link) => ({ id: link.id, label: socialHandle(link), detail: link.platform }))}
+            />
+          </div>
+        ) : (
         <Stats
           stats={
             presence.social_media_links.length > 0
@@ -114,6 +126,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
                 ]
           }
         />
+        )}
       </Banner>
       <div className="knowledge-view__grid knowledge-view__grid--3">
         <KnowledgeCard
@@ -147,7 +160,16 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
           subtitle="The person you sell to."
           source={<Source evidence={mev} path={p.personas} filled={personas.length > 0} />}
         >
-          {personas.length > 0 ? (
+          {inPlace ? (
+            <InlineChips
+              list={LISTS.personas}
+              items={personas.map((persona) => ({
+                id: persona.id,
+                label: persona.heading,
+                detail: [persona.role, persona.organization].filter(Boolean).join(" · ") || null,
+              }))}
+            />
+          ) : personas.length > 0 ? (
             <>
               <ul className="knowledge-view__list">
                 {personas.map((persona) => (
@@ -217,7 +239,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
           subtitle="Where your story lives."
           source={<Source evidence={mev} path={p.channels} filled={channels.length > 0} />}
         >
-          <Chips items={channels} href={marketHref} noun="channel" />
+          {inPlace ? <InlineChips list={LISTS.channels} items={channels} /> : <Chips items={channels} href={marketHref} noun="channel" />}
           <CoverageNote evidence={mev} path={p.channels} empty={channels.length === 0} />
         </KnowledgeCard>
         <KnowledgeCard
@@ -225,7 +247,7 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
           subtitle="The prompts you point people to."
           source={<Source evidence={mev} path={p.ctas} filled={ctas.length > 0} />}
         >
-          <Chips items={ctas} href={marketHref} noun="call to action" />
+          {inPlace ? <InlineChips list={LISTS.ctas} items={ctas} /> : <Chips items={ctas} href={marketHref} noun="call to action" />}
           <CoverageNote evidence={mev} path={p.ctas} empty={ctas.length === 0} />
         </KnowledgeCard>
         <KnowledgeCard
@@ -233,7 +255,16 @@ export function SalesMarketing({ companyId, name, profile }: { companyId: string
           subtitle="The journeys you run."
           source={<Source evidence={mev} path={p.funnels} filled={funnels.length > 0} />}
         >
-          {funnels.length > 0 ? (
+          {inPlace ? (
+            <InlineChips
+              list={LISTS.funnels}
+              items={funnels.map((funnel) => ({
+                id: funnel.id,
+                label: textOrNull(funnel.name) ?? "Funnel",
+                detail: funnel.steps.map((step) => step.label).join(" → ") || null,
+              }))}
+            />
+          ) : funnels.length > 0 ? (
             <ul className="knowledge-view__list">
               {funnels.map((funnel) => (
                 <li key={funnel.id}>
