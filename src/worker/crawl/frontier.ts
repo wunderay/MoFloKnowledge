@@ -86,7 +86,7 @@ function relevance(url: string, label: string, pathPrefix = '', nav = false): Re
       return { score: nav ? NAV_SCORE : NEUTRAL_SCORE };
     }
     // Lowest plain-path score; stays above VARIANT_SCORE so checkpoint scores are never negative.
-    return { score: nav ? NAV_SCORE : 1 };
+    return { score: nav && path.split('/').filter(Boolean).length === 2 ? NAV_SCORE : 1 };
 }
 /** Url identity for seen checks: a trailing slash on a non-root path is ignored. */
 function slashKey(url: string): string {

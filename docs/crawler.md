@@ -61,11 +61,11 @@ The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It
 | 90 | contact and location pages |
 | 65 | FAQ and brand pages |
 | 88 | appointment, scheduling, booking and referral pages |
+| 75 | an otherwise unknown page linked from the main navigation (`<nav>` or `<header>`, not in a footer or article), one or two path segments deep |
 | 70 | direct children of the start path (for example a repository under a profile address), when nothing above matches |
 | 45 | newsletter and subscribe pages |
 | 10 | blog, news, articles and learning-center pages |
 | 5 | privacy, terms, legal and login pages, and careers pages (including "join our team" and "now hiring") |
-| 75 | an otherwise unknown page linked from the main navigation (`<nav>` or `<header>`) |
 | 0 | everything else |
 | -1 | a link with a query string (`?tab=…`); only the first such variant of a path is kept, the rest are dropped |
 
