@@ -2,7 +2,6 @@
 import {
   createContext,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   useMemo,
@@ -167,14 +166,4 @@ export function UnsavedNavigationProvider({
       {children}
     </NavigationContext.Provider>
   );
-}
-
-export function useUnsavedNavigation(dirty: boolean) {
-  const context = useContext(NavigationContext);
-  const setDirty = context?.setDirty;
-  useEffect(() => {
-    setDirty?.(dirty);
-    return () => setDirty?.(false);
-  }, [dirty, setDirty]);
-  return context?.confirmNavigation ?? (() => true);
 }

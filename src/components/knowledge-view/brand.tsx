@@ -106,7 +106,7 @@ export function BrandIdentity({
                       primaryLogo.label
                     )
                   ) : (
-                    <StatAdd href={href}>+ logo</StatAdd>
+                    !edit && <StatAdd href={href}>+ logo</StatAdd>
                   )}
                   <Source
                     evidence={ev}
@@ -136,7 +136,7 @@ export function BrandIdentity({
                       ))}
                     </span>
                   ) : (
-                    <StatAdd href={href}>+ colors</StatAdd>
+                    !edit && <StatAdd href={href}>+ colors</StatAdd>
                   )}
                   {shownColors.some((color) => color.observed) && (
                     <small className="knowledge-view__qualifier">
@@ -159,7 +159,7 @@ export function BrandIdentity({
                       <span>{primaryFont.family}</span>
                     </span>
                   ) : (
-                    <StatAdd href={href}>+ font</StatAdd>
+                    !edit && <StatAdd href={href}>+ font</StatAdd>
                   )}
                   {primaryFont?.qualifier && <small className="knowledge-view__qualifier">{primaryFont.qualifier}</small>}
                   <Source
@@ -181,7 +181,7 @@ export function BrandIdentity({
           subtitle="Logos recorded for the brand."
           source={<Source evidence={ev} path={p.logos} filled={logos.length > 0} />}
         >
-          {logos.length > 0 ? (
+          {logos.length > 0 || edit ? (
             <>
               <ul className="knowledge-view__tiles">
                 {logos.map((logo, index) => (
@@ -198,10 +198,14 @@ export function BrandIdentity({
                   </li>
                 ))}
                 <li className="knowledge-view__tile">
-                  <Link className="knowledge-view__tile-add knowledge-view__tile-add--logo" href={href}>+ Add Logo</Link>
+                  {edit ? (
+                    <AddItem noun="logo" className="knowledge-view__tile-add knowledge-view__tile-add--logo" />
+                  ) : (
+                    <Link className="knowledge-view__tile-add knowledge-view__tile-add--logo" href={href}>+ Add Logo</Link>
+                  )}
                 </li>
               </ul>
-              <CoverageNote evidence={ev} path={p.logos} empty={false} />
+              <CoverageNote evidence={ev} path={p.logos} empty={logos.length === 0} />
             </>
           ) : (
             <EmptyBox

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { MAX_TEXT_LENGTH } from "@/contracts/primitives";
 import { ApiError, api, errorMessage, companyPath, write } from "../shared/api-client";
 import { Icon } from "../shared/icons";
-import { InlineLine, useEntryAction, useTextField, type TextSpec } from "./inline-edit";
+import { httpUrl, InlineLine, useEntryAction, useTextField, type TextSpec } from "./inline-edit";
 
 const KIND = "branding_and_style";
 const HEX_HELP = "Enter a color as #RGB or #RRGGBB, for example #1A2B3C.";
@@ -80,14 +80,30 @@ const addFont: TextSpec = {
   },
 };
 
+const addLogo: TextSpec = {
+  label: "logo",
+  action: "Add",
+  kind: KIND,
+  read: () => "",
+  apply: (content, text) => {
+    const url = httpUrl(text);
+    if (!url) {
+      return { error: "Enter the logo's web address, starting with http:// or https://." };
+    }
+    content.logos = [...content.logos, { id: crypto.randomUUID(), url, variant: null, kind: "company_logo" }];
+    return { content };
+  },
+};
+const ADDERS = { color: addColor, font: addFont, logo: addLogo };
+
 /** The hex of one color, edited in place ("Edit Color N"). */
 export function ColorHex({ id, position, hex }: { id: string; position: number; hex: string }) {
   return <InlineLine spec={colorSpec(id, position)} shown={hex} placeholder="+ color" />;
 }
 
-/** "Add color" or "Add font": a button that opens a text field; Enter adds the item. */
-export function AddItem({ noun, className }: { noun: "color" | "font"; className?: string }) {
-  const text = useTextField(noun === "color" ? addColor : addFont);
+/** "Add color", "Add font" or "Add logo": a button that opens a text field; Enter adds the item. */
+export function AddItem({ noun, className }: { noun: keyof typeof ADDERS; className?: string }) {
+  const text = useTextField(ADDERS[noun]);
   if (!text) {
     return null;
   }

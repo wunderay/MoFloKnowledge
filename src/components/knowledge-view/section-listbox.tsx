@@ -2,15 +2,25 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { KNOWLEDGE_SECTIONS, sectionLabel, type KnowledgeSectionId } from "./sections";
 
-const last = KNOWLEDGE_SECTIONS.length - 1;
-const indexOf = (id: KnowledgeSectionId) => Math.max(0, KNOWLEDGE_SECTIONS.findIndex((item) => item.id === id));
 
 /**
  * The "Knowledge section" control: a button that opens a listbox of the sections.
  * Arrow keys, Home and End move through the options, Enter or Space selects one,
  * Escape and a press outside close it. `data-state` drives the open/closed animation.
  */
-export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId; onSelect: (id: KnowledgeSectionId) => void }) {
+export function SectionListbox({
+  value,
+  onSelect,
+  withAll = true,
+}: {
+  value: KnowledgeSectionId;
+  onSelect: (id: KnowledgeSectionId) => void;
+  /** False leaves out "All sections": the hub lists exactly the seven sections of the MoFlo reference. */
+  withAll?: boolean;
+}) {
+  const sections = withAll ? KNOWLEDGE_SECTIONS : KNOWLEDGE_SECTIONS.filter((item) => item.id !== "all");
+  const last = sections.length - 1;
+  const indexOf = (id: KnowledgeSectionId) => Math.max(0, sections.findIndex((item) => item.id === id));
   const base = useId();
   const labelId = `${base}-label`;
   const triggerId = `${base}-trigger`;
@@ -48,7 +58,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
 
   useEffect(() => {
     if (open) {
-      document.getElementById(optionId(KNOWLEDGE_SECTIONS[active].id))?.scrollIntoView?.({ block: "nearest" });
+      document.getElementById(optionId(sections[active].id))?.scrollIntoView?.({ block: "nearest" });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- scroll only when `open` or `active` change; optionId is a pure id helper
   }, [open, active]);
@@ -63,7 +73,7 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
     trigger.current?.focus();
   };
   const choose = (index: number) => {
-    const next = KNOWLEDGE_SECTIONS[index].id;
+    const next = sections[index].id;
     close();
     onSelect(next);
   };
@@ -137,10 +147,10 @@ export function SectionListbox({ value, onSelect }: { value: KnowledgeSectionId;
         data-state={state}
         hidden={!open}
         aria-labelledby={labelId}
-        aria-activedescendant={open ? optionId(KNOWLEDGE_SECTIONS[active].id) : undefined}
+        aria-activedescendant={open ? optionId(sections[active].id) : undefined}
         onKeyDown={onListKey}
       >
-        {KNOWLEDGE_SECTIONS.map((item, index) => (
+        {sections.map((item, index) => (
           <li
             key={item.id}
             id={optionId(item.id)}

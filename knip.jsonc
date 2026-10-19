@@ -1,7 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  // Entry points knip cannot infer: the container entrypoints and the scripts/tests that run them.
-  "entry": ["src/egress/main.ts", "src/renderer/main.ts", "scripts/*.mjs", "tests/**/*.{ts,tsx}"],
+  // Entry points knip cannot infer: the container entrypoints and the scripts/tests that run them. src/contracts/index.ts
+  // is the shared contract barrel: its schemas and types are public API (until now a test's whole-module mock of it hid this).
+  "entry": ["src/egress/main.ts", "src/renderer/main.ts", "scripts/*.mjs", "tests/**/*.{ts,tsx}", "src/contracts/index.ts"],
   "project": ["src/**/*.{ts,tsx,css}", "tests/**/*.{ts,tsx}", "scripts/*.mjs"],
   "ignoreDependencies": [
     // Next.js resolves `server-only` itself; there is deliberately no package.json entry.

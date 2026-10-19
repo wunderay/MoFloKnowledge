@@ -1,230 +1,159 @@
-import React, { type ReactElement } from "react";
-import { beforeEach, expect, it, vi } from "vitest";
-import { createEmptyProvenance, createEntryDefault } from "../../src/contracts";
+// The Scrape & Build hub at /knowledge.
+//  - Without a company it starts with a create form: company name and website. Creating the company starts the crawl.
+//  - With a company it shows the draft as the MoFlo reference does: the seven sections (no "All sections"), each value
+//    edited in place, no evidence layer, no per-category Save draft / Approve / Reject / History, and one
+//    "Save knowledge version".
+// The page runs as the server renders it (its data layer replaced by fixtures); assertions are on visible text and names.
+import type React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { buildDraft, buildEmptyDraft, COMPANY_ID, EMPTY_COMPANY_ID, type Draft } from "../helpers/knowledge-view-fixtures";
 
-// Exercise the editor's event handlers and rendered controls with native React
-// elements; the hook harness lets a draft read remain pending without a DOM.
-const harness = vi.hoisted(() => ({
-  slots: [] as unknown[],
-  cursor: 0,
-  state: { category: "company_foundation", values: {}, provenance: {}, dirty: [] } as any,
-  dispatch: vi.fn(),
-  api: vi.fn(),
-}));
-vi.mock("react", async (original) => ({
-  ...await original<typeof import("react")>(),
-  useState: (initial: unknown) => {
-    const index = harness.cursor++;
-    if (!(index in harness.slots)) {
-      harness.slots[index] = initial;
-    }
-    return [harness.slots[index], (next: unknown) => {
-      harness.slots[index] = typeof next === "function"
-        ? next(harness.slots[index]) : next;
-    }];
+const state = vi.hoisted(() => ({ draft: null as unknown }));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/knowledge",
+  useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }),
+  redirect: (to: string) => {
+    throw new Error(`redirect:${to}`);
   },
-  useCallback: (callback: unknown) => callback,
-  useEffect: () => {},
 }));
-vi.mock("../../src/components/editor/company-draft-context", () => ({
-  CompanyDraftProvider: () => null,
-  useCompanyDraft: () => ({ state: harness.state, dispatch: harness.dispatch }),
+vi.mock("@/lib/supabase/server", () => ({
+  verifiedSession: async () => ({ client: {}, user: { id: "user-1" } }),
 }));
-vi.mock("../../src/components/shared/api-client", async (original) => ({
-  ...await original<typeof import("../../src/components/shared/api-client")>(),
-  api: harness.api,
+vi.mock("@/server/read-model", async (original) => ({
+  ...(await original<typeof import("@/server/read-model")>()),
+  readDraft: async () => state.draft,
 }));
-vi.mock("@/contracts", () => import("../../src/contracts"));
-vi.mock("@/knowledge/conflict-decisions", () => import("../../src/knowledge/conflict-decisions"));
-vi.mock("next/link", () => ({ default: () => null }));
-vi.mock("../../src/components/editor/unsaved-navigation", () => ({ useUnsavedNavigation: () => () => true }));
-vi.mock("../../src/components/shared/ui", () => ({
-  useHydrated: () => true, EmptyState: () => null, Notice: () => null, StatusBadge: () => null,
+// The server render is what a hydrated owner first sees: editing controls are on.
+vi.mock("../../src/components/shared/ui", async (original) => ({
+  ...(await original<typeof import("../../src/components/shared/ui")>()),
+  useHydrated: () => true,
 }));
-vi.mock("../../src/components/editor/entry-value", () => ({ ValueView: () => null }));
-vi.mock("../../src/components/shared/citation-popover", () => ({ CitationPopover: () => null }));
-vi.mock("../../src/components/editor/business-form", () => ({ BusinessField: () => null }));
-vi.mock("../../src/components/editor/scrape-progress", () => ({ ScrapeProgress: () => null }));
-vi.mock("../../src/components/editor/entry-history", () => ({ EntryHistory: () => null }));
-vi.mock("../../src/components/editor/publication-dialog", () => ({ PublicationDialog: () => null }));
-vi.mock("../../src/components/editor/company-settings", () => ({ CompanySettings: () => null }));
-vi.mock("../../src/components/editor/proposal-review", () => ({ ProposalReview: () => null }));
-import { KnowledgeEditor } from "../../src/components/editor/knowledge-editor";
+// The crawl's progress display belongs to another change; the hub only places it.
+vi.mock("../../src/components/editor/scrape-progress", () => ({ ScrapeProgress: () => "[scrape progress]" }));
+import { nameProblem, websiteProblem } from "../../src/components/editor/create-company";
+import { SectionView } from "../../src/components/knowledge-view/section-view";
+import { evidenceDraft } from "../helpers/knowledge-view-evidence";
 
-function elements(node: React.ReactNode): ReactElement<any>[] {
-  if (Array.isArray(node)) {
-    return node.flatMap(elements);
-  }
-  if (!React.isValidElement<{ children?: React.ReactNode }>(node)) {
-    return [];
-  }
-  return [node, ...elements(node.props.children)];
+async function renderHub(params: Record<string, string>, draft?: Draft) {
+  state.draft = draft ?? null;
+  const { default: KnowledgePage } = await import("../../src/app/(authenticated)/knowledge/page");
+  const element = await KnowledgePage({ searchParams: Promise.resolve(params) } as never);
+  return renderToStaticMarkup(element as React.ReactElement);
 }
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (error: Error) => void;
-  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
-  return { promise, resolve, reject };
-}
-const original = {
-  id: "entry", kind: "company_foundation" as const, current_revision: 1,
-  content: createEntryDefault("company_foundation"),
-  provenance: createEmptyProvenance(), review_status: "unreviewed" as const,
-};
-const selected = {
-  ...original.content,
-  main_address: { id: "11111111-1111-4111-8111-111111111111", label: null, raw: "400 River Street", line1: "400 River Street", line2: null, city: "Austin", region: "TX", postal_code: "78701", country: "US" },
-};
-const savedProvenance = createEmptyProvenance();
-savedProvenance.decisions.push({
-  id: "decision", conflict_id: "address-conflict",
-  target: "/company_foundation/main_address", action: "select",
-  candidate_id: "river-street", actor_id: "reviewer",
-  decided_at: "2026-10-16T00:00:00Z", note: "Selected River Street.",
-});
-const authoritative = {
-  company: { name: "Test", role: "owner", archived_at: null },
-  entries: [{ ...original, current_revision: 2, content: selected, provenance: savedProvenance }],
-  draftGeneration: 2,
-};
-function render(entries: any[] = [original]) {
-  harness.cursor = 0;
-  const wrapper = KnowledgeEditor({
-    companyId: "company",
-    initialDraft: { ...authoritative, entries } as any,
+const text = (html: string) => html.replace(/<[^>]+>/g, " ").replaceAll("&amp;", "&").replace(/\s+/g, " ");
+
+describe("/knowledge without a company", () => {
+  it("shows the create form (name, website, one submit button) instead of the dashboard notice", async () => {
+    const html = await renderHub({});
+    expect(text(html)).toContain("Company name");
+    expect(text(html)).toContain("Company website");
+    expect(html).toMatch(/<input[^>]*name="name"/);
+    expect(html).toMatch(/<input[^>]*name="website"[^>]*type="url"|<input[^>]*type="url"[^>]*name="website"/);
+    expect(text(html)).toContain("Create company and start crawl");
+    expect(text(html)).not.toContain("Select a company from the dashboard");
   });
-  const content = wrapper.props.children as ReactElement<any>;
-  return elements((content.type as (props: unknown) => React.ReactNode)(content.props));
-}
-function button(tree: ReactElement<any>[], text: string) {
-  const found = tree.find((node) => node.type === "button" && node.props.children === text);
-  expect(found, text).toBeDefined();
-  return found!;
-}
-function field(tree: ReactElement<any>[], name: string) {
-  return tree.find((node) => node.props.name === name)!;
-}
-function text(tree: ReactElement<any>[]) {
-  return tree.map((node) => node.props.children).flat(Infinity).filter((value) => typeof value === "string").join(" ");
-}
-beforeEach(() => {
-  harness.slots = [];
-  harness.state = {
-    category: "company_foundation", values: { entry: selected },
-    provenance: {}, dirty: ["entry"],
-  };
-  harness.dispatch.mockImplementation((action) => {
-    if (action.type === "saved") {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- test removes a caller-chosen key from a scratch object
-      delete harness.state.values[action.id];
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- test removes a caller-chosen key from a scratch object
-      delete harness.state.provenance[action.id];
-      harness.state.dirty = harness.state.dirty.filter((id: string) => id !== action.id);
-    } else if (action.type === "edit") {
-      harness.state.values[action.id] = action.content;
-      harness.state.dirty.push(action.id);
+
+  it("an invalid company id also opens the create form", async () => {
+    expect(text(await renderHub({ companyId: "not-a-uuid" }))).toContain("Create company and start crawl");
+  });
+});
+
+describe("create form checks", () => {
+  it("the name is required, at most 200 characters, and not one of your companies (ignoring case and spaces)", () => {
+    expect(nameProblem("   ", [])?.message).toBe("Enter the company name.");
+    expect(nameProblem("x".repeat(201), [])?.message).toBe("Keep the company name to 200 characters or fewer.");
+    expect(nameProblem("x".repeat(200), [])).toBeNull();
+    expect(nameProblem("  lumen LEDGER ", [{ id: "c1", name: "Lumen Ledger" }])).toEqual({
+      message: "You already have a company named “Lumen Ledger”.",
+      id: "c1",
+    });
+    expect(nameProblem("Lumen Ledger", [{ id: "c1", name: "Harbor" }])).toBeNull();
+  });
+
+  it("the website must be a full public http(s) address", () => {
+    expect(websiteProblem("")).toBe("Enter the company website.");
+    expect(websiteProblem("company.com")).toBe("Enter the full website address, for example https://company.com.");
+    expect(websiteProblem("ftp://company.com")).toBe("The website must start with http:// or https://.");
+    expect(websiteProblem(["https://me", "pw@company.com"].join(":"))).toBe("Remove the user name or password from the website address.");
+    expect(websiteProblem("https://company.com:8443")).toBe("Use the website's public address, without a port number.");
+    expect(websiteProblem(" https://company.com/about ")).toBeNull();
+    expect(websiteProblem("http://company.com:80")).toBeNull();
+  });
+});
+
+describe("/knowledge with a company", () => {
+  it("lists the seven sections of the reference, without All sections", async () => {
+    const html = await renderHub({ companyId: COMPANY_ID }, buildDraft());
+    const options = [...html.matchAll(/role="option"[^>]*>(.*?)<\/li>/g)].map((m) => text(m[1]).trim());
+    expect(options).toEqual([
+      "General Info",
+      "Brand Identity",
+      "Business Offerings",
+      "Customers & Industry",
+      "Sales & Marketing",
+      "Key People",
+      "Site Knowledge",
+    ]);
+  });
+
+  it("has one Save (Save knowledge version) and none of the form editor's per-category controls", async () => {
+    const page = text(await renderHub({ companyId: COMPANY_ID }, buildDraft()));
+    expect(page.match(/Save knowledge version/g)).toHaveLength(1);
+    for (const gone of ["Save draft", "Approve unchanged", "Save and approve", "Reject", "History", "Helpful tip", "fields checked", "Knowledge category"]) {
+      expect(page, gone).not.toContain(gone);
     }
   });
-});
 
-it("waits for the authoritative draft before enabling an unrelated edit and a second save", async () => {
-  const read = deferred<typeof authoritative>();
-  harness.api.mockResolvedValueOnce({}).mockReturnValueOnce(read.promise);
-  const saving = button(render(), "Save draft").props.onClick();
-  await Promise.resolve();
-  const pending = render();
-  expect(field(pending, "overview").props.disabled).toBe(true);
-  expect(button(pending, "Saving…").props.disabled).toBe(true);
-  expect(harness.dispatch).not.toHaveBeenCalledWith({ type: "saved", id: "entry" });
-  expect(text(pending)).not.toContain("Draft saved.");
+  it("shows no evidence layer: the saved-version view's source controls and coverage notes are absent", async () => {
+    const draft = evidenceDraft() as unknown as Draft;
+    const evidence = /Sources|Not assessed|not checked|partial/i;
+    // Control: the same draft in the saved-version view's section component shows its evidence.
+    const viewer = renderToStaticMarkup(
+      <SectionView section="general" companyId={COMPANY_ID} name="Harbor" entries={draft.entries as never} citationContext={draft.citationContext as never} />,
+    );
+    expect(viewer).toMatch(evidence);
+    expect(await renderHub({ companyId: COMPANY_ID }, draft)).not.toMatch(evidence);
+  });
 
-  read.resolve(authoritative);
-  await saving;
-  const loaded = render();
-  expect(text(loaded)).toContain("Draft saved.");
-  expect(field(loaded, "overview").props.disabled).toBe(false);
-  field(loaded, "overview").props.onChange("Only overview changed");
-  harness.api.mockResolvedValueOnce({}).mockResolvedValueOnce(authoritative);
-  await button(render(), "Save and approve").props.onClick();
-  const secondSave = JSON.parse(harness.api.mock.calls[2][1].body);
-  expect(secondSave.expectedRevision).toBe(2);
-  expect(secondSave.content.main_address).toEqual(selected.main_address);
-  expect(secondSave.content.overview).toBe("Only overview changed");
-  expect(secondSave.provenance.decisions).toEqual(savedProvenance.decisions);
-});
+  it("an empty company adds values in place: no + Add link back to a form editor", async () => {
+    for (const section of ["general", "brand", "customers", "sales"]) {
+      const html = await renderHub({ companyId: EMPTY_COMPANY_ID, section }, buildEmptyDraft());
+      expect(html, section).not.toMatch(/href="\/knowledge\?companyId=[^"]*category=/);
+    }
+    const general = text(await renderHub({ companyId: EMPTY_COMPANY_ID }, buildEmptyDraft()));
+    expect(general).toContain("+ Add main address");
+  });
 
-it("preserves edits and blocks stale saves when the committed revision cannot be refreshed, then recovers", async () => {
-  harness.state.values.other = { overview: "Keep this unrelated edit" };
-  harness.state.dirty.push("other");
-  harness.api.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("Draft read unavailable"));
-  await button(render(), "Save draft").props.onClick();
-  const failed = render();
-  expect(text(failed)).toContain("Draft read unavailable");
-  expect(text(failed)).not.toContain("Draft saved.");
-  expect(field(failed, "overview").props.disabled).toBe(true);
-  expect(button(failed, "Save draft").props.disabled).toBe(true);
-  expect(harness.state.values.entry).toEqual(selected);
-  expect(harness.dispatch).not.toHaveBeenCalledWith({ type: "saved", id: "entry" });
+  it("opens the section named in the URL, and All sections falls back to General Info", async () => {
+    expect(text(await renderHub({ companyId: COMPANY_ID, section: "key-people" }, buildDraft()))).toContain("Key People");
+    const all = await renderHub({ companyId: COMPANY_ID, section: "all" }, buildDraft());
+    expect(all).toMatch(/aria-selected="true"[^>]*>(<[^>]+>)*\s*General Info/);
+  });
 
-  harness.api.mockResolvedValueOnce(authoritative);
-  await button(failed, "Load saved revision").props.onClick();
-  const recovered = render();
-  expect(field(recovered, "overview").props.disabled).toBe(false);
-  expect(field(recovered, "main_address").props.value).toEqual(selected.main_address);
-  expect(harness.state.values.other).toEqual({ overview: "Keep this unrelated edit" });
-  expect(harness.state.dirty).toEqual(["other"]);
-  expect(text(recovered)).not.toContain("Draft read unavailable");
-});
+  it("keeps review behind Review changes: unreviewed entries can be approved or removed, and approved all at once", async () => {
+    const draft = buildDraft();
+    draft.entries[0].review_status = "unreviewed";
+    draft.entries[1].review_status = "unreviewed";
+    const html = await renderHub({ companyId: COMPANY_ID }, draft);
+    const page = text(html);
+    expect(page).toContain("Review changes (2 to review)");
+    expect(page).toContain("Approve all 2");
+    expect(html.match(/aria-label="Approve [^"]+"/g)).toHaveLength(2);
+    expect(html.match(/aria-label="Remove [^"]+ from future versions"/g)).toHaveLength(draft.entries.length);
+  });
 
-it("keeps local edits and the API error when the save itself fails", async () => {
-  harness.api.mockRejectedValueOnce(new Error("Revision write unavailable"));
-  await button(render(), "Save draft").props.onClick();
-  const failed = render();
-  expect(text(failed)).toContain("Revision write unavailable");
-  expect(text(failed)).not.toContain("Draft saved.");
-  expect(button(failed, "Save draft").props.disabled).toBe(false);
-  expect(harness.state.values.entry).toEqual(selected);
-  expect(harness.dispatch).not.toHaveBeenCalledWith({ type: "saved", id: "entry" });
-  expect(harness.api).toHaveBeenCalledTimes(1);
-});
+  it("a viewer sees the review list without its buttons", async () => {
+    const draft = buildDraft();
+    draft.company.role = "viewer";
+    draft.entries[0].review_status = "unreviewed";
+    const html = await renderHub({ companyId: COMPANY_ID }, draft);
+    expect(text(html)).toContain("Review changes (1 to review)");
+    expect(html).not.toMatch(/aria-label="Approve |from future versions"/);
+  });
 
-
-it("selects one offering at a time while preserving each offering's unsaved fields", () => {
-  const offerings = ["First service", "Second service"].map((name, index) => ({
-    ...original, id: `offering-${index}`, kind: "offering",
-    content: { ...createEntryDefault("offering", `offering-${index}`), name },
-  }));
-  harness.state = { category: "offering", values: {}, provenance: {}, dirty: [] };
-  const selectOffering = (tree: ReactElement<any>[], name: string) => tree.find((node) =>
-    node.type === "button" && elements(node).some((child) => child.type === "strong" && child.props.children === name),
-  )!;
-  expect(field(render(offerings), "name").props.value).toBe("First service");
-  selectOffering(render(offerings), "Second service").props.onClick();
-  const second = render(offerings);
-  expect(second.filter((node) => node.props.name === "name")).toHaveLength(1);
-  expect(field(second, "name").props.value).toBe("Second service");
-  field(second, "description").props.onChange("Local second description");
-  selectOffering(render(offerings), "First service").props.onClick();
-  expect(field(render(offerings), "description").props.value).toBeNull();
-  selectOffering(render(offerings), "Second service").props.onClick();
-  expect(field(render(offerings), "description").props.value).toBe("Local second description");
-  expect(harness.state.dirty).toContain("offering-1");
-});
-
-it("selects a newly added offering without discarding the previous offering's edits", () => {
-  const offering = {
-    ...original, id: "existing", kind: "offering",
-    content: { ...createEntryDefault("offering", "existing"), name: "Existing service" },
-  };
-  harness.state = { category: "offering", values: {}, provenance: {}, dirty: [] };
-  field(render([offering]), "description").props.onChange("Keep this description");
-  const add = render([offering]).find((node) => node.type === "button" &&
-    Array.isArray(node.props.children) && node.props.children.includes("offering"))!;
-  add.props.onClick();
-  const added = render([offering]);
-  expect(field(added, "name").props.value).toBeNull();
-  expect(added.filter((node) => node.props.name === "name")).toHaveLength(1);
-  expect(harness.state.values.existing.description).toBe("Keep this description");
-  const selectedButton = added.find((node) => node.type === "button" && node.props["aria-current"] === "true")!;
-  expect(text(elements(selectedButton))).toContain("Untitled offering 2");
+  it("places the website crawl below the results", async () => {
+    expect(text(await renderHub({ companyId: COMPANY_ID }, buildDraft()))).toContain("[scrape progress]");
+  });
 });
