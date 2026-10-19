@@ -47,6 +47,22 @@ const costSpec = (kind: TextSpec["kind"]): TextSpec => ({
     return { content };
   },
 });
+/** The pricing model belongs to a price, so it is edited once the offering has a cost. */
+const modelSpec = (kind: TextSpec["kind"]): TextSpec => ({
+  label: "Offering pricing model",
+  kind,
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- entry content is a Record<string, any> by design (one editor handles every entry kind)
+  read: (content) => (typeof content.pricing?.pricing_model === "string" ? content.pricing.pricing_model : ""),
+  apply: (content, text) => {
+    const value = text.trim();
+    if (!content.pricing) {
+      return value === "" ? { content } : { error: "Add the cost first; the pricing model describes it." };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- entry content is a Record<string, any> by design (one editor handles every entry kind)
+    content.pricing.pricing_model = value === "" ? null : value;
+    return { content };
+  },
+});
 /**
  * The editors of one offering. Each offering is its own scope of the editing environment (see `entryScope`), so what was typed,
  * a save in progress and its outcome stay with that offering, whichever offering or section is shown.
@@ -58,6 +74,7 @@ function editorsOf(entryId: string) {
     type: plainText("Offering type", kind, "offering_type"),
     description: plainText("Offering description", kind, "description"),
     cost: costSpec(kind),
+    model: modelSpec(kind),
     features: { noun: "key feature", kind, key: "features" } as ListSpec,
   };
 }
@@ -244,6 +261,7 @@ function OfferingDetail({
           text(model),
           { title: "No pricing model yet", hint: "For example, monthly or one-time." },
           "tag",
+          line(editors.model, "model", model, "+ e.g. Monthly, One-time"),
         )}
       </div>
     </section>

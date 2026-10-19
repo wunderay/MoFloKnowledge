@@ -2,12 +2,15 @@ import type { ReactNode } from "react";
 import { Icon } from "../shared/icons";
 import { addressText, employeeText, textOrNull, type ViewProfile } from "./data";
 import { FIELDS, InlineArea, InlineChips, InlineLine, LISTS, useEdit } from "./inline-edit";
-import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, StatAdd, Stats } from "./parts";
+import { addHref, Banner, Chips, CoverageNote, EmptyBox, ItemSource, KnowledgeCard, Source, useEvidenceShown, StatAdd, Stats } from "./parts";
 
 export function GeneralInfo({ companyId, name, profile }: { companyId: string; name: string; profile: ViewProfile }) {
   const { foundation, positioning } = profile;
   // An editable draft edits these values in place; a saved version and a viewer see text and "+ Add" links.
   const edit = useEdit() !== null;
+  // Lists are edited in place in the hub; the saved-version view keeps its evidence markers and links there.
+  const evidenceShown = useEvidenceShown();
+  const inPlace = edit && !evidenceShown;
   const ev = profile.evidence.foundation;
   const foundationHref = addHref(companyId, "company_foundation");
   const main = foundation.main_address ? addressText(foundation.main_address) : null;
@@ -86,7 +89,22 @@ export function GeneralInfo({ companyId, name, profile }: { companyId: string; n
       </Banner>
       <div className="knowledge-view__grid knowledge-view__grid--2">
         <KnowledgeCard title="Headquarters" subtitle="Main address and other locations.">
-          {main || others.length > 0 ? (
+          {inPlace ? (
+            <>
+              <div className="knowledge-view__location">
+                <span className="knowledge-view__location-icon" aria-hidden="true"><Icon name="pin" size={16} /></span>
+                <div>
+                  <p className="knowledge-view__mini-label">Main</p>
+                  <InlineLine spec={FIELDS.headquarters} shown={main} placeholder="+ Add main address" />
+                </div>
+              </div>
+              <p className="knowledge-view__mini-label">Other locations</p>
+              <InlineChips
+                list={LISTS.otherLocations}
+                items={others.map((address) => ({ id: address.id, label: address.text ?? "", detail: address.label }))}
+              />
+            </>
+          ) : main || others.length > 0 ? (
             <>
               {main ? (
                 <div className="knowledge-view__location">

@@ -4,6 +4,7 @@ import { BrandIdentity } from "./brand";
 import { CustomersIndustry } from "./customers-industry";
 import { GeneralInfo } from "./general-info";
 import { EditProvider, type EditEnv } from "./inline-edit";
+import { EvidenceVisibility } from "./parts";
 import { KeyPeople } from "./key-people";
 import { BusinessOfferings } from "./offerings";
 import { SalesMarketing } from "./sales-marketing";
@@ -38,6 +39,7 @@ export function SectionView({
   importBlocked = false,
   crawling = false,
   onSaved = () => Promise.resolve(),
+  evidence = true,
 }: {
   section: KnowledgeSectionId;
   companyId: string;
@@ -67,6 +69,8 @@ export function SectionView({
   /** The company's crawl is queued or running: a section without data yet shows a skeleton instead of its empty state. */
   crawling?: boolean;
   onSaved?: (what?: "changes") => Promise<void>;
+  /** False hides the evidence layer (sources, item markers, coverage notes), as the Scrape & Build hub does. */
+  evidence?: boolean;
 }) {
   const profile = profileFrom(entries, citationContext);
   // An editable draft edits General Info, Customers & Industry, Sales & Marketing, Business Offerings and Brand Identity in place; everything else reads only.
@@ -172,5 +176,6 @@ export function SectionView({
         ))}
       </div>
     );
-  return edit ? <EditProvider env={edit}>{shown}</EditProvider> : shown;
+  const view = edit ? <EditProvider env={edit}>{shown}</EditProvider> : shown;
+  return evidence ? view : <EvidenceVisibility value={false}>{view}</EvidenceVisibility>;
 }

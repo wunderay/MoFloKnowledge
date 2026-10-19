@@ -252,22 +252,6 @@ export const CATEGORY_SPECS: Record<
 export function labelOf(key: string) {
   return key.replaceAll("_", " ").replace(/^./, (x) => x.toUpperCase());
 }
-export function newValue(spec: FieldSpec, identified = false): unknown {
-  if (spec.default !== undefined) {
-    return structuredClone(spec.default);
-  }
-  if (spec.items) {
-    return [];
-  }
-  if (spec.fields) {
-    return Object.fromEntries([
-      ...(identified ? [["id", crypto.randomUUID()]] : []),
-      ...Object.entries(spec.fields).map(([k, s]) => [k, newValue(s)]),
-    ]);
-  }
-  return null;
-}
-
 /** A readable choice label; stable IDs remain in the underlying candidate. */
 export function summarizeValue(value: unknown): string {
   if (value === null || value === undefined) {

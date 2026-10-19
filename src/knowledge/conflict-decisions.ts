@@ -7,7 +7,7 @@ import {
   parseStablePointer,
   resolveStablePointer,
 } from "../contracts/stable-pointer";
-export function validateConflictDecision(
+function validateConflictDecision(
   conflict: CandidateConflict,
   input: unknown,
 ): ConflictDecision {

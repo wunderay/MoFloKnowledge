@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import type { EntryKind } from "@/contracts";
 import { CitationPopover } from "../shared/citation-popover";
 import { Icon, type IconName } from "../shared/icons";
@@ -8,6 +8,15 @@ import { coverageFor, coverageLabel, fieldProvenance, hasClaim, hasMarkedOrigin,
 /** Where "+ Add" leads: the editor, opened on the entry kind that holds the value. */
 export const addHref = (companyId: string, kind: EntryKind) =>
   `/knowledge?companyId=${companyId}&category=${kind}`;
+
+/**
+ * Whether the evidence layer (source controls, item markers and coverage notes) is shown. The saved-version view shows it;
+ * the Scrape & Build hub at /knowledge hides it, as the MoFlo reference has none.
+ */
+const EvidenceShown = createContext(true);
+export const EvidenceVisibility = EvidenceShown.Provider;
+/** True outside the hub. The hub (evidence hidden) also edits lists and people in place, where the saved-version view links to the hub. */
+export const useEvidenceShown = () => useContext(EvidenceShown);
 
 /**
  * The existing evidence control for a field: its sources and exact excerpts,
@@ -25,7 +34,8 @@ export function Source({
   filled: boolean;
   name?: string;
 }) {
-  if (!filled && !coverageFor(evidence.provenance, path) && !hasClaim(evidence.provenance, path)) {
+  const shown = useContext(EvidenceShown);
+  if (!shown || (!filled && !coverageFor(evidence.provenance, path) && !hasClaim(evidence.provenance, path))) {
     return null;
   }
   return (
@@ -64,8 +74,9 @@ export function CoverageNote({
   empty: boolean;
   label?: string;
 }) {
+  const shown = useContext(EvidenceShown);
   const assessment = coverageFor(evidence.provenance, path);
-  if (!empty && (!assessment || assessment.status === "found")) {
+  if (!shown || (!empty && (!assessment || assessment.status === "found"))) {
     return null;
   }
   return (
@@ -101,13 +112,29 @@ export function KnowledgeCard({
   );
 }
 
-export function EmptyBox({ title, hint, href, note }: { title: string; hint: string; href: string; note?: ReactNode }) {
+/**
+ * A dashed empty state. An editable draft passes `action`, the control that adds the value in place; a read-only view passes
+ * `href`, a link to the hub where the draft is edited.
+ */
+export function EmptyBox({
+  title,
+  hint,
+  href,
+  action,
+  note,
+}: {
+  title: string;
+  hint: string;
+  href?: string;
+  action?: ReactNode;
+  note?: ReactNode;
+}) {
   return (
     <div className="knowledge-view__empty">
       <p className="knowledge-view__empty-title">{title}</p>
       <p className="knowledge-view__empty-hint">{hint}</p>
       {note}
-      <Link className="knowledge-view__add" href={href}>+ Add</Link>
+      {action ?? (href && <Link className="knowledge-view__add" href={href}>+ Add</Link>)}
     </div>
   );
 }

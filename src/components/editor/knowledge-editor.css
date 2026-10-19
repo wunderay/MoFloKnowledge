@@ -216,3 +216,17 @@
   .cloud-knowledge__workspace-controls .actions { width: 100%; }
   .cloud-knowledge__draft-status { flex-wrap: wrap; gap: 8px; }
 }
+
+/* Scrape & Build hub: the one Save next to the section picker, and the first step that creates a company. */
+.knowledge-editor__actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.hub-create { max-width: 560px; margin: 48px auto; padding: 32px; border: 1px solid var(--line, #e6e9f0); border-radius: 24px; background: var(--white, #fff); }
+.hub-create h1 { margin: 6px 0 10px; font-size: 24px; letter-spacing: -.6px; }
+.hub-create > p.muted { margin: 0 0 24px; font-size: 13px; line-height: 1.7; }
+.hub-create__form { display: grid; gap: 4px; }
+.hub-create__form .button--primary { justify-self: start; margin-top: 8px; }
+.field__error { font-size: 11px; line-height: 1.6; color: var(--danger, #c62828); }
+@media (max-width: 600px) {
+  .hub-create { margin: 16px 0; padding: 20px 16px; }
+}
+.hub-review { margin-top: 24px; }
+.hub-review > .button { margin: 4px 0 12px; }

@@ -21,3 +21,18 @@ export function parseSection(value: unknown): KnowledgeSectionId {
 export function sectionLabel(id: KnowledgeSectionId): string {
   return KNOWLEDGE_SECTIONS.find((section) => section.id === id)?.label ?? "General Info";
 }
+
+/** The section that shows an entry kind; links from before the hub name a kind (`category`) instead of a section. */
+const KIND_SECTIONS: Record<string, KnowledgeSectionId> = {
+  company_foundation: "general",
+  positioning: "general",
+  market_and_customers: "customers",
+  online_presence: "sales",
+  branding_and_style: "brand",
+  offering: "offerings",
+  key_person: "key-people",
+  site_links: "site",
+};
+export function sectionOfKind(kind: unknown): KnowledgeSectionId | null {
+  return typeof kind === "string" && Object.hasOwn(KIND_SECTIONS, kind) ? KIND_SECTIONS[kind] : null;
+}

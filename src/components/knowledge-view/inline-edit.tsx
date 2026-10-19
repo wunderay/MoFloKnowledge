@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from "react";
 import { ZodError } from "zod";
-import { createEntryDefault, parseBusinessEntry, type BusinessEntry, type EntryKind, type IdentifiedText } from "@/contracts";
+import { createEntryDefault, parseBusinessEntry, type BusinessEntry, type EntryKind } from "@/contracts";
 import { MAX_TEXT_LENGTH } from "@/contracts/primitives";
 import { canonicalStringify } from "@/knowledge/canonical-json";
 import { ApiError, errorMessage } from "../shared/api-client";
@@ -69,7 +69,14 @@ function failure(error: unknown): Feedback {
 }
 
 /** Parses `content` as the entry of `kind` and prepares its save (a new entry or a new revision). */
-function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: string, restoreFrom?: Task["restoreFrom"]): PreparedSave {
+function prepareContent(
+  env: EditEnv,
+  kind: EntryKind,
+  content: Content,
+  note: string,
+  restoreFrom?: Task["restoreFrom"],
+  genderAttestation?: string,
+): PreparedSave {
   return prepareEntrySave({
     companyId: env.companyId,
     actorId: env.actorId,
@@ -78,6 +85,7 @@ function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: s
     content: parseBusinessEntry(realKind(kind), content),
     note,
     restoreFrom,
+    genderAttestation,
   });
 }
 /** A copy of the stored content of `kind` (the defaults when the company has no such entry yet). */
@@ -97,13 +105,15 @@ interface Slot {
   problem: string;
   feedback: Feedback;
   /** The last removal of a chip list, which Undo takes back. */
-  toast: { text: string; previous: IdentifiedText[]; id: string; revision: number } | null;
+  toast: { text: string; previous: Content[]; id: string; revision: number } | null;
   /** Focus goes back to the field's button once its editor has closed (text fields). */
   refocus: boolean;
   /** Where a chip list puts focus next: a chip's id, or "add". `n` makes a repeated request new. */
   focus: { target: string; n: number } | null;
+  /** What the person typed as the person's own self-description (a field that needs one, see `TextSpec.attest`). */
+  attestation: string;
 }
-const EMPTY: Slot = { editing: false, draft: "", problem: "", feedback: IDLE, toast: null, refocus: false, focus: null };
+const EMPTY: Slot = { editing: false, draft: "", problem: "", feedback: IDLE, toast: null, refocus: false, focus: null, attestation: "" };
 
 /** A change to one entry, as a function of the entry's latest content, so that a queued change is rebuilt on the latest revision. */
 interface Task {
@@ -114,6 +124,8 @@ interface Task {
   restoreFrom?: { revision: number; itemIds: string[] };
   /** The revision this change was made on, set when it is built. */
   baseRevision?: number;
+  /** The person's self-description that a new gender value is saved with. */
+  genderAttestation?: string;
   /** Runs once the change is committed (and again after a retry). */
   then?: () => void;
   prepared?: PreparedSave;
@@ -233,7 +245,7 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
             return true;
           }
           task.baseRevision = env.entry(task.kind)?.revision ?? 0;
-          task.prepared = prepareContent(env, task.kind, content, task.note, task.restoreFrom);
+          task.prepared = prepareContent(env, task.kind, content, task.note, task.restoreFrom, task.genderAttestation);
         } catch (error) {
           return settle({ kind: "failed", message: messageOf(error), retry: false });
         }
@@ -373,6 +385,18 @@ export interface TextSpec {
   read: (content: Content) => string;
   /** The content with the typed text in it, or why the text cannot be saved. */
   apply: (content: Content, text: string) => { content: Content } | { error: string };
+  /** True when the change from `before` to `after` needs the person's own self-description (a new gender value). */
+  attest?: (before: Content, after: Content) => boolean;
+}
+
+/** The shortest self-description the server records with a gender value. */
+const ATTESTATION_MIN = 10;
+const ATTESTATION_HELP =
+  "Say where the person described their own gender (for example their own bio or profile), in at least 10 characters. A name, photo or title is not evidence. Leave gender empty if they have not said.";
+
+/** Why a change cannot be saved without a self-description, or "" when it can. */
+function attestationProblem(spec: TextSpec, before: Content, after: Content, attestation: string): string {
+  return spec.attest?.(before, after) && attestation.trim().length < ATTESTATION_MIN ? ATTESTATION_HELP : "";
 }
 
 /** A text value: trimmed, empty means no value, and no longer than the contract allows. */
@@ -391,6 +415,31 @@ export function plainText(label: string, kind: EntryKind, key: string): TextSpec
     },
   };
 }
+
+/** The main address as one line of text: typing replaces the stored address with that text (its id stays). */
+const mainAddress: TextSpec = {
+  label: "Main address",
+  kind: "company_foundation",
+  read: (content) => {
+    const address = content.main_address;
+    if (!address) {
+      return "";
+    }
+    return typeof address.raw === "string" && address.raw
+      ? address.raw
+      : [address.line1, address.line2, address.city, address.region, address.postal_code, address.country].filter(Boolean).join(", ");
+  },
+  apply: (content, text) => {
+    const value = text.trim();
+    if (value.length > MAX_TEXT_LENGTH) {
+      return { error: TOO_LONG };
+    }
+    const id = typeof content.main_address?.id === "string" ? (content.main_address.id as string) : crypto.randomUUID();
+    content.main_address = value === "" ? null : { ...newAddress(id), raw: value };
+    return { content };
+  },
+};
+const newAddress = (id: string) => ({ id, label: null, raw: null, line1: null, line2: null, city: null, region: null, postal_code: null, country: null });
 
 const FOUNDED_HELP = "Enter a 4-digit year, for example 2015.";
 const EMPLOYEES_HELP = "Enter a whole number, for example 40.";
@@ -459,10 +508,89 @@ export const FIELDS = {
   pitch: plainText("Pitch", "positioning", "company_pitch"),
   founded,
   employees,
+  headquarters: mainAddress,
 } as const;
 
-/** One list of short texts (each with an id) that the sections edit in place. */
-export interface ListSpec { noun: string; kind: EntryKind; key: string }
+/** The fields of one key person, each saved on that person's own entry (see `entryScope`). */
+export function personFields(entryId: string) {
+  const kind = entryScope("key_person", entryId);
+  return {
+    name: plainText("Person name", kind, "name"),
+    title: plainText("Person position", kind, "title"),
+    role: plainText("Person role", kind, "role"),
+    gender: { ...plainText("Person gender", kind, "gender"), attest: (before: Content, after: Content) => after.gender !== null && after.gender !== before.gender },
+    nationality: plainText("Person nationality", kind, "nationality"),
+    description: plainText("Person description", kind, "background_or_relevance"),
+    age: personAge(kind),
+  };
+}
+
+const AGE_HELP = "Enter an age as a whole number from 0–150, for example 42.";
+function personAge(kind: EntryKind): TextSpec {
+  return {
+    label: "Person age",
+    kind,
+    read: (content) => (typeof content.age === "number" ? String(content.age) : ""),
+    apply: (content, text) => {
+      const value = text.trim();
+      if (value === "") {
+        content.age = null;
+        return { content };
+      }
+      if (!/^\d{1,3}$/.test(value) || Number(value) > 150) {
+        return { error: AGE_HELP };
+      }
+      content.age = Number(value);
+      return { content };
+    },
+  };
+}
+
+/**
+ * One list that the sections edit in place, one chip per item. By default each item is a short text (`{ id, text }`); a list of
+ * richer items names the property the chip shows (`field`), how typed text becomes a new item (`make`), and may refuse the text
+ * (`check` returns why).
+ */
+export interface ListSpec {
+  noun: string;
+  kind: EntryKind;
+  key: string;
+  field?: string;
+  make?: (id: string, text: string) => Record<string, unknown>;
+  check?: (text: string) => string | null;
+}
+const itemText = (list: ListSpec, item: Content): string => {
+  const value = item[list.field ?? "text"];
+  return typeof value === "string" ? value : "";
+};
+const makeItem = (list: ListSpec, text: string): Content => {
+  const id = crypto.randomUUID();
+  return list.make ? list.make(id, text) : { id, text };
+};
+const HTTP_HELP = "Enter a full web address starting with http:// or https://.";
+/** A full http(s) address, or null when the text is not one. */
+export function httpUrl(text: string): string | null {
+  try {
+    const url = new URL(text.trim());
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+const PLATFORMS: [RegExp, string][] = [
+  [/(^|\.)facebook\.com$/, "Facebook"],
+  [/(^|\.)instagram\.com$/, "Instagram"],
+  [/(^|\.)linkedin\.com$/, "LinkedIn"],
+  [/(^|\.)(x|twitter)\.com$/, "X"],
+  [/(^|\.)youtube\.com$/, "YouTube"],
+  [/(^|\.)tiktok\.com$/, "TikTok"],
+  [/(^|\.)github\.com$/, "GitHub"],
+];
+/** The platform a profile address belongs to, named by its host when it is not a known one. */
+function platformOf(url: string): string {
+  const host = new URL(url).hostname.replace(/^www\./, "");
+  return PLATFORMS.find(([pattern]) => pattern.test(host))?.[1] ?? host;
+}
 export const LISTS = {
   names: { noun: "alternate name", kind: "company_foundation", key: "alternative_company_names" },
   roles: { noun: "company role", kind: "company_foundation", key: "company_role" },
@@ -470,6 +598,60 @@ export const LISTS = {
   locations: { noun: "service location", kind: "company_foundation", key: "service_locations" },
   buyers: { noun: "buyer", kind: "market_and_customers", key: "target_buyers" },
   needs: { noun: "customer need", kind: "market_and_customers", key: "customer_needs" },
+  otherLocations: {
+    noun: "other location",
+    kind: "company_foundation",
+    key: "other_locations",
+    field: "raw",
+    make: (id, text) => ({ ...newAddress(id), raw: text }),
+  },
+  outlook: {
+    noun: "industry outlook",
+    kind: "market_and_customers",
+    key: "industry_outlook",
+    make: (id, text) => ({ id, text, publisher: null, published_on: null }),
+  },
+  suppliers: {
+    noun: "supplier",
+    kind: "market_and_customers",
+    key: "suppliers_and_partners",
+    field: "name",
+    make: (id, text) => ({ id, name: text, relationship_type: null, relationship_text: null, url: null }),
+  },
+  personas: {
+    noun: "ideal persona",
+    kind: "market_and_customers",
+    key: "ideal_customer_personas",
+    field: "name",
+    make: (id, text) => ({ id, name: text, role: null, organization_type: null, goals: [], pain_points: [] }),
+  },
+  channels: {
+    noun: "channel",
+    kind: "market_and_customers",
+    key: "channels",
+    field: "label",
+    make: (id, text) => ({ id, channel_type: null, label: text, url: null }),
+  },
+  ctas: {
+    noun: "call to action",
+    kind: "market_and_customers",
+    key: "ctas",
+    field: "label",
+    make: (id, text) => ({ id, label: text, url: null, purpose: null }),
+  },
+  funnels: { noun: "funnel", kind: "market_and_customers", key: "funnels", field: "name", make: (id, text) => ({ id, name: text, steps: [] }) },
+  socials: {
+    noun: "profile link",
+    kind: "online_presence",
+    key: "social_media_links",
+    field: "profile_url",
+    check: (text) => (httpUrl(text) ? null : HTTP_HELP),
+    make: (id, text) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- `check` has accepted the text as an http(s) address
+      const url = httpUrl(text)!;
+      return { id, platform: platformOf(url), profile_url: url };
+    },
+  },
 } as const satisfies Record<string, ListSpec>;
 
 interface TriggerOptions {
@@ -634,10 +816,17 @@ export function useTextField(spec: TextSpec, multiline = false) {
       host.patch(key, { problem: messageOf(error) });
       return;
     }
+    const unattested = attestationProblem(spec, base, built.content, current.attestation);
+    if (unattested) {
+      host.patch(key, { problem: unattested });
+      return;
+    }
+    const attestation = spec.attest?.(base, built.content) ? current.attestation.trim() : undefined;
     host.patch(key, { problem: "" });
     void host.submit(key, {
       kind: spec.kind,
       note: `Updated ${spec.label} from the knowledge view.`,
+      genderAttestation: attestation,
       transform: (content) => {
         const result = spec.apply(content, typed);
         if ("error" in result) {
@@ -645,7 +834,10 @@ export function useTextField(spec: TextSpec, multiline = false) {
         }
         return result.content;
       },
-      then: () => { host.close(key, back); },
+      then: () => {
+        host.patch(key, { attestation: "" });
+        host.close(key, back);
+      },
     });
   };
   const typing = (event: { target: { value: string } }) =>
@@ -674,6 +866,42 @@ export function useTextField(spec: TextSpec, multiline = false) {
             triggerRef={trigger}
             {...options}
           />
+        );
+      }
+      if (spec.attest) {
+        // A gender value is saved with the person's own self-description: both fields, then Save (no save on blur).
+        return (
+          <div className="knowledge-view__inline-area">
+            <input
+              ref={field as RefObject<HTMLInputElement>}
+              type="text"
+              className="knowledge-view__inline-input"
+              aria-label={spec.label}
+              autoComplete="off"
+              value={draft}
+              readOnly={saving}
+              aria-busy={saving || undefined}
+              onChange={typing}
+              onKeyDown={keys}
+            />
+            <textarea
+              className="knowledge-view__inline-input knowledge-view__inline-input--area"
+              aria-label="Gender self-description attestation"
+              rows={3}
+              value={slot.attestation}
+              readOnly={saving}
+              onChange={(event) => { host.patch(key, { attestation: event.target.value, problem: "" }); }}
+            />
+            <span className="muted">{ATTESTATION_HELP}</span>
+            <div className="knowledge-view__inline-actions">
+              <button type="button" className="knowledge-view__inline-save" disabled={saving} onClick={() => { commit(true); }}>
+                Save
+              </button>
+              <button type="button" className="knowledge-view__inline-cancel" disabled={saving} onClick={cancel}>
+                Cancel
+              </button>
+            </div>
+          </div>
         );
       }
       if (!multiline) {
@@ -784,7 +1012,7 @@ export function InlineArea({
 }
 
 // ---- lists of short texts (chips) ------------------------------------------------------------------------------------
-export interface ChipItem { id: string; label: string; mark?: ReactNode }
+export interface ChipItem { id: string; label: string; detail?: string | null; mark?: ReactNode }
 const sameText = (text: string) => text.trim().replace(/\s+/g, " ").toLowerCase();
 
 /**
@@ -837,7 +1065,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
   const { noun } = list;
   const saving = feedback.kind === "saving";
   const locked = env.blocked || saving;
-  const storedList = () => (baseOf(host.env(), list.kind)[list.key] ?? []) as IdentifiedText[];
+  const storedList = () => (baseOf(host.env(), list.kind)[list.key] ?? []) as Content[];
   const closeField = (back: boolean) => {
     host.patch(key, { editing: false, draft: "", problem: "" });
     if (back) {
@@ -861,20 +1089,25 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
     if (stored.length >= MAX_ITEMS) {
       host.patch(key, { problem: `This list is full: it can hold at most ${MAX_ITEMS} items.` }); return;
     }
-    if (stored.some((item) => sameText(item.text) === sameText(text))) {
+    const refused = list.check?.(text);
+    if (refused) {
+      host.patch(key, { problem: refused }); return;
+    }
+    const item = makeItem(list, text);
+    const same = sameText(itemText(list, item));
+    if (stored.some((entry) => sameText(itemText(list, entry)) === same)) {
       host.patch(key, { problem: `“${text}” is already in the list.` }); return;
     }
     host.patch(key, { problem: "" });
-    const item = { id: crypto.randomUUID(), text };
     void host.submit(key, {
       kind: list.kind,
       note: `Added ${noun} from the knowledge view.`,
       transform: (content) => {
-        const now = (content[list.key] ?? []) as IdentifiedText[];
+        const now = (content[list.key] ?? []) as Content[];
         if (now.length >= MAX_ITEMS) {
           throw new Error(`This list is full: it can hold at most ${MAX_ITEMS} items.`);
         }
-        if (now.some((entry) => sameText(entry.text) === sameText(text))) {
+        if (now.some((entry) => sameText(itemText(list, entry)) === same)) {
           throw new Error(`“${text}” is already in the list.`);
         }
         content[list.key] = [...now, item];
@@ -895,7 +1128,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
       kind: list.kind,
       note: `Removed ${noun} from the knowledge view.`,
       transform: (content) => {
-        content[list.key] = ((content[list.key] ?? []) as IdentifiedText[]).filter((entry) => entry.id !== item.id);
+        content[list.key] = ((content[list.key] ?? []) as Content[]).filter((entry) => entry.id !== item.id);
         return content;
       },
       then: () => {
@@ -932,6 +1165,7 @@ export function InlineChips({ list, items }: { list: ListSpec; items: ChipItem[]
         {items.map((item, index) => (
           <li className="knowledge-view__chip knowledge-view__chip--editable" key={item.id}>
             {item.label}
+            {item.detail && <small>{item.detail}</small>}
             {item.mark}
             <button
               ref={(element) => {
