@@ -1,8 +1,10 @@
 # MoFloKnowledge
 
+By Raymond Wu
+
 ## What MoFloKnowledge does
 
-MoFloKnowledge turns a public company website into a source-backed knowledge base. Give it a company's website address and a worker crawls a small, bounded set of that site's pages, saves what it captured, and extracts supported facts with fixed rules. Every extracted value keeps the exact passage or observation it came from. People then review and edit the facts, resolve conflicts, and publish immutable, cited snapshots. Fields the extractor cannot establish stay unknown for a person to fill in.
+MoFloKnowledge turns a public company website into a source-backed knowledge base. Give it a company's website address and a worker crawls a small, bounded set of that site's pages, saves what it captured, and extracts supported facts with fixed rules. Every extracted value keeps the exact passage or observation it came from. You can then review and edit the facts, resolve conflicts, and publish immutable, cited snapshots. Fields the extractor cannot establish stay unknown for someone to fill in.
 
 It is a Next.js 15 web app with a persistent Node.js worker, PostgreSQL with Supabase Auth, an optional isolated Chromium renderer, and a restricted database login for the worker.
 
@@ -44,19 +46,23 @@ One container runs PostgreSQL, Supabase Auth, PostgREST, the web app and the wor
 The full rules, including every supported source, are in [How the crawler works](docs/crawler.md). In short:
 
 **Polite, bounded crawling**
+
 - Requests identify themselves as `MoFloKnowledgeBot/1.0`. Crawls start only from a member's action.
 - `robots.txt` is fetched once per site and obeyed, including redirects that stay on the same site (apex and `www.`). If it cannot be read, or access is denied, the site's pages are treated as blocked. `Crawl-delay` is honoured as the gap between requests (capped at 60 seconds), with at most 3 page fetches in flight and at least 0.5 seconds between requests to one host.
 - Budgets: 15 pages and depth 2 by default (up to 25 pages and depth 3), at most 200 discovered links, 15 seconds per fetch, 2 MiB per page and 5 minutes per crawl. When a limit is hit the crawl records which one and is labelled partial. All are tunable with the `CRAWL_*` variables listed in `docs/crawler.md` and `.env.example`.
 
 **Choosing pages**
+
 - Only same-site pages at or below the starting path are followed. Shallower pages come first; within a depth, links are scored by path and label: about, team and leadership pages and services, products and pricing pages first, then contact, FAQ and booking pages, and unknown pages linked from the main navigation menu.
 - Only the first two pages of each funnel kind (quote, contact, financing, testimonials, booking) keep their score. Blog and news pages are demoted, and careers, privacy, terms and login pages are demoted further.
 - Up to three linked stylesheets per page (6 per crawl, or 1 when the site declares a `Crawl-delay`) are read for fonts and colours, including CSS custom properties. They do not count against the page limit.
 
 **Safe transport**
+
 - Only `http`/`https` on ports 80 and 443 with a real public hostname. The hostname is resolved first and the connection is pinned to the address that was checked, so private, loopback and link-local addresses are refused (SSRF protection).
 
 **Extraction**
+
 - Structured data is read first: JSON-LD, microdata and meta tags, then visible headings, lists, links, forms and labelled lines.
 - Deterministic, generic rules map explicit evidence to registered fields. There is no site-specific or industry-specific logic. A candidate is kept only if it cites captured text or an observation, and a validation step then checks it (for example, a founding year needs an explicit "founded" or "established" statement, not a copyright date).
 - Facts are never guessed from nearby wording. Conflicting candidates are surfaced for a person to resolve, and anything not established stays unknown for human review.
@@ -65,30 +71,30 @@ The full rules, including every supported source, are in [How the crawler works]
 
 A knowledge base has seven kinds of entry. Five are singletons per company; people and offerings are repeatable. An optional `site_links` entry holds the sitemap.
 
-| Kind | Main fields |
-| --- | --- |
-| `company_foundation` | overview, website, industry, business model, year founded, legal entity type, employee count, main address, service locations, alternative names |
-| `positioning` | company pitch, founding story |
-| `market_and_customers` | target buyers, customer needs, personas, industry groupings, channels, funnels, calls to action, suppliers and partners |
-| `branding_and_style` | fonts, brand colours, logos, style descriptions |
-| `online_presence` | social media links, phone |
-| `key_person` (repeatable) | name, title, role, background, and optional age, nationality, portrait |
-| `offering` (repeatable) | name, description, type, category, features, pricing, url, images |
+| Kind                      | Main fields                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `company_foundation`      | overview, website, industry, business model, year founded, legal entity type, employee count, main address, service locations, alternative names |
+| `positioning`             | company pitch, founding story                                                                                                                    |
+| `market_and_customers`    | target buyers, customer needs, personas, industry groupings, channels, funnels, calls to action, suppliers and partners                          |
+| `branding_and_style`      | fonts, brand colours, logos, style descriptions                                                                                                  |
+| `online_presence`         | social media links, phone                                                                                                                        |
+| `key_person` (repeatable) | name, title, role, background, and optional age, nationality, portrait                                                                           |
+| `offering` (repeatable)   | name, description, type, category, features, pricing, url, images                                                                                |
 
 Unknown scalar values are `null` and empty collections are `[]`; defaults never invent facts. The field list is `src/contracts/field-registry.json`.
 
 The database (`supabase/migrations/`) has these tables:
 
-| Table | Purpose |
-| --- | --- |
-| `companies` | One row per company: name, website, archive flag, draft generation, next snapshot number |
-| `company_members` | Membership with role `owner`, `editor` or `viewer` |
-| `scrape_jobs` | Crawl jobs: status, options, progress, checkpoint, proposals, errors, lease and attempt count |
-| `source_pages` | One row per captured page: URLs, status (`captured`, `blocked`, `failed`, `unsupported`), method (`http` or `browser`), cleaned content, SHA-256, and the technical `observations` and `design_evidence` |
-| `knowledge_entries` | One row per entry, with its kind, current revision and an archive tombstone |
-| `knowledge_entry_versions` | Append-only revisions: `content`, `provenance`, `review_status` (`unreviewed`, `approved`, `rejected`), author and change reason |
-| `knowledge_base_versions` | Immutable published snapshots: entry manifest, full payload and its SHA-256 |
-| `uploads` | Metadata for uploaded portraits and offering images |
+| Table                      | Purpose                                                                                                                                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `companies`                | One row per company: name, website, archive flag, draft generation, next snapshot number                                                                                                                 |
+| `company_members`          | Membership with role `owner`, `editor` or `viewer`                                                                                                                                                       |
+| `scrape_jobs`              | Crawl jobs: status, options, progress, checkpoint, proposals, errors, lease and attempt count                                                                                                            |
+| `source_pages`             | One row per captured page: URLs, status (`captured`, `blocked`, `failed`, `unsupported`), method (`http` or `browser`), cleaned content, SHA-256, and the technical `observations` and `design_evidence` |
+| `knowledge_entries`        | One row per entry, with its kind, current revision and an archive tombstone                                                                                                                              |
+| `knowledge_entry_versions` | Append-only revisions: `content`, `provenance`, `review_status` (`unreviewed`, `approved`, `rejected`), author and change reason                                                                         |
+| `knowledge_base_versions`  | Immutable published snapshots: entry manifest, full payload and its SHA-256                                                                                                                              |
+| `uploads`                  | Metadata for uploaded portraits and offering images                                                                                                                                                      |
 
 Observations are stored on `source_pages`. Provenance lives with each revision as sources, exact-quote or technical evidence, and per-value claims that record origin (`source_backed`, `inferred`, `generated`, `user_provided`) and an assessment (`found`, `not_found`, `not_checked`, `partial`, `conflict`).
 
@@ -96,35 +102,7 @@ Observations are stored on `source_pages`. Provenance lives with each revision a
 
 ## Example prompts for AI enrichment
 
-Extraction itself is deterministic and uses no AI model. The only model-assisted step is an optional, off-by-default **crawl agent** that orders the links the crawl visits next. It never reads pages for extraction and never writes facts, captures or provenance.
-
-Enable it with `CRAWL_AGENT_ENABLED=true` plus `CRAWL_AGENT_API_KEY`, `CRAWL_AGENT_MODEL`, `CRAWL_AGENT_BASE_URL` (an https chat-completions endpoint) and `CRAWL_AGENT_PROMPT`, the name of a file in `prompts/`. The repository ships no prompt: `prompts/` is empty, so you supply the file. If the settings are incomplete or a request fails or times out (10 seconds), the crawl logs one error and continues in its normal order.
-
-The worker sends one chat-completions request per captured page (`src/worker/agent/client.ts`), with temperature 0:
-
-- **system message:** the contents of your prompt file.
-- **user message:** JSON, `{"page": "<url>", "remainingPages": <n>, "links": [{"url": "...", "label": "...", "nav": true}]}`.
-- **expected reply:** a JSON array of URLs, or `{"links": [...]}`, best first. Only URLs that were offered are used, and each still passes the same scope, depth, page-limit, robots and network rules.
-
-Example prompts to put in `prompts/` (examples, not shipped with the app):
-
-```text
-You choose which links a crawler should visit next on a company website. You receive JSON with the
-current page, the number of pages still allowed, and candidate links. Reply with only a JSON array of
-link URLs, best first. Prefer pages that describe the company, its team, its services or products, and
-how to contact it. Skip careers, legal, login and blog pages. Return only URLs from the input.
-```
-
-```text
-Reply with a JSON object {"links": [...]} listing at most remainingPages URLs from the input. Rank
-pages that state what the company sells and who it serves above everything else, then pages about
-people and company history.
-```
-
-```text
-Pick the links most likely to hold a price list, service descriptions or opening hours. Reply with a
-JSON array of URLs taken from the input, most useful first. If none apply, reply with [].
-```
+This app is currently does not use an AI for web scraping. If it were to use an AI for web scraping the prompt is in `/prompts`. I found that prompt to be the best prompt I currently could come up with. It would help in raw data scraping and filtering the data but most importantly it would rewrite the data into actual legible prose.
 
 ## Assumptions and limitations
 
@@ -135,3 +113,11 @@ JSON array of URLs taken from the input, most useful first. If none apply, reply
 - **Page budget.** Only the pages that fit the limits are captured (15 by default), so facts on later pages are missed. Raising the limit costs time and storage.
 - **Rule-based extraction.** Facts shown only in images, PDFs, scripts or generated prose may be missed. Fields without a rule, such as gender, stay unknown until a person fills them in. Narrative fields are copied wording, not summaries.
 - **Local stack is not production.** It uses generated secrets in a single container and requires outbound internet from Docker. Hosted Supabase and production deployment are manual setup and release steps.
+
+## Screenshots
+
+Screenshots are located in `\screenshots`.
+
+## Output
+
+JSON output is located in `\output`
