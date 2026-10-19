@@ -361,11 +361,11 @@ export function companyTextCandidates(
     for (const heading of headings.filter((h) => h.level === 1 && h.text).slice(0, 1)) {
       const words = (heading.text ?? "").split(/\s+/).filter((word) =>
         !praise.test(word) && !/['’]s$/.test(word) && !(word.length > 2 && known.includes(word.toLowerCase())));
-      const lead = normalized(capture.title ?? "").split(/\s+[|\-–]\s+|\s*[|:]\s+/)[0].toLowerCase();
+      const titleParts = normalized(capture.title ?? "").split(/\s+[|\-–]\s+|\s*[|:]\s+/).map((part) => part.trim().toLowerCase());
       // Only a short capitalised run ending in a business-structure noun reads as an industry and role.
       if (words.length >= 2 && words.length <= 4 && words.every((word) => /^\p{Lu}[\p{L}-]*$/u.test(word)) &&
         organisation.test(words[words.length - 1]) && !words.some((word) => notIndustry.test(word)) &&
-        words.join(" ").toLowerCase() !== lead) {
+        !titleParts.includes(words.join(" ").toLowerCase()) && !titleParts.includes((heading.text ?? "").trim().toLowerCase())) {
         add(INDUSTRY, words.slice(0, -1).join(" "), [heading.text ?? ""], 60);
         add(COMPANY_ROLE, [{ text: words.join(" ") }], [heading.text ?? ""], 60);
       }

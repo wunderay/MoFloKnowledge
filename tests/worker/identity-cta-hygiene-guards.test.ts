@@ -34,4 +34,11 @@ describe("identity and call-to-action guards", () => {
     const labels = (values("/market_and_customers/ctas") as { label: string }[]).map((cta) => cta.label);
     expect(labels).toEqual(["View Listings"]);
   });
+
+  it.each([["Smith Law Firm"], ["Acme Group"]])("takes no industry from a home heading that is the brand %s", (brand) => {
+    const values = extract(`<html><head><title>Home | ${brand}</title></head><body>
+      <main><h1>${brand}</h1><p>Call for same-day help.</p></main><footer><p>© ${brand}</p></footer></body></html>`);
+    expect(values("/company_foundation/industry")).toEqual([]);
+    expect(values("/company_foundation/company_role")).toEqual([]);
+  });
 });
