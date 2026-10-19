@@ -124,12 +124,13 @@ export function visibleCandidates(
       s.text.split(name).join("").toLowerCase().includes(name.toLowerCase()));
     const gender = pronounGender(fromName);
     const declaredName = metadata.some((o) => new RegExp("^Meet\\s+" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(o.value ?? ""));
-    // A "Name, title" / "Meet Name" statement is a signal on its own; otherwise the page must carry a team-group
-    // label and either a pronoun in a sentence naming the person or a name-led bio under a short title line.
-    const menuLabels = page.capture.observations.menuLabels;
-    const teamGroup = [...(Array.isArray(menuLabels) ? menuLabels as string[] : []), ...page.capture.links.map((l) => l.label),
-      ...page.capture.segments.map((s) => s.text)].some((label) => /^(?:our\s+)?(?:team|people|staff|leadership)$/i.test(label));
-    const signal = Boolean(declared) || declaredName || (teamGroup &&
+    // A "Name, title" / "Meet Name" statement is a signal on its own; otherwise this page's own navigation link must sit
+    // in a team-group submenu, with either a pronoun in a sentence naming the person or a name-led bio under a short line.
+    const groups = page.capture.observations.navGroups;
+    const teamLinked = Array.isArray(groups) && (groups as { caption: string; url: string }[]).some((group) =>
+      group.url.replace(/[#?].*$/, "").replace(/\/$/, "") === page.capture.finalUrl.replace(/\/$/, "") &&
+      /^(?:our\s+)?(?:team|people|staff|leadership)$/i.test(group.caption));
+    const signal = Boolean(declared) || declaredName || (teamLinked &&
       (sentences.some((sentence) => sentence.includes(name) && pronounGender(sentence) !== null) ||
         Boolean(adjacent && sentences[0].startsWith(name))));
     if (bio.length && bioText.length <= 4000 && named >= 0 && !asPhrase && signal) {

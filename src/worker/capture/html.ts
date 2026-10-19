@@ -324,10 +324,18 @@ export function captureHtml(
       });
     });
   }
-  // Plain-text menu captions ("Our Team") are not links, so they are kept before the chrome is removed.
-  const menuLabels = $('nav,[role="navigation"]').find("*")
-    .filter((_i, node) => !$(node).children().length && !$(node).is("a[href]"))
-    .slice(0, 50).map((_i, node) => normalizeText($(node).text()).slice(0, 80)).get().filter(Boolean);
+  // Each navigation link with the caption of its submenu (the text before the list, or the parent item's own text),
+  // kept before the chrome is removed.
+  const navGroups: { caption: string; url: string }[] = [];
+  $('nav a[href],[role="navigation"] a[href]').slice(0, 300).each((_i, node) => {
+    const url = safeLink($(node).attr("href"));
+    const list = $(node).closest("ul,ol");
+    const own = list.parent("li").clone().children("ul,ol").remove().end().text();
+    const caption = normalizeText(list.prev().text() || own).slice(0, 80);
+    if (url && caption) {
+      navGroups.push({ caption, url });
+    }
+  });
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
   const root = $("main").first().length
@@ -387,7 +395,7 @@ export function captureHtml(
     declaredStyles: declaredDesign.styles,
     declaredLogos: declaredDesign.logos,
     offeringBlocks,
-    menuLabels,
+    navGroups,
     clientSectionDetected: requiresClientSection,
     jsonLd,
     ...pageMetadata.metadata,

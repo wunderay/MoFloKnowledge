@@ -18,7 +18,8 @@ const plain: [string, string[]][] = [
   ["Pump Repair", ["Pump Repair for wells, sumps and irrigation lines of every size.", "Parts are stocked on the truck."]],
   ["Hair Coloring", ["Hair Coloring starts with a chat about the look you want, and she will consult first.", "Colour care tips follow every visit."]],
 ];
-const nav = `<nav>${[...probes.map(([h]) => h), "Jane Doe"].map((h) => `<a href="/${slug(h)}/">${h}</a>`).join("")}</nav>`;
+const link = (h: string) => `<li><a href="/${slug(h)}/">${h}</a></li>`;
+const nav = `<nav><span>Our Team</span><ul>${link("Jane Doe")}</ul><span>Services</span><ul>${probes.map(([h]) => link(h)).join("")}</ul></nav>`;
 const page = (h1: string, paragraphs: string[], menu = nav) =>
   `<html><head><title>${h1} | Acme Group</title></head><body>${menu}<main><h1>${h1}</h1><h2>Fast Response</h2>` +
   `${paragraphs.map((p) => `<p>${p}</p>`).join("")}</main></body></html>`;
@@ -49,5 +50,11 @@ describe("people profile guards", () => {
   it.each(plain)("does not read %s as a person without a team label", (h, paragraphs) => {
     const menu = `<nav><a href="/${slug(h)}/">${h}</a></nav>`;
     expect(people([{ path: `/${slug(h)}/`, html: page(h, paragraphs, menu) }]).map((p) => p.name)).toEqual(["Jane Doe"]);
+  });
+  // The sitewide menu has a team submenu holding the real profile and a services submenu holding a service page.
+  it("reads only the profile listed under the team submenu", () => {
+    const menu = nav.replace("</ul></nav>", link("Pump Repair") + "</ul></nav>");
+    const service = { path: "/pump-repair/", html: page("Pump Repair", ["Pump Repair for wells, sumps and irrigation lines of every size.", "Parts are stocked on the truck."], menu) };
+    expect(people([service]).map((p) => p.name)).toEqual(["Jane Doe"]);
   });
 });
