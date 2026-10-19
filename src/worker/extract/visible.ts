@@ -2,7 +2,7 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { serviceTextCandidates } from "./services-text";
 import { isPersonName, parseEmployeeCount } from "./text";
-import { pronounGender } from "../../contracts";
+import { PRONOUN_GENDER_NOTE, pronounGender } from "../../contracts";
 
 /** Explicit labels only: semantic categories are never guessed from prose. */
 export function visibleCandidates(
@@ -70,7 +70,7 @@ export function visibleCandidates(
   const nameSlug = profileName ? encodeURIComponent(profileName.toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")) : null;
   const pageSlug = new URL(page.capture.finalUrl).pathname.replace(/\/$/, "").split("/").at(-1);
-  if (profileName && profileRole && (profileTitle || pageSlug?.toLowerCase() === nameSlug?.toLowerCase()) && /\/(?:team|people|staff|about-us|about)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname) &&
+  if (profileName && isPersonName(profileName) && profileRole && (profileTitle || pageSlug?.toLowerCase() === nameSlug?.toLowerCase()) && /\/(?:team|people|staff|about-us|about)\/[^/]+\/?$/i.test(new URL(page.capture.finalUrl).pathname) &&
       !observations.some((o) => /\/@type(?:\/\d+)?$/.test(o.property ?? "") && /^(?:https?:\/\/schema\.org\/)?Person$/.test(o.value ?? ""))) {
     const name = profileName;
     const heading = observations.find((o) => o.property === "heading" &&
@@ -103,7 +103,7 @@ export function visibleCandidates(
   const heading = observations.find((o) => o.property === "heading" && o.value === firstH1);
   if (!result.some((c) => c.field === "/key_people/@id/name") && firstH1 && link && heading && nameIndex >= 0 && pathname !== "/" && firstH1 !== page.capture.publisher &&
       words.length >= 2 && words.length <= 4 && isPersonName(firstH1) &&
-      words.every((word) => /^\p{Lu}[\p{L}'’.-]*$/u.test(word)) &&
+      words.every((word) => /^(?:Mc|Mac|O['’])?\p{Lu}[\p{Ll}'’.-]*$/u.test(word) && !/^(?:Us|Our|Services|Team)$/.test(word)) &&
       !observations.some((o) => /\/@type(?:\/\d+)?$/.test(o.property ?? "") && /^(?:https?:\/\/schema\.org\/)?Person$/.test(o.value ?? ""))) {
     const name = firstH1;
     const after = page.capture.segments.slice(nameIndex + 1);
@@ -115,22 +115,33 @@ export function visibleCandidates(
     const adjacent = after[0] && shortLine(after[0].text) ? after[0] : undefined;
     const bio = after.slice(adjacent ? 1 : 0).filter((s) => s.text.length >= 40).slice(0, 3);
     const bioText = bio.map((s) => s.text).join("\n\n");
-    if (bio.length && bioText.length <= 4000 && (bioText.includes(name) || bioText.includes(words[0]))) {
+    // The bio sentences from the first one naming the person on; a lowercase use of the heading words in the
+    // body ("our team", "contact us") means the heading is a topic, not a name.
+    const sentences = bioText.split(/(?<=[.!?])\s+/);
+    const named = sentences.findIndex((sentence) => sentence.includes(name));
+    const fromName = named >= 0 ? sentences.slice(named).join(" ") : "";
+    const asPhrase = page.capture.segments.some((s, i) => i !== nameIndex && s.text.toLowerCase().includes(name.toLowerCase()) &&
+      s.text.split(name).join("").toLowerCase().includes(name.toLowerCase()));
+    const gender = pronounGender(fromName);
+    const declaredName = metadata.some((o) => new RegExp("^Meet\\s+" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(o.value ?? ""));
+    const signal = gender !== null || Boolean(declared) || declaredName || (adjacent && sentences[0].startsWith(name));
+    if (bio.length && bioText.length <= 4000 && named >= 0 && !asPhrase && signal) {
       const entity = `${page.capture.finalUrl}|${name}|${page.capture.segments[nameIndex].id}`;
       const linkEvidence = observations.filter((o) =>
         (o.property === "href" && o.value === link.url) ||
         (o.property === "anchor-label" && o.value === link.label && o.asset_url === link.url));
-      const named = [heading.id, ...linkEvidence.map((o) => o.id)];
-      add("/key_people/@id/name", name, [page.capture.segments[nameIndex].id], named, entity);
+      const evidenceIds = [heading.id, ...linkEvidence.map((o) => o.id)];
+      add("/key_people/@id/name", name, [page.capture.segments[nameIndex].id], evidenceIds, entity);
       if (adjacent) {
         add("/key_people/@id/title", adjacent.text, [adjacent.id], [], entity);
       } else if (declared?.text) {
         add("/key_people/@id/title", declared.text, [], [declared.o.id], entity);
       }
       add("/key_people/@id/background_or_relevance", bioText, bio.map((s) => s.id), [], entity);
-      const gender = pronounGender(bioText);
       if (gender) {
-        add("/key_people/@id/gender", gender, bio.filter((s) => pronounGender(s.text) === gender).map((s) => s.id), [], entity);
+        const cited = bio.filter((s, i) => s.text.includes(name) || bio.slice(0, i).some((p) => p.text.includes(name)));
+        result.push({ field: "/key_people/@id/gender", value: gender, entity_key: entity, origin: "source_backed",
+          segment_ids: cited.map((s) => s.id), observation_ids: [], supporting_fields: [], note: PRONOUN_GENDER_NOTE });
       }
     }
   }

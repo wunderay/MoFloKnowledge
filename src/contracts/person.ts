@@ -20,6 +20,8 @@ export const PersonSchema = z
   );
 export type Person = z.infer<typeof PersonSchema>;
 
+/** Claim note of a gender read from the pronouns a site uses for the person in their own bio. */
+export const PRONOUN_GENDER_NOTE = "Third-person pronouns in the person's own bio.";
 /** Female or Male when the text refers to one person with only she/her or only he/him/his; otherwise null. */
 export function pronounGender(text: string): "Female" | "Male" | null {
   const female = /\b(?:she|her|hers|herself)\b/i.test(text), male = /\b(?:he|him|his|himself)\b/i.test(text);
