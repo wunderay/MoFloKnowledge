@@ -237,7 +237,7 @@ export async function runCrawl(
       false,
       { at: jobDeadlineAt - fetchMargin(), scope: "job" },
     );
-  // Same-site stylesheets a page links, at most MAX_PAGE_SHEETS per page and MAX_CRAWL_SHEETS per crawl.
+  // Same-site stylesheets a page links, at most MAX_PAGE_SHEETS per page and MAX_CRAWL_SHEETS per crawl (one when the site declares a Crawl-delay).
   // Text only; a stylesheet that cannot be read is skipped and never fails the page.
   const claimedSheets = new Set<string>();
   async function fetchStylesheets(page: { body: Buffer; finalUrl: string }) {
@@ -246,9 +246,14 @@ export async function runCrawl(
     if (frontier.pathPrefix) {
       return texts;
     }
+    // A declared Crawl-delay makes every request expensive, and pages matter more than styles: read one stylesheet.
+    const delayed = await robots
+      .check(page.finalUrl, scheduler.signal)
+      .then((policy) => policy.delayMs > crawlLimits().hostGapMs, () => false);
+    const limit = delayed ? 1 : MAX_CRAWL_SHEETS;
     const wanted = linkedStylesheetUrls(page.body, page.finalUrl)
       .filter((url) => sameSite(url, page.finalUrl) && !claimedSheets.has(url))
-      .slice(0, Math.min(MAX_PAGE_SHEETS, Math.max(0, MAX_CRAWL_SHEETS - claimedSheets.size)));
+      .slice(0, Math.min(delayed ? 1 : MAX_PAGE_SHEETS, Math.max(0, limit - claimedSheets.size)));
     // Claimed before any await so concurrent pages never fetch the same sheet or exceed the crawl cap.
     for (const url of wanted) {
       claimedSheets.add(url);

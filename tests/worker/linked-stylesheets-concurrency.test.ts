@@ -10,7 +10,7 @@ import {
   type Site,
 } from "../helpers/crawl-deadline-site";
 
-// Pages captured at the same time share one per-crawl allowance of linked stylesheets.
+// Pages captured at the same time share one per-crawl allowance of linked stylesheets, which a declared Crawl-delay cuts to one.
 
 const ROOT = "http://acme-group.example.com/";
 
@@ -76,4 +76,36 @@ it("fetches each shared stylesheet once and at most 6 in a crawl when pages are 
   for (const path of shared) {
     expect(fetched).toContain(path);
   }
+});
+
+it("fetches only one stylesheet in a crawl when the site declares a Crawl-delay", async () => {
+  const pages: Record<string, string> = {
+    "/": page(["/s1.css", "/s2.css", "/s3.css"], ["/a"]),
+    "/a": page(["/a1.css"]),
+  };
+  site = await startSite((request, response) => {
+    if (request.path === "/robots.txt") {
+      return sendRobots(response, "User-agent: *\nCrawl-delay: 0.2");
+    }
+    if (request.path.endsWith(".css")) {
+      return response
+        .writeHead(200, { "content-type": "text/css" })
+        .end(":root{--c-one:#111111}");
+    }
+    if (Object.hasOwn(pages, request.path)) {
+      return sendHtml(response, pages[request.path]);
+    }
+    response.writeHead(404).end();
+  });
+  const result = await runCrawl(
+    makeJob(ROOT, 5),
+    makeRepository(),
+    new AbortController().signal,
+    undefined,
+    site.fetcher,
+  );
+  expect(result.captures).toHaveLength(2);
+  expect(
+    site.hits.filter((hit) => hit.path.endsWith(".css")).map((hit) => hit.path),
+  ).toEqual(["/s1.css"]);
 });
