@@ -30,6 +30,11 @@ export function documentScope(input: string): string[] {
     const domain = getDomain(host, { allowPrivateDomains: true });
     return domain && (host === domain || host === `www.${domain}`) ? [domain, `www.${domain}`] : [host];
 }
+/** True when both URLs are on the same registrable domain (subdomains included). */
+export function sameSite(a: string, b: string): boolean {
+    const domain = getDomain(new URL(a).hostname, { allowPrivateDomains: true });
+    return !!domain && domain === getDomain(new URL(b).hostname, { allowPrivateDomains: true });
+}
 /** Start URL path without a trailing slash ("" for the site root). */
 export function documentPathPrefix(input: string): string {
     return new URL(normalizeUrl(input)).pathname.replace(/\/+$/, '');
