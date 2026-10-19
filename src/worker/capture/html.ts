@@ -118,7 +118,7 @@ export function captureHtml(
   ).remove();
   $("[style]").each((_i, node) => {
     if (
-      /(?:display\s*:\s*none|visibility\s*:\s*hidden)/i.test(
+      /display\s*:\s*none/i.test(
         $(node).attr("style") ?? "",
       )
     ) {

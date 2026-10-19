@@ -38,7 +38,7 @@ export function captureContentSections(
   body.find("[class],[id],[style]").each((_i, node) => {
     const el = $(node);
     if (recommendation.test(`${el.attr("class") ?? ""} ${el.attr("id") ?? ""}`) ||
-      /(?:display\s*:\s*none|visibility\s*:\s*hidden)/i.test(el.attr("style") ?? "")) {
+      /display\s*:\s*none/i.test(el.attr("style") ?? "")) {
       el.remove();
     }
   });
@@ -261,7 +261,7 @@ export function captureDeclaredDesign($: CheerioAPI, safeLink: (raw: string | un
     if (ancestors.toArray().some((ancestor) => /(?:^|[\s_-])(?:partners?|sponsors?|client[-_ ]?logos?|customers?)(?:$|[\s_-])/i.test(`${$(ancestor).attr("class") ?? ""} ${$(ancestor).attr("id") ?? ""}`))) {
       return;
     }
-    if (el.closest('[hidden],[aria-hidden="true"]').length || el.parents().toArray().some((parent) => /display\s*:\s*none|visibility\s*:\s*hidden/i.test($(parent).attr("style") ?? ""))) {
+    if (el.closest('[hidden],[aria-hidden="true"]').length || el.parents().toArray().some((parent) => /display\s*:\s*none/i.test($(parent).attr("style") ?? ""))) {
       return;
     }
     const selector = `${context.tagName}${$(context).attr("role") === "banner" ? '[role="banner"]' : ""} img`;
