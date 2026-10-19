@@ -51,7 +51,7 @@ The full rules, including every supported source, are in [How the crawler works]
 **Choosing pages**
 - Only same-site pages at or below the starting path are followed. Shallower pages come first; within a depth, links are scored by path and label: about, team and leadership pages and services, products and pricing pages first, then contact, FAQ and booking pages, and unknown pages linked from the main navigation menu.
 - Only the first two pages of each funnel kind (quote, contact, financing, testimonials, booking) keep their score. Blog and news pages are demoted, and careers, privacy, terms and login pages are demoted further.
-- Up to three linked stylesheets per page are read for fonts and colours, including CSS custom properties. They do not count against the page limit.
+- Up to three linked stylesheets per page (6 per crawl, or 1 when the site declares a `Crawl-delay`) are read for fonts and colours, including CSS custom properties. They do not count against the page limit.
 
 **Safe transport**
 - Only `http`/`https` on ports 80 and 443 with a real public hostname. The hostname is resolved first and the connection is pinned to the address that was checked, so private, loopback and link-local addresses are refused (SSRF protection).
@@ -98,7 +98,7 @@ Observations are stored on `source_pages`. Provenance lives with each revision a
 
 Extraction itself is deterministic and uses no AI model. The only model-assisted step is an optional, off-by-default **crawl agent** that orders the links the crawl visits next. It never reads pages for extraction and never writes facts, captures or provenance.
 
-Enable it with `CRAWL_AGENT_ENABLED=true` plus `CRAWL_AGENT_API_KEY`, `CRAWL_AGENT_MODEL`, `CRAWL_AGENT_BASE_URL` (an https, OpenAI-compatible endpoint) and `CRAWL_AGENT_PROMPT`, the name of a file in `prompts/`. The repository ships no prompt: `prompts/` is empty, so you supply the file. If the settings are incomplete or a request fails or times out (10 seconds), the crawl logs one error and continues in its normal order.
+Enable it with `CRAWL_AGENT_ENABLED=true` plus `CRAWL_AGENT_API_KEY`, `CRAWL_AGENT_MODEL`, `CRAWL_AGENT_BASE_URL` (an https chat-completions endpoint) and `CRAWL_AGENT_PROMPT`, the name of a file in `prompts/`. The repository ships no prompt: `prompts/` is empty, so you supply the file. If the settings are incomplete or a request fails or times out (10 seconds), the crawl logs one error and continues in its normal order.
 
 The worker sends one chat-completions request per captured page (`src/worker/agent/client.ts`), with temperature 0:
 
@@ -131,7 +131,7 @@ JSON array of URLs taken from the input, most useful first. If none apply, reply
 - **Public, same-site pages only.** The crawler never logs in, submits forms or leaves the company's site and starting path.
 - **Blocked sites are reported, not bypassed.** Pages that `robots.txt` disallows, or sites whose `robots.txt` cannot be read, are recorded as blocked. A page that answers with an error (for example HTTP 403) is recorded as failed. The crawler does not retry around either. It honours `Retry-After` on a 429 reply for a few seconds and retries once.
 - **JavaScript-only sites.** Content that only appears after scripts run needs the Chromium renderer. It is not configured in the local stack, so such pages are recorded as `render_not_configured`, coverage is reported as partial, and a site may yield little or nothing. Rendering arbitrary URLs also requires a qualified host ([renderer host qualification](docs/renderer-host-qualification.md)).
-- **Crawl-delay sites are slow.** A large `Crawl-delay` stretches the time budget (up to the job timeout), so a crawl can take minutes and may end partial.
+- **Crawl-delay sites are slow.** A large `Crawl-delay` grows the time budget to `Crawl-delay` × documents + 60 s, never past the job timeout minus 60 s, so a crawl can take minutes and may end partial.
 - **Page budget.** Only the pages that fit the limits are captured (15 by default), so facts on later pages are missed. Raising the limit costs time and storage.
 - **Rule-based extraction.** Facts shown only in images, PDFs, scripts or generated prose may be missed. Fields without a rule, such as gender, stay unknown until a person fills them in. Narrative fields are copied wording, not summaries.
 - **Local stack is not production.** It uses generated secrets in a single container and requires outbound internet from Docker. Hosted Supabase and production deployment are manual setup and release steps.
