@@ -16,7 +16,7 @@ import { documentScope } from "../network/url-scope";
 import { canonicalStringify } from "../../knowledge/canonical-json";
 import { exactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
 import { buyerIdentityKey, FUNNEL_NAMES, funnelHeadingMatch, funnelPathMatch, messageField, subscribeText } from "./market-text";
-import { FOUNDER_STATEMENT_NOTE, founderStatement } from "./text";
+import { FOUNDER_STATEMENT_NOTE, founderStatement, STRUCTURAL_CATEGORY_NOTE } from "./text";
 export type ValidatedCandidate = FieldCandidate & {
   id: string;
   kind: (typeof FIELD_REGISTRY)[number]["kind"];
@@ -539,6 +539,10 @@ export function validateCandidates(
             }
             // Fixed funnel names; the cited form field, heading or page address is the evidence.
             if (field.field === "funnels" && key === "name" && FUNNEL_NAMES.includes(value)) {
+              return;
+            }
+            // Fixed category names for structurally detected offerings; the cited name is the evidence.
+            if (field.kind === "offering" && field.field === "category" && c.note === STRUCTURAL_CATEGORY_NOTE && ["Service", "Listing"].includes(value)) {
               return;
             }
             if (/^https?:/.test(value)) {

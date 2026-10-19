@@ -39,3 +39,5 @@ export function parseEmployeeCount(employee: string) {
 
 /** Not a person: an e-mail or URL, a @handle, a token with digits or underscores, or one all-lowercase word. */
 export const isPersonName = (name: string) => !/[@\d_/]/.test(name) && !(!/\s/.test(name.trim()) && name === name.toLowerCase());
+/** Marks the fixed category of a structurally detected offering. */
+export const STRUCTURAL_CATEGORY_NOTE = "Structural offering category";

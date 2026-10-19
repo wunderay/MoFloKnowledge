@@ -143,7 +143,7 @@ export function deterministicCandidates(
         }
       }
     }
-    if (["color", "background-color", "declared-color", "declared-background-color"].includes(o.property ?? "") && o.value) {
+    if (["color", "background-color", "declared-color", "declared-background-color", "declared-custom-property"].includes(o.property ?? "") && o.value) {
       const color = normalizeColor(o.value);
       // Translucent colours are overlays (backdrops, shadows), not palette colours.
       if (color?.alpha === 1 && !seenColors.some((seen) => nearDuplicateColor(seen.hex, color.hex))) {

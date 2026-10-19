@@ -8,6 +8,7 @@ import {
 } from "./segments";
 import type { RenderResult } from "../../contracts/render-task";
 import { capturePageMetadata } from "./metadata";
+import { captureCards, captureNavGroups } from "./listings";
 import { captureContentSections, captureDeclaredDesign, evidencedSections, sectionParts } from "./sections";
 export interface PageCapture {
   normalizedUrl: string;
@@ -31,6 +32,8 @@ export function captureHtml(
     finalUrl: string;
     body: Buffer | string;
     redirects?: string[];
+    /** Text of the page's linked stylesheets, read for declared fonts and colours. */
+    stylesheets?: string[];
   },
   rendered?: RenderResult,
 ): PageCapture {
@@ -109,7 +112,7 @@ export function captureHtml(
   const canonical = rendered?.metadata
     ? safeLink(rendered.metadata.canonical)
     : safeLink($('link[rel="canonical"]').first().attr("href"));
-  const declaredDesign = captureDeclaredDesign($, safeLink, jsonLd);
+  const declaredDesign = captureDeclaredDesign($, safeLink, jsonLd, input.stylesheets);
   const content = captureContentSections($, safeLink);
   // Read before page chrome and embeds are stripped below; identical for fetched and rendered pages.
   const pageMetadata = capturePageMetadata($, safeLink, jsonLd);
@@ -342,6 +345,13 @@ export function captureHtml(
       navLinkCaptions.push({ caption, url });
     }
   });
+  const navGroups = (rendered ? [] : captureNavGroups($)).map((group) => ({
+    parent: group.parent,
+    links: group.links.flatMap((item) => {
+      const url = safeLink(item.url);
+      return url ? [{ url, label: item.label }] : [];
+    }),
+  }));
   const footerText = $("footer").slice(0, 3).map((_i, node) => normalizeText($(node).text()).slice(0, 2000)).get().filter(Boolean);
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
@@ -350,6 +360,7 @@ export function captureHtml(
     : $("article").first().length
       ? $("article").first()
       : $("body");
+  const catalogueCards = rendered ? [] : captureCards($, root);
   root.find("br").replaceWith("\n");
   root.find("p,div,section,li,h1,h2,h3,h4,h5,h6,tr").append("\n");
   const mainParts = (rendered ? rendered.text : root.text())
@@ -404,6 +415,8 @@ export function captureHtml(
     footerText,
     offeringBlocks,
     navLinkCaptions,
+    navGroups,
+    catalogueCards,
     clientSectionDetected: requiresClientSection,
     jsonLd,
     ...pageMetadata.metadata,
@@ -443,6 +456,22 @@ export function captureHtml(
       /enable javascript|javascript is required/i.test(parsed.text),
   };
   return { ...finalized, contentHash: hashCapture(finalized) };
+}
+/** Addresses of the stylesheets a page links with <link rel="stylesheet">, in document order. */
+export function linkedStylesheetUrls(body: Buffer | string, finalUrl: string): string[] {
+  const $ = load(Buffer.isBuffer(body) ? body.toString("utf8") : body);
+  const urls = new Set<string>();
+  $("link[href]").each((_i, node) => {
+    const rel = ($(node).attr("rel") ?? "").toLowerCase().split(/\s+/);
+    if (rel.includes("stylesheet") && !rel.includes("alternate")) {
+      try {
+        urls.add(normalizeUrl($(node).attr("href") ?? "", finalUrl));
+      } catch {
+        // An address the crawler cannot fetch is skipped.
+      }
+    }
+  });
+  return [...urls];
 }
 export function shouldRenderPage(
   capture: PageCapture,
