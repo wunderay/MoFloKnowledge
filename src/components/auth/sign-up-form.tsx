@@ -28,7 +28,7 @@ export function SignUpForm() {
           if (!response.ok) {
             setMessage(result.error?.message || "Unable to sign up.");
           } else if (result.data?.signedIn) {
-            window.location.assign("/dashboard");
+            window.location.assign("/knowledge");
           } else {
             setMessage("Check your email to confirm your account.");
           }

@@ -89,7 +89,7 @@ export const viewerDraft = () => peopleDraft(undefined, "viewer");
 export const peopleSnapshot = (draft: Draft = peopleDraft()) => ({ payload: snapshotFrom(draft), versionId: SNAPSHOT_ID });
 export const noPeopleDraft = () => peopleDraft([]);
 
-export const personAddHref = (companyId: string) => `/knowledge?companyId=${companyId}&category=key_person`;
+export const personAddHref = (companyId: string) => `/knowledge/view?companyId=${companyId}&category=key_person`;
 
 /**
  * A draft whose first person carries stored data a schema would reject: a portrait whose path and an

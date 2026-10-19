@@ -30,7 +30,7 @@ it("persists refreshed HttpOnly cookies before a verified server read", async ()
       }),
     },
   }));
-  const request = new NextRequest("https://app.example.com/dashboard");
+  const request = new NextRequest("https://app.example.com/knowledge");
   const response = await refreshSession(request);
   expect(state.getUser).toHaveBeenCalledOnce();
   expect(request.cookies.get("session")?.value).toBe("new-session");

@@ -164,7 +164,7 @@ describe("existing viewer capabilities stay reachable", () => {
     const download = page.$("a").toArray().filter((a) => norm(page.$(a).text()).startsWith("Download JSON"));
     expect(download.map((a) => page.$(a).attr("href"))).toEqual([`/api/companies/${COMPANY_ID}/versions/${SNAPSHOT_ID}/download`]);
     const open = page.$("a").toArray().filter((a) => norm(page.$(a).text()) === "Open current draft");
-    expect(open.map((a) => page.$(a).attr("href"))).toEqual([`/knowledge?companyId=${COMPANY_ID}`]);
+    expect(open.map((a) => page.$(a).attr("href"))).toEqual([`/knowledge/view?companyId=${COMPANY_ID}`]);
     expect(page.$("body").text() + page.html).toMatch(/read only/);
   });
 
@@ -173,7 +173,7 @@ describe("existing viewer capabilities stay reachable", () => {
     const edits = page.$("a").toArray().filter((a) => norm(page.$(a).text()) === "Edit draft").map((a) => page.$(a).attr("href")!);
     expect(edits.length).toBeGreaterThan(0);
     for (const href of edits) {
-      expect(href).toMatch(new RegExp(`^/knowledge\\?companyId=${COMPANY_ID}&category=[a-z_]+&entryId=[0-9a-f-]{36}$`));
+      expect(href).toMatch(new RegExp(`^/knowledge/view\\?companyId=${COMPANY_ID}&category=[a-z_]+&entryId=[0-9a-f-]{36}$`));
     }
     const buttons = page.$("button").toArray().map((b) => norm(page.$(b).text()));
     expect(buttons).toContain("History");

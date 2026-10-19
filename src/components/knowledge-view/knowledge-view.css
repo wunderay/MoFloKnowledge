@@ -40,7 +40,10 @@
   color: var(--kv-blue);
   font-size: 13px;
   font-weight: 600;
+  text-decoration: none;
 }
+/* The Company tab goes back to the company list (/knowledge). */
+.knowledge-view .knowledge-view__tab:focus-visible { outline: 2px solid var(--kv-blue); outline-offset: 3px; }
 /* The section listbox: a pill button that opens a list of the sections. data-state drives the motion. */
 .knowledge-view__listbox { position: relative; }
 .knowledge-view .knowledge-view__listbox-trigger {

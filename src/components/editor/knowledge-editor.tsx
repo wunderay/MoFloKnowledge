@@ -2,6 +2,7 @@
 import "./knowledge-editor.css";
 import "../knowledge-view/knowledge-view.css";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import type { DraftEntry, DraftResponse } from "@/contracts/api-types";
 import type { CitationContext } from "@/contracts";
 import { api, companyPath } from "../shared/api-client";
@@ -137,7 +138,7 @@ export function KnowledgeEditor({
       {message && <Notice>{message}</Notice>}
       <nav className="knowledge-view__nav" aria-label="Knowledge navigation">
         <div className="knowledge-view__nav-box">
-          <span className="knowledge-view__tab" aria-current="page">Company</span>
+          <Link href="/knowledge" className="knowledge-view__tab">Company</Link>
         </div>
         <div className="knowledge-view__nav-box">
           <SectionListbox

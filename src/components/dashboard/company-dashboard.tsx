@@ -6,6 +6,13 @@ import { api, write } from "../shared/api-client";
 import { Dialog, EmptyState, Notice, StatusBadge, useHydrated } from "../shared/ui";
 import type { CompanySummary } from "@/contracts/api-types";
 type Company = CompanySummary;
+/** A company card's link: an archived company opens its latest saved version, any other its workspace with its latest scrape job. */
+export function companyHref(c: Pick<Company, "id" | "archived_at" | "latestJob" | "latestVersion">): string {
+  if (c.archived_at) {
+    return `/knowledge/view?companyId=${c.id}${c.latestVersion ? `&versionId=${c.latestVersion.id}` : ""}`;
+  }
+  return `/knowledge/view?companyId=${c.id}${c.latestJob ? `&jobId=${c.latestJob.id}` : ""}`;
+}
 export function CompanyDashboard({
   initialData,
 }: {
@@ -103,7 +110,7 @@ export function CompanyDashboard({
         }),
       );
       window.location.assign(
-        `/knowledge?companyId=${data.companyId}${data.jobId ? `&jobId=${data.jobId}` : ""}`,
+        `/knowledge/view?companyId=${data.companyId}${data.jobId ? `&jobId=${data.jobId}` : ""}`,
       );
     } catch (e) {
       setError((e as Error).message);
@@ -248,7 +255,7 @@ export function CompanyDashboard({
               <div className="company-card__footer">
                 <StatusBadge value={c.role ?? "member"} />
                 <Link
-                  href={`/knowledge${c.archived_at ? "/view" : ""}?companyId=${c.id}${c.latestJob && !c.archived_at ? `&jobId=${c.latestJob.id}` : ""}`}
+                  href={companyHref(c)}
                   className="button button--quiet"
                 >
                   {c.archived_at ? "View history" : "Open workspace"}{" "}

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
-export default function Home() {
-  redirect("/dashboard");
+import { withQuery, type QueryParams } from "@/lib/query-string";
+export default async function Home({ searchParams }: { searchParams: Promise<QueryParams> }) {
+  redirect(withQuery("/knowledge", await searchParams));
 }
