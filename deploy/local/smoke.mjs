@@ -2,11 +2,11 @@
 //   node deploy/local/smoke.mjs --log app.log        (app.log: the output of `docker compose logs --no-log-prefix app`)
 //   SMOKE_EMAIL=... SMOKE_PASSWORD=... node deploy/local/smoke.mjs
 // It checks what a person does: the sign-in page loads, the demo login works, a company can be created through the app's
-// HTTP API, and the worker claims the crawl job that creating it queued. SMOKE_BASE_URL defaults to http://localhost:8080.
+// HTTP API, and the worker claims the crawl job that creating it queued. SMOKE_BASE_URL defaults to http://localhost:$MOFLO_PORT (8080 when unset).
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-const base = process.env.SMOKE_BASE_URL ?? "http://localhost:8080";
+const base = process.env.SMOKE_BASE_URL ?? `http://localhost:${process.env.MOFLO_PORT ?? 8080}`;
 const website = process.env.SMOKE_WEBSITE ?? "https://example.com/";
 const claimSeconds = Number(process.env.SMOKE_CLAIM_SECONDS ?? 180);
 

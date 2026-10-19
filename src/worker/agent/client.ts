@@ -4,6 +4,7 @@ import { loadCrawlAgentConfig } from "./config";
 export interface CandidateLink {
   url: string;
   label: string;
+  nav?: boolean;
 }
 
 export type LinkPicker = (pageUrl: string, candidates: CandidateLink[], remaining: number, signal?: AbortSignal) => Promise<CandidateLink[]>;
