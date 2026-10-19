@@ -163,7 +163,7 @@ export function validateCandidates(
       }
       const quotes = segments.map((s) => s.text).join("\n");
       const pronounGendered = field.field === "gender" && c.note === PRONOUN_GENDER_NOTE &&
-        pronounGender(quotes) === c.value && quotes.includes(c.entity_key?.split("|")[1] ?? "\0");
+        segments.some((s) => s.text.includes(c.entity_key?.split("|")[1] ?? "\0") && pronounGender(s.text) === c.value);
       if (
         field.field === "gender" && !pronounGendered &&
         (!/\b(?:I (?:identify|describe myself) as|self[- ]identif|self[- ]descri|gender\s*:)/i.test(

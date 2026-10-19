@@ -150,10 +150,11 @@ export function visibleCandidates(
         add("/key_people/@id/title", declared.text, [], [declared.o.id], entity);
       }
       add("/key_people/@id/background_or_relevance", bioText, bio.map((s) => s.id), [], entity);
-      if (gender) {
-        const cited = bio.filter((s, i) => s.text.includes(name) || bio.slice(0, i).some((p) => p.text.includes(name)));
+      // The gender claim cites one segment that names the person and carries only that gender's pronouns.
+      const source = bio.find((s) => s.text.includes(name) && pronounGender(s.text) === gender);
+      if (gender && source) {
         result.push({ field: "/key_people/@id/gender", value: gender, entity_key: entity, origin: "source_backed",
-          segment_ids: cited.map((s) => s.id), observation_ids: [], supporting_fields: [], note: PRONOUN_GENDER_NOTE });
+          segment_ids: [source.id], observation_ids: [], supporting_fields: [], note: PRONOUN_GENDER_NOTE });
       }
     }
   }

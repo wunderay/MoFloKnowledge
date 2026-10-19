@@ -240,11 +240,12 @@ export function validateProvenance(
       owners.push(claim);
       currentTargets.set(target, owners);
       if (target.endsWith("/gender") && value !== null) {
-        // A pronoun-derived gender needs a cited excerpt that names the person and carries only that gender's pronouns.
+        // A pronoun-derived gender needs one cited text excerpt that names the person and carries only that gender's pronouns.
         const personName = resolveStablePointer(business, target.replace(/\/gender$/, "/name"));
         const pronounCited = typeof personName === "string" && claim.evidence_ids.some((id) => {
-          const excerpt = evidence.get(id)?.excerpt ?? "";
-          return excerpt.includes(personName) && pronounGender(excerpt) === value;
+          const item = evidence.get(id);
+          const excerpt = item?.excerpt ?? "";
+          return item?.kind === "text" && excerpt.includes(personName) && pronounGender(excerpt) === value;
         });
         const original = claim.evidence_ids
           .map((id) => evidence.get(id)?.excerpt ?? "")
