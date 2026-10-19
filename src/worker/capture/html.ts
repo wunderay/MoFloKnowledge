@@ -8,6 +8,7 @@ import {
 } from "./segments";
 import type { RenderResult } from "../../contracts/render-task";
 import { capturePageMetadata } from "./metadata";
+import { captureCards, captureNavGroups } from "./listings";
 import { captureContentSections, captureDeclaredDesign, evidencedSections, sectionParts } from "./sections";
 export interface PageCapture {
   normalizedUrl: string;
@@ -332,6 +333,13 @@ export function captureHtml(
       });
     });
   }
+  const navGroups = (rendered ? [] : captureNavGroups($)).map((group) => ({
+    parent: group.parent,
+    links: group.links.flatMap((item) => {
+      const url = safeLink(item.url);
+      return url ? [{ url, label: item.label }] : [];
+    }),
+  }));
   const footerText = $("footer").slice(0, 3).map((_i, node) => normalizeText($(node).text()).slice(0, 2000)).get().filter(Boolean);
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
@@ -340,6 +348,7 @@ export function captureHtml(
     : $("article").first().length
       ? $("article").first()
       : $("body");
+  const catalogueCards = rendered ? [] : captureCards($, root);
   root.find("br").replaceWith("\n");
   root.find("p,div,section,li,h1,h2,h3,h4,h5,h6,tr").append("\n");
   const mainParts = (rendered ? rendered.text : root.text())
@@ -393,6 +402,8 @@ export function captureHtml(
     declaredLogos: declaredDesign.logos,
     footerText,
     offeringBlocks,
+    navGroups,
+    catalogueCards,
     clientSectionDetected: requiresClientSection,
     jsonLd,
     ...pageMetadata.metadata,

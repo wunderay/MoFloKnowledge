@@ -1,6 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
-import { nameKey as normalizeName } from "./text";
+import { nameKey as normalizeName, STRUCTURAL_CATEGORY_NOTE } from "./text";
 import { exactSentences, hasNegation, selectExactSentences } from "./source-excerpts";
 
 interface Section {
@@ -40,6 +40,9 @@ function serviceDescription(paragraphs: string[], name: string): string[] {
   }
   return selected.sort((a, b) => a.index - b.index).map((item) => item.sentence);
 }
+const siteChrome = /^(?:policy|policies|page|pages|team|newsletter|newsletters|guide|guides|blog|news|faq|faqs)$/i;
+const placeParent = /\b(?:areas?|locations?|communit(?:y|ies)|neighbou?rhoods?|cit(?:y|ies)|regions?|where we serve)\b/i;
+const sectionChrome = /^(?:why (?:choose|us)\b|our process|how it works|faq|frequently asked|contact|testimonials|reviews|service areas?|about\b|(?:our )?guarantee|(?:our |meet the |the )?team$)/i;
 const servicePath = (url: string) => /\/(?:services|products|offerings)\/[^/]+\/?$/i.test(new URL(url).pathname);
 const topicPath = (url: string) => /\/(?:articles?|blog|news|resources?|learning-center)(?:\/|$)/i.test(new URL(url).pathname);
 export const serviceEntityKey = (url: string, name: string) => `${url}|service:${normalizeName(name)}`;
@@ -55,15 +58,15 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
   const sameSite = (url: string) => new URL(url).hostname === new URL(finalUrl).hostname;
   const idsFor = (texts: string[]) => [...new Set(texts.flatMap((text) =>
     page.capture.segments.filter((segment) => segment.text.includes(text)).map((segment) => segment.id)))].slice(0, 30);
-  const add = (field: string, value: unknown, entity_key: string, texts: string[], observation_ids: string[] = [], priority = 80) => {
+  const add = (field: string, value: unknown, entity_key: string, texts: string[], observation_ids: string[] = [], priority = 80, note: string | null = null) => {
     const segment_ids = idsFor(texts);
     if (!segment_ids.length && !observation_ids.length) {
       return;
     }
-    result.push({ field: "/offerings/@id/" + field, value, entity_key, origin: "source_backed",
+    result.push({ field: field.startsWith("/") ? field : "/offerings/@id/" + field, value, entity_key, origin: "source_backed",
       segment_ids, observation_ids: [...new Set([...observation_ids, ...observations.filter((o) =>
         o.property === "heading" && o.value && texts.includes(o.value)).map((o) => o.id)])].slice(0, 30),
-      supporting_fields: [], note: null, priority } as FieldCandidate);
+      supporting_fields: [], note, priority } as FieldCandidate);
   };
   const linkEvidence = (url: string, label: string) => observations.filter((o) =>
     (o.property === "href" && o.value === url) ||
@@ -253,6 +256,82 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
       add("url", block.url, entity, [block.name], observations.filter((o) => o.property === "href" && o.value === block.url).map((o) => o.id));
     }
   }
+  }
+
+  // Generic structural offerings: they do not depend on the page address.
+  const covered = new Set(result.filter((c) => c.field === "/offerings/@id/name").map((c) => normalizeName(String(c.value))));
+  const navGroups = page.capture.observations.navGroups;
+  for (const { parent, links: group } of Array.isArray(navGroups) ? navGroups as { parent: string; links: { url: string; label: string }[] }[] : []) {
+    // Sibling submenu pages named "<place> <shared trailing words>" are each a service offering.
+    const links = group.filter((link) => sameSite(link.url) && link.label.length <= 100);
+    const lastWord = (label: string) => label.toLowerCase().split(" ").at(-1) ?? "";
+    for (const word of new Set(links.map((link) => lastWord(link.label)))) {
+      const bucket = links.filter((link) => lastWord(link.label) === word);
+      const words = bucket.map((link) => link.label.split(" "));
+      let shared = 0;
+      while (words.every((w) => w.length > shared + 1 && w.at(-1 - shared)?.toLowerCase() === words[0].at(-1 - shared)?.toLowerCase())) {
+        shared++;
+      }
+      const leading = words.map((w) => w.slice(0, w.length - shared).join(" "));
+      if (bucket.length < 2 || !shared || new Set(leading.map((l) => l.toLowerCase())).size !== bucket.length ||
+          !words[0].slice(-shared).some((w) => w.length > 3) || siteChrome.test(word) || !placeParent.test(parent)) {
+        continue;
+      }
+      bucket.forEach((link, index) => {
+        const evidence = linkEvidence(link.url, link.label);
+        add("name", link.label, link.url, [], evidence, 85);
+        add("category", "Service", link.url, [], evidence, 85, STRUCTURAL_CATEGORY_NOTE);
+        add("url", link.url, link.url, [], evidence, 80);
+        if (/^\p{Lu}/u.test(leading[index]) && !(/^(?:north|south|east|west|central|main)$/i.test(leading[index]) && /^(?:office|branch)$/i.test(word))) {
+          add("/company_foundation/service_locations", [{ text: leading[index] }], link.url, [], evidence, 60);
+        }
+        const first = link.url === finalUrl ? sections.find((section) => section.paragraphs?.length)?.paragraphs[0] : undefined;
+        if (first) {
+          add("description", first, link.url, [first], [], 80);
+        }
+        covered.add(normalizeName(link.label));
+      });
+    }
+  }
+  // A heading-derived offering is keyed by the captured segment that carries its text.
+  const headingKey = (name: string) => {
+    const segment = page.capture.segments.find((item) => item.text.includes(name));
+    return segment && !name.includes("|") ? `${finalUrl}|${name}|${segment.id}` : null;
+  };
+  const cards = page.capture.observations.catalogueCards;
+  for (const card of (Array.isArray(cards) ? cards : []).slice(0, 6) as { title: string; price: string }[]) {
+    const entity = headingKey(card.title);
+    if (!entity) {
+      continue;
+    }
+    add("name", card.title, entity, [card.title], [], 80);
+    add("category", "Listing", entity, [card.title], [], 80, STRUCTURAL_CATEGORY_NOTE);
+    if (idsFor([card.price]).length && /\d/.test(card.price)) {
+      const amount = card.price.replace(/[^\d.]/g, "");
+      add("pricing", { kind: "paid", raw: card.price, amount, min_amount: null, max_amount: null, currency: null,
+        billing_interval: null, pricing_model: null, qualifications: [], as_of: null }, entity, [card.title, card.price], [], 80);
+    }
+    covered.add(normalizeName(card.title));
+  }
+  const listHeading = sections.find((section) => section.level === 1 && section.heading);
+  if (!primary && listHeading?.heading && /\b(?:services|solutions)\b/i.test(listHeading.heading)) {
+    for (const section of sections.filter((item) => (item.level === 2 || item.level === 3) && item.heading && item.paragraphs?.length).slice(0, 30)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- the filter above keeps only sections that have a heading
+      const name = section.heading!;
+      if (name.length > 200 || covered.has(normalizeName(name)) || utility.test(name) || sectionChrome.test(name) ||
+          page.capture.links.some((link) => sameSite(link.url) && servicePath(link.url) && normalizeName(link.label) === normalizeName(name))) {
+        continue;
+      }
+      const entity = headingKey(name);
+      if (!entity) {
+        continue;
+      }
+      add("name", name, entity, [name], [], 80);
+      const description = selectExactSentences(section.paragraphs[0], { maxSentences: 2, maxCharacters: 500 }).join(" ");
+      if (description) {
+        add("description", description, entity, [name, section.paragraphs[0]], [], 75);
+      }
+    }
   }
   return result;
 }
