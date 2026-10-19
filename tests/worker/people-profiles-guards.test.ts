@@ -57,4 +57,14 @@ describe("people profile guards", () => {
     const service = { path: "/pump-repair/", html: page("Pump Repair", ["Pump Repair for wells, sumps and irrigation lines of every size.", "Parts are stocked on the truck."], menu) };
     expect(people([service]).map((p) => p.name)).toEqual(["Jane Doe"]);
   });
+  // A "Name - title" or "Name, title" page title does not make a service page a person.
+  it.each(["Pump Repair - Fast Response", "Pump Repair, Fast And Local"])("does not read a page titled %s as a person", (title) => {
+    const body = ["Pump Repair for wells, sumps and irrigation lines of every size.", "Parts are stocked on the truck."];
+    const html = (menu: string) => `<html><head><title>${title} | Acme Group</title></head><body>${menu}<main><h1>Pump Repair</h1>` +
+      `<h2>Fast Response</h2>${body.map((p) => `<p>${p}</p>`).join("")}</main></body></html>`;
+    const listed = nav.replace("</ul></nav>", link("Pump Repair") + "</ul></nav>");
+    for (const menu of [listed, ""]) {
+      expect(people([{ path: "/pump-repair/", html: html(menu) }]).map((p) => p.name)).toEqual(["Jane Doe"]);
+    }
+  });
 });
