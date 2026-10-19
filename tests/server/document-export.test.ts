@@ -26,7 +26,7 @@ const revision = {
 
 function query(data: unknown) {
   return {
-    select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn().mockResolvedValue({ data, error: null }),
     then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve),
   };
@@ -38,6 +38,7 @@ function session(member: boolean) {
     knowledge_entries: query([{ id: entryId, kind: "company_foundation", company_id: companyId,
       current_revision: 2, created_by: userId, created_at: time }]),
     knowledge_entry_versions: query([revision]),
+    scrape_jobs: query([]),
     source_pages: query(fixture.provenance.sources.map((source) => ({
       ...source, company_id: companyId, scrape_job_id: userId, normalized_url: source.url,
       final_url: source.url, capture_status: "captured",

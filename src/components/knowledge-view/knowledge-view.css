@@ -480,3 +480,26 @@ button.knowledge-view__chip--add { font-family: inherit; cursor: pointer; }
 button.knowledge-view__chip--add:disabled { opacity: .55; cursor: default; }
 .knowledge-view__swatch--unavailable { border-style: dashed; border-color: #cdd3e0; background: transparent; }
 .knowledge-view__offering-actions { display: flex; justify-content: flex-end; }
+
+/* Loading skeleton: shown for a section without data while the crawl runs. */
+.knowledge-view__skeleton { display: grid; gap: 12px; }
+.knowledge-view__skeleton-row { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--kv-line); }
+.knowledge-view__skeleton-bar {
+  display: block;
+  height: 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--kv-pale) 25%, var(--kv-line) 50%, var(--kv-pale) 75%) 0 0 / 200% 100%;
+  animation: knowledge-view-shimmer 1.4s linear infinite;
+}
+.knowledge-view__skeleton-bar--title { height: 20px; width: 40%; }
+.knowledge-view__skeleton-bar--w-90 { width: 90%; }
+.knowledge-view__skeleton-bar--w-75 { width: 75%; }
+.knowledge-view__skeleton-bar--w-60 { width: 60%; }
+@keyframes knowledge-view-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-view__skeleton-bar { animation: none; }
+}
