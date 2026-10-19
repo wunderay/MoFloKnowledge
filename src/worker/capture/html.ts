@@ -333,6 +333,18 @@ export function captureHtml(
       });
     });
   }
+  // Each navigation link with the caption of its submenu (the text before the list, or the parent item's own text),
+  // kept before the chrome is removed.
+  const navLinkCaptions: { caption: string; url: string }[] = [];
+  $('nav a[href],[role="navigation"] a[href]').slice(0, 300).each((_i, node) => {
+    const url = safeLink($(node).attr("href"));
+    const list = $(node).closest("ul,ol");
+    const own = list.parent("li").clone().children("ul,ol").remove().end().text();
+    const caption = normalizeText(list.prev().text() || own).slice(0, 80);
+    if (url && caption) {
+      navLinkCaptions.push({ caption, url });
+    }
+  });
   const navGroups = (rendered ? [] : captureNavGroups($)).map((group) => ({
     parent: group.parent,
     links: group.links.flatMap((item) => {
@@ -402,6 +414,7 @@ export function captureHtml(
     declaredLogos: declaredDesign.logos,
     footerText,
     offeringBlocks,
+    navLinkCaptions,
     navGroups,
     catalogueCards,
     clientSectionDetected: requiresClientSection,

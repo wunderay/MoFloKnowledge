@@ -4,6 +4,8 @@ import {
   FIELD_REGISTRY,
   businessEntrySchemas,
   compareDecimal,
+  PRONOUN_GENDER_NOTE,
+  pronounGender,
 } from "../../contracts";
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { TechnicalObservation, FieldCandidate } from "./types";
@@ -160,8 +162,10 @@ export function validateCandidates(
         throw new Error("missing_evidence");
       }
       const quotes = segments.map((s) => s.text).join("\n");
+      const pronounGendered = field.field === "gender" && c.note === PRONOUN_GENDER_NOTE &&
+        pronounGender(quotes) === c.value && quotes.includes(c.entity_key?.split("|")[1] ?? "\0");
       if (
-        field.field === "gender" &&
+        field.field === "gender" && !pronounGendered &&
         (!/\b(?:I (?:identify|describe myself) as|self[- ]identif|self[- ]descri|gender\s*:)/i.test(
           quotes,
         ) ||
@@ -170,7 +174,8 @@ export function validateCandidates(
         throw new Error("gender_not_explicit");
       }
       if (field.field === "gender") {
-        c.note = "Explicit public self-description observed in cited text.";
+        c.note = pronounGendered ? PRONOUN_GENDER_NOTE
+          : "Explicit public self-description observed in cited text.";
       }
       if (field.field === "year_founded") {
         const year = String(c.value);
@@ -521,6 +526,10 @@ export function validateCandidates(
               return;
             }
             if (["hex", "platform"].includes(key)) {
+              return;
+            }
+            // A person's gender is the pronoun gender of the cited bio text, never a quoted word.
+            if (pronounGendered) {
               return;
             }
             // Fixed names for an observed newsletter or contact form; the form itself is the cited evidence.

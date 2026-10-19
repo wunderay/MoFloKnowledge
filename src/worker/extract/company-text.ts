@@ -2,7 +2,7 @@ import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
 import { structuredCandidates } from "./structured";
 import { visibleCandidates } from "./visible";
-import { collapseWhitespace as normalized, founderStatement, FOUNDER_STATEMENT_NOTE } from "./text";
+import { collapseWhitespace as normalized, founderStatement, FOUNDER_STATEMENT_NOTE, isPersonName } from "./text";
 import { exactSentences, selectExactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
 
 const INDUSTRY = "/company_foundation/industry", COMPANY_ROLE = "/company_foundation/company_role";
@@ -259,7 +259,7 @@ export function companyTextCandidates(
           item.label.toLowerCase().includes(name.toLowerCase()); } catch { return false; }
       });
       const credential = paragraphs[index + 1]?.text;
-      if (!link || !credential) {
+      if (!link || !credential || !isPersonName(name)) {
         continue;
       }
       const sentences = selectExactSentences(credential, { maxSentences: 2, accept: (sentence) =>
