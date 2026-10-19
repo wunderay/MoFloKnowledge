@@ -157,3 +157,73 @@ describe("/knowledge with a company", () => {
     expect(text(await renderHub({ companyId: COMPANY_ID }, buildDraft()))).toContain("[scrape progress]");
   });
 });
+
+/** buildDraft with a second key person, so that opening one of them is not the default (the first). */
+function twoPeople(): { draft: Draft; second: { entryId: string; personId: string } } {
+  const draft = buildDraft();
+  const first = draft.entries.find((entry) => entry.kind === "key_person")!;
+  const personId = "00000000-0000-4000-8000-00000000b0b2";
+  const entryId = "00000000-0000-4000-8000-00000000e0b2";
+  draft.entries.push({ ...structuredClone(first), id: entryId, content: { ...(structuredClone(first.content) as object), id: personId, name: "Jonas Berg" } } as never);
+  return { draft, second: { entryId, personId } };
+}
+const selectedPerson = (html: string) => text(/knowledge-view__person--selected[^>]*>(.*?)<\/li>/s.exec(html)?.[1] ?? "");
+const selectedSection = (html: string) => text(/aria-selected="true"[^>]*>(.*?)<\/li>/s.exec(html)?.[1] ?? "").trim();
+
+describe("links from before the hub (category and entryId)", () => {
+  it("category=key_person with an entryId selects Key People and opens that person, by entry id or person id", async () => {
+    const { draft, second } = twoPeople();
+    for (const entryId of [second.entryId, second.personId]) {
+      const html = await renderHub({ companyId: COMPANY_ID, category: "key_person", entryId }, draft);
+      expect(selectedSection(html), entryId).toBe("Key People");
+      expect(selectedPerson(html), entryId).toContain("Jonas Berg");
+    }
+  });
+
+  it("maps every category to its section; an explicit section wins", async () => {
+    const expected: Record<string, string> = {
+      company_foundation: "General Info",
+      positioning: "General Info",
+      market_and_customers: "Customers & Industry",
+      online_presence: "Sales & Marketing",
+      branding_and_style: "Brand Identity",
+      offering: "Business Offerings",
+      key_person: "Key People",
+      site_links: "Site Knowledge",
+    };
+    for (const [category, label] of Object.entries(expected)) {
+      expect(selectedSection(await renderHub({ companyId: COMPANY_ID, category }, buildDraft())), category).toBe(label);
+    }
+    expect(selectedSection(await renderHub({ companyId: COMPANY_ID, category: "offering", section: "brand" }, buildDraft()))).toBe("Brand Identity");
+    expect(selectedSection(await renderHub({ companyId: COMPANY_ID, category: "nonsense" }, buildDraft()))).toBe("General Info");
+  });
+});
+
+describe("/knowledge while the crawl runs", () => {
+  const withJob = (draft: Draft, status: string) => {
+    (draft.company as Record<string, unknown>).latestJob = { status };
+    return draft;
+  };
+
+  it("shows a loading skeleton in each section without data while the job is queued or running", async () => {
+    for (const status of ["queued", "validating", "crawling", "extracting"]) {
+      for (const [section, label] of [["general", "General Info"], ["key-people", "Key People"], ["offerings", "Business Offerings"]]) {
+        const html = await renderHub({ companyId: EMPTY_COMPANY_ID, section }, withJob(buildEmptyDraft(), status));
+        expect(html, `${status} ${section}`).toMatch(/aria-busy="true"/);
+        expect(text(html), `${status} ${section}`).toContain(`Loading ${label}…`);
+      }
+    }
+  });
+
+  it("shows the real content once the job has ended", async () => {
+    for (const status of ["succeeded", "failed"]) {
+      const empty = await renderHub({ companyId: EMPTY_COMPANY_ID }, withJob(buildEmptyDraft(), status));
+      expect(text(empty), status).not.toContain("Loading General Info…");
+      expect(text(empty), status).toContain("+ Add main address");
+    }
+    // A section that already has data shows it even while the crawl still runs.
+    const running = await renderHub({ companyId: COMPANY_ID, section: "key-people" }, withJob(buildDraft(), "crawling"));
+    expect(text(running)).not.toContain("Loading Key People…");
+    expect(text(running)).toContain("Maya Okafor");
+  });
+});

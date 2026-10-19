@@ -9,6 +9,8 @@ import { Notice, useHydrated } from "../shared/ui";
 import { SectionListbox } from "../knowledge-view/section-listbox";
 import { SectionView } from "../knowledge-view/section-view";
 import { type KnowledgeSectionId } from "../knowledge-view/sections";
+import { CRAWL_RUNNING } from "../knowledge-view/section-skeleton";
+import { timing } from "../knowledge-view/timing";
 import { ScrapeProgress, type CaptureLimits } from "./scrape-progress";
 import { PublicationDialog } from "./publication-dialog";
 import { CompanySettings } from "./company-settings";
@@ -24,7 +26,7 @@ type Entry = Pick<
   | "review_status"
 >;
 type Draft = Omit<DraftResponse, "company" | "entries"> & {
-  company: Omit<DraftResponse["company"], "latestJob" | "latestVersion">;
+  company: Omit<DraftResponse["company"], "latestJob" | "latestVersion"> & { latestJob?: { status: string } | null };
   entries: Entry[];
   citationContext?: CitationContext;
 };
@@ -92,6 +94,18 @@ export function KnowledgeEditor({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- initialDraft only decides whether the first load is needed; changing it must not refetch
   }, [refresh]);
+  // While the crawl runs, read the draft again every few seconds: sections without data show a skeleton until it arrives.
+  const crawling = CRAWL_RUNNING.includes(draft?.company.latestJob?.status ?? "");
+  useEffect(() => {
+    if (!crawling) {
+      return;
+    }
+    // A failed read is ignored: the next one tries again.
+    const timer = setInterval(() => {
+      api<Draft>(companyPath(companyId, "/draft")).then(setDraft, () => undefined);
+    }, timing.poll);
+    return () => { clearInterval(timer); };
+  }, [crawling, companyId]);
   if (!draft) {
     return error ? (
       <Notice error>{error}</Notice>
@@ -165,6 +179,7 @@ export function KnowledgeEditor({
           actorId={draft.actorId}
           generation={draft.draftGeneration}
           importBlocked={stale !== null}
+          crawling={crawling}
           evidence={false}
           onSaved={async () => {
             setMessage("");
@@ -182,7 +197,7 @@ export function KnowledgeEditor({
           }}
         />
       </div>
-      <HubReview companyId={companyId} entries={draft.entries} canEdit={canEdit} onChanged={refresh} />
+      <HubReview companyId={companyId} actorId={draft.actorId} entries={draft.entries} canEdit={canEdit} onChanged={refresh} />
       <ProposalReview
         citationContext={draft.citationContext}
         companyId={companyId}

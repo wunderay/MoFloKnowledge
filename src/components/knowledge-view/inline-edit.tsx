@@ -69,7 +69,14 @@ function failure(error: unknown): Feedback {
 }
 
 /** Parses `content` as the entry of `kind` and prepares its save (a new entry or a new revision). */
-function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: string, restoreFrom?: Task["restoreFrom"]): PreparedSave {
+function prepareContent(
+  env: EditEnv,
+  kind: EntryKind,
+  content: Content,
+  note: string,
+  restoreFrom?: Task["restoreFrom"],
+  genderAttestation?: string,
+): PreparedSave {
   return prepareEntrySave({
     companyId: env.companyId,
     actorId: env.actorId,
@@ -78,6 +85,7 @@ function prepareContent(env: EditEnv, kind: EntryKind, content: Content, note: s
     content: parseBusinessEntry(realKind(kind), content),
     note,
     restoreFrom,
+    genderAttestation,
   });
 }
 /** A copy of the stored content of `kind` (the defaults when the company has no such entry yet). */
@@ -102,8 +110,10 @@ interface Slot {
   refocus: boolean;
   /** Where a chip list puts focus next: a chip's id, or "add". `n` makes a repeated request new. */
   focus: { target: string; n: number } | null;
+  /** What the person typed as the person's own self-description (a field that needs one, see `TextSpec.attest`). */
+  attestation: string;
 }
-const EMPTY: Slot = { editing: false, draft: "", problem: "", feedback: IDLE, toast: null, refocus: false, focus: null };
+const EMPTY: Slot = { editing: false, draft: "", problem: "", feedback: IDLE, toast: null, refocus: false, focus: null, attestation: "" };
 
 /** A change to one entry, as a function of the entry's latest content, so that a queued change is rebuilt on the latest revision. */
 interface Task {
@@ -114,6 +124,8 @@ interface Task {
   restoreFrom?: { revision: number; itemIds: string[] };
   /** The revision this change was made on, set when it is built. */
   baseRevision?: number;
+  /** The person's self-description that a new gender value is saved with. */
+  genderAttestation?: string;
   /** Runs once the change is committed (and again after a retry). */
   then?: () => void;
   prepared?: PreparedSave;
@@ -233,7 +245,7 @@ export function EditProvider({ env, children }: { env: EditEnv; children: ReactN
             return true;
           }
           task.baseRevision = env.entry(task.kind)?.revision ?? 0;
-          task.prepared = prepareContent(env, task.kind, content, task.note, task.restoreFrom);
+          task.prepared = prepareContent(env, task.kind, content, task.note, task.restoreFrom, task.genderAttestation);
         } catch (error) {
           return settle({ kind: "failed", message: messageOf(error), retry: false });
         }
@@ -373,6 +385,18 @@ export interface TextSpec {
   read: (content: Content) => string;
   /** The content with the typed text in it, or why the text cannot be saved. */
   apply: (content: Content, text: string) => { content: Content } | { error: string };
+  /** True when the change from `before` to `after` needs the person's own self-description (a new gender value). */
+  attest?: (before: Content, after: Content) => boolean;
+}
+
+/** The shortest self-description the server records with a gender value. */
+const ATTESTATION_MIN = 10;
+const ATTESTATION_HELP =
+  "Say where the person described their own gender (for example their own bio or profile), in at least 10 characters. A name, photo or title is not evidence. Leave gender empty if they have not said.";
+
+/** Why a change cannot be saved without a self-description, or "" when it can. */
+function attestationProblem(spec: TextSpec, before: Content, after: Content, attestation: string): string {
+  return spec.attest?.(before, after) && attestation.trim().length < ATTESTATION_MIN ? ATTESTATION_HELP : "";
 }
 
 /** A text value: trimmed, empty means no value, and no longer than the contract allows. */
@@ -494,14 +518,14 @@ export function personFields(entryId: string) {
     name: plainText("Person name", kind, "name"),
     title: plainText("Person position", kind, "title"),
     role: plainText("Person role", kind, "role"),
-    gender: plainText("Person gender", kind, "gender"),
+    gender: { ...plainText("Person gender", kind, "gender"), attest: (before: Content, after: Content) => after.gender !== null && after.gender !== before.gender },
     nationality: plainText("Person nationality", kind, "nationality"),
     description: plainText("Person description", kind, "background_or_relevance"),
     age: personAge(kind),
   };
 }
 
-const AGE_HELP = "Enter an age as a whole number, for example 42.";
+const AGE_HELP = "Enter an age as a whole number from 0–150, for example 42.";
 function personAge(kind: EntryKind): TextSpec {
   return {
     label: "Person age",
@@ -513,7 +537,7 @@ function personAge(kind: EntryKind): TextSpec {
         content.age = null;
         return { content };
       }
-      if (!/^\d{1,3}$/.test(value)) {
+      if (!/^\d{1,3}$/.test(value) || Number(value) > 150) {
         return { error: AGE_HELP };
       }
       content.age = Number(value);
@@ -792,10 +816,17 @@ export function useTextField(spec: TextSpec, multiline = false) {
       host.patch(key, { problem: messageOf(error) });
       return;
     }
+    const unattested = attestationProblem(spec, base, built.content, current.attestation);
+    if (unattested) {
+      host.patch(key, { problem: unattested });
+      return;
+    }
+    const attestation = spec.attest?.(base, built.content) ? current.attestation.trim() : undefined;
     host.patch(key, { problem: "" });
     void host.submit(key, {
       kind: spec.kind,
       note: `Updated ${spec.label} from the knowledge view.`,
+      genderAttestation: attestation,
       transform: (content) => {
         const result = spec.apply(content, typed);
         if ("error" in result) {
@@ -803,7 +834,10 @@ export function useTextField(spec: TextSpec, multiline = false) {
         }
         return result.content;
       },
-      then: () => { host.close(key, back); },
+      then: () => {
+        host.patch(key, { attestation: "" });
+        host.close(key, back);
+      },
     });
   };
   const typing = (event: { target: { value: string } }) =>
@@ -832,6 +866,42 @@ export function useTextField(spec: TextSpec, multiline = false) {
             triggerRef={trigger}
             {...options}
           />
+        );
+      }
+      if (spec.attest) {
+        // A gender value is saved with the person's own self-description: both fields, then Save (no save on blur).
+        return (
+          <div className="knowledge-view__inline-area">
+            <input
+              ref={field as RefObject<HTMLInputElement>}
+              type="text"
+              className="knowledge-view__inline-input"
+              aria-label={spec.label}
+              autoComplete="off"
+              value={draft}
+              readOnly={saving}
+              aria-busy={saving || undefined}
+              onChange={typing}
+              onKeyDown={keys}
+            />
+            <textarea
+              className="knowledge-view__inline-input knowledge-view__inline-input--area"
+              aria-label="Gender self-description attestation"
+              rows={3}
+              value={slot.attestation}
+              readOnly={saving}
+              onChange={(event) => { host.patch(key, { attestation: event.target.value, problem: "" }); }}
+            />
+            <span className="muted">{ATTESTATION_HELP}</span>
+            <div className="knowledge-view__inline-actions">
+              <button type="button" className="knowledge-view__inline-save" disabled={saving} onClick={() => { commit(true); }}>
+                Save
+              </button>
+              <button type="button" className="knowledge-view__inline-cancel" disabled={saving} onClick={cancel}>
+                Cancel
+              </button>
+            </div>
+          </div>
         );
       }
       if (!multiline) {
