@@ -8,7 +8,6 @@ export function middleware(request: NextRequest) {
 // refreshes the session itself and may set cookies in a route handler, and they check the origin themselves.
 export const config = {
   matcher: [
-    "/dashboard/:path*",
     "/knowledge/:path*",
     "/api/companies",
     "/api/companies/:companyId",

@@ -168,7 +168,7 @@ describe("delete and archive races", () => {
 describe("middleware matcher", () => {
   const matches = (path: string) => config.matcher.some((pattern) => pathToRegexp(pattern).test(path));
   it("still covers the pages and every other company API route", () => {
-    for (const path of ["/dashboard", "/knowledge/view", "/api/companies", `/api/companies/${IDS.owner}`, `/api/companies/${IDS.owner}/draft`, `/api/companies/${IDS.owner}/entries/x/history`, `/api/companies/${IDS.owner}/uploads-x`]) {
+    for (const path of ["/knowledge", "/knowledge/view", "/api/companies", `/api/companies/${IDS.owner}`, `/api/companies/${IDS.owner}/draft`, `/api/companies/${IDS.owner}/entries/x/history`, `/api/companies/${IDS.owner}/uploads-x`]) {
       expect(matches(path), path).toBe(true);
     }
   });

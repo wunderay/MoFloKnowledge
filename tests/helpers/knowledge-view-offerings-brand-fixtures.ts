@@ -102,8 +102,8 @@ export const offeringsSnapshot = (draft: Draft = offeringsDraft()) => ({ payload
 /** A company with the standard data and no offerings at all. */
 export const noOfferingsDraft = () => draftFrom(offeringsBusiness([]));
 
-export const offeringAddHref = (companyId: string) => `/knowledge?companyId=${companyId}&category=offering`;
-export const brandingAddHref = (companyId: string) => `/knowledge?companyId=${companyId}&category=branding_and_style`;
+export const offeringAddHref = (companyId: string) => `/knowledge/view?companyId=${companyId}&category=offering`;
+export const brandingAddHref = (companyId: string) => `/knowledge/view?companyId=${companyId}&category=branding_and_style`;
 
 // ---- Brand Identity ------------------------------------------------------------
 const BASE = "https://cdn.harborandpine.example/brand";

@@ -345,7 +345,7 @@ describe("values render as text; empty values render an empty state with + Add",
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
       const el = cards[title];
       expect(addLinks(page, el), `card "${title}" has a "+ Add" link`).toEqual([
-        `/knowledge?companyId=${EMPTY_COMPANY_ID}&category=${kind}`,
+        `/knowledge/view?companyId=${EMPTY_COMPANY_ID}&category=${kind}`,
       ]);
       expect(inlineControls(page, el), `card "${title}" has no inline control for a viewer`).toEqual([]);
       expect(controlsIn(page, el)).toEqual([]);
@@ -365,7 +365,7 @@ describe("values render as text; empty values render an empty state with + Add",
         expect(addLinks(page, el), `card "${title}" has no link to the advanced editor`).toEqual([]);
       } else {
         expect(addLinks(page, el), `card "${title}" keeps its "+ Add" link`).toEqual([
-          `/knowledge?companyId=${EMPTY_COMPANY_ID}&category=${kind}`,
+          `/knowledge/view?companyId=${EMPTY_COMPANY_ID}&category=${kind}`,
         ]);
         expect(inlineControls(page, el), `card "${title}" is not editable in place yet`).toEqual([]);
       }
@@ -379,7 +379,7 @@ describe("values render as text; empty values render an empty state with + Add",
     const cards = cardsOf(page, section);
     for (const { title, kind } of CARDS_BY_SECTION[section]) {
       expect(addLinks(page, cards[title]), `card "${title}"`).toEqual([
-        `/knowledge?companyId=${COMPANY_ID}&category=${kind}`,
+        `/knowledge/view?companyId=${COMPANY_ID}&category=${kind}`,
       ]);
     }
   });
@@ -394,7 +394,7 @@ describe("values render as text; empty values render an empty state with + Add",
         expect(addLinks(page, cards[title]), `card "${title}"`).toEqual([]);
       } else {
         expect(addLinks(page, cards[title]), `card "${title}"`).toEqual([
-          `/knowledge?companyId=${COMPANY_ID}&category=${kind}`,
+          `/knowledge/view?companyId=${COMPANY_ID}&category=${kind}`,
         ]);
       }
     }
@@ -414,7 +414,7 @@ describe("values render as text; empty values render an empty state with + Add",
       const cards = cardsOf(page, "General Info");
       expect(body(page, cards["Founding story"])).toMatch(/No founding story yet/i);
       if (role === "viewer") {
-        expect(addLinks(page, cards["Founding story"])).toEqual([`/knowledge?companyId=${COMPANY_ID}&category=positioning`]);
+        expect(addLinks(page, cards["Founding story"])).toEqual([`/knowledge/view?companyId=${COMPANY_ID}&category=positioning`]);
         expect(inlineControls(page, cards["Founding story"])).toEqual([]);
       } else {
         expect(addLinks(page, cards["Founding story"])).toEqual([]);

@@ -1,6 +1,8 @@
 // Renders /knowledge/view the way a visitor receives it: the server page runs
 // (with its data layer replaced by fixtures) and the element it returns is
-// rendered to static HTML. The selected section is supplied BOTH as the page's
+// rendered to static HTML. /knowledge/view shows a draft in the Scrape & Build
+// hub, so the read-only draft view (KnowledgeViewer with versionId "draft") is
+// rendered as that page rendered it before, from the same data. The selected section is supplied BOTH as the page's
 // `section` search parameter (and, when given, `offering` / `person`) and through
 // next/navigation's useSearchParams, so an implementation may read a URL parameter
 // on either side of the boundary.
@@ -81,13 +83,17 @@ export async function renderViewPage(opts: RenderOptions): Promise<string> {
   state.snapshot = opts.snapshot?.payload ?? null;
   state.versions = opts.versions ?? [];
   state.forcedMode = opts.mode ?? null;
+  if (!opts.snapshot) {
+    const { draftViewPage } = await import("./knowledge-view-draft-page");
+    return renderToStaticMarkup(await draftViewPage({ companyId, section: opts.section, offering: opts.offering, person: opts.person }));
+  }
   const { default: ViewPage } = await import(
     "../../src/app/(authenticated)/knowledge/view/page"
   );
   const element = await ViewPage({
     searchParams: Promise.resolve({
       companyId,
-      versionId: opts.snapshot ? opts.snapshot.versionId : "draft",
+      versionId: opts.snapshot.versionId,
       ...(opts.section === undefined ? {} : { section: opts.section }),
       ...(opts.offering === undefined ? {} : { offering: opts.offering }),
       ...(opts.person === undefined ? {} : { person: opts.person }),
@@ -95,3 +101,4 @@ export async function renderViewPage(opts: RenderOptions): Promise<string> {
   } as never);
   return renderToStaticMarkup(element as React.ReactElement);
 }
+

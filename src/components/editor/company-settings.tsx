@@ -82,7 +82,7 @@ export function CompanySettings({
         companyPath(companyId, "/archive"),
         write("POST", { expectedGeneration: generation }),
       );
-      window.location.assign("/dashboard");
+      window.location.assign("/knowledge");
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);

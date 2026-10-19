@@ -2,7 +2,7 @@
 //
 // There the three sections look and behave as before the inline editors: values are plain text (no button, no
 // tab stop, no click handler, no "Click to edit" hint), no text field exists, chip lists have no Add / Remove / Undo
-// controls, empty fields keep their "+ Add" link to the advanced editor (/knowledge), and nothing is ever sent.
+// controls, empty fields keep their "+ Add" link to the advanced editor (/knowledge/view), and nothing is ever sent.
 import { describe, expect, it, vi } from "vitest";
 import {
   BUSINESS_MODEL,
@@ -111,7 +111,7 @@ describe("read-only views keep the links to the advanced editor", () => {
       const adds = view.byRole("link", /^\+ add$/i);
       expect(adds.length, `"+ Add" links in ${section}`).toBeGreaterThan(0);
       for (const link of adds) {
-        expect(String(link.props.href)).toMatch(/^\/knowledge\?companyId=[^&]+&category=/);
+        expect(String(link.props.href)).toMatch(/^\/knowledge\/view\?companyId=[^&]+&category=/);
       }
     }
   });

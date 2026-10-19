@@ -430,7 +430,7 @@ export function KnowledgeViewer({
       <div className="actions">
         <Link
           className="button button--quiet"
-          href={`/knowledge?companyId=${companyId}&category=${entry.kind}&entryId=${entry.id}`}
+          href={`/knowledge/view?companyId=${companyId}&category=${entry.kind}&entryId=${entry.id}`}
         >
           {canEdit ? "Edit draft" : "View draft"}
         </Link>
@@ -498,7 +498,7 @@ export function KnowledgeViewer({
     return (
       <Notice error>
         Select a company from the dashboard.{" "}
-        <Link href="/dashboard">View companies</Link>
+        <Link href="/knowledge">View companies</Link>
       </Notice>
     );
   }
@@ -570,7 +570,7 @@ export function KnowledgeViewer({
               {new Date(payload.saved_at).toLocaleString()} · read only
             </span>
           )}
-          <Link className="button" href={`/knowledge?companyId=${companyId}`}>
+          <Link className="button" href={`/knowledge/view?companyId=${companyId}`}>
             Open current draft
           </Link>
           <form className="actions version-viewer__export" action={companyPath(companyId, "/document")} method="GET">
@@ -637,7 +637,7 @@ export function KnowledgeViewer({
         <>
           <nav className="knowledge-view__nav" aria-label="Knowledge navigation">
             <div className="knowledge-view__nav-box">
-              <span className="knowledge-view__tab" aria-current="page">Company</span>
+              <Link href="/knowledge" className="knowledge-view__tab">Company</Link>
             </div>
             <div className="knowledge-view__nav-box">
             <SectionListbox

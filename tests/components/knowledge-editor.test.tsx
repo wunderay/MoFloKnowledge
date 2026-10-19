@@ -1,5 +1,5 @@
-// The Scrape & Build hub at /knowledge.
-//  - Without a company it starts with a create form: company name and website. Creating the company starts the crawl.
+// The Scrape & Build hub at /knowledge/view.
+//  - Without a valid company it goes back to the company list at /knowledge.
 //  - With a company it shows the draft as the MoFlo reference does: the seven sections (no "All sections"), each value
 //    edited in place, no evidence layer, no per-category Save draft / Approve / Reject / History, and one
 //    "Save knowledge version".
@@ -12,7 +12,7 @@ import { buildDraft, buildEmptyDraft, COMPANY_ID, EMPTY_COMPANY_ID, type Draft }
 const state = vi.hoisted(() => ({ draft: null as unknown }));
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
-  usePathname: () => "/knowledge",
+  usePathname: () => "/knowledge/view",
   useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }),
   redirect: (to: string) => {
     throw new Error(`redirect:${to}`);
@@ -32,31 +32,35 @@ vi.mock("../../src/components/shared/ui", async (original) => ({
 }));
 // The crawl's progress display belongs to another change; the hub only places it.
 vi.mock("../../src/components/editor/scrape-progress", () => ({ ScrapeProgress: () => "[scrape progress]" }));
-import { nameProblem, websiteProblem } from "../../src/components/editor/create-company";
+import { CreateCompany, nameProblem, websiteProblem } from "../../src/components/editor/create-company";
 import { SectionView } from "../../src/components/knowledge-view/section-view";
 import { evidenceDraft } from "../helpers/knowledge-view-evidence";
 
 async function renderHub(params: Record<string, string>, draft?: Draft) {
   state.draft = draft ?? null;
-  const { default: KnowledgePage } = await import("../../src/app/(authenticated)/knowledge/page");
-  const element = await KnowledgePage({ searchParams: Promise.resolve(params) } as never);
+  const { default: ViewPage } = await import("../../src/app/(authenticated)/knowledge/view/page");
+  const element = await ViewPage({ searchParams: Promise.resolve(params) } as never);
   return renderToStaticMarkup(element as React.ReactElement);
 }
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replaceAll("&amp;", "&").replace(/\s+/g, " ");
 
-describe("/knowledge without a company", () => {
-  it("shows the create form (name, website, one submit button) instead of the dashboard notice", async () => {
-    const html = await renderHub({});
+describe("/knowledge/view without a company", () => {
+  it("goes back to the company list when the company id is missing or invalid", async () => {
+    await expect(renderHub({})).rejects.toThrow("redirect:/knowledge");
+    await expect(renderHub({ companyId: "not-a-uuid", section: "brand" })).rejects.toThrow(/^redirect:\/knowledge$/);
+  });
+});
+
+// The create form no longer has a page of its own (/knowledge shows the company list, whose "Add company" dialog creates
+// companies); the component is kept, with the checks below.
+describe("the create form", () => {
+  it("asks for the company name and website, with one submit button", () => {
+    const html = renderToStaticMarkup(<CreateCompany />);
     expect(text(html)).toContain("Company name");
     expect(text(html)).toContain("Company website");
     expect(html).toMatch(/<input[^>]*name="name"/);
     expect(html).toMatch(/<input[^>]*name="website"[^>]*type="url"|<input[^>]*type="url"[^>]*name="website"/);
     expect(text(html)).toContain("Create company and start crawl");
-    expect(text(html)).not.toContain("Select a company from the dashboard");
-  });
-
-  it("an invalid company id also opens the create form", async () => {
-    expect(text(await renderHub({ companyId: "not-a-uuid" }))).toContain("Create company and start crawl");
   });
 });
 
@@ -83,7 +87,7 @@ describe("create form checks", () => {
   });
 });
 
-describe("/knowledge with a company", () => {
+describe("/knowledge/view with a company", () => {
   it("lists the seven sections of the reference, without All sections", async () => {
     const html = await renderHub({ companyId: COMPANY_ID }, buildDraft());
     const options = [...html.matchAll(/role="option"[^>]*>(.*?)<\/li>/g)].map((m) => text(m[1]).trim());
@@ -120,7 +124,7 @@ describe("/knowledge with a company", () => {
   it("an empty company adds values in place: no + Add link back to a form editor", async () => {
     for (const section of ["general", "brand", "customers", "sales"]) {
       const html = await renderHub({ companyId: EMPTY_COMPANY_ID, section }, buildEmptyDraft());
-      expect(html, section).not.toMatch(/href="\/knowledge\?companyId=[^"]*category=/);
+      expect(html, section).not.toMatch(/href="\/knowledge(\/view)?\?companyId=[^"]*category=/);
     }
     const general = text(await renderHub({ companyId: EMPTY_COMPANY_ID }, buildEmptyDraft()));
     expect(general).toContain("+ Add main address");
@@ -199,7 +203,7 @@ describe("links from before the hub (category and entryId)", () => {
   });
 });
 
-describe("/knowledge while the crawl runs", () => {
+describe("/knowledge/view while the crawl runs", () => {
   const withJob = (draft: Draft, status: string) => {
     (draft.company as Record<string, unknown>).latestJob = { status };
     return draft;

@@ -25,7 +25,7 @@ const id = (prefix: string, n: number) => `00000000-0000-4000-8000-${prefix}${n.
 export interface Link { id: string; title: string; url: string; note: string | null }
 export const SITE_ENTRY_ID = id("0000000e", 6);
 export const SITE_REVISION = 4;
-export const siteAddHref = (companyId: string) => `/knowledge?companyId=${companyId}&category=site_links`;
+export const siteAddHref = (companyId: string) => `/knowledge/view?companyId=${companyId}&category=site_links`;
 export const SITE_HEADING = /^sitemap\s*\/\s*internal links$/i;
 
 /** Stored order is deliberately neither alphabetical nor by URL. */

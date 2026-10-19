@@ -21,6 +21,6 @@ it("reopens a workspace with its latest scrape job so pending proposals are list
   const html = renderToStaticMarkup(
     <CompanyDashboard initialData={{ companies: [company("c1", job), company("c2", null)] as never, nextCursor: null }} />,
   );
-  expect(html).toMatch(/href="\/knowledge\?companyId=c1&(amp;)?jobId=job-123"/);
-  expect(html).toMatch(/href="\/knowledge\?companyId=c2"/);
+  expect(html).toMatch(/href="\/knowledge\/view\?companyId=c1&(amp;)?jobId=job-123"/);
+  expect(html).toMatch(/href="\/knowledge\/view\?companyId=c2"/);
 });

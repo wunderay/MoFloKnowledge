@@ -85,7 +85,7 @@ export function CreateCompany({ limits }: { limits?: CaptureLimits }) {
       );
       // The company exists; when its first crawl could not be enqueued, start it here with the same website.
       const jobId = data.jobId ?? (await startCrawl(data.companyId, body.website, limits));
-      window.location.assign(`/knowledge?companyId=${data.companyId}${jobId ? `&jobId=${jobId}` : ""}`);
+      window.location.assign(`/knowledge/view?companyId=${data.companyId}${jobId ? `&jobId=${jobId}` : ""}`);
     } catch (failure) {
       setError(errorMessage(failure, "The company could not be created. Please try again."));
       setBusy(false);
@@ -123,7 +123,7 @@ export function CreateCompany({ limits }: { limits?: CaptureLimits }) {
               {problems.name.id && (
                 <>
                   {" "}
-                  <Link href={`/knowledge?companyId=${problems.name.id}`}>Open it</Link> or choose another name.
+                  <Link href={`/knowledge/view?companyId=${problems.name.id}`}>Open it</Link> or choose another name.
                 </>
               )}
             </span>

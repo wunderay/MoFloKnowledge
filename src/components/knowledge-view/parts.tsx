@@ -7,7 +7,7 @@ import { coverageFor, coverageLabel, fieldProvenance, hasClaim, hasMarkedOrigin,
 
 /** Where "+ Add" leads: the editor, opened on the entry kind that holds the value. */
 export const addHref = (companyId: string, kind: EntryKind) =>
-  `/knowledge?companyId=${companyId}&category=${kind}`;
+  `/knowledge/view?companyId=${companyId}&category=${kind}`;
 
 /**
  * Whether the evidence layer (source controls, item markers and coverage notes) is shown. The saved-version view shows it;

@@ -21,7 +21,7 @@ export function SignInForm() {
           });
           const result = (await response.json()) as { error?: { message?: string } };
           if (response.ok) {
-            window.location.assign("/dashboard");
+            window.location.assign("/knowledge");
           } else {
             setMessage(result.error?.message || "Unable to sign in.");
           }

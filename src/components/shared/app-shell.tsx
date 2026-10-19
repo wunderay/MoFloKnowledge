@@ -12,16 +12,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
   const links: { href: string; label: string; icon: IconName; active: boolean }[] = [
-    { href: "/dashboard", label: "Companies", icon: "companies", active: path === "/dashboard" },
+    { href: "/knowledge", label: "Companies", icon: "companies", active: path === "/knowledge" },
     ...(companyId ? [
-      { href: `/knowledge?companyId=${encodeURIComponent(companyId)}`, label: "Company workspace", icon: "workspace" as const, active: path === "/knowledge" },
-      { href: `/knowledge/view?companyId=${encodeURIComponent(companyId)}`, label: "Company profile", icon: "profile" as const, active: path === "/knowledge/view" },
+      { href: `/knowledge/view?companyId=${encodeURIComponent(companyId)}`, label: "Company workspace", icon: "workspace" as const, active: path === "/knowledge/view" },
     ] : []),
   ];
   return (
     <div className="app-shell">
       <header className="app-shell__topbar">
-        <Link href="/dashboard" aria-label={`${APP_NAME} home`}><Brand /></Link>
+        <Link href="/knowledge" aria-label={`${APP_NAME} home`}><Brand /></Link>
         <div className="app-shell__account">
           <span className="app-shell__privacy"><Icon name="lock" size={14} /> Private workspace</span>
           <span className="app-shell__account-divider" aria-hidden="true" />

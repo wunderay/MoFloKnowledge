@@ -103,7 +103,7 @@ export function CompanyDashboard({
         }),
       );
       window.location.assign(
-        `/knowledge?companyId=${data.companyId}${data.jobId ? `&jobId=${data.jobId}` : ""}`,
+        `/knowledge/view?companyId=${data.companyId}${data.jobId ? `&jobId=${data.jobId}` : ""}`,
       );
     } catch (e) {
       setError((e as Error).message);
@@ -248,7 +248,7 @@ export function CompanyDashboard({
               <div className="company-card__footer">
                 <StatusBadge value={c.role ?? "member"} />
                 <Link
-                  href={`/knowledge${c.archived_at ? "/view" : ""}?companyId=${c.id}${c.latestJob && !c.archived_at ? `&jobId=${c.latestJob.id}` : ""}`}
+                  href={`/knowledge/view?companyId=${c.id}${c.latestJob && !c.archived_at ? `&jobId=${c.latestJob.id}` : ""}`}
                   className="button button--quiet"
                 >
                   {c.archived_at ? "View history" : "Open workspace"}{" "}

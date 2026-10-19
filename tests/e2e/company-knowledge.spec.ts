@@ -22,7 +22,7 @@ async function signIn(
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/knowledge$/);
 }
 
 // This is the single integrated browser scenario. It uses real session cookies,
@@ -85,7 +85,7 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
   await createDialog
     .getByRole("button", { name: "Create company", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/knowledge\?companyId=[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/knowledge\/view\?companyId=[0-9a-f-]{36}$/);
   const companyId = new URL(page.url()).searchParams.get("companyId")!;
   const base = `/api/companies/${companyId}`;
   expect(
@@ -410,7 +410,7 @@ test("company website to reviewed immutable snapshot, with tenant and viewer bou
       })
     ).status(),
   ).toBe(403);
-  await secondary.goto(`/knowledge?companyId=${companyId}`);
+  await secondary.goto(`/knowledge/view?companyId=${companyId}`);
   await expect(
     secondary.getByRole("button", { name: "Save draft", exact: true }).first(),
   ).toBeDisabled();
