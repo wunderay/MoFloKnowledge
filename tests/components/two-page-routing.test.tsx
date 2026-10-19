@@ -120,13 +120,18 @@ describe("/knowledge", () => {
 });
 
 describe("/knowledge/view", () => {
-  it("shows the Scrape & Build hub for the draft, without or with versionId=draft", async () => {
-    for (const params of [{ companyId: COMPANY_ID } as Record<string, string>, { companyId: COMPANY_ID, versionId: "draft" }]) {
-      const page = text(await render(view(), params));
-      expect(page).toContain("Save knowledge version");
-      expect(page).toContain("[scrape progress]");
-      expect(page).not.toContain("read only");
-    }
+  it("shows the Scrape & Build hub for the draft without a versionId", async () => {
+    const page = text(await render(view(), { companyId: COMPANY_ID }));
+    expect(page).toContain("Save knowledge version");
+    expect(page).toContain("[scrape progress]");
+    expect(page).not.toContain("read only");
+  });
+
+  it("versionId=draft (the version selector's Current draft) shows the draft read only, as before", async () => {
+    const html = await render(view(), { companyId: COMPANY_ID, versionId: "draft" });
+    expect(text(html)).not.toContain("Save knowledge version");
+    expect(text(html)).not.toContain("[scrape progress]");
+    expect(html).toContain('name="versionId" value="draft"');
   });
 
   it("maps a link from before the hub (category and entryId) to its section", async () => {

@@ -32,7 +32,6 @@ vi.mock("../../src/components/shared/ui", async (original) => ({
 }));
 // The crawl's progress display belongs to another change; the hub only places it.
 vi.mock("../../src/components/editor/scrape-progress", () => ({ ScrapeProgress: () => "[scrape progress]" }));
-import { CreateCompany, nameProblem, websiteProblem } from "../../src/components/editor/create-company";
 import { SectionView } from "../../src/components/knowledge-view/section-view";
 import { evidenceDraft } from "../helpers/knowledge-view-evidence";
 
@@ -48,42 +47,6 @@ describe("/knowledge/view without a company", () => {
   it("goes back to the company list when the company id is missing or invalid", async () => {
     await expect(renderHub({})).rejects.toThrow("redirect:/knowledge");
     await expect(renderHub({ companyId: "not-a-uuid", section: "brand" })).rejects.toThrow(/^redirect:\/knowledge$/);
-  });
-});
-
-// The create form no longer has a page of its own (/knowledge shows the company list, whose "Add company" dialog creates
-// companies); the component is kept, with the checks below.
-describe("the create form", () => {
-  it("asks for the company name and website, with one submit button", () => {
-    const html = renderToStaticMarkup(<CreateCompany />);
-    expect(text(html)).toContain("Company name");
-    expect(text(html)).toContain("Company website");
-    expect(html).toMatch(/<input[^>]*name="name"/);
-    expect(html).toMatch(/<input[^>]*name="website"[^>]*type="url"|<input[^>]*type="url"[^>]*name="website"/);
-    expect(text(html)).toContain("Create company and start crawl");
-  });
-});
-
-describe("create form checks", () => {
-  it("the name is required, at most 200 characters, and not one of your companies (ignoring case and spaces)", () => {
-    expect(nameProblem("   ", [])?.message).toBe("Enter the company name.");
-    expect(nameProblem("x".repeat(201), [])?.message).toBe("Keep the company name to 200 characters or fewer.");
-    expect(nameProblem("x".repeat(200), [])).toBeNull();
-    expect(nameProblem("  lumen LEDGER ", [{ id: "c1", name: "Lumen Ledger" }])).toEqual({
-      message: "You already have a company named “Lumen Ledger”.",
-      id: "c1",
-    });
-    expect(nameProblem("Lumen Ledger", [{ id: "c1", name: "Harbor" }])).toBeNull();
-  });
-
-  it("the website must be a full public http(s) address", () => {
-    expect(websiteProblem("")).toBe("Enter the company website.");
-    expect(websiteProblem("company.com")).toBe("Enter the full website address, for example https://company.com.");
-    expect(websiteProblem("ftp://company.com")).toBe("The website must start with http:// or https://.");
-    expect(websiteProblem(["https://me", "pw@company.com"].join(":"))).toBe("Remove the user name or password from the website address.");
-    expect(websiteProblem("https://company.com:8443")).toBe("Use the website's public address, without a port number.");
-    expect(websiteProblem(" https://company.com/about ")).toBeNull();
-    expect(websiteProblem("http://company.com:80")).toBeNull();
   });
 });
 

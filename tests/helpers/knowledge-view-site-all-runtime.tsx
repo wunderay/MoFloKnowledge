@@ -1093,16 +1093,11 @@ export async function openView(opts: OpenOptions): Promise<View> {
   shared.nav = [];
   shared.focused = null;
   const make = async () => {
-    // /knowledge/view shows a draft in the Scrape & Build hub; the read-only draft view renders as that page rendered it.
-    if (!opts.snapshot) {
-      const { draftViewPage } = await import("./knowledge-view-draft-page");
-      return draftViewPage({ companyId, ...(sectionId ? { section: sectionId } : {}) });
-    }
     const { default: ViewPage } = await import("../../src/app/(authenticated)/knowledge/view/page");
     return (await ViewPage({
       searchParams: Promise.resolve({
         companyId,
-        versionId: opts.snapshot.versionId,
+        versionId: opts.snapshot ? opts.snapshot.versionId : "draft",
         ...(sectionId ? { section: sectionId } : {}),
       }),
     } as never)) as React.ReactElement;

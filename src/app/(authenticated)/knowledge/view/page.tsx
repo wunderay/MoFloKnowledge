@@ -25,7 +25,7 @@ interface Params {
 
 /**
  * One company: the Scrape & Build hub (its draft, edited in place, and the website crawl), or with `versionId` one of its
- * saved knowledge versions. Without a valid company it goes back to the company list.
+ * saved knowledge versions (`draft`: the draft, read only). Without a valid company it goes back to the company list.
  */
 export default async function ViewPage({ searchParams }: { searchParams: Promise<Params> }) {
   const params = await searchParams;
@@ -37,13 +37,13 @@ export default async function ViewPage({ searchParams }: { searchParams: Promise
   if (!user) {
     redirect("/sign-in");
   }
-  if (!params.versionId || params.versionId === "draft") {
+  if (!params.versionId) {
     return hub(client, id.data, user.id, params);
   }
-  if (!UUIDSchema.safeParse(params.versionId).success) {
+  if (params.versionId !== "draft" && !UUIDSchema.safeParse(params.versionId).success) {
     return <Notice error>This saved version is unavailable.</Notice>;
   }
-  return savedVersion(client, id.data, user.id, params.versionId, params);
+  return version(client, id.data, user.id, params.versionId, params);
 }
 
 type Client = Awaited<ReturnType<typeof verifiedSession>>["client"];
@@ -83,7 +83,7 @@ async function hub(client: Client, companyId: string, userId: string, params: Pa
   }
 }
 
-async function savedVersion(client: Client, companyId: string, userId: string, versionId: string, params: Params) {
+async function version(client: Client, companyId: string, userId: string, versionId: string, params: Params) {
   const section = parseSection(params.section);
   // The selected offering's entry id; one that matches no offering selects the first.
   const offering =
@@ -102,6 +102,21 @@ async function savedVersion(client: Client, companyId: string, userId: string, v
       leadMagnets: [],
       hours: [],
     }));
+    if (versionId === "draft") {
+      const draft = await readDraft(client, companyId, userId);
+      return (
+        <KnowledgeViewer
+          key={companyId}
+          companyId={companyId}
+          initialVersionId="draft"
+          initialSection={section}
+          initialOffering={offering}
+          initialPerson={person}
+          capturedExtras={<CapturedExtrasSection extras={extras} hooks={hooks} />}
+          initialData={{ companyName: draft.company.name, versions, draft }}
+        />
+      );
+    }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- untyped supabase-js rows/RPC results (no generated DB types); zod-validated before use
     const saved = await readSnapshot(client, companyId, versionId, userId);
     return (
