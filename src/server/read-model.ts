@@ -93,9 +93,17 @@ export async function readDraft(client: Client, id: string, userId: string) {
           .in("id", sourceIds),
       )
     : [];
+  const jobs = await checked(
+    client
+      .from("scrape_jobs")
+      .select("status")
+      .eq("company_id", id)
+      .order("created_at", { ascending: false })
+      .limit(1),
+  );
   return parseResponse(DraftResponseSchema, {
     actorId: userId,
-    company,
+    company: { ...company, latestJob: jobs?.[0] ?? null },
     draftGeneration: company.draft_generation,
     entries: current,
     sources: sources ?? [],

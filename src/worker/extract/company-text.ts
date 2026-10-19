@@ -5,9 +5,10 @@ import { visibleCandidates } from "./visible";
 import { collapseWhitespace as normalized, founderStatement, FOUNDER_STATEMENT_NOTE } from "./text";
 import { exactSentences, selectExactSentences, isExplicitServiceProviderSentence } from "./source-excerpts";
 
+const INDUSTRY = "/company_foundation/industry", COMPANY_ROLE = "/company_foundation/company_role";
 export const COMPANY_TEXT_FIELDS: readonly string[] = [
-  "/company_foundation/overview", "/company_foundation/industry",
-  "/company_foundation/business_model", "/company_foundation/company_role",
+  "/company_foundation/overview", INDUSTRY,
+  "/company_foundation/business_model", COMPANY_ROLE,
   "/company_foundation/legal_entity_type", "/company_foundation/year_founded",
   "/company_foundation/alternative_company_names", "/company_foundation/service_locations",
   "/positioning/company_pitch", "/positioning/founding_story",
@@ -199,7 +200,7 @@ export function companyTextCandidates(
     for (const { text: paragraph } of paragraphs) {
       for (const sentence of exactSentences(paragraph)) {
         if (isExplicitServiceProviderSentence(sentence, names)) {
-          add("/company_foundation/company_role", [{ text: "Service provider" }], [sentence], 90, null, [],
+          add(COMPANY_ROLE, [{ text: "Service provider" }], [sentence], 90, null, [],
             "Normalized company role from an explicit current-company service statement.");
         }
       }
@@ -209,17 +210,17 @@ export function companyTextCandidates(
     // An explicit description of what the firm is, not a guessed standardized label.
     const industry = /\b(?:we are|is|as)\s+(?:an?\s+)?(?:independent\s+)?([^.!?;]{3,90}?\b(?:firm|agency|consultancy|manufacturer|retailer|studio|practice|service provider))\b/i.exec(text)?.[1];
     if (industry && !/\b(?:you|your|our|other|another)\b/i.test(industry)) {
-      add("/company_foundation/industry", industry, [text], (profile ? 65 : 80) - index);
-      add("/company_foundation/company_role", [{ text: industry }], [text], 75);
+      add(INDUSTRY, industry, [text], (profile ? 65 : 80) - index);
+      add(COMPANY_ROLE, [{ text: industry }], [text], 75);
     }
     // Keep a published service category verbatim, including its exact spelling.
     const category = /\b(?:specializ(?:e|es|ing) in|provid(?:e|es|ing)|offer(?:s|ing)?|comprehensive|reliable)\s+([^.!?;]{3,90}?\b(?:services|solutions|software|products))\b/i.exec(text)?.[1];
     if (category && !/\b(?:you|your|our|other|these|this|the best)\b/i.test(category)) {
-      add("/company_foundation/industry", category, [text], (profile ? 60 : /^\/(?:about(?:-us)?|company|firm(?:-background)?)\/?$/i.test(url.pathname) ? 75 : 70) - index);
+      add(INDUSTRY, category, [text], (profile ? 60 : /^\/(?:about(?:-us)?|company|firm(?:-background)?)\/?$/i.test(url.pathname) ? 75 : 70) - index);
     }
     const role = /\b(?:we are|is)\s+(?:an?\s+)?(service provider|manufacturer|retailer|wholesaler|distributor|consultancy)\b/i.exec(text)?.[1];
     if (role && !profile) {
-      add("/company_foundation/company_role", [{ text: role }], [text], 80);
+      add(COMPANY_ROLE, [{ text: role }], [text], 80);
     }
   }
 
@@ -347,6 +348,27 @@ export function companyTextCandidates(
     const area = /\b(?:we|our (?:firm|company|practice|team))\s+(?:serve|serves|operate(?:s)? in|work(?:s)? (?:across|throughout))\s+([^.!?;]{3,120})/i.exec(text)?.[1];
     if (area && !/\b(?:businesses|clients|customers|individuals|people|companies|needs)\b/i.test(area)) {
       add("/company_foundation/service_locations", [{ text: area }], [text], 80);
+    }
+  }
+  // With no "we are a ..." statement, the home heading's head noun phrase names the industry and role.
+  if (url.pathname === "/" && !result.some((c) => c.field === INDUSTRY)) {
+    const known = [...result.filter((c) => c.field === "/company_foundation/service_locations").map((c) => JSON.stringify(c.value)),
+      ...(Array.isArray(capture.observations.addresses) ? capture.observations.addresses as string[] : [])].join(" ").toLowerCase();
+    const organisation = /^(?:team|company|group|services|experts|specialists|agency|firm|studio|partners|co|associates)$/i;
+    const notIndustry = /^(?:welcome|get|our|your|my|we|to|today|home|story|start|started)$/i;
+    const praise = /^(?:premier|best|leading|top|#1|award-winning)$/i;
+    const headings = Array.isArray(capture.observations.headings) ? capture.observations.headings as { level?: number; text?: string }[] : [];
+    for (const heading of headings.filter((h) => h.level === 1 && h.text).slice(0, 1)) {
+      const words = (heading.text ?? "").split(/\s+/).filter((word) =>
+        !praise.test(word) && !/['’]s$/.test(word) && !(word.length > 2 && known.includes(word.toLowerCase())));
+      const titleParts = normalized(capture.title ?? "").split(/\s+[|\-–]\s+|\s*[|:]\s+/).map((part) => part.trim().toLowerCase());
+      // Only a short capitalised run ending in a business-structure noun reads as an industry and role.
+      if (words.length >= 2 && words.length <= 4 && words.every((word) => /^\p{Lu}[\p{L}-]*$/u.test(word)) &&
+        organisation.test(words[words.length - 1]) && !words.some((word) => notIndustry.test(word)) &&
+        !titleParts.includes(words.join(" ").toLowerCase()) && !titleParts.includes((heading.text ?? "").trim().toLowerCase())) {
+        add(INDUSTRY, words.slice(0, -1).join(" "), [heading.text ?? ""], 60);
+        add(COMPANY_ROLE, [{ text: words.join(" ") }], [heading.text ?? ""], 60);
+      }
     }
   }
   return result;

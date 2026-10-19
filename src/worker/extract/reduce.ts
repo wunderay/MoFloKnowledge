@@ -38,6 +38,7 @@ function equivalentItem(value: unknown): unknown {
   }
   return value;
 }
+const pageChrome = /^(?:skip (?:to\b.*|navigation)|(?:toggle|open|close) (?:the )?(?:main )?(?:navigation|menu)|main (?:navigation|menu))$/i;
 const categoricalFields = new Set(["name", "title", "role", "category", "industry"]);
 const sourceQuality = (c: ValidatedCandidate) => c.segment_ids.length ? 2 :
   c.observations.some((o) => o.property?.startsWith("jsonld:")) ? 1 : 0;
@@ -110,6 +111,11 @@ export function reduceCandidates(
     const evidenceMap = new Map<string, (typeof provenance.evidence)[number]>();
     for (const field of FIELD_REGISTRY.filter((f) => f.kind === group.kind)) {
       let all = group.candidates.filter((c) => c.field === field.path).sort(rankCandidates);
+      if (field.path === "/offerings/@id/name") {
+        // A name is its first line; trailing description lines are not part of it, and page chrome is never a name.
+        all = all.map((c) => typeof c.value === "string" ? { ...c, value: c.value.split("\n")[0].trim() } : c)
+          .filter((c) => !pageChrome.test(String(c.value)));
+      }
       if (field.path === "/company_foundation/year_founded" && all.some((c) => c.note !== FOUNDER_STATEMENT_NOTE)) {
         // An explicit company founding statement always wins over a founder's own history.
         all = all.filter((c) => c.note !== FOUNDER_STATEMENT_NOTE);
@@ -129,6 +135,15 @@ export function reduceCandidates(
         }
       }
       let values = [...unique.values()];
+      if (field.path === "/company_foundation/main_address") {
+        // An address whose parts all appear in another, fuller address is the same place, not a conflict.
+        const parts = (v: unknown) => Object.entries(v as Record<string, unknown>)
+          .filter(([key, part]) => key !== "id" && key !== "label" && typeof part === "string" && part).map(([, part]) => normalizedWording(part));
+        const text = (v: unknown) => " " + parts(v).join(" ") + " ";
+        values = values.filter((a) => !values.some((b) => b !== a &&
+          parts(a.value).every((part) => text(b.value).includes(" " + part + " ")) &&
+          parts(b.value).join(" ").length > parts(a.value).join(" ").length));
+      }
       let assembledSources: ValidatedCandidate[] | null = null;
       if (!collection && narrativeFields.has(field.field) && values.length) {
         // Labels can disagree factually even at equal quality. Only lower-quality

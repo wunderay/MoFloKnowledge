@@ -149,7 +149,7 @@ Every source the extractor reads is listed here. "Field" is the registered field
 |---|---|---|
 | Final address of each captured page | `company_foundation/website` | Every captured page. |
 | Meta description (`description`, else `og:description`) | `company_foundation/overview` | Only on the home page (path `/`). |
-| `og:site_name` or `application-name` meta tag | `company_foundation/alternative_company_names` | Verbatim, and only when it differs from the site's host label (ignoring a legal suffix). Not read on a shared-platform profile. |
+| `og:site_name` or `application-name` meta tag | `company_foundation/alternative_company_names` | Verbatim, and only when it differs from the site's host label (ignoring a legal suffix). Not read on a shared-platform profile. A long name (over three words) that no logo, footer or main heading repeats is skipped. The leading `<title>` segment (split on `|`, `-`, `–`, `:`) is also an alternative name when a logo, footer or main heading repeats it. |
 | `mailto:` links | `market_and_customers/channels` (type "Email", label is the address) | Recorded address only; not read on a shared-platform profile. |
 | `tel:` links | `online_presence/phone` | The first number the existing ten-digit US rule accepts; not read on a shared-platform profile. |
 | Meta description | `offerings/@id/description` | Only on a page whose address is a linked offering (see "Offering links"). |
@@ -216,7 +216,7 @@ These rules do not run on blog, article, news, learning-center, privacy or terms
 | Sentences addressed to the customer that describe a problem or benefit (35-500 characters) | `market_and_customers/customer_needs` | At most three, chosen by score; sentences about staff, advertising, cookies or contacting the firm are skipped. |
 | A list under "Customer needs", "Client goals" or "Pain points" | `market_and_customers/customer_needs` | Items are kept as written. |
 | A list under "Suppliers", "Partners" or "Vendors"; "our suppliers include ..." | `market_and_customers/suppliers_and_partners` | Items are kept as written, with the heading or sentence as the relationship. |
-| Links, buttons and form submit buttons whose label begins with an action such as "Get started", "Schedule", "Book", "Contact", "Request", "Sign up", "Subscribe", "Buy", "Call" | `market_and_customers/ctas` | Label is 500 characters or fewer; a button's first line is used. |
+| Links, buttons and form submit buttons whose label begins with an action such as "Get started", "Schedule", "Book", "Contact", "Request", "Sign up", "Subscribe", "Buy", "Call", "View", "Read", "Learn", "Explore", "Browse", "See", "Find", "Meet", "Visit", "Watch" | `market_and_customers/ctas` | Label is 500 characters or fewer; a label repeated on a page is kept once, and "Read more"-style labels with no object are dropped; a button's first line is used. |
 | The same action links, plus forms with a submit button that sit under a contact, newsletter or action heading | `market_and_customers/channels` | A form is recorded as an observed entry point; it is never submitted. |
 | A form with a message or inquiry field; a newsletter or subscribe form; a page whose path or heading is appointment, schedule or booking; a referrals page | `market_and_customers/funnels` ("Contact form", "Newsletter signup", "Appointment scheduler", "Client referrals") | Named only from that explicit evidence, with the form or page as the source; steps are not inferred. |
 

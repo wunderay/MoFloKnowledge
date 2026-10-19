@@ -7,8 +7,19 @@ import { EditProvider, type EditEnv } from "./inline-edit";
 import { KeyPeople } from "./key-people";
 import { BusinessOfferings } from "./offerings";
 import { SalesMarketing } from "./sales-marketing";
-import { KNOWLEDGE_SECTIONS, type KnowledgeSectionId } from "./sections";
+import { SectionSkeleton } from "./section-skeleton";
+import { KNOWLEDGE_SECTIONS, sectionLabel, type KnowledgeSectionId } from "./sections";
 import { SiteKnowledge } from "./site-knowledge";
+
+/** The entry kinds a section reads; a section has data once one of them exists. */
+const SECTION_KINDS: Record<Exclude<KnowledgeSectionId, "site" | "all">, EntryKind[]> = {
+  general: ["company_foundation"],
+  brand: ["branding_and_style"],
+  offerings: ["offering"],
+  customers: ["market_and_customers"],
+  sales: ["positioning", "online_presence"],
+  "key-people": ["key_person"],
+};
 
 /** The selected section of the company's knowledge, laid out as the MoFlo Cloud reference shows. */
 export function SectionView({
@@ -25,6 +36,7 @@ export function SectionView({
   actorId = "",
   generation = null,
   importBlocked = false,
+  crawling = false,
   onSaved = () => Promise.resolve(),
 }: {
   section: KnowledgeSectionId;
@@ -52,6 +64,8 @@ export function SectionView({
   generation?: number | null;
   /** True while the view is older than a saved import: the picker would work from stale entries. */
   importBlocked?: boolean;
+  /** The company's crawl is queued or running: a section without data yet shows a skeleton instead of its empty state. */
+  crawling?: boolean;
   onSaved?: (what?: "changes") => Promise<void>;
 }) {
   const profile = profileFrom(entries, citationContext);
@@ -73,7 +87,17 @@ export function SectionView({
           },
         }
       : null;
+  const has = (...kinds: EntryKind[]) => entries.some((item) => kinds.includes(item.kind));
   const one = (id: KnowledgeSectionId, level: "h2" | "h3" = "h2") => {
+    if (crawling) {
+      const empty =
+        id === "site"
+          ? siteLinksFrom(entries).links.length === 0
+          : !has(...SECTION_KINDS[id as Exclude<KnowledgeSectionId, "site" | "all">]);
+      if (empty) {
+        return <SectionSkeleton label={sectionLabel(id)} shape={id === "site" || id === "offerings" || id === "key-people" ? "list" : "text"} />;
+      }
+    }
     if (id === "key-people") {
       return (
         <KeyPeople

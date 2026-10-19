@@ -119,7 +119,7 @@ export function captureHtml(
   ).remove();
   $("[style]").each((_i, node) => {
     if (
-      /(?:display\s*:\s*none|visibility\s*:\s*hidden)/i.test(
+      /display\s*:\s*none/i.test(
         $(node).attr("style") ?? "",
       )
     ) {
@@ -338,6 +338,7 @@ export function captureHtml(
       return url ? [{ url, label: item.label }] : [];
     }),
   }));
+  const footerText = $("footer").slice(0, 3).map((_i, node) => normalizeText($(node).text()).slice(0, 2000)).get().filter(Boolean);
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
   const root = $("main").first().length
@@ -397,6 +398,7 @@ export function captureHtml(
       .map((list) => ({ ...list, heading: list.heading && parsed.segments.some((segment) => segment.text === list.heading) ? list.heading : null, intro: list.intro && parsed.segments.some((segment) => segment.text === list.intro) ? list.intro : null })),
     declaredStyles: declaredDesign.styles,
     declaredLogos: declaredDesign.logos,
+    footerText,
     offeringBlocks,
     navGroups,
     catalogueCards,
