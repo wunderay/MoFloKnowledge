@@ -119,7 +119,11 @@ export function visibleCandidates(
     // body ("our team", "contact us") means the heading is a topic, not a name.
     const sentences = bioText.split(/(?<=[.!?])\s+/);
     const named = sentences.findIndex((sentence) => sentence.includes(name));
-    const fromName = named >= 0 ? sentences.slice(named).join(" ") : "";
+    // Gender comes only from the naming sentence and the one after it, and only when neither names someone else.
+    const referent = sentences.slice(named, named + 2);
+    const otherName = referent.some((sentence) => (sentence.split(name).join(" ")
+      .match(/\p{Lu}[\p{Ll}'’.-]*(?:\s+\p{Lu}[\p{Ll}'’.-]*){1,3}/gu) ?? []).some(isPersonName));
+    const fromName = named >= 0 && !otherName ? referent.join(" ") : "";
     const asPhrase = page.capture.segments.some((s, i) => i !== nameIndex && s.text.toLowerCase().includes(name.toLowerCase()) &&
       s.text.split(name).join("").toLowerCase().includes(name.toLowerCase()));
     const gender = pronounGender(fromName);
