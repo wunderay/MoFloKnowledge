@@ -17,64 +17,76 @@ export interface FrontierSnapshot {
     selected: number;
     limitsReached: string[];
 }
-function relevance(url: string, label: string, pathPrefix = ''): number {
+/** Funnel kinds whose pages stop outranking service pages after FUNNEL_CAP of them are queued. */
+const FUNNEL_CAP = 2;
+const NEUTRAL_SCORE = 50;
+/** Unknown pages linked from the main navigation outrank unknown body links but not funnel pages. */
+const NAV_SCORE = 75;
+interface Relevance {
+    score: number;
+    funnel?: string;
+}
+function relevance(url: string, label: string, pathPrefix = '', nav = false): Relevance {
     const parsed = new URL(url);
     const path = parsed.pathname.toLowerCase();
     const words = `${path.replace(/[^a-z]+/g, ' ')} ${label.toLowerCase()}`;
     // Specific destinations take precedence over an inherited parent-path keyword.
+    if (/\b(?:join (?:our team|us)|we'?re hiring|now hiring)\b/.test(words)) {
+      return { score: 5 };
+    }
     if (/\b(?:privacy|terms|legal|login|sign in|client hub|cart|checkout)\b/.test(words)) {
-      return 5;
+      return { score: 5 };
     }
     if (/^\/(?:blog|news|articles?|learning-center)(?:\/|$)/.test(path)) {
-      return 10;
+      return { score: 10 };
     }
     // Funnel pages (appointment, referral, contact) outrank repeated service detail pages.
     if (/\b(?:referrals?|appointment|schedule|booking|book(?: a)?)\b/.test(words)) {
-      return 88;
+      return { score: 88, funnel: 'appointment' };
     }
     if (/\b(?:quote|estimate)\b/.test(words)) {
-      return 92;
+      return { score: 92, funnel: 'quote' };
     }
     if (/\b(?:testimonials?|reviews?)\b/.test(words)) {
-      return 91;
+      return { score: 91, funnel: 'testimonials' };
     }
     if (/\b(?:financing|finance|payments?)\b/.test(words)) {
-      return 89;
+      return { score: 89, funnel: 'financing' };
     }
     if (/\b(?:newsletter|subscribe)\b/.test(words)) {
-      return 45;
+      return { score: 45 };
     }
     if (/\b(?:contact|locations?)\b/.test(words)) {
-      return 90;
+      return { score: 90, funnel: 'contact' };
     }
     if (/\b(?:about|company|firm|background|team|staff|bios?|people|employees?|leadership|founder)\b/.test(words)) {
-      return path.split('/').filter(Boolean).length <= 1 ? 100 : 85;
+      return { score: path.split('/').filter(Boolean).length <= 1 ? 100 : 85 };
     }
     if (/\b(?:services?|products?|offerings?|solutions?|pricing)\b/.test(words)) {
-      return path.split('/').filter(Boolean).length <= 1 ? 95 : 80;
+      return { score: path.split('/').filter(Boolean).length <= 1 ? 95 : 80 };
     }
     // Pages that are rarely useful; checked after the funnel and service rules so a service named
     // with one of these words is not demoted.
     if (/\b(?:portal|hub|careers?|jobs?|videos?|media|gallery|diagrams?)\b/.test(words)) {
-      return 5;
+      return { score: 5 };
     }
     if (/\b(?:troubleshooting|sitemap|search)\b/.test(words)) {
-      return 3;
+      return { score: 3 };
     }
     if (/\b(?:faq|brand)\b/.test(words)) {
-      return 65;
+      return { score: 65 };
     }
     // A direct child of a start path (a repository under a profile) is that profile's own content.
     const prefixDepth = pathPrefix.split('/').filter(Boolean).length;
     if (prefixDepth > 0 && path.split('/').filter(Boolean).length === prefixDepth + 1) {
-      return 70;
+      return { score: 70 };
     }
     // An unknown top-level page of the site gets a neutral middle score.
     if (path.split('/').filter(Boolean).length === 1) {
-      return 50;
+      return { score: nav ? NAV_SCORE : NEUTRAL_SCORE };
     }
     // Lowest plain-path score; stays above VARIANT_SCORE so checkpoint scores are never negative.
-    return 1;
+    return { score: nav && path.split('/').filter(Boolean).length === 2 ? NAV_SCORE : 1 };
 }
 /** Url identity for seen checks: a trailing slash on a non-root path is ignored. */
 function slashKey(url: string): string {
@@ -94,6 +106,8 @@ export class Frontier {
     /** Seen urls with the trailing slash dropped, so /contact and /contact/ count once. */
     private seenKeys = new Set<string>();
     private selected = 0;
+    /** Pages queued per funnel kind during this crawl. */
+    private funnelCounts = new Map<string, number>();
     readonly documentLimit: number;
     readonly depthLimit: number;
     constructor(readonly root: string, options: {
@@ -131,7 +145,7 @@ export class Frontier {
     }
     get remaining() { return Math.max(0, this.documentLimit - this.selected); }
     /** `rank` (0 = first) puts a link ahead of the usual relevance order at its depth. */
-    add(input: string, label: string, depth: number, rank?: number): boolean {
+    add(input: string, label: string, depth: number, rank?: number, nav = false): boolean {
         let url: string;
         try {
             url = assertDocumentScope(normalizeUrl(input, this.root), this.scope, this.pathPrefix);
@@ -159,7 +173,25 @@ export class Frontier {
         }
         this.seen.add(url);
         this.seenKeys.add(slashKey(url));
-        const score = rank !== undefined ? 200 - Math.min(rank, 99) : isVariant ? VARIANT_SCORE : relevance(url, label, this.pathPrefix);
+        let score: number;
+        if (rank !== undefined) {
+            score = 200 - Math.min(rank, 99);
+        }
+        else if (isVariant) {
+            score = VARIANT_SCORE;
+        }
+        else {
+            const found = relevance(url, label, this.pathPrefix, nav);
+            score = found.score;
+            if (found.funnel) {
+                // Past the cap, more pages of one funnel kind are treated as unknown pages.
+                const queued = this.funnelCounts.get(found.funnel) ?? 0;
+                this.funnelCounts.set(found.funnel, queued + 1);
+                if (queued >= FUNNEL_CAP) {
+                    score = NEUTRAL_SCORE;
+                }
+            }
+        }
         this.pending.push({ url, depth, score });
         return true;
     }

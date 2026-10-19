@@ -21,7 +21,7 @@ export interface PageCapture {
   text: string;
   contentHash: string;
   observations: Record<string, unknown>;
-  links: { url: string; label: string }[];
+  links: { url: string; label: string; nav?: boolean }[];
   requiresRender: boolean;
   truncated: boolean;
 }
@@ -180,7 +180,12 @@ export function captureHtml(
         text: normalizeText($(node).text()).slice(0, 2000),
       }))
       .get();
-  const links: { url: string; label: string }[] = [];
+  // Main navigation: the nearest nav/header, unless that sits in a footer or an article.
+  const inMainNav = (node: ReturnType<typeof $>) => {
+    const holder = node.closest("nav, header");
+    return holder.length > 0 && holder.closest("footer, article").length === 0;
+  };
+  const links: { url: string; label: string; nav?: boolean }[] = [];
   if (rendered?.links) {
     for (const link of rendered.links) {
       const url = safeLink(link.url);
@@ -197,6 +202,7 @@ export function captureHtml(
           links.push({
             url,
             label: normalizeText($(node).text()).slice(0, 500),
+            ...(inMainNav($(node)) && { nav: true }),
           });
         }
       });

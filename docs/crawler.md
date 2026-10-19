@@ -52,7 +52,7 @@ The worker is an always-on process (`npm run worker`, `src/worker/main.ts`). It 
 
 ## 4. Choosing pages
 
-The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It starts with the address the crawl was requested for (after any redirect, the final origin is used for the rest of the crawl) and adds same-site links as pages are captured. It always visits shallower pages first. At the same depth it visits the highest relevance score first, then sorts by address. A link's score comes from its path and label:
+The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It starts with the address the crawl was requested for (after any redirect, the final origin is used for the rest of the crawl) and adds same-site links as pages are captured. It always visits shallower pages first. At the same depth it visits the highest relevance score first, then sorts by address. A link's score comes from its path and label. Within one crawl only the first two pages of each funnel kind (quote/estimate, contact/locations, financing, testimonials/reviews, appointment/booking) keep their score; later ones score 50:
 
 | Score | Pages |
 |---|---|
@@ -61,10 +61,11 @@ The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It
 | 90 | contact and location pages |
 | 65 | FAQ and brand pages |
 | 88 | appointment, scheduling, booking and referral pages |
+| 75 | an otherwise unknown page linked from the main navigation (`<nav>` or `<header>`, not in a footer or article), one or two path segments deep |
 | 70 | direct children of the start path (for example a repository under a profile address), when nothing above matches |
 | 45 | newsletter and subscribe pages |
 | 10 | blog, news, articles and learning-center pages |
-| 5 | privacy, terms, legal and login pages |
+| 5 | privacy, terms, legal and login pages, and careers pages (including "join our team" and "now hiring") |
 | 0 | everything else |
 | -1 | a link with a query string (`?tab=…`); only the first such variant of a path is kept, the rest are dropped |
 
