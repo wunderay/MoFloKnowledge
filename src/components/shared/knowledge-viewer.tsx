@@ -12,7 +12,7 @@ import {
   type ReviewStatus,
   type Assessment,
 } from "@/contracts";
-import { api, companyPath, write } from "./api-client";
+import { api, ApiError, companyPath, write } from "./api-client";
 import { timing } from "../knowledge-view/timing";
 import { CRAWL_RUNNING } from "../knowledge-view/section-skeleton";
 import { CATEGORY_SPECS, labelOf } from "../editor/business-fields";
@@ -364,24 +364,44 @@ export function KnowledgeViewer({
     if (!crawling) {
       return;
     }
+    let inFlight = false;
+    const read = new AbortController();
     const timer = setInterval(() => {
+      if (inFlight) {
+        return;
+      }
+      inFlight = true;
       const epoch = readEpoch.current;
       api<{
-        company: { latestJob?: { status: string } | null };
+        draftGeneration?: number;
+        company: { role: string; archived_at: string | null; latestJob?: { status: string } | null };
         entries: ViewEntry[];
         citationContext?: CitationContext;
-      }>(companyPath(companyId, "/draft"))
+      }>(companyPath(companyId, "/draft"), { signal: read.signal })
         .then((data) => {
           if (readEpoch.current !== epoch) {
             return;
           }
           setCrawlStatus(data.company.latestJob?.status ?? "");
+          // Finishing the crawl bumps the generation, which a rename or import must quote.
+          setGeneration(data.draftGeneration ?? null);
+          setCanEdit(data.company.role !== "viewer" && !data.company.archived_at);
           setEntries((prev) => (JSON.stringify(prev) === JSON.stringify(data.entries) ? prev : data.entries));
           setCitationContext(data.citationContext);
         })
-        .catch(() => undefined);
+        .catch((error: unknown) => {
+          if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+            clearInterval(timer);
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+        });
     }, timing.poll);
-    return () => { clearInterval(timer); };
+    return () => {
+      clearInterval(timer);
+      read.abort();
+    };
   }, [crawling, companyId]);
   async function reject(entry: ViewEntry) {
     setBusy(true);
