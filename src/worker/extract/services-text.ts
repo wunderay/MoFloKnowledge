@@ -1,6 +1,6 @@
 import type { StoredCapture } from "../crawl/run-crawl";
 import type { FieldCandidate, TechnicalObservation } from "./types";
-import { nameKey as normalizeName } from "./text";
+import { nameKey as normalizeName, STRUCTURAL_CATEGORY_NOTE } from "./text";
 import { exactSentences, hasNegation, selectExactSentences } from "./source-excerpts";
 
 interface Section {
@@ -42,7 +42,7 @@ function serviceDescription(paragraphs: string[], name: string): string[] {
 }
 const siteChrome = /^(?:policy|policies|page|pages|team|newsletter|newsletters|guide|guides|blog|news|faq|faqs)$/i;
 const placeParent = /\b(?:areas?|locations?|communit(?:y|ies)|neighbou?rhoods?|cit(?:y|ies)|regions?|where we serve)\b/i;
-const sectionChrome = /^(?:why (?:choose|us)\b|our process|how it works|faq|frequently asked|contact|testimonials|reviews|service areas?|about\b|(?:our |meet the |the )?team$)/i;
+const sectionChrome = /^(?:why (?:choose|us)\b|our process|how it works|faq|frequently asked|contact|testimonials|reviews|service areas?|about\b|(?:our )?guarantee|(?:our |meet the |the )?team$)/i;
 const servicePath = (url: string) => /\/(?:services|products|offerings)\/[^/]+\/?$/i.test(new URL(url).pathname);
 const topicPath = (url: string) => /\/(?:articles?|blog|news|resources?|learning-center)(?:\/|$)/i.test(new URL(url).pathname);
 export const serviceEntityKey = (url: string, name: string) => `${url}|service:${normalizeName(name)}`;
@@ -58,7 +58,7 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
   const sameSite = (url: string) => new URL(url).hostname === new URL(finalUrl).hostname;
   const idsFor = (texts: string[]) => [...new Set(texts.flatMap((text) =>
     page.capture.segments.filter((segment) => segment.text.includes(text)).map((segment) => segment.id)))].slice(0, 30);
-  const add = (field: string, value: unknown, entity_key: string, texts: string[], observation_ids: string[] = [], priority = 80) => {
+  const add = (field: string, value: unknown, entity_key: string, texts: string[], observation_ids: string[] = [], priority = 80, note: string | null = null) => {
     const segment_ids = idsFor(texts);
     if (!segment_ids.length && !observation_ids.length) {
       return;
@@ -66,7 +66,7 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
     result.push({ field: field.startsWith("/") ? field : "/offerings/@id/" + field, value, entity_key, origin: "source_backed",
       segment_ids, observation_ids: [...new Set([...observation_ids, ...observations.filter((o) =>
         o.property === "heading" && o.value && texts.includes(o.value)).map((o) => o.id)])].slice(0, 30),
-      supporting_fields: [], note: null, priority } as FieldCandidate);
+      supporting_fields: [], note, priority } as FieldCandidate);
   };
   const linkEvidence = (url: string, label: string) => observations.filter((o) =>
     (o.property === "href" && o.value === url) ||
@@ -274,15 +274,15 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
       }
       const leading = words.map((w) => w.slice(0, w.length - shared).join(" "));
       if (bucket.length < 2 || !shared || new Set(leading.map((l) => l.toLowerCase())).size !== bucket.length ||
-          !words[0].slice(-shared).some((w) => w.length > 3) || siteChrome.test(word)) {
+          !words[0].slice(-shared).some((w) => w.length > 3) || siteChrome.test(word) || !placeParent.test(parent)) {
         continue;
       }
       bucket.forEach((link, index) => {
         const evidence = linkEvidence(link.url, link.label);
         add("name", link.label, link.url, [], evidence, 85);
-        add("category", "Service", link.url, [], evidence, 85);
+        add("category", "Service", link.url, [], evidence, 85, STRUCTURAL_CATEGORY_NOTE);
         add("url", link.url, link.url, [], evidence, 80);
-        if (placeParent.test(parent) && /^\p{Lu}/u.test(leading[index])) {
+        if (/^\p{Lu}/u.test(leading[index]) && !(/^(?:north|south|east|west|central|main)$/i.test(leading[index]) && /^(?:office|branch)$/i.test(word))) {
           add("/company_foundation/service_locations", [{ text: leading[index] }], link.url, [], evidence, 60);
         }
         const first = link.url === finalUrl ? sections.find((section) => section.paragraphs?.length)?.paragraphs[0] : undefined;
@@ -305,7 +305,7 @@ export function serviceTextCandidates(page: StoredCapture, observations: Technic
       continue;
     }
     add("name", card.title, entity, [card.title], [], 80);
-    add("category", "Listing", entity, [card.title], [], 80);
+    add("category", "Listing", entity, [card.title], [], 80, STRUCTURAL_CATEGORY_NOTE);
     if (idsFor([card.price]).length && /\d/.test(card.price)) {
       const amount = card.price.replace(/[^\d.]/g, "");
       add("pricing", { kind: "paid", raw: card.price, amount, min_amount: null, max_amount: null, currency: null,

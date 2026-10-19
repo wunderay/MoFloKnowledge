@@ -70,4 +70,27 @@ describe("area and catalogue offerings survive validation", () => {
     expect(names(kept)).not.toContain("Privacy Policy");
     expect(kept.filter((c) => c.field.endsWith("/service_locations"))).toEqual([]);
   });
+
+  it("gives non-place submenus no area offerings", () => {
+    for (const [parent, labels] of [["Listings", ["Featured Listings", "Sold Listings", "Rental Listings"]],
+      ["Buy", ["Buy Homes", "Sell Homes", "Luxury Homes"]]] as const) {
+      const { kept } = validated("/",
+        `<nav><ul><li><a href="/x">${parent}</a><ul>${labels.map((label, i) => `<li><a href="/p${i}">${label}</a></li>`).join("")}</ul></li></ul></nav>
+        <main><h1>Welcome</h1><p>Hello there.</p></main>`);
+      expect(names(kept), parent).toEqual([]);
+    }
+  });
+
+  it("rejects a model-style category with no matching evidence", () => {
+    const url = site + "/";
+    const page = {
+      id: "33333333-3333-4333-8333-333333333333",
+      retrievedAt: "2026-10-16T00:00:00Z",
+      capture: captureHtml({ requestedUrl: url, finalUrl: url, body: "<main><h1>Our Services</h1><p>Plumbing help for homes.</p></main>" }),
+    };
+    const observations = technicalObservations(page);
+    const [base] = deterministicCandidates(page, observations).filter((c) => c.segment_ids.length);
+    const candidate: FieldCandidate = { ...base, field: "/offerings/@id/category", value: "Listing", entity_key: url, note: null };
+    expect(() => validateCandidates([candidate], page, observations, "company-1")).toThrow();
+  });
 });

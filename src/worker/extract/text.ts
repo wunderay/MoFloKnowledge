@@ -36,3 +36,6 @@ export function parseEmployeeCount(employee: string) {
     min: validRange ? min : null, max: validRange ? max : null, as_of: null,
   };
 }
+
+/** Marks the fixed category of a structurally detected offering. */
+export const STRUCTURAL_CATEGORY_NOTE = "Structural offering category";
