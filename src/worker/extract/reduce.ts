@@ -38,7 +38,7 @@ function equivalentItem(value: unknown): unknown {
   }
   return value;
 }
-const pageChrome = /^(?:skip(?: to)?\b.*|(?:toggle|open|close) (?:the )?(?:main )?(?:navigation|menu)|main (?:navigation|menu))$/i;
+const pageChrome = /^(?:skip (?:to\b.*|navigation)|(?:toggle|open|close) (?:the )?(?:main )?(?:navigation|menu)|main (?:navigation|menu))$/i;
 const categoricalFields = new Set(["name", "title", "role", "category", "industry"]);
 const sourceQuality = (c: ValidatedCandidate) => c.segment_ids.length ? 2 :
   c.observations.some((o) => o.property?.startsWith("jsonld:")) ? 1 : 0;
