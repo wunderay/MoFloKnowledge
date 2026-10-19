@@ -240,6 +240,13 @@ export function validateProvenance(
       owners.push(claim);
       currentTargets.set(target, owners);
       if (target.endsWith("/gender") && value !== null) {
+        // A pronoun-derived gender needs one cited text excerpt that names the person and carries only that gender's pronouns.
+        const personName = resolveStablePointer(business, target.replace(/\/gender$/, "/name"));
+        const pronounCited = typeof personName === "string" && claim.evidence_ids.some((id) => {
+          const item = evidence.get(id);
+          const excerpt = item?.excerpt ?? "";
+          return item?.kind === "text" && excerpt.includes(personName) && pronounGender(excerpt) === value;
+        });
         const original = claim.evidence_ids
           .map((id) => evidence.get(id)?.excerpt ?? "")
           .join(" ");
@@ -252,7 +259,7 @@ export function validateProvenance(
                 original,
               // eslint-disable-next-line @typescript-eslint/no-base-to-string -- String() on loosely typed content values is intentional; the values are scalars at runtime
               ) && original.includes(String(value))) ||
-                (claim.note === PRONOUN_GENDER_NOTE && pronounGender(original) === value);
+                (claim.note === PRONOUN_GENDER_NOTE && pronounCited);
         if (!attested) {
           add(
             "gender_attestation",

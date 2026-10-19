@@ -119,7 +119,11 @@ export function visibleCandidates(
     // body ("our team", "contact us") means the heading is a topic, not a name.
     const sentences = bioText.split(/(?<=[.!?])\s+/);
     const named = sentences.findIndex((sentence) => sentence.includes(name));
-    const fromName = named >= 0 ? sentences.slice(named).join(" ") : "";
+    // Gender comes only from the naming sentence and the one after it, and only when neither names someone else.
+    const referent = sentences.slice(named, named + 2);
+    const otherName = referent.some((sentence) => (sentence.split(name).join(" ")
+      .match(/\p{Lu}[\p{Ll}'’.-]*(?:\s+\p{Lu}[\p{Ll}'’.-]*){1,3}/gu) ?? []).some(isPersonName));
+    const fromName = named >= 0 && !otherName ? referent.join(" ") : "";
     const asPhrase = page.capture.segments.some((s, i) => i !== nameIndex && s.text.toLowerCase().includes(name.toLowerCase()) &&
       s.text.split(name).join("").toLowerCase().includes(name.toLowerCase()));
     const gender = pronounGender(fromName);
@@ -146,10 +150,11 @@ export function visibleCandidates(
         add("/key_people/@id/title", declared.text, [], [declared.o.id], entity);
       }
       add("/key_people/@id/background_or_relevance", bioText, bio.map((s) => s.id), [], entity);
-      if (gender) {
-        const cited = bio.filter((s, i) => s.text.includes(name) || bio.slice(0, i).some((p) => p.text.includes(name)));
+      // The gender claim cites one segment that names the person and carries only that gender's pronouns.
+      const source = bio.find((s) => s.text.includes(name) && pronounGender(s.text) === gender);
+      if (gender && source) {
         result.push({ field: "/key_people/@id/gender", value: gender, entity_key: entity, origin: "source_backed",
-          segment_ids: cited.map((s) => s.id), observation_ids: [], supporting_fields: [], note: PRONOUN_GENDER_NOTE });
+          segment_ids: [source.id], observation_ids: [], supporting_fields: [], note: PRONOUN_GENDER_NOTE });
       }
     }
   }
