@@ -324,6 +324,10 @@ export function captureHtml(
       });
     });
   }
+  // Plain-text menu captions ("Our Team") are not links, so they are kept before the chrome is removed.
+  const menuLabels = $('nav,[role="navigation"]').find("*")
+    .filter((_i, node) => !$(node).children().length && !$(node).is("a[href]"))
+    .slice(0, 50).map((_i, node) => normalizeText($(node).text()).slice(0, 80)).get().filter(Boolean);
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
   $('nav,footer,[role="navigation"],header').remove();
   const root = $("main").first().length
@@ -383,6 +387,7 @@ export function captureHtml(
     declaredStyles: declaredDesign.styles,
     declaredLogos: declaredDesign.logos,
     offeringBlocks,
+    menuLabels,
     clientSectionDetected: requiresClientSection,
     jsonLd,
     ...pageMetadata.metadata,
