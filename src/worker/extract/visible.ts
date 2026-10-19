@@ -126,7 +126,7 @@ export function visibleCandidates(
     const declaredName = metadata.some((o) => new RegExp("^Meet\\s+" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(o.value ?? ""));
     // A "Name, title" / "Meet Name" statement is a signal on its own; otherwise this page's own navigation link must sit
     // in a team-group submenu, with either a pronoun in a sentence naming the person or a name-led bio under a short line.
-    const groups = page.capture.observations.navGroups;
+    const groups = page.capture.observations.navLinkCaptions;
     const teamLinked = Array.isArray(groups) && (groups as { caption: string; url: string }[]).some((group) =>
       group.url.replace(/[#?].*$/, "").replace(/\/$/, "") === page.capture.finalUrl.replace(/\/$/, "") &&
       /^(?:our\s+)?(?:team|people|staff|leadership)$/i.test(group.caption));

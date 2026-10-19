@@ -326,14 +326,14 @@ export function captureHtml(
   }
   // Each navigation link with the caption of its submenu (the text before the list, or the parent item's own text),
   // kept before the chrome is removed.
-  const navGroups: { caption: string; url: string }[] = [];
+  const navLinkCaptions: { caption: string; url: string }[] = [];
   $('nav a[href],[role="navigation"] a[href]').slice(0, 300).each((_i, node) => {
     const url = safeLink($(node).attr("href"));
     const list = $(node).closest("ul,ol");
     const own = list.parent("li").clone().children("ul,ol").remove().end().text();
     const caption = normalizeText(list.prev().text() || own).slice(0, 80);
     if (url && caption) {
-      navGroups.push({ caption, url });
+      navLinkCaptions.push({ caption, url });
     }
   });
   // Exclude repeated page chrome, retaining selected visible observations as exact source segments below.
@@ -395,7 +395,7 @@ export function captureHtml(
     declaredStyles: declaredDesign.styles,
     declaredLogos: declaredDesign.logos,
     offeringBlocks,
-    navGroups,
+    navLinkCaptions,
     clientSectionDetected: requiresClientSection,
     jsonLd,
     ...pageMetadata.metadata,
