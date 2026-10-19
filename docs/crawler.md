@@ -47,12 +47,12 @@ The worker is an always-on process (`npm run worker`, `src/worker/main.ts`). It 
 - **URL rules** (`src/worker/network/url-scope.ts`): only `http`/`https` on ports 80 and 443, with no username or password in the URL and a real public hostname (no IP addresses, no `localhost`, a recognised public suffix). Fragments and tracking parameters (`utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_cid`, `mc_eid`) are removed, and query parameters are sorted, so the same page is not fetched twice.
 - **Company scope** (`documentScope`): when the starting address is a bare domain or its `www.` form, both `example.com` and `www.example.com` count as one site. When it is any other host, such as `shop.example.com`, only that exact host is crawled. Pages must also sit at or below the starting address's path: with `https://github.com/wunderay` as the starting address, `/wunderay` and `/wunderay/repo` are crawled, while `https://github.com/`, `/other` and `/wunderay-other` are refused, so the crawler never wanders to the rest of github.com. A bare domain keeps the whole host. The path rule applies to page links, redirects and the browser's page navigation; stylesheets, fonts and images (design evidence) and `robots.txt` stay host-level. Links or redirects to anywhere else are refused.
 - **Public addresses only** (`src/worker/network/destination-policy.ts`): the hostname is resolved first and the connection is pinned to the address that was checked. Private, loopback, link-local and other non-public addresses are refused, which stops a website from steering the crawler into a private network.
-- **robots.txt** (`src/worker/crawl/robots.ts`): each site's rules are fetched once, cached and obeyed. Pages that robots.txt disallows are skipped and counted as blocked. A `Crawl-delay` is honoured, and a delay too long to leave room for a fetch ends that page as a deadline miss rather than being waited out. If robots.txt cannot be read (access denied, another 4xx error, or a failure after one retry), the site's pages are treated as blocked. A `Retry-After` on a page's 429 reply is respected for up to 5 seconds before one retry; for robots.txt fetches the wait is up to 10 seconds.
-- **Pacing** (`src/worker/crawl/scheduler.ts`): at most 3 page fetches and 1 browser render run at once, with a gap of at least half a second between requests to the same host.
+- **robots.txt** (`src/worker/crawl/robots.ts`): each site's rules are fetched once, cached and obeyed. A robots.txt redirect is followed when it stays inside the company scope (apex and `www.`); a redirect anywhere else leaves the site's pages blocked. Pages that robots.txt disallows are skipped and counted as blocked. If robots.txt cannot be read (access denied, another 4xx error, or a failure after one retry), the site's pages are treated as blocked. A `Retry-After` on a page's 429 reply is respected for up to 5 seconds before one retry; for robots.txt fetches the wait is up to 10 seconds.
+- **Pacing** (`src/worker/crawl/scheduler.ts`): at most 3 page fetches and 1 browser render run at once, with a gap of at least half a second between requests to the same host. A `Crawl-delay` becomes that gap, up to 60 seconds (a larger value counts as 60), and the wait never counts against a single fetch's timeout. When the delay times the document limit is more than the crawl time budget, the budget grows to delay x documents + 60 seconds, never past the job timeout minus 60 seconds; the crawl then ends partial with the pages that fit.
 
 ## 4. Choosing pages
 
-The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It starts with the address the crawl was requested for (after any redirect, the final origin is used for the rest of the crawl) and adds same-site links as pages are captured. It always visits shallower pages first. At the same depth it visits the highest relevance score first, then sorts by address. A link's score comes from its path and label:
+The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It starts with the address the crawl was requested for (after any redirect, the final origin is used for the rest of the crawl) and adds same-site links as pages are captured. It always visits shallower pages first. At the same depth it visits the highest relevance score first, then sorts by address. A link's score comes from its path and label. Within one crawl only the first two pages of each funnel kind (quote/estimate, contact/locations, financing, testimonials/reviews, appointment/booking) keep their score; later ones score 50:
 
 | Score | Pages |
 |---|---|
@@ -61,10 +61,11 @@ The frontier (`src/worker/crawl/frontier.ts`) holds the pages still to visit. It
 | 90 | contact and location pages |
 | 65 | FAQ and brand pages |
 | 88 | appointment, scheduling, booking and referral pages |
+| 75 | an otherwise unknown page linked from the main navigation (`<nav>` or `<header>`, not in a footer or article), one or two path segments deep |
 | 70 | direct children of the start path (for example a repository under a profile address), when nothing above matches |
 | 45 | newsletter and subscribe pages |
 | 10 | blog, news, articles and learning-center pages |
-| 5 | privacy, terms, legal and login pages |
+| 5 | privacy, terms, legal and login pages, and careers pages (including "join our team" and "now hiring") |
 | 0 | everything else |
 | -1 | a link with a query string (`?tab=…`); only the first such variant of a path is kept, the rest are dropped |
 

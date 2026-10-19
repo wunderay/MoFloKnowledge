@@ -6,8 +6,11 @@ FROM supabase/gotrue:v2.197.0 AS gotrue
 FROM postgrest/postgrest:v12.2.3 AS postgrest
 FROM node:22.23.3-bookworm-slim AS node
 
-# ---- build the app. Public values only: the Supabase URL is the single local origin, and the publishable key is a stand-in
+# ---- build the app. Public values only. The Supabase URL is the gateway as the app sees it from inside the container (port 8080
+# there, whatever host port MOFLO_PORT publishes), so it does not depend on the host port. The publishable key is a stand-in
 # that the entrypoint replaces with the real one on the first start (Next.js inlines NEXT_PUBLIC_* values at build time).
+# The host-facing origin (APP_ORIGIN, the auth site URL) is not baked in: the entrypoint builds it from MOFLO_PORT at run time,
+# and the APP_ORIGIN below is only a stand-in so that the build can run.
 FROM node AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

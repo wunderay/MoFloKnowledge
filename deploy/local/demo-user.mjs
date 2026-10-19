@@ -1,9 +1,9 @@
-// Creates the demo login through the gateway (a GoTrue signup, auto-confirmed), the same way a person signing up would.
+// Creates the demo login through the gateway (GATEWAY_URL, its address inside the container) (a GoTrue signup, auto-confirmed), the same way a person signing up would.
 // Safe to run on every start: an already registered demo user is not an error.
-const origin = process.env.PUBLIC_URL;
+const origin = process.env.GATEWAY_URL;
 const { ANON_KEY, DEMO_EMAIL, DEMO_PASSWORD } = process.env;
 if (!origin || !ANON_KEY || !DEMO_EMAIL || !DEMO_PASSWORD) {
-  throw new Error("PUBLIC_URL, ANON_KEY, DEMO_EMAIL and DEMO_PASSWORD are required");
+  throw new Error("GATEWAY_URL, ANON_KEY, DEMO_EMAIL and DEMO_PASSWORD are required");
 }
 const response = await fetch(`${origin}/auth/v1/signup`, {
   method: "POST",

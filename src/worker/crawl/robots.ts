@@ -1,5 +1,6 @@
 import { fetchDocument, type FetchOptions, type FetchResult } from '../network/pinned-transport';
 import { crawlLimits } from '../../lib/config/crawl-limits';
+import { assertDocumentScope, documentScope } from '../network/url-scope';
 const gap = () => crawlLimits().hostGapMs;
 export type Fetcher = (url: string, options?: FetchOptions) => Promise<FetchResult>;
 export interface RobotsDecision {
@@ -11,9 +12,9 @@ interface Rule {
     allow: boolean;
     pattern: string;
 }
-// Untrusted Crawl-delay is honoured as asked, only clamped to what a timer can hold (< 2^31 ms).
-// A delay that cannot fit the task/job deadline is rejected up front by the scheduler, never slept.
-const MAX_CRAWL_DELAY_MS = 2 ** 31 - 1;
+// Untrusted Crawl-delay is honoured as the gap between requests to a host, up to this cap; a larger value counts as the cap.
+export const MAX_CRAWL_DELAY_MS = 60_000;
+const MAX_ROBOTS_REDIRECTS = 5;
 export function parseRobots(text: string): {
     rules: Rule[];
     delayMs: number;
@@ -116,10 +117,34 @@ export class RobotsCache {
         const policy = await abortable(loading, signal);
         return { allowed: !policy.blocked && robotsAllows(url.pathname + url.search, policy.rules), delayMs: policy.delayMs, ...(policy.blocked ? { limitation: policy.blocked } : {}) };
     }
+    /** Fetches robots.txt, following redirects that stay inside the site (apex and www); undefined for an off-site redirect. */
+    private async fetchFollowingSiteRedirects(origin: string, signal?: AbortSignal): Promise<FetchResult | undefined> {
+        const scope = documentScope(origin);
+        let current = origin + '/robots.txt';
+        for (let hop = 0; ; hop++) {
+            const response = await this.fetcher(current, { scope, signal, maxBytes: 512 * 1024, onRequest: this.onRequest, redirect: 'manual' });
+            const location = response.headers.location;
+            if (![301, 302, 303, 307, 308].includes(response.status) || !location) {
+                return response;
+            }
+            if (hop >= MAX_ROBOTS_REDIRECTS) {
+                throw new Error('Too many robots.txt redirects');
+            }
+            try {
+                current = assertDocumentScope(new URL(location, current).href, scope);
+            }
+            catch {
+                return undefined;
+            }
+        }
+    }
     private async load(origin: string, signal?: AbortSignal) {
         for (let attempt = 0; attempt < 2; attempt++) {
             try {
-                const response = await this.fetcher(origin + '/robots.txt', { scope: [new URL(origin).hostname], signal, maxBytes: 512 * 1024, onRequest: this.onRequest });
+                const response = await this.fetchFollowingSiteRedirects(origin, signal);
+                if (!response) {
+                  return { rules: [], delayMs: gap(), blocked: 'robots redirected outside the site' };
+                }
                 if (response.status === 404) {
                   return { rules: [], delayMs: gap() };
                 }

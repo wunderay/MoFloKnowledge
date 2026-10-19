@@ -5,10 +5,8 @@ import type { Job, JobRepository } from "../../src/worker/job-repository";
 import {
   SLACK_MS,
   accelerateLimits,
-  htmlPage,
   makeJob,
   makeRepository,
-  sendHtml,
   sendRobots,
   settle,
   startSite,
@@ -33,13 +31,13 @@ afterEach(async () => {
 });
 
 describe("the worker does not keep renewing the lease of a job that is past its deadline", () => {
-  it("hostile Crawl-delay: 86400 ends the job at its deadline and no heartbeat renews the lease afterwards", async () => {
+  it("a page that never answers ends the job at its deadline and no heartbeat renews the lease afterwards", async () => {
     const jobMs = 400;
     restore = accelerateLimits({ jobMs, fetchMs: 5000 });
     site = await startSite((request, response) =>
       request.path === "/robots.txt"
-        ? sendRobots(response, "User-agent: *\nCrawl-delay: 86400")
-        : sendHtml(response, htmlPage(["/a"])),
+        ? sendRobots(response, "User-agent: *")
+        : undefined, // the page never answers
     );
     const stop = new AbortController();
     const events: string[] = [];
@@ -82,7 +80,6 @@ describe("the worker does not keep renewing the lease of a job that is past its 
         heartbeat,
         "lease was renewed for a job whose deadline had already passed",
       ).not.toHaveBeenCalled();
-      expect.soft(site.pageHits()).toEqual([]);
     } finally {
       stop.abort("shutdown");
       await settle(running, 1000);

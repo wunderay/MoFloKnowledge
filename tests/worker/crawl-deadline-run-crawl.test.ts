@@ -186,48 +186,19 @@ describe("harness control", () => {
   });
 });
 
-describe("hostile Crawl-delay vs the job deadline", () => {
-  it("Crawl-delay: 86400 settles by the job deadline, records the page as not fetched with a reason and never issues the page request", async () => {
-    const jobMs = 400;
-    const { outcome, records, site } = await run(hostileRobots("86400"), {
-      jobMs,
-      fetchMs: 5000,
-      limitMs: jobMs + SLACK_MS,
-    });
-    const result = resolved(outcome, jobMs);
-    expect(site.pageHits(), "page request issued despite Crawl-delay beyond the deadline").toEqual([]);
-    expect(result.captures).toHaveLength(0);
-    expect(
-      reasonFor(result, ROOT),
-      `no deadline/crawl-delay reason recorded for ${ROOT}; got ${JSON.stringify(result.errors)}`,
-    ).not.toHaveLength(0);
-    expectHooksReleasedPromptly(records);
-  });
-
-  it("the per-request onRequest pacing is released at the task (fetch) deadline, not the job deadline", async () => {
-    const fetchMs = 150;
-    const { outcome, records, site } = await run(hostileRobots("86400"), {
-      jobMs: 5000,
-      fetchMs,
-      // two attempts of one task deadline each, plus robots and scheduling
-      limitMs: 2 * fetchMs + 2 * SLACK_MS + 300,
-    });
-    const result = resolved(outcome, fetchMs);
-    expect(site.pageHits()).toEqual([]);
-    expect(reasonFor(result, ROOT)).not.toHaveLength(0);
-    expectHooksReleasedPromptly(records);
-  });
-
-  it.each(["1000000000", "99999999999999999999"])(
-    "absurd finite Crawl-delay %s settles by the job deadline",
+describe("hostile Crawl-delay vs cancellation", () => {
+  it.each(["86400", "99999999999999999999"])(
+    "Crawl-delay: %s is waited out as a capped gap, and cancelling during it rejects promptly with no page request",
     async (delay) => {
-      const jobMs = 400;
-      const { outcome } = await run(hostileRobots(delay), {
-        jobMs,
+      const { outcome, records, site } = await run(hostileRobots(delay), {
+        jobMs: 5000,
         fetchMs: 5000,
-        limitMs: jobMs + SLACK_MS,
+        cancelAfterMs: 100,
+        limitMs: 100 + SLACK_MS,
       });
-      resolved(outcome, jobMs);
+      expect(outcome.state, `runCrawl is ${outcome.state} ${outcome.elapsedMs} ms after outer cancellation`).toBe("rejected");
+      expect(site.pageHits()).toEqual([]);
+      expectHooksReleasedPromptly(records);
     },
   );
 });
